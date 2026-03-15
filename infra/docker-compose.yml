@@ -1,6 +1,6 @@
-# Wave 1 AI SOC Brain — Docker Compose
-# NOTE: OpenSearch integration is foundational only in Wave 1.
-# Events stored in-memory in backend; OpenSearch scaffold ready for Wave 2.
+# AI SOC Brain — Docker Compose (Phase 2)
+# OpenSearch: service defined; backend indexes via OPENSEARCH_URL env var (SCAFFOLD).
+# Syslog: Vector exposes UDP 514 + TCP 6514 for live telemetry ingestion.
 services:
   backend:
     build:
@@ -10,6 +10,8 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
+      # Phase 2 SCAFFOLD: set to enable OpenSearch indexing
+      # - OPENSEARCH_URL=http://opensearch:9200
     networks:
       - soc-net
     healthcheck:
@@ -40,14 +42,18 @@ services:
       - soc-net
     volumes:
       - opensearch_data:/usr/share/opensearch/data
-    # NOTE: Wave 1 scaffold only — backend does not yet write to OpenSearch.
-    # Wave 2 will wire backend events → OpenSearch index.
+    # Phase 2 SCAFFOLD: backend indexes via OPENSEARCH_URL env var when set.
+    # Phase 3: unconditional wiring once OpenSearch health confirmed.
 
   vector:
     image: timberio/vector:0.38.0-alpine
     volumes:
       - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
       - ../fixtures/ndjson:/fixtures:ro
+    ports:
+      # Phase 2: live syslog ingestion
+      - "514:514/udp"     # RFC3164 / RFC5424 / CEF syslog UDP
+      - "6514:6514/tcp"   # TCP syslog (IANA syslog-tls port; avoids root)
     networks:
       - soc-net
     depends_on:

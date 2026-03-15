@@ -1,5 +1,24 @@
-# Wave 1 Vector config — reads NDJSON fixtures and forwards to backend
-# NOTE: Wave 1 scaffold. In production, sources would be live collectors.
+# AI SOC Brain — Vector Pipeline (Phase 2)
+#
+# Sources:
+#   fixture_ndjson    — reads NDJSON fixture files (kept from Wave 1)
+#   syslog_udp        — listens on UDP 514 for RFC3164/RFC5424/CEF
+#   syslog_tcp        — listens on TCP 6514 (IANA syslog-tls port; avoids root)
+#   # firewall_logs   — SCAFFOLD: file-based firewall log input (see comment below)
+#
+# Transforms:
+#   normalise_fixture — extract fields from NDJSON fixture lines
+#   normalise_syslog  — add source label; raw line forwarded to backend parser
+#   # firewall_parse  — SCAFFOLD: vendor-specific firewall log parsing
+#
+# Sinks:
+#   backend_fixture   — POST /ingest to backend API (fixture events)
+#   backend_syslog    — POST /ingest/syslog to backend (raw syslog line)
+#   # opensearch_events — SCAFFOLD: direct OpenSearch indexing (Phase 3)
+
+# ============================================================
+# SOURCES
+# ============================================================
 
 sources:
   fixture_ndjson:
@@ -9,33 +28,121 @@ sources:
     read_from: beginning
     data_dir: /tmp/vector-data
 
+  syslog_udp:
+    type: socket
+    mode: udp
+    address: "0.0.0.0:514"
+    # Accepts RFC3164, RFC5424, CEF — raw line forwarded to /ingest/syslog
+    # for parsing by backend.src.ingestion.syslog_parser
+
+  syslog_tcp:
+    type: socket
+    mode: tcp
+    address: "0.0.0.0:6514"
+    # TCP syslog on 6514 (IANA syslog-tls; avoids root requirement for 514)
+
+  # ---- SCAFFOLD: Firewall log file input ---------------------------------
+  # Uncomment and set include path when integrating a vendor firewall.
+  # Tested formats: Palo Alto CSV, Cisco ASA, Fortinet UTM.
+  #
+  # firewall_logs:
+  #   type: file
+  #   include:
+  #     - /firewall-logs/*.log
+  #   read_from: beginning
+  #   data_dir: /tmp/vector-fw-data
+  # ------------------------------------------------------------------------
+
+# ============================================================
+# TRANSFORMS
+# ============================================================
+
 transforms:
-  parse_events:
+  normalise_fixture:
     type: remap
     inputs:
       - fixture_ndjson
     source: |
-      # Parse JSON line
-      .parsed = parse_json!(.message)
-      .timestamp = .parsed.timestamp
-      .host = .parsed.host
-      .src_ip = .parsed.src_ip
-      .dst_ip = .parsed.dst_ip
-      .event_type = .parsed.event
-      .query = .parsed.query
-      .port = .parsed.port
+      # Parse NDJSON fixture line and add source label
+      parsed, err = parse_json(.message)
+      if err == null {
+        .timestamp  = parsed.timestamp
+        .host       = parsed.host
+        .src_ip     = parsed.src_ip
+        .dst_ip     = parsed.dst_ip
+        .event_type = parsed.event
+        .query      = parsed.query
+        .port       = parsed.port
+        .severity   = parsed.severity
+        .source     = "fixture"
+        del(.message)
+      }
+
+  normalise_syslog:
+    type: remap
+    inputs:
+      - syslog_udp
+      - syslog_tcp
+    source: |
+      # Preserve raw syslog line; add source label.
+      # Backend /ingest/syslog does the heavy parsing (RFC3164/5424/CEF).
+      .source = "syslog"
+
+  # ---- SCAFFOLD: Firewall log transform ----------------------------------
+  # firewall_parse:
+  #   type: remap
+  #   inputs:
+  #     - firewall_logs
+  #   source: |
+  #     .source = "firewall"
+  #     # Add vendor-specific field extraction here
+  # ------------------------------------------------------------------------
+
+# ============================================================
+# SINKS
+# ============================================================
 
 sinks:
-  backend_events:
+  # --- Fixture NDJSON → backend /ingest (batch) ---------------------------
+  backend_fixture:
     type: http
     inputs:
-      - parse_events
-    uri: http://backend:8000/events
+      - normalise_fixture
+    uri: "http://backend:8000/ingest"
     method: post
     encoding:
       codec: json
+    batch:
+      max_events: 50
+      timeout_secs: 5
     request:
       headers:
         Content-Type: application/json
-    # NOTE: Wave 1 — forwards raw parsed fields.
-    # Wave 2 will add field normalization and retry logic.
+
+  # --- Syslog → backend /ingest/syslog (raw line, plain text) -------------
+  backend_syslog:
+    type: http
+    inputs:
+      - normalise_syslog
+    uri: "http://backend:8000/ingest/syslog"
+    method: post
+    encoding:
+      codec: text
+    request:
+      headers:
+        Content-Type: text/plain
+
+  # --- SCAFFOLD: OpenSearch direct indexing --------------------------------
+  # Activate in Phase 3 when OpenSearch is confirmed healthy on every start.
+  # Until then, backend opensearch_sink.py handles conditional indexing
+  # via the OPENSEARCH_URL env var.
+  #
+  # opensearch_events:
+  #   type: elasticsearch
+  #   inputs:
+  #     - normalise_fixture
+  #     - normalise_syslog
+  #   endpoint: "${OPENSEARCH_URL:-http://opensearch:9200}"
+  #   index: "soc-events-%Y-%m-%d"
+  #   mode: bulk
+  # -------------------------------------------------------------------------
