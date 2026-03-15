@@ -1,7 +1,8 @@
-# Wave 1 Manifest
+# Project Manifest
 
 Generated: 2026-03-15
-Branch: feature/ai-soc-wave1-foundation
+Branch: feature/ai-soc-phase2-ingestion
+(includes Wave 1 foundation)
 
 ## File Tree
 
@@ -12,40 +13,45 @@ ai-soc-brain/
 │   │   ├── api/
 │   │   │   ├── __init__.py
 │   │   │   ├── main.py          ← FastAPI app factory
-│   │   │   ├── models.py        ← Pydantic response models
-│   │   │   └── routes.py        ← All 7 route handlers
+│   │   │   ├── models.py        ← Pydantic models + IngestSource enum (Phase 2)
+│   │   │   └── routes.py        ← 9 route handlers incl. /ingest, /ingest/syslog, /events/stream
 │   │   ├── parsers/
 │   │   │   ├── __init__.py
-│   │   │   └── normalizer.py    ← Raw → NormalizedEvent
+│   │   │   └── normalizer.py    ← Raw → NormalizedEvent + enrichment pipeline call
 │   │   ├── graph/
 │   │   │   ├── __init__.py
 │   │   │   └── builder.py       ← Events → Cytoscape nodes/edges
 │   │   ├── detection/
 │   │   │   ├── __init__.py
-│   │   │   └── rules.py         ← Suspicious DNS + IP alerts
+│   │   │   └── rules.py         ← 4 detection rules (dns, ip, port, syslog severity)
+│   │   ├── ingestion/            ← Phase 2 NEW
+│   │   │   ├── __init__.py
+│   │   │   ├── enricher.py      ← 5-stage enrichment pipeline
+│   │   │   ├── syslog_parser.py ← RFC3164 / RFC5424 / CEF parser
+│   │   │   └── opensearch_sink.py ← SCAFFOLD: index when OPENSEARCH_URL set
 │   │   ├── fixtures/
 │   │   │   ├── __init__.py
 │   │   │   └── loader.py        ← NDJSON fixture loader
 │   │   └── tests/
 │   │       ├── __init__.py
-│   │       └── smoke_test.py    ← 7 pytest smoke tests
-│   ├── requirements.txt / requirements-wave1.txt
-│   └── Dockerfile / Dockerfile.wave1
+│   │       ├── smoke_test.py    ← 7 Wave 1 smoke tests
+│   │       └── test_phase2.py   ← 25 Phase 2 tests (parser, enricher, rules, routes)
+│   └── Dockerfile
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── graph/
-│   │   │   │   └── ThreatGraph.svelte    ← Cytoscape.js graph
+│   │   │   │   └── ThreatGraph.svelte    ← Cytoscape.js graph (polls /graph every 10s)
 │   │   │   ├── timeline/
-│   │   │   │   └── EventTimeline.svelte  ← D3 timeline
+│   │   │   │   └── EventTimeline.svelte  ← D3 timeline (polls /timeline every 10s)
 │   │   │   └── panels/
 │   │   │       └── EvidencePanel.svelte  ← Selected node details
 │   │   ├── lib/
-│   │   │   └── api.ts           ← Typed fetch client
+│   │   │   └── api.ts           ← Typed fetch client (Phase 2: +postIngest, +ingestSyslog, +openEventStream)
 │   │   ├── routes/
-│   │   │   └── +page.svelte     ← Main route (Wave 1 spec)
-│   │   ├── App.svelte           ← Root layout
+│   │   │   └── +page.svelte     ← Main route stub
+│   │   ├── App.svelte           ← Root layout (Phase 2: alert polling, live indicators, source badges)
 │   │   ├── app.css              ← Dark SOC theme
 │   │   └── main.ts              ← Entry point
 │   ├── index.html
@@ -56,10 +62,10 @@ ai-soc-brain/
 │   └── Dockerfile
 │
 ├── infra/
-│   ├── docker-compose.yml       ← 5 services: backend+frontend+opensearch+vector+caddy
+│   ├── docker-compose.yml       ← 5 services + syslog ports 514/udp, 6514/tcp on vector
 │   ├── Caddyfile                ← localhost HTTPS proxy
 │   ├── vector/
-│   │   └── vector.yaml          ← NDJSON → backend /events
+│   │   └── vector.yaml          ← Phase 2: syslog_udp + syslog_tcp sources, /ingest + /ingest/syslog sinks
 │   └── scripts/
 │       ├── start.ps1
 │       ├── stop.ps1
@@ -68,11 +74,11 @@ ai-soc-brain/
 ├── fixtures/
 │   ├── ndjson/
 │   │   └── sample_events.ndjson ← 6 realistic firewall events
-│   ├── evtx/                    ← placeholder (Wave 2)
-│   └── syslog/                  ← placeholder (Wave 2)
+│   ├── evtx/                    ← placeholder (Phase 3)
+│   └── syslog/                  ← placeholder (Phase 3)
 │
 └── docs/
-    ├── decision-log.md          ← Wave 1 tech decisions
+    ├── decision-log.md          ← Wave 1 + Phase 2 decisions
     ├── manifest.md              ← this file
     └── reproducibility.md       ← build + verify commands
 ```
@@ -81,18 +87,34 @@ ai-soc-brain/
 
 | Area | Files |
 |------|-------|
-| Backend (src/) | 13 |
-| Frontend | 12 |
-| Infra | 6 |
+| Backend (src/) | 17 (+4 Phase 2 ingestion module) |
+| Frontend | 12 (api.ts + App.svelte updated) |
+| Infra | 6 (vector.yaml + compose updated) |
 | Fixtures | 3 (+ 2 placeholders) |
+| Tests | 2 (smoke_test.py + test_phase2.py) |
 | Docs | 3 |
-| **Total** | **37** |
+| **Total** | **43** |
 
-## Notable Generated Files
+## Active Endpoints (Phase 2)
 
-- `backend/src/api/main.py` — FastAPI app with CORS, Wave 1 only
-- `backend/src/api/routes.py` — All 7 endpoints with in-memory store
-- `frontend/src/components/graph/ThreatGraph.svelte` — Live Cytoscape graph
-- `frontend/src/components/timeline/EventTimeline.svelte` — D3 timeline
-- `infra/docker-compose.yml` — Full 5-service stack
-- `fixtures/ndjson/sample_events.ndjson` — 6 realistic firewall events
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /health | Status + active ingestion sources |
+| GET | /events | All stored events |
+| POST | /events | Ingest single event (Wave 1, preserved) |
+| GET | /timeline | Events sorted ascending by timestamp |
+| GET | /graph | Cytoscape-compatible nodes + edges |
+| GET | /alerts | Triggered detection alerts |
+| POST | /fixtures/load | Load NDJSON fixture file |
+| POST | /ingest | **Phase 2** — batch event ingest with source label |
+| POST | /ingest/syslog | **Phase 2** — raw RFC3164/RFC5424/CEF syslog line |
+| GET | /events/stream | **Phase 2** — SSE live event stream |
+
+## Scaffold Items (labeled, not fully live)
+
+| Item | Location | Activation |
+|------|----------|------------|
+| OpenSearch indexing | `backend/src/ingestion/opensearch_sink.py` | Set `OPENSEARCH_URL` env var |
+| OpenSearch Vector sink | `infra/vector/vector.yaml` (commented) | Uncomment + set `OPENSEARCH_URL` |
+| Firewall log source | `infra/vector/vector.yaml` (commented) | Uncomment + set log path |
+| Firewall parse transform | `infra/vector/vector.yaml` (commented) | Add vendor-specific parsing |

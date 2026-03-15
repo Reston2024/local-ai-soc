@@ -1,9 +1,10 @@
 # Reproducibility Guide
 
-## Wave 1 Foundation — AI SOC Brain
+## Phase 2 Ingestion — AI SOC Brain
 
-Branch: `feature/ai-soc-wave1-foundation`
+Branch: `feature/ai-soc-phase2-ingestion`
 Date: 2026-03-15
+(includes all Wave 1 foundation commands)
 
 ---
 
@@ -89,9 +90,67 @@ Invoke-RestMethod http://localhost:9200
 ## Run Smoke Tests
 
 ```bash
-# Python smoke tests (no running server needed — uses TestClient)
+# All tests — Wave 1 + Phase 2 (no running server needed — uses TestClient)
 cd C:\Users\Admin\AI-SOC-Brain
+uv run pytest backend/src/tests/ -v
+# Expected: 32 passed (7 Wave 1 + 25 Phase 2)
+
+# Wave 1 only
 uv run pytest backend/src/tests/smoke_test.py -v
+# Expected: 7 passed
+
+# Phase 2 only
+uv run pytest backend/src/tests/test_phase2.py -v
+# Expected: 25 passed
+```
+
+---
+
+## Phase 2 Ingestion Commands
+
+```powershell
+# Batch ingest via /ingest
+$payload = @{
+    source = "api"
+    events = @(
+        @{ timestamp = "2026-03-15T12:00:00Z"; host = "fw01"; src_ip = "192.168.1.10"; dst_ip = "9.9.9.9"; event = "connection"; port = 4444 }
+    )
+} | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Method Post http://localhost:8000/ingest -Body $payload -ContentType "application/json"
+# Expected: {"accepted":1,"alerts":2,"source":"api"}
+
+# Ingest raw syslog line
+$syslogLine = "<34>Mar 15 12:00:00 fw01 connection established from 192.168.1.10"
+Invoke-RestMethod -Method Post http://localhost:8000/ingest/syslog -Body $syslogLine -ContentType "text/plain"
+# Expected: {"accepted":1,"alerts":0,"event_id":"<uuid>"}
+
+# Ingest CEF line
+$cef = "CEF:0|PAN|PAN-OS|10.1|threat|Suspicious DNS|8|src=10.0.0.5 dst=9.9.9.9 dpt=53"
+Invoke-RestMethod -Method Post http://localhost:8000/ingest/syslog -Body $cef -ContentType "text/plain"
+# Expected: {"accepted":1,"alerts":1,"event_id":"<uuid>"}
+
+# Connect SSE stream (PowerShell — streams until Ctrl+C)
+# Best tested via browser: open http://localhost:8000/events/stream
+
+# Send live syslog to Vector UDP (requires full Docker stack)
+echo "<34>Mar 15 12:00:00 fw01 Suspicious DNS query to c2.evil.test" | nc -u localhost 514
+```
+
+---
+
+## Enable OpenSearch Indexing (SCAFFOLD)
+
+```powershell
+# 1. Start with OPENSEARCH_URL set (adds indexing from backend)
+$env:OPENSEARCH_URL = "http://opensearch:9200"
+# Then restart backend container or set in docker-compose.yml environment section
+
+# 2. Verify index created after ingesting events
+Invoke-RestMethod http://localhost:9200/soc-events/_count
+# Expected: {"count": N, ...}
+
+# 3. Query index
+Invoke-RestMethod "http://localhost:9200/soc-events/_search?q=host:fw01"
 ```
 
 ---
