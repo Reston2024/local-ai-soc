@@ -1,0 +1,22 @@
+title: PowerShell Download Cradle
+id: 3b6207f0-7e4c-4a1d-8b0b-e9f1f5b3a123
+status: test
+description: Detects PowerShell download cradle patterns used by attackers
+author: AI-SOC-Brain Test
+date: 2026-03-15
+tags:
+    - attack.execution
+    - attack.t1059.001
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection:
+        Image: 'powershell.exe'
+        CommandLine|contains|all:
+            - '-nop'
+            - '-w hidden'
+    condition: selection
+level: high
+falsepositives:
+    - Legitimate automation scripts

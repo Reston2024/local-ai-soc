@@ -1,0 +1,19 @@
+title: Multiple Failed Authentication Attempts
+id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+status: test
+description: Detects repeated authentication failures
+author: AI-SOC-Brain Test
+date: 2026-03-15
+tags:
+    - attack.credential_access
+    - attack.t1110
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventType: 'UserLogonFailed'
+    condition: selection
+level: medium
+falsepositives:
+    - Typos, password changes
