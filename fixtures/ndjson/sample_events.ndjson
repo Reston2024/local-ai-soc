@@ -1,0 +1,6 @@
+{"timestamp":"2026-03-15T12:00:00Z","host":"fw01","src_ip":"192.168.1.10","dst_ip":"8.8.8.8","event":"dns_query","query":"example.com","severity":"info"}
+{"timestamp":"2026-03-15T12:00:05Z","host":"fw01","src_ip":"192.168.1.10","dst_ip":"1.2.3.4","event":"connection","port":443,"severity":"info"}
+{"timestamp":"2026-03-15T12:00:07Z","host":"fw01","src_ip":"192.168.1.10","dst_ip":"9.9.9.9","event":"dns_query","query":"suspicious-domain.test","severity":"high"}
+{"timestamp":"2026-03-15T12:00:09Z","host":"fw01","src_ip":"192.168.1.10","dst_ip":"9.9.9.9","event":"connection","port":4444,"severity":"high"}
+{"timestamp":"2026-03-15T12:00:15Z","host":"ws02","src_ip":"192.168.1.25","dst_ip":"198.51.100.1","event":"connection","port":80,"severity":"high"}
+{"timestamp":"2026-03-15T12:00:22Z","host":"ws02","src_ip":"192.168.1.25","dst_ip":"8.8.4.4","event":"dns_query","query":"updates.microsoft.com","severity":"info"}

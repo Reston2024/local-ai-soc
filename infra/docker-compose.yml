@@ -1,0 +1,81 @@
+# Wave 1 AI SOC Brain — Docker Compose
+# NOTE: OpenSearch integration is foundational only in Wave 1.
+# Events stored in-memory in backend; OpenSearch scaffold ready for Wave 2.
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - soc-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    networks:
+      - soc-net
+    depends_on:
+      - backend
+
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - soc-net
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    # NOTE: Wave 1 scaffold only — backend does not yet write to OpenSearch.
+    # Wave 2 will wire backend events → OpenSearch index.
+
+  vector:
+    image: timberio/vector:0.38.0-alpine
+    volumes:
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - ../fixtures/ndjson:/fixtures:ro
+    networks:
+      - soc-net
+    depends_on:
+      - backend
+    command: ["--config", "/etc/vector/vector.yaml"]
+
+  caddy:
+    image: caddy:2.9-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - soc-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
+      - frontend
+
+networks:
+  soc-net:
+    driver: bridge
+
+volumes:
+  opensearch_data:
+  caddy_data:
+  caddy_config:

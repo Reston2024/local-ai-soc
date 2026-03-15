@@ -1,0 +1,41 @@
+# Wave 1 Vector config — reads NDJSON fixtures and forwards to backend
+# NOTE: Wave 1 scaffold. In production, sources would be live collectors.
+
+sources:
+  fixture_ndjson:
+    type: file
+    include:
+      - /fixtures/*.ndjson
+    read_from: beginning
+    data_dir: /tmp/vector-data
+
+transforms:
+  parse_events:
+    type: remap
+    inputs:
+      - fixture_ndjson
+    source: |
+      # Parse JSON line
+      .parsed = parse_json!(.message)
+      .timestamp = .parsed.timestamp
+      .host = .parsed.host
+      .src_ip = .parsed.src_ip
+      .dst_ip = .parsed.dst_ip
+      .event_type = .parsed.event
+      .query = .parsed.query
+      .port = .parsed.port
+
+sinks:
+  backend_events:
+    type: http
+    inputs:
+      - parse_events
+    uri: http://backend:8000/events
+    method: post
+    encoding:
+      codec: json
+    request:
+      headers:
+        Content-Type: application/json
+    # NOTE: Wave 1 — forwards raw parsed fields.
+    # Wave 2 will add field normalization and retry logic.
