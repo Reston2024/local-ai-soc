@@ -96,7 +96,7 @@ async def export_events_csv(
     csv_bytes = await asyncio.to_thread(_generate_csv)
     filename = f"events_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
 
-    log.info("Events CSV export", rows=len(rows), filename=filename)
+    log.info("Events CSV export", rows=len(rows), export_filename=filename)
     return StreamingResponse(
         iter([csv_bytes]),
         media_type="text/csv",
