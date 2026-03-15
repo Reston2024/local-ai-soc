@@ -69,7 +69,9 @@
       "Bash(curl -s http://localhost:8001/fixtures/load -X POST)",
       "Bash(python -c \"import sys,json; print\\(json.dumps\\(json.load\\(sys.stdin\\), indent=2\\)\\)\")",
       "Bash(netstat -ano)",
-      "Bash(cmd /c \"taskkill /PID 21244 /F\")"
+      "Bash(cmd /c \"taskkill /PID 21244 /F\")",
+      "Skill(gsd:execute-phase)",
+      "Skill(gsd:execute-phase:*)"
     ]
   }
 }
