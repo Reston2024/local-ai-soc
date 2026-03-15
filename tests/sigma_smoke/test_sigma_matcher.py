@@ -78,7 +78,7 @@ class TestSigmaMatcher:
         (rules / "test_rule.yml").write_text(
             """
 title: Test PowerShell Detection
-id: test-rule-001
+id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 status: test
 description: Test rule
 logsource:
@@ -244,7 +244,7 @@ level: high
         """Test loading a rule from a YAML string directly."""
         yaml_text = """
 title: Inline Test Rule
-id: inline-test-001
+id: f1e2d3c4-b5a6-7890-abcd-123456789abc
 status: test
 logsource:
     product: windows
