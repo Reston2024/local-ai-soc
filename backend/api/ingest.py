@@ -277,7 +277,7 @@ async def upload_file(
     log.info(
         "File uploaded",
         job_id=job_id,
-        filename=filename,
+        upload_filename=filename,
         size_bytes=len(content),
         dest=str(dest_path),
         case_id=case_id,

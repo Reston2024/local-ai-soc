@@ -113,7 +113,8 @@ export const api = {
       const q = new URLSearchParams()
       if (params?.limit !== undefined) q.set('limit', String(params.limit))
       if (params?.severity) q.set('severity', params.severity)
-      return request<{ detections: Detection[]; total: number }>(`/api/detections?${q}`)
+      // Backend router prefix is /api/detect (not /api/detections)
+      return request<{ detections: Detection[]; total: number }>(`/api/detect?${q}`)
     },
   },
 

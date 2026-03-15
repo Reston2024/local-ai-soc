@@ -94,6 +94,45 @@ async def create_entity(body: CreateEntityRequest, request: Request) -> JSONResp
 
 
 # ---------------------------------------------------------------------------
+# GET /graph/entities   (list all entities, optional type filter)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/entities")
+async def list_entities(
+    request: Request,
+    entity_type: Optional[str] = Query(None, description="Filter by entity type"),
+    limit: int = Query(100, ge=1, le=1000),
+) -> JSONResponse:
+    """List all known graph entities, optionally filtered by type."""
+    stores = request.app.state.stores
+
+    def _list() -> list[dict]:
+        cur = stores.sqlite._conn.execute(
+            "SELECT id, type, name, attributes, case_id, created_at FROM entities ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        )
+        cols = [d[0] for d in cur.description]
+        rows = cur.fetchall()
+        import json as _json
+        result = []
+        for row in rows:
+            d = dict(zip(cols, row))
+            if entity_type and d.get("type") != entity_type:
+                continue
+            if isinstance(d.get("attributes"), str):
+                try:
+                    d["attributes"] = _json.loads(d["attributes"])
+                except Exception:
+                    pass
+            result.append(d)
+        return result
+
+    entities = await asyncio.to_thread(_list)
+    return JSONResponse(content={"entities": entities, "total": len(entities)})
+
+
+# ---------------------------------------------------------------------------
 # GET /graph/entity/{entity_id}
 # ---------------------------------------------------------------------------
 

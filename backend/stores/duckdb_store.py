@@ -193,7 +193,12 @@ class DuckDBStore:
 
     def get_read_conn(self) -> duckdb.DuckDBPyConnection:
         """
-        Open and return a new read-only connection to the database file.
+        Open and return a secondary read connection to the database file.
+
+        DuckDB 1.5+ requires all connections to the same file to use the same
+        configuration (read_only flag must match).  Since the write connection
+        uses the default read_write mode, secondary connections must also omit
+        read_only=True.  DuckDB serialises concurrent access automatically.
 
         Callers must close the connection when done, e.g.::
 
@@ -202,11 +207,8 @@ class DuckDBStore:
                 result = await asyncio.to_thread(conn.execute, sql)
             finally:
                 conn.close()
-
-        A new connection per query is acceptable for a desktop workload
-        and avoids any cross-request state leakage.
         """
-        return duckdb.connect(self._db_path, read_only=True)
+        return duckdb.connect(self._db_path)
 
     # ------------------------------------------------------------------
     # Convenience helpers

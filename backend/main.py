@@ -99,11 +99,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     data_dir.mkdir(parents=True, exist_ok=True)
     log.info("Data directory ready", path=str(data_dir.resolve()))
 
-    # 2. DuckDB store
+    # 2. DuckDB store — start write worker FIRST, then initialise schema
+    # (initialise_schema uses execute_write which requires the worker to be running)
     duckdb_store = DuckDBStore(data_dir=settings.DATA_DIR)
-    await duckdb_store.initialise_schema()
     write_worker_task = duckdb_store.start_write_worker()
     log.info("DuckDB write worker started")
+    await duckdb_store.initialise_schema()
 
     # 3. Chroma store
     chroma_store = ChromaStore(data_dir=settings.DATA_DIR)
@@ -209,13 +210,13 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     # Routers
     # -----------------------------------------------------------------------
-    app.include_router(health_router)
-    app.include_router(events_router)
-    app.include_router(ingest_router)
-    app.include_router(query_router)
-    app.include_router(detect_router)
-    app.include_router(graph_router)
-    app.include_router(export_router)
+    app.include_router(health_router)                          # /health
+    app.include_router(events_router,  prefix="/api")           # /api/events
+    app.include_router(ingest_router,  prefix="/api")           # /api/ingest
+    app.include_router(query_router,   prefix="/api")           # /api/query
+    app.include_router(detect_router,  prefix="/api")           # /api/detect
+    app.include_router(graph_router,   prefix="/api")           # /api/graph
+    app.include_router(export_router,  prefix="/api")           # /api/export
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
