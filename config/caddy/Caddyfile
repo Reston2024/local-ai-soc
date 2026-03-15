@@ -1,0 +1,55 @@
+# AI-SOC-Brain — Caddyfile
+# Caddy handles TLS termination for localhost HTTPS.
+# FastAPI runs on host at port 8000.
+# Dashboard static files served from /srv/dashboard.
+
+{
+    # Auto-HTTPS for localhost (self-signed, trusted by Caddy's own CA)
+    local_certs
+    # Restrict admin API to localhost only
+    admin localhost:2019
+    # Log format
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+}
+
+localhost {
+    # TLS with local cert (Caddy generates and trusts automatically)
+    tls internal
+
+    # API proxy — forward to FastAPI on host
+    handle /api/* {
+        reverse_proxy host.docker.internal:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            # Health check for upstream
+            health_uri /health
+            health_interval 15s
+            health_timeout 5s
+        }
+    }
+
+    handle /health {
+        reverse_proxy host.docker.internal:8000
+    }
+
+    # SSE streaming — disable buffering
+    handle /api/query/* {
+        reverse_proxy host.docker.internal:8000 {
+            flush_interval -1
+            header_up Host {host}
+        }
+    }
+
+    # Dashboard SPA — serve static files, fallback to index.html
+    handle /* {
+        root * /srv/dashboard
+        try_files {path} /index.html
+        file_server
+    }
+}
