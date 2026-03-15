@@ -80,9 +80,11 @@ Next action: Continue remaining Phase 1 plans
 | `.planning/ROADMAP.md` | ✓ committed |
 | `.planning/STATE.md` | this file |
 | `backend/` | ✓ committed (Phase 1 plans 01-03) |
-| `dashboard/` | ✓ committed (Phase 1 plan 04 — this plan) |
-| `ingestion/` | not created |
-| `detections/` | not created |
+| `dashboard/` | ✓ committed (Phase 1 plan 04) |
+| `ingestion/` | ✓ committed (Phase 1 plans 01-05) |
+| `detections/` | ✓ committed (Phase 1 plans 01-05) |
+| `fixtures/` | ✓ committed (Phase 1 plan 05) |
+| `tests/` | ✓ committed (Phase 1 plan 05) |
 | Root docs (ARCHITECTURE.md, etc.) | ✓ committed |
 
 ## Session Notes
@@ -93,3 +95,4 @@ Next action: Continue remaining Phase 1 plans
 - No existing Docker containers or images — clean slate.
 - Ollama not yet installed — Phase 1 task 1.
 - 2026-03-15: Phase 1 plan 04 complete. Svelte 5 dashboard SPA built. 10 tasks, 10 commits, 15 files, build verified. Stopped at: 01-04-PLAN.md complete.
+- 2026-03-15: Phase 1 plan 05 complete. Fixtures and test suite created. 30-event NDJSON attack scenario, 3 Sigma rules, osquery snapshot, 89 unit/smoke tests all passing. Stopped at: 01-05-PLAN.md complete.
