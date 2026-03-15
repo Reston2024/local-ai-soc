@@ -44,6 +44,9 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["backend", "ingestion", "detections", "correlation", "graph", "prompts"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

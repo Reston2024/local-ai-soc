@@ -13,7 +13,7 @@ router = APIRouter()
 _events: list[dict] = []
 _alerts: list[dict] = []
 
-FIXTURE_PATH = Path(__file__).parents[4] / "fixtures" / "ndjson" / "sample_events.ndjson"
+FIXTURE_PATH = Path(__file__).parents[3] / "fixtures" / "ndjson" / "sample_events.ndjson"
 
 
 @router.get("/health", response_model=HealthResponse)
