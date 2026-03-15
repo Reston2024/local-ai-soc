@@ -1,10 +1,39 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+
+# Data
 data/
 logs/
+*.duckdb
+*.duckdb.wal
+*.sqlite3-shm
+*.sqlite3-wal
+chroma_db/
+
+# Dashboard
 dashboard/node_modules/
 dashboard/dist/
-*.egg-info/
-.pytest_cache/
+dashboard/.svelte-kit/
+
+# Caddy
+config/caddy/data/
+caddy_data/
+
+# Env
+.env
+.env.local
+
+# Runtime
+.backend.pid
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
