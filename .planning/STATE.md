@@ -87,6 +87,13 @@ Next action: Continue remaining Phase 1 plans
 | `tests/` | ✓ committed (Phase 1 plan 05) |
 | Root docs (ARCHITECTURE.md, etc.) | ✓ committed |
 
+## Accumulated Context
+
+### Pending Todos
+
+- 1 todo pending — see `.planning/todos/pending/`
+- `2026-03-15-build-wave-1-ai-soc-foundation-branch.md` — Build Wave 1 AI SOC Foundation Branch (area: planning)
+
 ## Session Notes
 
 - 2026-03-15: Project initialized. Environment inspected. Config locked. Research complete (4 agents). Synthesis complete. Requirements and roadmap written. Ready for Phase 1.
