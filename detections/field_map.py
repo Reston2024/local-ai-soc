@@ -1,0 +1,89 @@
+"""
+Sigma-to-DuckDB field name mapping.
+
+Maps Sigma canonical Windows field names to the normalized_events
+column names used in DuckDB.  Used by SigmaMatcher when translating
+Sigma detection conditions to SQL WHERE clauses.
+
+Note on EventID:
+    Sigma's ``EventID`` field refers to the Windows Event Log numeric ID
+    (e.g. 4624, 1 for Sysmon).  In our schema this information lives in
+    raw_event (as a JSON field) and in the event_type column (a derived
+    string).  We do not map it to a top-level column because our event_id
+    is a UUID, not the Windows EventID.  Rules that filter on EventID
+    should use a raw_event LIKE/JSON_EXTRACT approach; the matcher handles
+    this specially.
+"""
+
+from __future__ import annotations
+
+# Sigma field name → normalized_events DuckDB column
+SIGMA_FIELD_MAP: dict[str, str] = {
+    # ------------------------------------------------------------------ #
+    # Process fields (Sysmon EventID 1 / Windows Security 4688)
+    # ------------------------------------------------------------------ #
+    "Image":                "process_name",
+    "CommandLine":          "command_line",
+    "ProcessId":            "process_id",
+    "NewProcessId":         "process_id",
+    "ParentImage":          "parent_process_name",
+    "ParentProcessId":      "parent_process_id",
+    "ParentCommandLine":    "command_line",   # approximate — no dedicated column
+    "OriginalFileName":     "process_name",
+    # ------------------------------------------------------------------ #
+    # User / authentication fields
+    # ------------------------------------------------------------------ #
+    "User":                 "username",
+    "SubjectUserName":      "username",
+    "TargetUserName":       "username",
+    "AccountName":          "username",
+    "ServiceName":          "username",       # approximate for service logons
+    # ------------------------------------------------------------------ #
+    # Host fields
+    # ------------------------------------------------------------------ #
+    "Computer":             "hostname",
+    "ComputerName":         "hostname",
+    "WorkstationName":      "hostname",
+    # ------------------------------------------------------------------ #
+    # Network fields
+    # ------------------------------------------------------------------ #
+    "DestinationIp":        "dst_ip",
+    "DestinationPort":      "dst_port",
+    "SourceIp":             "src_ip",
+    "SourcePort":           "src_port",
+    "DestinationHostname":  "domain",
+    "QueryName":            "domain",
+    "Initiated":            "src_ip",          # Sysmon net event direction flag
+    # ------------------------------------------------------------------ #
+    # File fields
+    # ------------------------------------------------------------------ #
+    "TargetFilename":       "file_path",
+    "TargetObject":         "file_path",
+    "ObjectName":           "file_path",
+    "FileName":             "file_path",
+    "Hashes":               "file_hash_sha256",
+    "Hash":                 "file_hash_sha256",
+    "Imphash":              "file_hash_sha256",  # approximate
+    "Sha256":               "file_hash_sha256",
+    # ------------------------------------------------------------------ #
+    # Registry fields (mapped to file_path as closest equivalent)
+    # ------------------------------------------------------------------ #
+    "EventType":            "event_type",
+    "ObjectType":           "event_type",
+    # ------------------------------------------------------------------ #
+    # Generic / metadata
+    # ------------------------------------------------------------------ #
+    "Channel":              "source_file",
+    "Provider_Name":        "source_file",
+    "Tags":                 "tags",
+    "AttackTechnique":      "attack_technique",
+    "Technique":            "attack_technique",
+}
+
+# Columns that hold integer values — used to decide whether to quote
+INTEGER_COLUMNS: frozenset[str] = frozenset({
+    "process_id",
+    "parent_process_id",
+    "src_port",
+    "dst_port",
+})
