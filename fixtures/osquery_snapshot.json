@@ -1,0 +1,67 @@
+[
+  {
+    "action": "snapshot",
+    "columns": {
+      "pid": "4821",
+      "name": "powershell.exe",
+      "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "cmdline": "powershell.exe -nop -w hidden -enc SQBFAFgA",
+      "parent": "1234",
+      "uid": "1000",
+      "username": "jsmith",
+      "start_time": "1741942523",
+      "resident_size": "65536000",
+      "cpu_percent": "12.5"
+    },
+    "name": "processes",
+    "epoch": 0,
+    "counter": 1,
+    "numerics": false,
+    "hostIdentifier": "WORKSTATION-01",
+    "calendarTime": "Sun Mar 15 09:15:23 2026 UTC",
+    "unixTime": "1741942523"
+  },
+  {
+    "action": "snapshot",
+    "columns": {
+      "pid": "9042",
+      "name": "cmd.exe",
+      "path": "C:\\Windows\\System32\\cmd.exe",
+      "cmdline": "cmd.exe /c whoami",
+      "parent": "4821",
+      "uid": "1000",
+      "username": "jsmith",
+      "start_time": "1741942555",
+      "resident_size": "4096000",
+      "cpu_percent": "0.1"
+    },
+    "name": "processes",
+    "epoch": 0,
+    "counter": 2,
+    "numerics": false,
+    "hostIdentifier": "WORKSTATION-01",
+    "calendarTime": "Sun Mar 15 09:15:55 2026 UTC",
+    "unixTime": "1741942555"
+  },
+  {
+    "action": "added",
+    "columns": {
+      "address": "185.234.1.100",
+      "family": "2",
+      "protocol": "6",
+      "local_port": "49821",
+      "remote_port": "4444",
+      "local_address": "192.168.1.105",
+      "state": "ESTABLISHED",
+      "pid": "4821",
+      "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+    },
+    "name": "socket_events",
+    "epoch": 0,
+    "counter": 3,
+    "numerics": false,
+    "hostIdentifier": "WORKSTATION-01",
+    "calendarTime": "Sun Mar 15 09:16:01 2026 UTC",
+    "unixTime": "1741942561"
+  }
+]
