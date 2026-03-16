@@ -48,7 +48,7 @@ def test_post_event_stores_and_returns():
         "query": "example.com",
     }
     r = client.post("/events", json=payload)
-    assert r.status_code == 201
+    assert r.status_code == 200
     data = r.json()
     assert data["host"] == "fw01"
     assert data["event_type"] == "dns_query"

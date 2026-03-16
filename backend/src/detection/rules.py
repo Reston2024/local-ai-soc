@@ -56,12 +56,21 @@ def rule_high_syslog(event: NormalizedEvent) -> Alert | None:
     return None
 
 
+def rule_suricata_alert(event: NormalizedEvent) -> Alert | None:
+    """Phase 5: Fire an alert for critical or high severity Suricata EVE events."""
+    if event.source.value == "suricata" and event.severity in ("critical", "high"):
+        return _alert(event, "suricata_alert", event.severity,
+                      f"Suricata detection from {event.host}: {event.event_type}")
+    return None
+
+
 # Ordered evaluation — first match wins per rule (all run, de-duped by event_id + rule)
 _RULES = [
     rule_suspicious_dns,
     rule_suspicious_outbound,
     rule_suspicious_port,
     rule_high_syslog,
+    rule_suricata_alert,
 ]
 
 

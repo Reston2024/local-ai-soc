@@ -65,6 +65,15 @@ def _store_event(event: NormalizedEvent) -> list[Alert]:
                 new_alerts.append(result)
         except Exception:
             pass  # Individual sigma rule failure must not crash ingestion
+    # Phase 5: Score alerts and add ATT&CK tags — AFTER all detection runs
+    try:
+        from backend.src.detection.threat_scorer import score_alert as _score_alert
+        from backend.src.detection.attack_mapper import map_attack_tags as _map_attack_tags
+        for alert in new_alerts:
+            alert.threat_score = _score_alert(alert, _events, None)
+            alert.attack_tags = _map_attack_tags(alert, event)
+    except ImportError:
+        pass  # Graceful degradation — modules absent during incremental dev
     _alerts.extend(a.model_dump() for a in new_alerts)
     # Push to SSE subscribers (non-blocking)
     payload = json.dumps(event.model_dump(mode="json"))
@@ -95,9 +104,15 @@ def get_events():
     return _events
 
 
-@router.post("/events", status_code=201)
+@router.post("/events", status_code=200)
 def post_event(raw: dict):
-    event = normalize(raw, source=IngestSource.api)
+    # Phase 5: honour source field in payload (e.g. source="suricata")
+    source_str = raw.get("source", "api")
+    try:
+        source = IngestSource(source_str)
+    except ValueError:
+        source = IngestSource.api
+    event = normalize(raw, source=source)
     _store_event(event)
     return event.model_dump(mode="json")
 
@@ -175,6 +190,13 @@ def get_graph_correlate(event_id: str):
 @router.get("/alerts")
 def get_alerts():
     return _alerts
+
+
+@router.get("/threats")
+def get_threats():
+    """Return alerts sorted by threat_score descending, score > 0 only."""
+    scored = [a for a in _alerts if a.get("threat_score", 0) > 0]
+    return sorted(scored, key=lambda a: a.get("threat_score", 0), reverse=True)
 
 
 @router.get("/search")
