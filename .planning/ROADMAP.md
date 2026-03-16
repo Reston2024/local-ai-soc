@@ -141,10 +141,17 @@
 
 ---
 
-## Phase 3: Detection + RAG
-**Status:** TODO
+## Phase 3: Detection + RAG (Scoped)
+**Status:** PLANNING COMPLETE
 **Depends on:** Phase 2 complete (need ingested events in DuckDB + Chroma)
-**Goal:** Sigma-based detection and LLM-powered Q&A with citations. Core analyst value delivered here.
+**Goal:** OpenSearch live indexing + Sigma YAML detection rules surfaced in /alerts. Keep all 32 existing tests passing.
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Wave 0: Write test_phase3.py stubs before any implementation
+- [ ] 03-02-PLAN.md — Activate OpenSearch: remove sink guard, add GET /search, wire docker-compose + vector.yaml
+- [ ] 03-03-PLAN.md — Sigma detection: sigma_loader.py + suspicious_dns.yml + routes.py integration
 
 > ⚠️ **Research flag: HIGH** — Custom pySigma DuckDB backend is custom engineering. No reference implementation exists. Budget extra time (3–5 days beyond estimate).
 
