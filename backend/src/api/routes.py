@@ -105,7 +105,7 @@ def get_timeline():
 
 @router.get("/graph", response_model=GraphResponse)
 def get_graph():
-    return build_graph(_events)
+    return build_graph(_events, _alerts)
 
 
 @router.get("/alerts")

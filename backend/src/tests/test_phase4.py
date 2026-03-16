@@ -86,7 +86,7 @@ class TestEdgeExtraction:
             [],
         )
         assert len(response.edges) >= 1, "Expected at least one edge for a connection event"
-        assert response.edges[0].source is not None, "Edge must have a non-None source field"
+        assert response.edges[0].src is not None, "Edge must have a non-None src field"
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,12 @@ Phase 2 additions:
   - NormalizedEvent.source — where the event originated
   - NormalizedEvent.enrichments — analyst-readable tags added by enricher
   - NormalizedEvent.user — optional username/account field
+
+Phase 4 additions:
+  - GraphNode extended with attributes, first_seen, last_seen, evidence fields
+  - GraphEdge renamed source/target -> src/dst; added timestamp, evidence_event_ids
+  - AttackPath — connected-component path with severity, temporal bounds
+  - GraphResponse extended with attack_paths and stats fields
 """
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -38,20 +44,37 @@ class NormalizedEvent(BaseModel):
 
 class GraphNode(BaseModel):
     id: str
-    type: str  # host | ip | alert
+    type: str  # host|ip|domain|alert|process|user
     label: str
+    attributes: dict = Field(default_factory=dict)
+    first_seen: str = ""
+    last_seen: str = ""
+    evidence: list[str] = Field(default_factory=list)
 
 
 class GraphEdge(BaseModel):
     id: str
-    source: str
-    target: str
-    type: str
+    type: str  # dns_query|connection|alert_trigger|related_event|observed_on
+    src: str
+    dst: str
+    timestamp: str = ""
+    evidence_event_ids: list[str] = Field(default_factory=list)
+
+
+class AttackPath(BaseModel):
+    id: str
+    node_ids: list[str]
+    edge_ids: list[str]
+    severity: str  # max alert severity; "info" if no alerts
+    first_event: str
+    last_event: str
 
 
 class GraphResponse(BaseModel):
     nodes: list[GraphNode]
     edges: list[GraphEdge]
+    attack_paths: list[AttackPath] = Field(default_factory=list)
+    stats: dict = Field(default_factory=dict)
 
 
 class Alert(BaseModel):
