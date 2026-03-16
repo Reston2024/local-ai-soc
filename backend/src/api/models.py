@@ -11,6 +11,11 @@ Phase 4 additions:
   - GraphEdge renamed source/target -> src/dst; added timestamp, evidence_event_ids
   - AttackPath — connected-component path with severity, temporal bounds
   - GraphResponse extended with attack_paths and stats fields
+
+Phase 5 additions:
+  - IngestSource.suricata — Suricata EVE JSON ingestion source
+  - Alert.threat_score — additive 0-100 threat score (default 0)
+  - Alert.attack_tags — list of MITRE ATT&CK tactic/technique dicts (default [])
 """
 from enum import Enum
 from pydantic import BaseModel, Field
@@ -22,6 +27,7 @@ class IngestSource(str, Enum):
     syslog = "syslog"
     vector = "vector"
     api = "api"
+    suricata = "suricata"
 
 
 class NormalizedEvent(BaseModel):
@@ -84,6 +90,8 @@ class Alert(BaseModel):
     severity: str
     event_id: str
     description: str
+    threat_score: int = 0
+    attack_tags: list[dict] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):
