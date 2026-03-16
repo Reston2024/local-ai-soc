@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 4 (in progress)
+current_plan: "04-02 complete, next: 04-03"
+status: executing
+last_updated: "2026-03-16T07:22:30Z"
+progress:
+  total_phases: 6
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 8
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 4 (in progress)
 current_plan: "04-01 complete, next: 04-02"
 status: executing
 last_updated: "2026-03-16T07:12:25Z"
 progress:
-  total_phases: 6
+  [██████████] 100%
   completed_phases: 1
   total_plans: 6
   completed_plans: 7
@@ -27,8 +43,8 @@ progress:
 
 **Phase 4: Graph + Correlation**
 Status: IN PROGRESS
-Current plan: 04-01 (COMPLETE), next: 04-02
-Next action: Implement next Phase 4 plan
+Current plan: 04-02 (COMPLETE), next: 04-03
+Next action: Implement Phase 4 Plan 03 (temporal correlation engine)
 
 ## Progress
 
@@ -37,7 +53,7 @@ Next action: Implement next Phase 4 plan
 | Phase 1: Foundation | TODO | — |
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
-| Phase 4: Graph + Correlation | IN PROGRESS | 1/N plans (04-01 complete) |
+| Phase 4: Graph + Correlation | IN PROGRESS | 2/N plans (04-01, 04-02 complete) |
 | Phase 5: Dashboard | TODO | — |
 | Phase 6: Hardening + Integration | TODO | — |
 
@@ -70,6 +86,8 @@ Next action: Implement next Phase 4 plan
 | _SIGMA_RULES module-level with try/except | Sigma load failure must not crash backend startup; logged as warning |
 | pytest.importorskip inside Phase 4 test methods | Keeps test_phase4.py importable when graph.builder absent before Plan 02 |
 | strict=False on all Phase 4 xfail stubs | xpass (e.g. 404-already-working route) does not break suite before implementation |
+| GraphEdge uses src/dst fields (not source/target) | Schema locked in CONTEXT.md; ThreatGraph.svelte maps e.src/e.dst to Cytoscape source/target |
+| Union-Find path compression on node IDs for attack paths | Severity = max alert severity in connected component; default "info" when no alert nodes |
 
 ## Critical Pitfalls to Watch
 
@@ -133,3 +151,4 @@ Next action: Implement next Phase 4 plan
 - 2026-03-16: Phase 3 plan 02 complete. OpenSearch activated: OPENSEARCH_URL set unconditionally in docker-compose, healthcheck + depends_on added, Vector opensearch_events sink uncommented with fixed 'soc-events' index. GET /search?q= endpoint added to routes.py. P3-T1/T2/T8 pass. 32 regression tests still pass. Stopped at: 03-02-PLAN.md complete.
 - 2026-03-16: Phase 3 plan 03 complete. Sigma detection layer implemented. suspicious_dns.yml + sigma_loader.py + routes.py integration. P3-T3/T4/T5/T6 all PASS. 41 total tests pass (32 regression + 9 new). Stopped at: 03-03-PLAN.md complete.
 - 2026-03-16: Phase 4 plan 01 complete. Wave-1 TDD stubs for Phase 4 written (test_phase4.py). 8 classes, 9 tests: 8 xfail + 1 xpass (404 route already works). 41 regression tests still pass. Stopped at: 04-01-PLAN.md complete.
+- 2026-03-16: Phase 4 plan 02 complete. Full Phase 4 graph schema + builder implemented. GraphNode/GraphEdge/AttackPath/GraphResponse models, build_graph(events, alerts) with Union-Find attack paths, GET /graph/correlate scaffold, ThreatGraph.svelte with src/dst Cytoscape mapping and attack-path-highlight. 41 regression + 8 phase4 xpassed; 1 xfail (TestCorrelation, Plan 03). Stopped at: 04-02-PLAN.md complete.
