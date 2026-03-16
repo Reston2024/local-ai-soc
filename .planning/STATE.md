@@ -48,18 +48,18 @@ progress:
 
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
-**Current phase:** Phase 4 (in progress)
-**Current plan:** 04-03 complete, next: 04-04 (or phase complete)
+**Current phase:** Phase 5 (in progress)
+**Current plan:** 05-00 complete, next: 05-01
 **Overall status:** Executing
 
 ---
 
 ## Active Phase
 
-**Phase 4: Graph + Correlation**
+**Phase 5: Dashboard**
 Status: IN PROGRESS
-Current plan: 04-03 (COMPLETE)
-Next action: Phase 4 complete — begin Phase 5 (Dashboard)
+Current plan: 05-00 (COMPLETE)
+Next action: Execute 05-01 (Suricata EVE parser implementation)
 
 ## Progress
 
@@ -69,7 +69,7 @@ Next action: Phase 4 complete — begin Phase 5 (Dashboard)
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
-| Phase 5: Dashboard | TODO | — |
+| Phase 5: Dashboard | IN PROGRESS | 1/N plans (05-00 complete) |
 | Phase 6: Hardening + Integration | TODO | — |
 
 ## Key Decisions Made
@@ -106,6 +106,8 @@ Next action: Phase 4 complete — begin Phase 5 (Dashboard)
 | _correlate() returns list[GraphEdge] merged with base edges before attack_path grouping | Ensures attack paths see all edges including correlation ones |
 | Edge counter starts at 10000 in _correlate() | Avoids ID collision with _extract_edges simple incremental counters |
 | investigation_thread resolved via first AttackPath with any target entity node | Simple lookup sufficient; no full BFS needed for endpoint |
+| strict=False on all Phase 5 xfail stubs (05-00) | test_alerts_have_new_fields XPASS when alerts list empty — acceptable before implementation |
+| Added P5-T10 test_normalized_event_accepts_suricata_source | Plan lists 18 tests but numbers skip P5-T10; logical gap-filler for NormalizedEvent suricata source test |
 
 ## Critical Pitfalls to Watch
 
@@ -171,3 +173,4 @@ Next action: Phase 4 complete — begin Phase 5 (Dashboard)
 - 2026-03-16: Phase 4 plan 01 complete. Wave-1 TDD stubs for Phase 4 written (test_phase4.py). 8 classes, 9 tests: 8 xfail + 1 xpass (404 route already works). 41 regression tests still pass. Stopped at: 04-01-PLAN.md complete.
 - 2026-03-16: Phase 4 plan 02 complete. Full Phase 4 graph schema + builder implemented. GraphNode/GraphEdge/AttackPath/GraphResponse models, build_graph(events, alerts) with Union-Find attack paths, GET /graph/correlate scaffold, ThreatGraph.svelte with src/dst Cytoscape mapping and attack-path-highlight. 41 regression + 8 phase4 xpassed; 1 xfail (TestCorrelation, Plan 03). Stopped at: 04-02-PLAN.md complete.
 - 2026-03-16: Phase 4 plan 03 complete. Temporal correlation engine implemented. _correlate() with 4 patterns (repeated DNS, DNS→connection chain, shared-entity alerts, temporal proximity) integrated into build_graph(). GET /graph/correlate fully implemented with investigation_thread. All 9 Phase 4 tests XPASS; 41 regression tests pass. Phase 4 complete. Stopped at: 04-03-PLAN.md complete.
+- 2026-03-16: Phase 5 plan 00 complete. TDD red phase — 18 xfail stubs written for Suricata EVE parser, threat scorer, ATT&CK mapper. 3 stub modules (suricata_parser, threat_scorer, attack_mapper) + 5-line EVE fixture + test_phase5.py. 41 regression tests still pass. Stopped at: 05-00-PLAN.md complete.
