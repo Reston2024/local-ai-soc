@@ -2,12 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 5 (complete)
+current_plan: "05-03 complete — Phase 5 done; next: Phase 6"
+status: executing
+last_updated: "2026-03-16T18:20:25.681Z"
+progress:
+  total_phases: 6
+  completed_phases: 3
+  total_plans: 11
+  completed_plans: 14
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 5 (in progress)
 current_plan: "05-02 complete, next: 05-03"
 status: executing
 last_updated: "2026-03-16T18:15:17.582Z"
 progress:
-  total_phases: 6
+  [██████████] 100%
   completed_phases: 2
   total_plans: 11
   completed_plans: 13
@@ -97,7 +113,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
 **Current phase:** Phase 5 (complete)
-**Current plan:** 05-03 complete — Phase 5 done; next: Phase 6
+**Current plan:** 05-04 complete — Phase 5 fully done (all 5 plans: 05-00 through 05-04); next: Phase 6
 **Overall status:** Executing
 
 ---
@@ -116,7 +132,7 @@ Next action: Execute Phase 6 plans
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
-| Phase 5: Dashboard | COMPLETE | 4/4 plans (05-00, 05-01, 05-02, 05-03 complete) |
+| Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | TODO | — |
 
 ## Key Decisions Made
@@ -229,3 +245,4 @@ Next action: Execute Phase 6 plans
 - 2026-03-16: Phase 5 plan 01 complete. GREEN phase — full parse_eve_line for 5 EVE types, _SEVERITY_MAP (inverted 1=critical,4=low), graceful unknown/invalid fallback. IngestSource.suricata + Alert.threat_score/attack_tags added. P5-T1 through P5-T9 all XPASS; 41 regression pass. Stopped at: 05-01-PLAN.md complete.
 - 2026-03-16: Phase 5 plan 02 complete. score_alert (4-component additive 0-100 model) + map_attack_tags (static ATT&CK lookup, 4 paths) implemented. P5-T11 through P5-T15 XPASS. 41 regression tests still pass. Stopped at: 05-02-PLAN.md complete.
 - 2026-03-16: Phase 5 plan 03 complete. Route wiring + infrastructure scaffolds. score_alert/map_attack_tags wired into _store_event() with deferred imports. rule_suricata_alert added. POST /events reads source from payload. GET /threats endpoint added. Vector + docker-compose Suricata scaffolds. Frontend AlertItem type + score-badge/attack-pill. All 18 P5 tests XPASS; 41+27 green. Phase 5 COMPLETE. Stopped at: 05-03-PLAN.md complete.
+- 2026-03-16: Phase 5 plan 04 complete. Documentation update — decision-log.md (8 Phase 5 decisions: dest_ip trap, severity inversion, additive scoring, graph_data=None, deferred imports, static ATT&CK, Windows Docker blocker, alert event_type=signature), manifest.md (7 new + 6 modified files inventory), reproducibility.md (fixture + parser + scorer + mapper + regression gate commands). Phase 5 fully complete (5/5 plans). Stopped at: 05-04-PLAN.md complete.
