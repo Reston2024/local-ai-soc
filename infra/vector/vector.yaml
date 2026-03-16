@@ -14,7 +14,7 @@
 # Sinks:
 #   backend_fixture   — POST /ingest to backend API (fixture events)
 #   backend_syslog    — POST /ingest/syslog to backend (raw syslog line)
-#   # opensearch_events — SCAFFOLD: direct OpenSearch indexing (Phase 3)
+#   opensearch_events — direct OpenSearch indexing (soc-events index, Phase 3)
 
 # ============================================================
 # SOURCES
@@ -132,17 +132,16 @@ sinks:
       headers:
         Content-Type: text/plain
 
-  # --- SCAFFOLD: OpenSearch direct indexing --------------------------------
-  # Activate in Phase 3 when OpenSearch is confirmed healthy on every start.
-  # Until then, backend opensearch_sink.py handles conditional indexing
-  # via the OPENSEARCH_URL env var.
-  #
-  # opensearch_events:
-  #   type: elasticsearch
-  #   inputs:
-  #     - normalise_fixture
-  #     - normalise_syslog
-  #   endpoint: "${OPENSEARCH_URL:-http://opensearch:9200}"
-  #   index: "soc-events-%Y-%m-%d"
-  #   mode: bulk
+  # --- Phase 3: OpenSearch direct indexing ---------------------------------
+  # Both Vector pipeline events (fixture + syslog) and backend-ingested events
+  # are indexed to the same 'soc-events' index. Fixed index name (no date suffix)
+  # ensures GET /search covers all events regardless of ingestion time.
+  opensearch_events:
+    type: elasticsearch
+    inputs:
+      - normalise_fixture
+      - normalise_syslog
+    endpoint: "${OPENSEARCH_URL:-http://opensearch:9200}"
+    index: "soc-events"
+    mode: bulk
   # -------------------------------------------------------------------------

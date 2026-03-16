@@ -139,8 +139,7 @@ def search_events(q: str = ""):
         "size": 100
     }
     try:
-        import json as _json
-        r = client.post(url, content=_json.dumps(payload),
+        r = client.post(url, content=json.dumps(payload),
                         headers={"Content-Type": "application/json"})
         if r.status_code != 200:
             return []

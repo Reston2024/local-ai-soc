@@ -1,5 +1,5 @@
-# AI SOC Brain — Docker Compose (Phase 2)
-# OpenSearch: service defined; backend indexes via OPENSEARCH_URL env var (SCAFFOLD).
+# AI SOC Brain — Docker Compose (Phase 3)
+# OpenSearch: unconditionally active; backend depends_on opensearch (service_healthy).
 # Syslog: Vector exposes UDP 514 + TCP 6514 for live telemetry ingestion.
 services:
   backend:
@@ -10,14 +10,16 @@ services:
       - "8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
-      # Phase 2 SCAFFOLD: set to enable OpenSearch indexing
-      # - OPENSEARCH_URL=http://opensearch:9200
+      - OPENSEARCH_URL=http://opensearch:9200
     networks:
       - soc-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       retries: 3
+    depends_on:
+      opensearch:
+        condition: service_healthy
 
   frontend:
     build:
@@ -42,8 +44,12 @@ services:
       - soc-net
     volumes:
       - opensearch_data:/usr/share/opensearch/data
-    # Phase 2 SCAFFOLD: backend indexes via OPENSEARCH_URL env var when set.
-    # Phase 3: unconditional wiring once OpenSearch health confirmed.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   vector:
     image: timberio/vector:0.38.0-alpine
