@@ -148,9 +148,9 @@
 **Plans:** 2/3 plans executed
 
 Plans:
-- [ ] 03-01-PLAN.md — Wave 0: Write test_phase3.py stubs before any implementation
-- [ ] 03-02-PLAN.md — Activate OpenSearch: remove sink guard, add GET /search, wire docker-compose + vector.yaml
-- [ ] 03-03-PLAN.md — Sigma detection: sigma_loader.py + suspicious_dns.yml + routes.py integration
+- [x] 03-01-PLAN.md — Wave 0: Write test_phase3.py stubs before any implementation
+- [x] 03-02-PLAN.md — Activate OpenSearch: remove sink guard, add GET /search, wire docker-compose + vector.yaml
+- [x] 03-03-PLAN.md — Sigma detection: sigma_loader.py + suspicious_dns.yml + routes.py integration
 
 > ⚠️ **Research flag: HIGH** — Custom pySigma DuckDB backend is custom engineering. No reference implementation exists. Budget extra time (3–5 days beyond estimate).
 
