@@ -83,6 +83,33 @@ services:
       - backend
       - frontend
 
+# ---- SCAFFOLD: Suricata IDS service (Phase 5) ----------------------------
+# BLOCKER: Windows Docker Desktop does not support network_mode: host — the
+# Linux network namespace required for Suricata packet capture (AF_PACKET /
+# NFQUEUE) is unavailable. This scaffold is for future Linux deployment.
+#
+# To activate on Linux:
+#   1. Install Suricata rules: suricata-update
+#   2. Create infra/suricata/suricata.yaml (see infra/suricata/ directory)
+#   3. Uncomment this block and run: docker compose up suricata
+#
+#  suricata:
+#    image: jasonish/suricata:latest
+#    cap_add:
+#      - net_admin
+#      - net_raw
+#      - sys_nice
+#    network_mode: host
+#    volumes:
+#      - ./suricata/suricata.yaml:/etc/suricata/suricata.yaml:ro
+#      - ./suricata/rules:/etc/suricata/rules:ro
+#      - suricata_logs:/var/log/suricata
+#    command: ["-c", "/etc/suricata/suricata.yaml", "--af-packet"]
+#    restart: unless-stopped
+#    # suricata_logs volume must be shared with vector service to tail eve.json:
+#    # Add to vector service: - suricata_logs:/var/log/suricata:ro
+# --------------------------------------------------------------------------
+
 networks:
   soc-net:
     driver: bridge
@@ -91,3 +118,4 @@ volumes:
   opensearch_data:
   caddy_data:
   caddy_config:
+  # suricata_logs:  # Uncomment when activating Suricata scaffold above

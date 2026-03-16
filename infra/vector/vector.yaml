@@ -53,6 +53,22 @@ sources:
   #   data_dir: /tmp/vector-fw-data
   # ------------------------------------------------------------------------
 
+  # ---- SCAFFOLD: Suricata EVE JSON source (Phase 5) ----------------------
+  # BLOCKER: Suricata requires Linux NFQUEUE kernel module — unavailable on
+  # Windows (no native packet capture support). This scaffold is for future
+  # Linux/WSL2 deployment. Uncomment when running on a Linux host or in a
+  # WSL2 environment with network namespace access.
+  #
+  # suricata_eve:
+  #   type: file
+  #   include:
+  #     - /var/log/suricata/eve.json
+  #   read_from: beginning
+  #   data_dir: /tmp/vector-suricata-data
+  #   # Vector tails eve.json in real time; Suricata rotates it daily by default.
+  #   # Each line is a complete EVE JSON record — no multiline parsing needed.
+  # ------------------------------------------------------------------------
+
 # ============================================================
 # TRANSFORMS
 # ============================================================
@@ -96,6 +112,21 @@ transforms:
   #   source: |
   #     .source = "firewall"
   #     # Add vendor-specific field extraction here
+  # ------------------------------------------------------------------------
+
+  # ---- SCAFFOLD: Suricata EVE normalise transform (Phase 5) --------------
+  # BLOCKER: Depends on suricata_eve source above — same Linux NFQUEUE constraint.
+  # Uncomment together with suricata_eve source when on Linux.
+  #
+  # normalise_suricata:
+  #   type: remap
+  #   inputs:
+  #     - suricata_eve
+  #   source: |
+  #     # Add source label; backend /ingest parses the EVE JSON via suricata_parser.
+  #     # The full parse_eve_line() logic lives in backend.src.parsers.suricata_parser
+  #     # to keep field normalization centralized.
+  #     .source = "suricata"
   # ------------------------------------------------------------------------
 
 # ============================================================
@@ -144,4 +175,26 @@ sinks:
     endpoint: "${OPENSEARCH_URL:-http://opensearch:9200}"
     index: "soc-events"
     mode: bulk
+  # -------------------------------------------------------------------------
+
+  # ---- SCAFFOLD: Suricata EVE backend sink (Phase 5) ---------------------
+  # BLOCKER: Depends on normalise_suricata transform above — same Linux NFQUEUE
+  # constraint. Uncomment on Linux when suricata_eve source + transform are active.
+  #
+  # backend_suricata:
+  #   type: http
+  #   inputs:
+  #     - normalise_suricata
+  #   uri: "http://backend:8000/ingest"
+  #   method: post
+  #   encoding:
+  #     codec: json
+  #   batch:
+  #     max_events: 50
+  #     timeout_secs: 5
+  #   request:
+  #     headers:
+  #       Content-Type: application/json
+  #   # The /ingest endpoint accepts source=suricata; backend.src.parsers.suricata_parser
+  #   # handles the EVE JSON normalization into NormalizedEvent shape.
   # -------------------------------------------------------------------------

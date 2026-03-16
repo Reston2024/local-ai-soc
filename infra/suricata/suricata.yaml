@@ -1,0 +1,42 @@
+# AI SOC Brain — Suricata configuration scaffold (Phase 5)
+#
+# BLOCKER: Suricata requires Linux kernel features (AF_PACKET / NFQUEUE) for
+# live packet capture. This file is a placeholder for future Linux deployment.
+# Windows Docker Desktop cannot provide network_mode: host — Suricata cannot
+# capture packets in a Docker Desktop environment on Windows.
+#
+# To activate on Linux:
+#   1. Install suricata: apt install suricata
+#   2. Run suricata-update to download community rules
+#   3. Replace this file with a real suricata.yaml config
+#   4. Uncomment the suricata service in infra/docker-compose.yml
+#   5. Uncomment suricata_eve source in infra/vector/vector.yaml
+#
+# Minimal config reference (fill in network interface):
+#
+# %YAML 1.1
+# ---
+# vars:
+#   address-groups:
+#     HOME_NET: "[192.168.0.0/16,10.0.0.0/8,172.16.0.0/12]"
+#     EXTERNAL_NET: "!$HOME_NET"
+#
+# af-packet:
+#   - interface: eth0
+#
+# default-log-dir: /var/log/suricata/
+#
+# outputs:
+#   - eve-log:
+#       enabled: yes
+#       filetype: regular
+#       filename: eve.json
+#       types:
+#         - alert
+#         - dns
+#         - http
+#         - tls
+#         - flow
+#
+# rule-files:
+#   - /etc/suricata/rules/local.rules

@@ -20,6 +20,26 @@
     {#if selected.query}
       <div class="field"><span class="key">Query</span><span class="val">{selected.query}</span></div>
     {/if}
+    {#if selected.threat_score && selected.threat_score > 0}
+      <div class="field">
+        <span class="key">Score</span>
+        <span class="val">
+          <span class="score-badge {selected.threat_score > 60 ? 'score-red' : selected.threat_score >= 30 ? 'score-yellow' : 'score-green'}">
+            {selected.threat_score}
+          </span>
+        </span>
+      </div>
+    {/if}
+    {#if selected.attack_tags && selected.attack_tags.length > 0}
+      <div class="field field-column">
+        <span class="key">ATT&CK</span>
+        <div class="tags">
+          {#each selected.attack_tags as tag}
+            <span class="attack-pill">{tag.tactic} · {tag.technique}</span>
+          {/each}
+        </div>
+      </div>
+    {/if}
   {:else}
     <p class="muted">Click a graph node to view details</p>
   {/if}
@@ -32,4 +52,11 @@
   .key { color: #6b7280; font-size: 11px; min-width: 50px; }
   .val { color: #e5e7eb; font-size: 11px; word-break: break-all; }
   .muted { color: #6b7280; font-size: 11px; }
+  .field-column { flex-direction: column; align-items: flex-start; }
+  .tags { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 2px; }
+  .score-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+  .score-green { background: #22c55e; color: white; }
+  .score-yellow { background: #eab308; color: white; }
+  .score-red { background: #ef4444; color: white; }
+  .attack-pill { display: inline-block; padding: 2px 6px; border-radius: 4px; background: #3b82f6; color: white; font-size: 0.75rem; margin: 2px; }
 </style>

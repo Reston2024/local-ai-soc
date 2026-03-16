@@ -5,9 +5,27 @@
  *   postIngest       — batch ingest via POST /ingest
  *   ingestSyslog     — single syslog line via POST /ingest/syslog
  *   openEventStream  — SSE stream from GET /events/stream
+ *
+ * Phase 5 additions:
+ *   AlertItem        — typed alert with threat_score and attack_tags fields
+ *   getAlerts()      — now returns Promise<AlertItem[]>
+ *   getThreats()     — GET /threats → alerts sorted by threat_score desc (score > 0)
  */
 
 const BASE = ''
+
+// ---- Phase 5: Typed alert with threat scoring + ATT&CK tags --------------
+
+export interface AlertItem {
+  id: string
+  timestamp: string
+  rule: string
+  severity: string
+  event_id: string
+  description: string
+  threat_score: number          // Phase 5 — default 0 from backend
+  attack_tags: Array<{ tactic: string; technique: string }>  // Phase 5 — default []
+}
 
 // ---- Phase 1 (preserved) -------------------------------------------------
 
@@ -31,8 +49,19 @@ export async function getGraph(): Promise<{ nodes: any[]; edges: any[] }> {
   return r.json()
 }
 
-export async function getAlerts(): Promise<any[]> {
+export async function getAlerts(): Promise<AlertItem[]> {
   const r = await fetch(`${BASE}/alerts`)
+  return r.json()
+}
+
+// ---- Phase 5: GET /threats — scored alerts only --------------------------
+
+/**
+ * Return alerts sorted by threat_score descending, score > 0 only.
+ * Useful for the threat-priority panel.
+ */
+export async function getThreats(): Promise<AlertItem[]> {
+  const r = await fetch(`${BASE}/threats`)
   return r.json()
 }
 
