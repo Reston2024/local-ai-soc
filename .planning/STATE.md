@@ -3,7 +3,7 @@
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
 **Current phase:** Phase 3 (in progress)
-**Current plan:** 03-01 complete, next: 03-02
+**Current plan:** 03-03 complete, next: 03-04
 **Overall status:** Executing
 
 ---
@@ -12,8 +12,8 @@
 
 **Phase 3: Detection + RAG**
 Status: IN PROGRESS
-Current plan: 03-01 (COMPLETE), next: 03-02
-Next action: Implement /search endpoint and OpenSearch activation (Plan 02)
+Current plan: 03-03 (COMPLETE), next: 03-04
+Next action: Implement next Phase 3 plan
 
 ## Progress
 
@@ -21,7 +21,7 @@ Next action: Implement /search endpoint and OpenSearch activation (Plan 02)
 |-------|--------|-----------|
 | Phase 1: Foundation | TODO | — |
 | Phase 2: Ingestion Pipeline | TODO | — |
-| Phase 3: Detection + RAG | IN PROGRESS | 1/N plans (03-01 complete) |
+| Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | TODO | — |
 | Phase 5: Dashboard | TODO | — |
 | Phase 6: Hardening + Integration | TODO | — |
@@ -48,6 +48,9 @@ Next action: Implement /search endpoint and OpenSearch activation (Plan 02)
 | Defer Open WebUI | Optional companion chat UI; custom dashboard is primary |
 | pytest.importorskip per-method (not module-level) | Allows partial SKIP in test file so search-route tests still FAIL independently when sigma_loader absent |
 | P3-T8 verifies try_index baseline (PASS) | try_index already calls HTTP PUT when OPENSEARCH_URL set; test confirms baseline before Plan 02 modifies guard logic |
+| Direct Python attr matching for Sigma (Phase 3) | pySigma DuckDB SQL compilation deferred to Phase 4; direct matching sufficient for Phase 3 rule set |
+| Alert.rule = YAML UUID id field | Stable rule reference that survives title renames; tests assert against UUID |
+| _SIGMA_RULES module-level with try/except | Sigma load failure must not crash backend startup; logged as warning |
 
 ## Critical Pitfalls to Watch
 
@@ -108,3 +111,4 @@ Next action: Implement /search endpoint and OpenSearch activation (Plan 02)
 - 2026-03-15: Phase 1 plan 05 complete. Fixtures and test suite created. 30-event NDJSON attack scenario, 3 Sigma rules, osquery snapshot, 89 unit/smoke tests all passing. Stopped at: 01-05-PLAN.md complete.
 - 2026-03-15: Wave 1 foundation branch verified. All 5 release gates passed (structure 29/29, tooling compose valid, tests 7/7, API all endpoints 200, UI build 1.37s). Fixed: README.md missing, hatchling packages config, fixture path off-by-one. Branch: feature/ai-soc-wave1-foundation. Next: install Ollama + validate RTX 5080 GPU acceleration (gating requirement for Phase 2).
 - 2026-03-16: Phase 3 plan 01 complete. Wave-0 TDD stubs for Phase 3 written (test_phase3.py). 9 tests: 3 FAIL (search route absent), 1 PASS (try_index baseline), 5 SKIP (sigma_loader absent). 32 existing tests still pass. Stopped at: 03-01-PLAN.md complete.
+- 2026-03-16: Phase 3 plan 03 complete. Sigma detection layer implemented. suspicious_dns.yml + sigma_loader.py + routes.py integration. P3-T3/T4/T5/T6 all PASS. 41 total tests pass (32 regression + 9 new). Stopped at: 03-03-PLAN.md complete.

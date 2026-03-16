@@ -96,7 +96,7 @@
 | Normalized event schema | `backend/models/event.py` | 10 fixture events validate without error |
 | Parser registry | `ingestion/parsers/base.py`, `ingestion/registry.py` | New parser added without changing existing code |
 | EVTX parser (pyevtx-rs) | `ingestion/parsers/evtx.py` | 100MB+ Security.evtx parses without memory spike |
-| JSON/NDJSON/CSV parsers | `ingestion/parsers/json_ndjson.py`, `ingestion/parsers/csv_parser.py` | 3 fixture files ingest correctly | 1/3 | In Progress|  | Deduplication on re-ingest tested |
+| JSON/NDJSON/CSV parsers | `ingestion/parsers/json_ndjson.py`, `ingestion/parsers/csv_parser.py` | 3 fixture files ingest correctly | 2/3 | In Progress|  | Deduplication on re-ingest tested |
 | Chroma embedding loader | `ingestion/loader.py` | Semantic search returns relevant events |
 | Entity edge extractor | `ingestion/loader.py` | Process-to-user + process-to-network edges confirmed |
 | Ingest API endpoint | `backend/api/ingest.py` | File upload + async progress reporting works |
@@ -145,7 +145,7 @@
 **Depends on:** Phase 2 complete (need ingested events in DuckDB + Chroma)
 **Goal:** OpenSearch live indexing + Sigma YAML detection rules surfaced in /alerts. Keep all 32 existing tests passing.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 03-01-PLAN.md — Wave 0: Write test_phase3.py stubs before any implementation
