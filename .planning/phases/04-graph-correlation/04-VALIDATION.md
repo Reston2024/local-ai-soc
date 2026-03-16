@@ -2,8 +2,8 @@
 phase: 4
 slug: graph-correlation
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-15
 ---
 
@@ -41,11 +41,12 @@ created: 2026-03-15
 | 04-01-01 | 01 | 1 | Graph models | unit | `uv run pytest backend/src/tests/test_phase4.py::TestGraphModels -v` | ❌ W0 | ⬜ pending |
 | 04-01-02 | 01 | 1 | Node extraction | unit | `uv run pytest backend/src/tests/test_phase4.py::TestNodeExtraction -v` | ❌ W0 | ⬜ pending |
 | 04-01-03 | 01 | 1 | Edge extraction | unit | `uv run pytest backend/src/tests/test_phase4.py::TestEdgeExtraction -v` | ❌ W0 | ⬜ pending |
-| 04-01-04 | 01 | 1 | Correlation logic | unit | `uv run pytest backend/src/tests/test_phase4.py::TestCorrelation -v` | ❌ W0 | ⬜ pending |
-| 04-01-05 | 01 | 1 | Attack paths | unit | `uv run pytest backend/src/tests/test_phase4.py::TestAttackPaths -v` | ❌ W0 | ⬜ pending |
+| 04-01-04 | 01 | 1 | Attack paths | unit | `uv run pytest backend/src/tests/test_phase4.py::TestAttackPaths -v` | ❌ W0 | ⬜ pending |
 | 04-02-01 | 02 | 2 | GET /graph API | integration | `uv run pytest backend/src/tests/test_phase4.py::TestGraphAPI -v` | ❌ W0 | ⬜ pending |
 | 04-02-02 | 02 | 2 | Alert-to-event link | integration | `uv run pytest backend/src/tests/test_phase4.py::TestAlertGraph -v` | ❌ W0 | ⬜ pending |
 | 04-02-03 | 02 | 2 | Regression | regression | `uv run pytest backend/src/tests/ -v` | ✅ | ⬜ pending |
+| 04-03-01 | 03 | 3 | Correlation logic | unit | `uv run pytest backend/src/tests/test_phase4.py::TestCorrelation -v` | ❌ W0 | ⬜ pending |
+| 04-03-02 | 03 | 3 | Correlate route + regression | integration | `uv run pytest backend/src/tests/test_phase4.py::TestCorrelateRoute -v && uv run pytest backend/src/tests/ -x -q` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -72,11 +73,11 @@ created: 2026-03-15
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 10s
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
