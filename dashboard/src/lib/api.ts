@@ -64,6 +64,14 @@ export interface GraphResponse {
   edge_count: number
 }
 
+// Phase 4 graph response (from GET /graph)
+export interface Phase4GraphResponse {
+  nodes: any[]
+  edges: any[]
+  attack_paths: any[]
+  stats: Record<string, number>
+}
+
 export interface IngestJobStatus {
   job_id: string
   status: 'pending' | 'running' | 'complete' | 'error'
@@ -171,4 +179,15 @@ export const api = {
     },
     status: (jobId: string) => request<IngestJobStatus>(`/api/ingest/status/${jobId}`),
   },
+}
+
+// Phase 4: direct graph helpers (bypass /api prefix — backend graph routes at /graph)
+export async function getGraph(): Promise<Phase4GraphResponse> {
+  const r = await fetch(`${BASE}/graph`)
+  return r.json()
+}
+
+export async function getGraphCorrelate(eventId: string): Promise<any> {
+  const r = await fetch(`${BASE}/graph/correlate?event_id=${encodeURIComponent(eventId)}`)
+  return r.json()
 }

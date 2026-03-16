@@ -5,6 +5,10 @@ Phase 2 additions:
   POST /ingest/syslog   — single syslog line (any RFC3164/5424/CEF format)
   GET  /events/stream   — SSE stream of new events (live browser push)
   GET  /health          — now reports active ingestion sources
+
+Phase 4 additions:
+  GET  /graph           — full graph with nodes, edges, attack_paths, stats
+  GET  /graph/correlate — scaffold: correlated subgraph for a given event_id
 """
 import asyncio
 import json
@@ -12,7 +16,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
 from backend.src.api.models import (
-    HealthResponse, GraphResponse, NormalizedEvent, Alert, IngestSource
+    HealthResponse, GraphResponse, NormalizedEvent, Alert, IngestSource, AttackPath
 )
 from backend.src.parsers.normalizer import normalize
 from backend.src.graph.builder import build_graph
@@ -106,6 +110,21 @@ def get_timeline():
 @router.get("/graph", response_model=GraphResponse)
 def get_graph():
     return build_graph(_events, _alerts)
+
+
+@router.get("/graph/correlate")
+def get_graph_correlate(event_id: str):
+    """Return correlated events/alerts/graph for a given event_id. Full implementation in Plan 03."""
+    target = next((e for e in _events if e.get("id") == event_id), None)
+    if target is None:
+        raise HTTPException(status_code=404, detail=f"Event {event_id!r} not found")
+    return {
+        "event_id": event_id,
+        "correlated_event_count": 0,
+        "correlated_alert_count": 0,
+        "graph": {"nodes": [], "edges": [], "attack_paths": [], "stats": {}},
+        "investigation_thread": None,
+    }
 
 
 @router.get("/alerts")
