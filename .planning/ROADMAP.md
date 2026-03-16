@@ -319,57 +319,44 @@ Plans:
 ---
 
 ## Phase 6: Hardening + Integration
-**Status:** TODO
+**Status:** PLANNING COMPLETE
 **Depends on:** Phase 5 (system fully functional, ready for operational polish)
-**Goal:** Daily-use tool: osquery, IOC matching, operational scripts, smoke tests, reproducibility.
+**Goal:** Threat Causality & Investigation Engine — reconstruct attack chains from correlated events, expose via investigation graph APIs, and surface in the SOC dashboard.
+
+> **Note:** Scope redefined from original roadmap (osquery/IOC/hardening) by PRD in CONTEXT.md. Original hardening work is deferred.
+
+**Plans:** 6 plans
+
+Plans:
+- [ ] 06-00-PLAN.md — Wave 0: TDD stubs (14 xfail) + causality package stubs + ThreatGraph src/dst bug fix
+- [ ] 06-01-PLAN.md — Wave 1: entity_resolver + attack_chain_builder (parallel)
+- [ ] 06-02-PLAN.md — Wave 1: mitre_mapper + scoring (parallel with 06-01)
+- [ ] 06-03-PLAN.md — Wave 2: causality engine orchestrator + investigation_summary prompt
+- [ ] 06-04-PLAN.md — Wave 3: API endpoints (GET /graph/{id}, GET /entity/{id}, GET /attack_chain/{id}, POST /query, POST /investigate/{id}/summary)
+- [ ] 06-05-PLAN.md — Wave 4: Dashboard (AttackChain.svelte + InvestigationPanel.svelte + api.ts extensions)
 
 ### Deliverables
 
 | Deliverable | Files | Verification |
 |-------------|-------|-------------|
-| osquery integration | `ingestion/parsers/osquery.py`, `scripts/osquery-collect.ps1` | osquery JSON results ingest correctly |
-| IOC matching | `ingestion/parsers/ioc_lists.py`, `backend/services/ioc.py` | IOC hit fires detection with source |
-| Startup/shutdown scripts | `scripts/start.ps1`, `scripts/stop.ps1`, `scripts/status.ps1` | Cold start to operational in < 3 min |
-| Full smoke test suite | `scripts/smoke-test-full.ps1` | All integration points pass |
-| Structured logging | `logs/`, `backend/core/logging.py` | JSON logs with all required fields |
-| Reproducibility receipt | `REPRODUCIBILITY_RECEIPT.md` | New env reproduced in 30 min from receipt |
-| Security hardening | Windows Firewall rules, ACLs, `.env` | Port 11434 blocked from non-local interfaces |
-| Export / reports | `backend/api/export.py` | JSON + CSV + Markdown exports non-empty |
-
-### Tasks
-
-```
-[ ] 1. Install osquery via Chocolatey: choco install osquery
-[ ] 2. Implement osquery result parser (JSON output from osqueryi)
-[ ] 3. Implement osquery scheduled query collector script (PowerShell)
-[ ] 4. Test osquery ingestion into DuckDB + Chroma
-[ ] 5. Implement IOC list CSV ingestor
-[ ] 6. Implement IOC matcher (hash, IP, domain, URL against events)
-[ ] 7. Implement IOC match → detection record creation
-[ ] 8. Write start.ps1 (Ollama check, Docker start, uvicorn start, health wait)
-[ ] 9. Write stop.ps1 (graceful uvicorn stop, Docker stop)
-[ ] 10. Write status.ps1 (component health summary)
-[ ] 11. Write smoke-test-full.ps1 (all integration points)
-[ ] 12. Set Windows Firewall rule: block port 11434 from non-local interfaces
-[ ] 13. Set Windows ACLs on data/ directory (current user only)
-[ ] 14. Verify .env is gitignored
-[ ] 15. Implement prompt injection sanitization on event text before embedding
-[ ] 16. Implement GET /export/case/{id} endpoint (JSON, CSV, Markdown)
-[ ] 17. Write REPRODUCIBILITY_RECEIPT.md
-[ ] 18. Run full smoke test suite — all green
-[ ] 19. Final commit Phase 6
-```
+| Causality engine package | `backend/causality/engine.py`, `entity_resolver.py`, `attack_chain_builder.py`, `mitre_mapper.py`, `scoring.py` | 14 test_phase6.py tests XPASS |
+| Investigation API endpoints | `backend/src/api/routes.py` | GET /graph/{alert_id}, GET /entity/{id}, GET /attack_chain/{alert_id}, POST /query return 200 |
+| AI investigation summary | `prompts/investigation_summary.py` | POST /investigate/{alert_id}/summary returns summary string |
+| Attack chain dashboard | `frontend/src/components/graph/AttackChain.svelte`, `panels/InvestigationPanel.svelte` | npm run build exits 0 |
+| ThreatGraph bug fix | `frontend/src/components/graph/ThreatGraph.svelte` | Edges render (e.src/e.dst mapping fixed) |
 
 ### Definition of Done
 
-- [ ] `osqueryi "SELECT * FROM processes LIMIT 10" --json` ingests correctly
-- [ ] IOC list ingest + match → detection fires with source attribution
-- [ ] `start.ps1` brings system operational from cold in < 3 minutes
-- [ ] `smoke-test-full.ps1` all green in < 5 minutes
-- [ ] `logs/backend.jsonl` contains structured JSON logs
-- [ ] `REPRODUCIBILITY_RECEIPT.md` complete with all versions
-- [ ] Port 11434 blocked from non-local interfaces (verified via nmap from different machine)
-- [ ] Export produces non-empty JSON, CSV, and Markdown files
+- [ ] `uv run pytest backend/src/tests/test_phase6.py -v` — all 14 tests XPASS
+- [ ] `uv run pytest backend/src/tests/ -v` — full suite green (no regressions)
+- [ ] `cd frontend && npm run build` exits 0
+- [ ] GET /graph/{alert_id} returns 200 with nodes + edges + techniques + score
+- [ ] GET /entity/{entity_id} returns 200 with entity attributes + related events
+- [ ] GET /attack_chain/{alert_id} returns 200 with chain ordered by timestamp
+- [ ] POST /query returns 200 with paginated graph results
+- [ ] POST /investigate/{alert_id}/summary returns 200 with AI summary string
+- [ ] AttackChain.svelte renders attack graph with dagre layout and orange attack-path highlighting
+- [ ] InvestigationPanel.svelte shows score badge, MITRE techniques, AI summary button
 
 ---
 
@@ -389,10 +376,10 @@ Plans:
 | Timeline view | | | | | ✓ | |
 | Graph visualization | | | | | ✓ | |
 | Detection panel + drilldown | | | | | ✓ | |
-| osquery integration | | | | | | ✓ |
-| IOC matching | | | | | | ✓ |
-| Export / reports | | | | | | ✓ |
-| Operational scripts + smoke tests | | | | | | ✓ |
+| Causality engine + attack chain reconstruction | | | | | | ✓ |
+| AI investigation summaries | | | | | | ✓ |
+| Interactive attack graph (dagre + highlighting) | | | | | | ✓ |
+| MITRE ATT&CK expanded mapping (25+ techniques) | | | | | | ✓ |
 
 **System becomes analyst-usable at Phase 3 completion.**
 **System becomes excellent at Phase 5 completion.**
@@ -410,7 +397,9 @@ Plans:
 | SigmaHQ/sigma | **USE NOW** | Phase 3 | Detection rule corpus |
 | SigmaHQ/pySigma | **USE NOW** | Phase 3 | Rule compilation, custom DuckDB backend |
 | SigmaHQ/sigma-cli | **USE NOW** | Phase 3 | Rule management CLI |
-| osquery/osquery | **USE NOW** | Phase 6 | Endpoint telemetry |
+| cytoscape-dagre | **USE NOW** | Phase 6 | Hierarchical DAG layout for attack chain visualization |
+| mitreattack-python | **REJECT** | — | Requires 12MB STIX bundle download; static dict approach sufficient |
+| osquery/osquery | **DEFER** | Post-v1 | Deferred by Phase 6 scope redefinition |
 | open-webui/open-webui | **DEFER** | Phase 6+ | Optional companion chat UI. Not a replacement for custom dashboard. |
 | Velocidex/velociraptor | **DEFER** | If multi-host | Fleet tool, overkill for single desktop |
 | wazuh/wazuh | **REJECT** | — | 8+ vCPU Java fleet SIEM. No unique value vs DuckDB + Sigma + osquery. |
@@ -418,4 +407,5 @@ Plans:
 ---
 
 *Roadmap generated: 2026-03-15*
-*Run `/gsd:plan-phase 1` to begin execution.*
+*Phase 6 scope updated: 2026-03-16 (Threat Causality Engine — see 06-CONTEXT.md)*
+*Run `/gsd:execute-phase 06-hardening-integration` to begin execution.*
