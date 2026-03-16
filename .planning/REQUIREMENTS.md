@@ -368,6 +368,82 @@ Basic case management must allow:
 
 ---
 
+## Phase 5 Revised: Suricata + Threat Scoring
+**Goal:** Deliver Suricata-backed network detection and ATT&CK-aware threat scoring on top of the existing pipeline. These requirements reflect the actual scope implemented in Phase 5 plans (00–04), which pivoted from the original dashboard-only FR-5.x scope.
+
+### FR-5S-1 — Suricata EVE JSON Parser
+`backend/src/parsers/suricata_parser.py` must implement `parse_eve_line(line: str) -> dict` that:
+- Accepts one newline-delimited EVE JSON string
+- Returns a normalized-compatible dict (same keys as `normalize()` in `normalizer.py`)
+- Handles 5 event types: alert, flow, dns, http, tls
+- Maps `dest_ip` → `dst_ip` (EVE uses `dest_ip`; normalized schema uses `dst_ip`)
+- Inverts Suricata severity: 1→critical, 2→high, 3→medium, 4→low (Snort convention)
+- Falls back gracefully for unknown types (event_type = `suricata_{type}`, no exception)
+- Returns a safe fallback dict for invalid JSON input (no exception)
+
+**Verification:** `uv run pytest backend/src/tests/test_phase5.py::TestSuricataParser -v` — 7 tests PASS.
+
+### FR-5S-2 — IngestSource.suricata + Alert Model Extension
+`backend/src/api/models.py` must be extended with:
+- `suricata = "suricata"` added to `IngestSource` enum
+- `threat_score: int = 0` added to `Alert` model (default 0, backward compatible)
+- `attack_tags: list[dict] = Field(default_factory=list)` added to `Alert` model (default [], backward compatible)
+
+**Verification:** `uv run pytest backend/src/tests/test_phase5.py::TestModels -v` — 2 tests PASS. All 41 pre-existing tests still pass.
+
+### FR-5S-3 — Threat Scoring Model
+`backend/src/detection/threat_scorer.py` must implement `score_alert(alert, events: list[dict], graph_data: dict | None = None) -> int` using an additive 0–100 model:
+- `suricata_severity_points`: critical=40, high=30, medium=20, low=10, else=0
+- `sigma_hit`: +20 if `alert.rule` matches UUID regex (sigma-sourced rule)
+- `recurrence`: +10 if same host/IP appears ≥3 times in `events` list
+- `graph_connectivity`: +10 if `graph_data` is not None and host/IP has ≥3 alert edges
+- Score capped at 100
+- `graph_data=None` (default) skips the +10 graph component — avoids O(n²) ingest cost
+
+**Verification:** `uv run pytest backend/src/tests/test_phase5.py::TestThreatScorer -v` — 3 tests PASS.
+
+### FR-5S-4 — ATT&CK Mapper
+`backend/src/detection/attack_mapper.py` must implement `map_attack_tags(alert, event) -> list[dict]` using a static lookup table with 5 entries:
+- `"dns request"` category → `{"tactic": "Command and Control", "technique": "T1071.004"}`
+- `"potentially bad traffic"` category → `{"tactic": "Exfiltration", "technique": "T1048"}`
+- `"network trojan"` category → `{"tactic": "Command and Control", "technique": "T1095"}`
+- `"malware command and control activity detected"` category → `{"tactic": "Command and Control", "technique": "T1095"}`
+- `"dns_query"` event_type → `{"tactic": "Command and Control", "technique": "T1071.004"}`
+- Returns `[]` for unmapped events — no guessing
+- First match wins (category → event_type → rule → source+severity order)
+
+**Verification:** `uv run pytest backend/src/tests/test_phase5.py::TestAttackMapper -v` — 2 tests PASS.
+
+### FR-5S-5 — Route Wiring
+`backend/src/api/routes.py` `_store_event()` must call `score_alert()` and `map_attack_tags()` for each new alert after all detection rules run. `POST /ingest` must accept `source=suricata` (via `IngestSource.suricata`). A `GET /threats` endpoint must return alerts filtered to `threat_score > 0`, sorted descending by score. Imports of `threat_scorer` and `attack_mapper` must be deferred (inside function body, not module-level) with `try/except ImportError` guards for graceful degradation.
+
+**Verification:** `uv run pytest backend/src/tests/test_phase5.py::TestSuricataRoute -v` — 3 tests PASS (P5-T16, P5-T17, P5-T18).
+
+### FR-5S-6 — Frontend Badge and Tag Pills
+`frontend/src/lib/api.ts` `AlertItem` interface must be extended with `threat_score: number` and `attack_tags: Array<{ tactic: string; technique: string }>`. `frontend/src/components/panels/EvidencePanel.svelte` must render:
+- A numeric score badge when `threat_score > 0`, colored green (<30), yellow (30–60), red (>60)
+- ATT&CK tag pills as `{tactic} · {technique}` when `attack_tags` is non-empty
+- A `getThreats()` function in `api.ts` calling `GET /threats`
+
+**Verification:** `cd frontend && npm run build` exits 0 (TypeScript compiles without errors).
+
+### FR-5S-7 — Infrastructure Scaffolds
+- `infra/vector/vector.yaml` must contain a commented-out `suricata_eve` source scaffold block, a `normalise_suricata` transform scaffold, and a `backend_suricata` sink scaffold, each with a Windows NFQUEUE blocker explanation
+- `infra/docker-compose.yml` must contain a fully commented-out `jasonish/suricata` service block with `cap_add: [net_admin, net_raw, sys_nice]`, `network_mode: host`, volume mounts, and a Windows Docker Desktop blocker comment
+- `infra/suricata/suricata.yaml` and `infra/suricata/rules/local.rules` placeholder files must exist
+
+**Verification:** `grep -c "suricata_eve" infra/vector/vector.yaml` ≥ 1. `grep -c "jasonish/suricata" infra/docker-compose.yml` ≥ 1. `grep -c "BLOCKER" infra/docker-compose.yml` ≥ 1.
+
+### FR-5S-8 — Documentation Updates
+Three docs files must be updated with Phase 5 content (append only, no prior content removed):
+- `docs/decision-log.md` — 8 Phase 5 decisions including `dest_ip→dst_ip` trap, severity inversion, additive scoring model, deferred import pattern, static ATT&CK table, and Windows Docker blocker
+- `docs/manifest.md` — Phase 5 file inventory: 7 new files + 6 modified files tabulated
+- `docs/reproducibility.md` — Runnable validation commands for fixture, parser, scorer, ATT&CK tagging, full suite (59 tests)
+
+**Verification:** `grep -c "dest_ip" docs/decision-log.md` ≥ 1. `grep -c "suricata_parser" docs/manifest.md` ≥ 1. `grep -c "suricata_eve_sample" docs/reproducibility.md` ≥ 1.
+
+---
+
 ## Phase 6: Hardening + Integration
 **Goal:** Transform the working prototype into a daily-use tool with operational excellence.
 
