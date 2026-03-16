@@ -210,9 +210,16 @@ Plans:
 ---
 
 ## Phase 4: Graph + Correlation
-**Status:** TODO
+**Status:** PLANNING COMPLETE
 **Depends on:** Phase 3 (need detection records + entity edges from ingestion)
 **Goal:** Build queryable investigation graph and correlate events into investigation threads.
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Wave 0: test_phase4.py stubs (8 xfail classes)
+- [ ] 04-02-PLAN.md — Wave 1: Replace graph models + rewrite builder.py + ThreatGraph.svelte src/dst update
+- [ ] 04-03-PLAN.md — Wave 2: _correlate() with 4 patterns + full GET /graph/correlate route
 
 ### Deliverables
 
