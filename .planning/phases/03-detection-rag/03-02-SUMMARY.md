@@ -113,3 +113,14 @@ None - no external service configuration required beyond docker-compose up.
 ---
 *Phase: 03-detection-rag*
 *Completed: 2026-03-16*
+
+## Self-Check: PASSED
+
+- FOUND: backend/src/ingestion/opensearch_sink.py
+- FOUND: backend/src/api/routes.py
+- FOUND: infra/docker-compose.yml
+- FOUND: infra/vector/vector.yaml
+- FOUND: .planning/phases/03-detection-rag/03-02-SUMMARY.md
+- FOUND commit 752f7a0 (Task 1)
+- FOUND commit 4f1d230 (Task 2)
+- FOUND commit 5c54de4 (docs metadata)
