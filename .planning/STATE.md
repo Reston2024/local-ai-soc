@@ -2,33 +2,33 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 3 (in progress)
-current_plan: "03-03 complete, next: 03-04"
+current_phase: Phase 4 (in progress)
+current_plan: "04-01 complete, next: 04-02"
 status: executing
-last_updated: "2026-03-16T06:26:39.188Z"
+last_updated: "2026-03-16T07:12:25Z"
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 6
+  total_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
 
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
-**Current phase:** Phase 3 (in progress)
-**Current plan:** 03-03 complete, next: 03-04
+**Current phase:** Phase 4 (in progress)
+**Current plan:** 04-01 complete, next: 04-02
 **Overall status:** Executing
 
 ---
 
 ## Active Phase
 
-**Phase 3: Detection + RAG**
+**Phase 4: Graph + Correlation**
 Status: IN PROGRESS
-Current plan: 03-03 (COMPLETE), next: 03-04
-Next action: Implement next Phase 3 plan
+Current plan: 04-01 (COMPLETE), next: 04-02
+Next action: Implement next Phase 4 plan
 
 ## Progress
 
@@ -37,7 +37,7 @@ Next action: Implement next Phase 3 plan
 | Phase 1: Foundation | TODO | — |
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
-| Phase 4: Graph + Correlation | TODO | — |
+| Phase 4: Graph + Correlation | IN PROGRESS | 1/N plans (04-01 complete) |
 | Phase 5: Dashboard | TODO | — |
 | Phase 6: Hardening + Integration | TODO | — |
 
@@ -68,6 +68,8 @@ Next action: Implement next Phase 3 plan
 | Direct Python attr matching for Sigma (Phase 3) | pySigma DuckDB SQL compilation deferred to Phase 4; direct matching sufficient for Phase 3 rule set |
 | Alert.rule = YAML UUID id field | Stable rule reference that survives title renames; tests assert against UUID |
 | _SIGMA_RULES module-level with try/except | Sigma load failure must not crash backend startup; logged as warning |
+| pytest.importorskip inside Phase 4 test methods | Keeps test_phase4.py importable when graph.builder absent before Plan 02 |
+| strict=False on all Phase 4 xfail stubs | xpass (e.g. 404-already-working route) does not break suite before implementation |
 
 ## Critical Pitfalls to Watch
 
@@ -130,3 +132,4 @@ Next action: Implement next Phase 3 plan
 - 2026-03-16: Phase 3 plan 01 complete. Wave-0 TDD stubs for Phase 3 written (test_phase3.py). 9 tests: 3 FAIL (search route absent), 1 PASS (try_index baseline), 5 SKIP (sigma_loader absent). 32 existing tests still pass. Stopped at: 03-01-PLAN.md complete.
 - 2026-03-16: Phase 3 plan 02 complete. OpenSearch activated: OPENSEARCH_URL set unconditionally in docker-compose, healthcheck + depends_on added, Vector opensearch_events sink uncommented with fixed 'soc-events' index. GET /search?q= endpoint added to routes.py. P3-T1/T2/T8 pass. 32 regression tests still pass. Stopped at: 03-02-PLAN.md complete.
 - 2026-03-16: Phase 3 plan 03 complete. Sigma detection layer implemented. suspicious_dns.yml + sigma_loader.py + routes.py integration. P3-T3/T4/T5/T6 all PASS. 41 total tests pass (32 regression + 9 new). Stopped at: 03-03-PLAN.md complete.
+- 2026-03-16: Phase 4 plan 01 complete. Wave-1 TDD stubs for Phase 4 written (test_phase4.py). 8 classes, 9 tests: 8 xfail + 1 xpass (404 route already works). 41 regression tests still pass. Stopped at: 04-01-PLAN.md complete.

@@ -214,7 +214,7 @@ Plans:
 **Depends on:** Phase 3 (need detection records + entity edges from ingestion)
 **Goal:** Build queryable investigation graph and correlate events into investigation threads.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 04-01-PLAN.md — Wave 0: test_phase4.py stubs (8 xfail classes)
