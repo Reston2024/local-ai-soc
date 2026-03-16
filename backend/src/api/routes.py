@@ -20,6 +20,7 @@ from backend.src.detection.rules import evaluate
 from backend.src.fixtures.loader import load_ndjson
 from backend.src.ingestion.syslog_parser import parse_syslog_line
 from backend.src.ingestion.opensearch_sink import try_index, OPENSEARCH_URL, INDEX_NAME, _get_client
+from backend.src.detection.sigma_loader import load_sigma_rules as _load_sigma_rules
 
 router = APIRouter()
 
