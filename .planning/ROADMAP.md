@@ -228,7 +228,7 @@ Plans:
 | Graph query service | `backend/services/graph_builder.py`, `graph/query.py` | 2-hop expansion from process returns user + host + files + network |
 | GET /graph endpoint | `backend/api/graph.py` | Entity expansion + path query working |
 | Event clustering | `correlation/clustering.py` | Process tree fixture → 1 cluster, relatedness_score > 0.8 |
-| Alert aggregation | `correlation/aggregation.py` | 5 detections from same process tree → 1 investigation thread | 1/5 | In Progress|  | Event drilldown returns full correlation context |
+| Alert aggregation | `correlation/aggregation.py` | 5 detections from same process tree → 1 investigation thread | 3/5 | In Progress|  | Event drilldown returns full correlation context |
 
 ### Tasks
 
@@ -260,7 +260,7 @@ Plans:
 **Depends on:** Phase 4 (all API endpoints stable and returning real data)
 **Goal:** Suricata EVE JSON ingestion, ATT&CK-aware threat scoring, and score/tag display in the existing dashboard.
 
-**Plans:** 1/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 - [ ] 05-00-PLAN.md -- Wave 0: test_phase5.py stubs (18 xfail) + parser/scorer/mapper stubs + EVE fixture

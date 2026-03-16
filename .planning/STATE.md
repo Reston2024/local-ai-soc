@@ -2,12 +2,44 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 5 (in progress)
+current_plan: "05-01 complete, next: 05-02"
+status: executing
+last_updated: "2026-03-16T18:05:37.401Z"
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 12
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 5 (in progress)
+current_plan: "05-00 complete, next: 05-01"
+status: executing
+last_updated: "2026-03-16T18:05:11.987Z"
+progress:
+  [██████████] 100%
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 11
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 4 (in progress)
 current_plan: "04-03 complete, next: 04-04 (or phase complete)"
 status: executing
 last_updated: "2026-03-16T07:29:27.702Z"
 progress:
-  total_phases: 6
+  [██████████] 100%
   completed_phases: 2
   total_plans: 6
   completed_plans: 9
@@ -49,7 +81,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
 **Current phase:** Phase 5 (in progress)
-**Current plan:** 05-00 complete, next: 05-01
+**Current plan:** 05-02 complete, next: 05-03
 **Overall status:** Executing
 
 ---
@@ -58,8 +90,8 @@ progress:
 
 **Phase 5: Dashboard**
 Status: IN PROGRESS
-Current plan: 05-00 (COMPLETE)
-Next action: Execute 05-01 (Suricata EVE parser implementation)
+Current plan: 05-02 (COMPLETE)
+Next action: Execute 05-03 (Suricata route wiring + threat score/ATT&CK enrichment)
 
 ## Progress
 
@@ -69,7 +101,7 @@ Next action: Execute 05-01 (Suricata EVE parser implementation)
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
-| Phase 5: Dashboard | IN PROGRESS | 1/N plans (05-00 complete) |
+| Phase 5: Dashboard | IN PROGRESS | 2/N plans (05-00, 05-01 complete) |
 | Phase 6: Hardening + Integration | TODO | — |
 
 ## Key Decisions Made
@@ -108,6 +140,8 @@ Next action: Execute 05-01 (Suricata EVE parser implementation)
 | investigation_thread resolved via first AttackPath with any target entity node | Simple lookup sufficient; no full BFS needed for endpoint |
 | strict=False on all Phase 5 xfail stubs (05-00) | test_alerts_have_new_fields XPASS when alerts list empty — acceptable before implementation |
 | Added P5-T10 test_normalized_event_accepts_suricata_source | Plan lists 18 tests but numbers skip P5-T10; logical gap-filler for NormalizedEvent suricata source test |
+| graph_data=None default in score_alert | Skips graph_connectivity component to avoid O(n²) build_graph() cost during batch ingest — caller passes pre-built graph when available |
+| attack_mapper first-match-wins: category > event_type > rule > source+severity | Priority order ensures most-specific match (category from alert raw data) takes precedence |
 
 ## Critical Pitfalls to Watch
 
@@ -174,3 +208,4 @@ Next action: Execute 05-01 (Suricata EVE parser implementation)
 - 2026-03-16: Phase 4 plan 02 complete. Full Phase 4 graph schema + builder implemented. GraphNode/GraphEdge/AttackPath/GraphResponse models, build_graph(events, alerts) with Union-Find attack paths, GET /graph/correlate scaffold, ThreatGraph.svelte with src/dst Cytoscape mapping and attack-path-highlight. 41 regression + 8 phase4 xpassed; 1 xfail (TestCorrelation, Plan 03). Stopped at: 04-02-PLAN.md complete.
 - 2026-03-16: Phase 4 plan 03 complete. Temporal correlation engine implemented. _correlate() with 4 patterns (repeated DNS, DNS→connection chain, shared-entity alerts, temporal proximity) integrated into build_graph(). GET /graph/correlate fully implemented with investigation_thread. All 9 Phase 4 tests XPASS; 41 regression tests pass. Phase 4 complete. Stopped at: 04-03-PLAN.md complete.
 - 2026-03-16: Phase 5 plan 00 complete. TDD red phase — 18 xfail stubs written for Suricata EVE parser, threat scorer, ATT&CK mapper. 3 stub modules (suricata_parser, threat_scorer, attack_mapper) + 5-line EVE fixture + test_phase5.py. 41 regression tests still pass. Stopped at: 05-00-PLAN.md complete.
+- 2026-03-16: Phase 5 plan 02 complete. score_alert (4-component additive 0-100 model) + map_attack_tags (static ATT&CK lookup, 4 paths) implemented. P5-T11 through P5-T15 XPASS. 41 regression tests still pass. Stopped at: 05-02-PLAN.md complete.
