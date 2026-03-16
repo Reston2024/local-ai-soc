@@ -8,7 +8,7 @@ Phase 2 additions:
 
 Phase 4 additions:
   GET  /graph           — full graph with nodes, edges, attack_paths, stats
-  GET  /graph/correlate — scaffold: correlated subgraph for a given event_id
+  GET  /graph/correlate — full correlated subgraph + investigation_thread for a given event_id
 """
 import asyncio
 import json
@@ -114,16 +114,61 @@ def get_graph():
 
 @router.get("/graph/correlate")
 def get_graph_correlate(event_id: str):
-    """Return correlated events/alerts/graph for a given event_id. Full implementation in Plan 03."""
+    """Return all events, detections, and entities correlated with a given event_id.
+
+    Correlation is by shared entity: events sharing host, src_ip, dst_ip, or query field.
+    Returns the graph of correlated events and the investigation thread (AttackPath) containing them.
+    """
+    # 1. Find target event
     target = next((e for e in _events if e.get("id") == event_id), None)
     if target is None:
         raise HTTPException(status_code=404, detail=f"Event {event_id!r} not found")
+
+    # 2. Find shared-entity events
+    entity_keys = {
+        k: v for k, v in target.items()
+        if k in ("host", "src_ip", "dst_ip", "query") and v
+    }
+    correlated_events = [
+        e for e in _events
+        if e.get("id") != event_id
+        and any(e.get(k) == v for k, v in entity_keys.items())
+    ]
+
+    # 3. Find related alerts (alerts whose event_id is in the correlated set)
+    correlated_event_ids = {e.get("id") for e in correlated_events} | {event_id}
+    correlated_alerts = [
+        a for a in _alerts
+        if a.get("event_id") in correlated_event_ids
+    ]
+
+    # 4. Build graph from all correlated events + alerts
+    all_events = [target] + correlated_events
+    graph = build_graph(all_events, correlated_alerts)
+
+    # 5. Find which attack_path contains the target event's primary nodes
+    target_node_ids: set[str] = set()
+    if target.get("host"):
+        target_node_ids.add(f"host:{target['host']}")
+    if target.get("src_ip"):
+        target_node_ids.add(f"ip:{target['src_ip']}")
+    if target.get("dst_ip"):
+        target_node_ids.add(f"ip:{target['dst_ip']}")
+    if target.get("query"):
+        target_node_ids.add(f"domain:{target['query']}")
+
+    investigation_thread = next(
+        (p for p in graph.attack_paths
+         if any(nid in target_node_ids for nid in p.node_ids)),
+        None
+    )
+
     return {
         "event_id": event_id,
-        "correlated_event_count": 0,
-        "correlated_alert_count": 0,
-        "graph": {"nodes": [], "edges": [], "attack_paths": [], "stats": {}},
-        "investigation_thread": None,
+        "correlated_event_count": len(correlated_events),
+        "correlated_alert_count": len(correlated_alerts),
+        "graph": graph.model_dump(mode="json"),
+        "investigation_thread": investigation_thread.model_dump() if investigation_thread else None,
     }
 
 
