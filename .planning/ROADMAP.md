@@ -257,9 +257,18 @@ Plans:
 ---
 
 ## Phase 5: Dashboard
-**Status:** TODO
+**Status:** PLANNING COMPLETE
 **Depends on:** Phase 4 (all API endpoints stable and returning real data)
-**Goal:** Visual investigation surface. Graph + timeline + AI Q&A + detections in one browser tab.
+**Goal:** Suricata EVE JSON ingestion, ATT&CK-aware threat scoring, and score/tag display in the existing dashboard.
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 05-00-PLAN.md -- Wave 0: test_phase5.py stubs (18 xfail) + parser/scorer/mapper stubs + EVE fixture
+- [ ] 05-01-PLAN.md -- Wave 1: Suricata EVE parser + IngestSource.suricata + Alert model extension
+- [ ] 05-02-PLAN.md -- Wave 1: Threat scorer (score_alert) + ATT&CK mapper (map_attack_tags)
+- [ ] 05-03-PLAN.md -- Wave 2: Route wiring + Vector/docker-compose scaffolds + frontend badges
+- [ ] 05-04-PLAN.md -- Wave 3: Docs (decision-log, manifest, reproducibility)
 
 ### Deliverables
 
