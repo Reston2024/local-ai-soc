@@ -34,7 +34,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
 **Current phase:** Phase 4 (in progress)
-**Current plan:** 04-01 complete, next: 04-02
+**Current plan:** 04-03 complete, next: 04-04 (or phase complete)
 **Overall status:** Executing
 
 ---
@@ -43,8 +43,8 @@ progress:
 
 **Phase 4: Graph + Correlation**
 Status: IN PROGRESS
-Current plan: 04-02 (COMPLETE), next: 04-03
-Next action: Implement Phase 4 Plan 03 (temporal correlation engine)
+Current plan: 04-03 (COMPLETE)
+Next action: Phase 4 complete — begin Phase 5 (Dashboard)
 
 ## Progress
 
@@ -53,7 +53,7 @@ Next action: Implement Phase 4 Plan 03 (temporal correlation engine)
 | Phase 1: Foundation | TODO | — |
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
-| Phase 4: Graph + Correlation | IN PROGRESS | 2/N plans (04-01, 04-02 complete) |
+| Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | TODO | — |
 | Phase 6: Hardening + Integration | TODO | — |
 
@@ -88,6 +88,9 @@ Next action: Implement Phase 4 Plan 03 (temporal correlation engine)
 | strict=False on all Phase 4 xfail stubs | xpass (e.g. 404-already-working route) does not break suite before implementation |
 | GraphEdge uses src/dst fields (not source/target) | Schema locked in CONTEXT.md; ThreatGraph.svelte maps e.src/e.dst to Cytoscape source/target |
 | Union-Find path compression on node IDs for attack paths | Severity = max alert severity in connected component; default "info" when no alert nodes |
+| _correlate() returns list[GraphEdge] merged with base edges before attack_path grouping | Ensures attack paths see all edges including correlation ones |
+| Edge counter starts at 10000 in _correlate() | Avoids ID collision with _extract_edges simple incremental counters |
+| investigation_thread resolved via first AttackPath with any target entity node | Simple lookup sufficient; no full BFS needed for endpoint |
 
 ## Critical Pitfalls to Watch
 
@@ -152,3 +155,4 @@ Next action: Implement Phase 4 Plan 03 (temporal correlation engine)
 - 2026-03-16: Phase 3 plan 03 complete. Sigma detection layer implemented. suspicious_dns.yml + sigma_loader.py + routes.py integration. P3-T3/T4/T5/T6 all PASS. 41 total tests pass (32 regression + 9 new). Stopped at: 03-03-PLAN.md complete.
 - 2026-03-16: Phase 4 plan 01 complete. Wave-1 TDD stubs for Phase 4 written (test_phase4.py). 8 classes, 9 tests: 8 xfail + 1 xpass (404 route already works). 41 regression tests still pass. Stopped at: 04-01-PLAN.md complete.
 - 2026-03-16: Phase 4 plan 02 complete. Full Phase 4 graph schema + builder implemented. GraphNode/GraphEdge/AttackPath/GraphResponse models, build_graph(events, alerts) with Union-Find attack paths, GET /graph/correlate scaffold, ThreatGraph.svelte with src/dst Cytoscape mapping and attack-path-highlight. 41 regression + 8 phase4 xpassed; 1 xfail (TestCorrelation, Plan 03). Stopped at: 04-02-PLAN.md complete.
+- 2026-03-16: Phase 4 plan 03 complete. Temporal correlation engine implemented. _correlate() with 4 patterns (repeated DNS, DNS→connection chain, shared-entity alerts, temporal proximity) integrated into build_graph(). GET /graph/correlate fully implemented with investigation_thread. All 9 Phase 4 tests XPASS; 41 regression tests pass. Phase 4 complete. Stopped at: 04-03-PLAN.md complete.
