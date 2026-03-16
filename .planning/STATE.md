@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 5 (in progress)
+current_plan: "05-02 complete, next: 05-03"
+status: executing
+last_updated: "2026-03-16T18:15:17.582Z"
+progress:
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 11
+  completed_plans: 13
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 5 (in progress)
 current_plan: "05-01 complete, next: 05-02"
 status: executing
 last_updated: "2026-03-16T18:05:37.401Z"
 progress:
-  total_phases: 6
+  [██████████] 100%
   completed_phases: 2
   total_plans: 11
   completed_plans: 12
@@ -80,18 +96,17 @@ progress:
 
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
-**Current phase:** Phase 5 (in progress)
-**Current plan:** 05-02 complete, next: 05-03
+**Current phase:** Phase 5 (complete)
+**Current plan:** 05-03 complete — Phase 5 done; next: Phase 6
 **Overall status:** Executing
 
 ---
 
 ## Active Phase
 
-**Phase 5: Dashboard**
-Status: IN PROGRESS
-Current plan: 05-02 (COMPLETE)
-Next action: Execute 05-03 (Suricata route wiring + threat score/ATT&CK enrichment)
+**Phase 6: Hardening + Integration**
+Status: NOT STARTED
+Next action: Execute Phase 6 plans
 
 ## Progress
 
@@ -101,7 +116,7 @@ Next action: Execute 05-03 (Suricata route wiring + threat score/ATT&CK enrichme
 | Phase 2: Ingestion Pipeline | TODO | — |
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
-| Phase 5: Dashboard | IN PROGRESS | 2/N plans (05-00, 05-01 complete) |
+| Phase 5: Dashboard | COMPLETE | 4/4 plans (05-00, 05-01, 05-02, 05-03 complete) |
 | Phase 6: Hardening + Integration | TODO | — |
 
 ## Key Decisions Made
@@ -142,6 +157,9 @@ Next action: Execute 05-03 (Suricata route wiring + threat score/ATT&CK enrichme
 | Added P5-T10 test_normalized_event_accepts_suricata_source | Plan lists 18 tests but numbers skip P5-T10; logical gap-filler for NormalizedEvent suricata source test |
 | graph_data=None default in score_alert | Skips graph_connectivity component to avoid O(n²) build_graph() cost during batch ingest — caller passes pre-built graph when available |
 | attack_mapper first-match-wins: category > event_type > rule > source+severity | Priority order ensures most-specific match (category from alert raw data) takes precedence |
+| POST /events status_code changed 201->200 (05-03) | Aligns with P5-T16 test assertion; smoke_test.py updated; HTTP 200 valid for synchronous create-and-return |
+| rule_suricata_alert added to detection/rules.py (05-03) | Scoring block enriches existing alerts only; without rule firing, no alert exists to score |
+| Deferred imports for score_alert/map_attack_tags in _store_event (05-03) | Mirrors _SIGMA_RULES try/except pattern; graceful degradation if modules absent during dev |
 
 ## Critical Pitfalls to Watch
 
@@ -210,3 +228,4 @@ Next action: Execute 05-03 (Suricata route wiring + threat score/ATT&CK enrichme
 - 2026-03-16: Phase 5 plan 00 complete. TDD red phase — 18 xfail stubs written for Suricata EVE parser, threat scorer, ATT&CK mapper. 3 stub modules (suricata_parser, threat_scorer, attack_mapper) + 5-line EVE fixture + test_phase5.py. 41 regression tests still pass. Stopped at: 05-00-PLAN.md complete.
 - 2026-03-16: Phase 5 plan 01 complete. GREEN phase — full parse_eve_line for 5 EVE types, _SEVERITY_MAP (inverted 1=critical,4=low), graceful unknown/invalid fallback. IngestSource.suricata + Alert.threat_score/attack_tags added. P5-T1 through P5-T9 all XPASS; 41 regression pass. Stopped at: 05-01-PLAN.md complete.
 - 2026-03-16: Phase 5 plan 02 complete. score_alert (4-component additive 0-100 model) + map_attack_tags (static ATT&CK lookup, 4 paths) implemented. P5-T11 through P5-T15 XPASS. 41 regression tests still pass. Stopped at: 05-02-PLAN.md complete.
+- 2026-03-16: Phase 5 plan 03 complete. Route wiring + infrastructure scaffolds. score_alert/map_attack_tags wired into _store_event() with deferred imports. rule_suricata_alert added. POST /events reads source from payload. GET /threats endpoint added. Vector + docker-compose Suricata scaffolds. Frontend AlertItem type + score-badge/attack-pill. All 18 P5 tests XPASS; 41+27 green. Phase 5 COMPLETE. Stopped at: 05-03-PLAN.md complete.
