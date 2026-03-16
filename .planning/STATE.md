@@ -2,12 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 6 (in progress)
+current_plan: "06-00 complete — Wave 0 TDD red baseline (causality stubs + test stubs + ThreatGraph fix); next: 06-01"
+status: executing
+last_updated: "2026-03-16T22:31:22.957Z"
+progress:
+  total_phases: 6
+  completed_phases: 3
+  total_plans: 17
+  completed_plans: 16
+  percent: 94
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 5 (complete)
 current_plan: "05-04 complete — Phase 5 fully done (all 5 plans: 05-00 through 05-04); next: Phase 6"
 status: executing
 last_updated: "2026-03-16T22:27:41.078Z"
 progress:
-  total_phases: 6
+  [█████████░] 94%
   completed_phases: 3
   total_plans: 17
   completed_plans: 15
@@ -128,7 +144,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
 **Current phase:** Phase 6 (in progress)
-**Current plan:** 06-00 complete — Wave 0 TDD red baseline (causality stubs + test stubs + ThreatGraph fix); next: 06-01
+**Current plan:** 06-01 complete — entity_resolver + attack_chain_builder full implementations; next: 06-02
 **Overall status:** Executing
 
 ---
@@ -136,8 +152,8 @@ progress:
 ## Active Phase
 
 **Phase 6: Hardening + Integration**
-Status: IN PROGRESS (plan 06-00 complete)
-Next action: Execute Phase 6 plan 06-01 (entity resolver implementation)
+Status: IN PROGRESS (plans 06-00 and 06-01 complete)
+Next action: Execute Phase 6 plan 06-02 (MITRE mapper + scoring)
 
 ## Progress
 
@@ -148,7 +164,7 @@ Next action: Execute Phase 6 plan 06-01 (entity resolver implementation)
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
-| Phase 6: Hardening + Integration | IN PROGRESS | 1/5 plans (06-00 complete) |
+| Phase 6: Hardening + Integration | IN PROGRESS | 2/5 plans (06-00, 06-01 complete) |
 
 ## Key Decisions Made
 
@@ -194,6 +210,9 @@ Next action: Execute Phase 6 plan 06-01 (entity resolver implementation)
 | causality/ package at backend/causality/ (not backend/src/) (06-00) | Matches import paths `from backend.causality.*` used in deferred test imports |
 | strict=False on all Phase 6 xfail stubs (06-00) | Some stubs accidentally satisfy assertions (XPASS acceptable before implementation) |
 | ThreatGraph.svelte e.src/e.dst fix in Wave 0 (06-00) | Prevents invisible-edges bug from propagating to AttackChain.svelte in Wave 4 |
+| ip_src and ip_dst both normalize to ip: prefix (06-01) | Direction-agnostic entity matching — same host appears as same node regardless of whether it is source or destination |
+| BFS cycle detection via visited_event_ids set (06-01) | Prevents infinite loops on circular entity references; O(n) traversal, no extra algorithm needed |
+| File paths excluded from ENTITY_FIELDS in chain builder (06-01) | Avoids over-linking unrelated events through common system files (e.g. kernel32.dll) |
 
 ## Critical Pitfalls to Watch
 
@@ -265,3 +284,4 @@ Next action: Execute Phase 6 plan 06-01 (entity resolver implementation)
 - 2026-03-16: Phase 5 plan 03 complete. Route wiring + infrastructure scaffolds. score_alert/map_attack_tags wired into _store_event() with deferred imports. rule_suricata_alert added. POST /events reads source from payload. GET /threats endpoint added. Vector + docker-compose Suricata scaffolds. Frontend AlertItem type + score-badge/attack-pill. All 18 P5 tests XPASS; 41+27 green. Phase 5 COMPLETE. Stopped at: 05-03-PLAN.md complete.
 - 2026-03-16: Phase 5 plan 04 complete. Documentation update — decision-log.md (8 Phase 5 decisions: dest_ip trap, severity inversion, additive scoring, graph_data=None, deferred imports, static ATT&CK, Windows Docker blocker, alert event_type=signature), manifest.md (7 new + 6 modified files inventory), reproducibility.md (fixture + parser + scorer + mapper + regression gate commands). Phase 5 fully complete (5/5 plans). Stopped at: 05-04-PLAN.md complete.
 - 2026-03-16: Phase 6 plan 00 complete. Wave 0 TDD red baseline — 6 causality stub modules (engine, entity_resolver, attack_chain_builder, mitre_mapper, scoring), 14 xfail test stubs in test_phase6.py (16 test methods, zero ERRORs), ThreatGraph.svelte e.src/e.dst fix. 41 regression tests still pass. Stopped at: 06-00-PLAN.md complete.
+- 2026-03-16: Phase 6 plan 01 complete. Wave 1 GREEN phase — full entity_resolver.py (FIELD_MAP + TYPE_PREFIX, 6 normalization rules: host domain-stripping, user CORP\\ and @ handling, process/file basename, ip port-stripping, domain dot-stripping) and attack_chain_builder.py (BFS with depth cap, cycle detection via visited_event_ids set). 5 target tests XPASS; 41 passed + 35 xpassed + 8 xfailed in full suite. Stopped at: 06-01-PLAN.md complete.
