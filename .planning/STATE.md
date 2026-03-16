@@ -1,17 +1,19 @@
 # Project State
 
 **Project:** AI-SOC-Brain
-**Last updated:** 2026-03-15
-**Current phase:** Phase 1 (in progress)
+**Last updated:** 2026-03-16
+**Current phase:** Phase 3 (in progress)
+**Current plan:** 03-01 complete, next: 03-02
 **Overall status:** Executing
 
 ---
 
 ## Active Phase
 
-**Phase 1: Foundation**
+**Phase 3: Detection + RAG**
 Status: IN PROGRESS
-Next action: Continue remaining Phase 1 plans
+Current plan: 03-01 (COMPLETE), next: 03-02
+Next action: Implement /search endpoint and OpenSearch activation (Plan 02)
 
 ## Progress
 
@@ -19,7 +21,7 @@ Next action: Continue remaining Phase 1 plans
 |-------|--------|-----------|
 | Phase 1: Foundation | TODO | — |
 | Phase 2: Ingestion Pipeline | TODO | — |
-| Phase 3: Detection + RAG | TODO | — |
+| Phase 3: Detection + RAG | IN PROGRESS | 1/N plans (03-01 complete) |
 | Phase 4: Graph + Correlation | TODO | — |
 | Phase 5: Dashboard | TODO | — |
 | Phase 6: Hardening + Integration | TODO | — |
@@ -44,6 +46,8 @@ Next action: Continue remaining Phase 1 plans
 | Reject Wazuh | 8+ vCPU Java fleet SIEM; no unique value for single desktop |
 | Defer Velociraptor | Fleet management tool; osquery covers single-host telemetry need |
 | Defer Open WebUI | Optional companion chat UI; custom dashboard is primary |
+| pytest.importorskip per-method (not module-level) | Allows partial SKIP in test file so search-route tests still FAIL independently when sigma_loader absent |
+| P3-T8 verifies try_index baseline (PASS) | try_index already calls HTTP PUT when OPENSEARCH_URL set; test confirms baseline before Plan 02 modifies guard logic |
 
 ## Critical Pitfalls to Watch
 
@@ -103,3 +107,4 @@ Next action: Continue remaining Phase 1 plans
 - 2026-03-15: Phase 1 plan 04 complete. Svelte 5 dashboard SPA built. 10 tasks, 10 commits, 15 files, build verified. Stopped at: 01-04-PLAN.md complete.
 - 2026-03-15: Phase 1 plan 05 complete. Fixtures and test suite created. 30-event NDJSON attack scenario, 3 Sigma rules, osquery snapshot, 89 unit/smoke tests all passing. Stopped at: 01-05-PLAN.md complete.
 - 2026-03-15: Wave 1 foundation branch verified. All 5 release gates passed (structure 29/29, tooling compose valid, tests 7/7, API all endpoints 200, UI build 1.37s). Fixed: README.md missing, hatchling packages config, fixture path off-by-one. Branch: feature/ai-soc-wave1-foundation. Next: install Ollama + validate RTX 5080 GPU acceleration (gating requirement for Phase 2).
+- 2026-03-16: Phase 3 plan 01 complete. Wave-0 TDD stubs for Phase 3 written (test_phase3.py). 9 tests: 3 FAIL (search route absent), 1 PASS (try_index baseline), 5 SKIP (sigma_loader absent). 32 existing tests still pass. Stopped at: 03-01-PLAN.md complete.
