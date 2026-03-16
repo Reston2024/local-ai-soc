@@ -91,8 +91,7 @@ Next action: Continue remaining Phase 1 plans
 
 ### Pending Todos
 
-- 1 todo pending — see `.planning/todos/pending/`
-- `2026-03-15-build-wave-1-ai-soc-foundation-branch.md` — Build Wave 1 AI SOC Foundation Branch (area: planning)
+- 0 todos pending
 
 ## Session Notes
 
@@ -103,3 +102,4 @@ Next action: Continue remaining Phase 1 plans
 - Ollama not yet installed — Phase 1 task 1.
 - 2026-03-15: Phase 1 plan 04 complete. Svelte 5 dashboard SPA built. 10 tasks, 10 commits, 15 files, build verified. Stopped at: 01-04-PLAN.md complete.
 - 2026-03-15: Phase 1 plan 05 complete. Fixtures and test suite created. 30-event NDJSON attack scenario, 3 Sigma rules, osquery snapshot, 89 unit/smoke tests all passing. Stopped at: 01-05-PLAN.md complete.
+- 2026-03-15: Wave 1 foundation branch verified. All 5 release gates passed (structure 29/29, tooling compose valid, tests 7/7, API all endpoints 200, UI build 1.37s). Fixed: README.md missing, hatchling packages config, fixture path off-by-one. Branch: feature/ai-soc-wave1-foundation. Next: install Ollama + validate RTX 5080 GPU acceleration (gating requirement for Phase 2).

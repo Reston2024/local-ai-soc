@@ -2,4 +2,4 @@
 
 Local Windows desktop AI cybersecurity investigation platform.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for system design.
+Wave 1 foundation — in-memory FastAPI backend, Svelte 5 dashboard, Caddy HTTPS proxy.

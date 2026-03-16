@@ -1,0 +1,87 @@
+# AI SOC Brain — Docker Compose (Phase 2)
+# OpenSearch: service defined; backend indexes via OPENSEARCH_URL env var (SCAFFOLD).
+# Syslog: Vector exposes UDP 514 + TCP 6514 for live telemetry ingestion.
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Phase 2 SCAFFOLD: set to enable OpenSearch indexing
+      # - OPENSEARCH_URL=http://opensearch:9200
+    networks:
+      - soc-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    networks:
+      - soc-net
+    depends_on:
+      - backend
+
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - soc-net
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    # Phase 2 SCAFFOLD: backend indexes via OPENSEARCH_URL env var when set.
+    # Phase 3: unconditional wiring once OpenSearch health confirmed.
+
+  vector:
+    image: timberio/vector:0.38.0-alpine
+    volumes:
+      - ./vector/vector.yaml:/etc/vector/vector.yaml:ro
+      - ../fixtures/ndjson:/fixtures:ro
+    ports:
+      # Phase 2: live syslog ingestion
+      - "514:514/udp"     # RFC3164 / RFC5424 / CEF syslog UDP
+      - "6514:6514/tcp"   # TCP syslog (IANA syslog-tls port; avoids root)
+    networks:
+      - soc-net
+    depends_on:
+      - backend
+    command: ["--config", "/etc/vector/vector.yaml"]
+
+  caddy:
+    image: caddy:2.9-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - soc-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - backend
+      - frontend
+
+networks:
+  soc-net:
+    driver: bridge
+
+volumes:
+  opensearch_data:
+  caddy_data:
+  caddy_config:

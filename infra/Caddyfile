@@ -1,0 +1,36 @@
+# Wave 1 AI SOC Brain — Caddy reverse proxy
+# Serves localhost with automatic HTTPS (self-signed for local dev)
+
+localhost {
+  tls internal
+
+  # Backend API
+  handle /health {
+    reverse_proxy backend:8000
+  }
+
+  handle /events* {
+    reverse_proxy backend:8000
+  }
+
+  handle /timeline* {
+    reverse_proxy backend:8000
+  }
+
+  handle /graph* {
+    reverse_proxy backend:8000
+  }
+
+  handle /alerts* {
+    reverse_proxy backend:8000
+  }
+
+  handle /fixtures* {
+    reverse_proxy backend:8000
+  }
+
+  # Frontend SPA (catch-all)
+  handle /* {
+    reverse_proxy frontend:80
+  }
+}
