@@ -1,13 +1,9 @@
-"""OpenSearch indexing sink — Phase 2 SCAFFOLD.
-
-STATUS: Wired but NOT automatically active.
+"""OpenSearch indexing sink — Phase 3 (unconditional, OPENSEARCH_URL must be set in env).
 
 This module indexes NormalizedEvent objects to OpenSearch.
-It is called from routes.py only when OPENSEARCH_URL env var is set.
-If OPENSEARCH_URL is absent, events skip indexing silently.
-
-Phase 3 will enable this unconditionally once the OpenSearch container
-is confirmed healthy in every run.
+OPENSEARCH_URL must be set in the environment (e.g. http://opensearch:9200).
+If OPENSEARCH_URL is absent, try_index() returns False immediately without
+attempting a network connection (avoids constructing a broken URL).
 
 Connection:
   OPENSEARCH_URL  — e.g. http://opensearch:9200 (docker-compose service name)
@@ -15,7 +11,7 @@ Connection:
 
 Usage (called from routes.py):
   from backend.src.ingestion.opensearch_sink import try_index
-  try_index(event)  # no-op if OpenSearch not configured
+  try_index(event)  # returns False gracefully when OpenSearch not reachable
 """
 import os
 import json
@@ -46,7 +42,7 @@ def _get_client():
 def try_index(event: NormalizedEvent) -> bool:
     """Index event to OpenSearch. Returns True on success, False otherwise.
 
-    NOTE (Phase 2 scaffold): No-op if OPENSEARCH_URL is unset.
+    Always attempts indexing. Returns False gracefully on connection failure or missing URL.
     """
     if not OPENSEARCH_URL:
         return False
