@@ -118,3 +118,45 @@ ai-soc-brain/
 | OpenSearch Vector sink | `infra/vector/vector.yaml` (commented) | Uncomment + set `OPENSEARCH_URL` |
 | Firewall log source | `infra/vector/vector.yaml` (commented) | Uncomment + set log path |
 | Firewall parse transform | `infra/vector/vector.yaml` (commented) | Add vendor-specific parsing |
+
+---
+
+## Phase 5: Suricata EVE + Threat Scoring + ATT&CK Tagging — 2026-03-16
+
+Branch: `feature/ai-soc-phase3-detection`
+
+### New Files
+
+| File | Type | Purpose |
+|------|------|---------|
+| `backend/src/parsers/suricata_parser.py` | Python | Suricata EVE JSON parser. `parse_eve_line()` handles alert/flow/dns/http/tls event types. Maps `dest_ip` → `dst_ip` (Snort convention trap). Inverts severity scale (1=critical, 4=low). |
+| `backend/src/detection/threat_scorer.py` | Python | Additive threat score model 0–100. `score_alert()` combines suricata severity (40/30/20/10) + sigma hit (+20) + recurrence (+10) + graph connectivity (+10). Capped at 100. |
+| `backend/src/detection/attack_mapper.py` | Python | Static ATT&CK tactic/technique mapper. `map_attack_tags()` returns list of dicts (`[{"tactic":..., "technique":..., "technique_id":...}]`) or `[]` for unmapped events. |
+| `fixtures/suricata_eve_sample.ndjson` | Fixture | 5 EVE JSON lines (one per event type: alert, dns, flow, http, tls). Used in integration tests and reproducibility validation. |
+| `backend/src/tests/test_phase5.py` | Test | 18 tests covering P5-T1 through P5-T18: parser field mapping, severity inversion, model fields, scorer components, mapper paths, route integration. |
+| `infra/suricata/suricata.yaml` | Config | Scaffold Suricata config (commented). Documents Windows Docker blocker (requires `--net=host` + Linux kernel caps unavailable under WSL2). |
+| `infra/suricata/rules/local.rules` | Rules | Empty placeholder for local Suricata rules. Ready for production Linux deployment. |
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `backend/src/api/models.py` | Added `IngestSource.suricata` enum value; added `Alert.threat_score` (`int = 0`) and `Alert.attack_tags` (`list[dict] = []`). |
+| `backend/src/api/routes.py` | Added Phase 5 scoring block in `_store_event()` with deferred imports; added `rule_suricata_alert` detection rule; added `GET /threats` endpoint; `POST /events` reads `source` from payload. |
+| `infra/vector/vector.yaml` | Added `suricata_eve` file source + `normalise_suricata` VRL transform + `backend_suricata` HTTP sink as commented scaffold. |
+| `infra/docker-compose.yml` | Added `jasonish/suricata` service as commented scaffold with Windows blocker note. |
+| `frontend/src/lib/api.ts` | Extended `AlertItem` interface with `threat_score: number` and `attack_tags: AttackTag[]`; added `getThreats()` function for `GET /threats`. |
+| `frontend/src/components/panels/EvidencePanel.svelte` | Added threat score badge (color-coded by severity) and ATT&CK tag pills displaying tactic + technique_id. |
+
+### Phase 5 Endpoint Added
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /threats | Returns alerts filtered/sorted by threat_score > 0, descending |
+
+### Phase 5 Scaffold Items
+
+| Item | Location | Activation |
+|------|----------|------------|
+| Suricata EVE Vector source | `infra/vector/vector.yaml` (commented) | Uncomment + configure EVE log path |
+| Suricata container | `infra/docker-compose.yml` (commented) | Linux Docker host with `net_admin`/`net_raw` caps required |

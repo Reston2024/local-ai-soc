@@ -179,3 +179,97 @@ docker compose down
 # To also remove volumes (resets OpenSearch data):
 docker compose down -v
 ```
+
+---
+
+## Phase 5: Suricata EVE Parsing + Threat Scoring + ATT&CK Tagging — 2026-03-16
+
+Branch: `feature/ai-soc-phase3-detection`
+
+### Test fixture validation
+
+```bash
+# Verify fixture has 5 lines (one per EVE event type)
+wc -l fixtures/suricata_eve_sample.ndjson
+# Expected: 5
+
+# Verify each line is valid JSON and inspect event types
+python -c "
+import json
+with open('fixtures/suricata_eve_sample.ndjson') as f:
+    for i, line in enumerate(f, 1):
+        obj = json.loads(line)
+        print(f'Line {i}: event_type={obj.get(\"event_type\")}')
+"
+# Expected output:
+# Line 1: event_type=alert
+# Line 2: event_type=dns
+# Line 3: event_type=flow
+# Line 4: event_type=http
+# Line 5: event_type=tls
+```
+
+### Parser validation
+
+```bash
+# Verify dest_ip → dst_ip mapping (the critical Snort convention trap)
+python -c "
+from backend.src.parsers.suricata_parser import parse_eve_line
+import json
+line = json.dumps({'event_type':'flow','timestamp':'2026-03-16T00:00:00Z','host':'sensor','src_ip':'1.2.3.4','src_port':1234,'dest_ip':'5.6.7.8','dest_port':4444,'proto':'TCP','flow':{}})
+result = parse_eve_line(line)
+assert result['dst_ip'] == '5.6.7.8', f'FAIL: dst_ip={result.get(\"dst_ip\")}'
+print('PASS: dest_ip correctly mapped to dst_ip')
+"
+
+# Verify severity inversion (1=critical, not 1=low — Snort convention)
+python -c "
+from backend.src.parsers.suricata_parser import parse_eve_line
+import json
+line = json.dumps({'event_type':'alert','timestamp':'2026-03-16T00:00:00Z','host':'sensor','src_ip':'1.1.1.1','dest_ip':'2.2.2.2','alert':{'signature':'Test','severity':1,'category':'Test'}})
+result = parse_eve_line(line)
+assert result['severity'] == 'critical', f'FAIL: severity={result.get(\"severity\")}'
+print('PASS: severity=1 correctly maps to critical')
+"
+```
+
+### Scoring model validation
+
+```bash
+uv run pytest backend/src/tests/test_phase5.py::TestThreatScorer -v
+# Expected: 3 tests PASS (score_critical, score_sigma_hit, score_capped)
+```
+
+### ATT&CK tagging validation
+
+```bash
+uv run pytest backend/src/tests/test_phase5.py::TestAttackMapper -v
+# Expected: 2 tests PASS (dns→c2, unmapped→[])
+```
+
+### Full Phase 5 suite
+
+```bash
+uv run pytest backend/src/tests/test_phase5.py -v
+# Expected: 18 tests PASS, 0 FAIL, 0 ERROR
+```
+
+### Regression gate
+
+```bash
+uv run pytest backend/src/tests/ -v --tb=no -q
+# Expected: 59 tests PASS (41 existing + 18 phase5), 0 FAIL
+```
+
+### GET /threats endpoint validation
+
+```bash
+# Load fixtures then check /threats endpoint
+curl -s http://localhost:8000/threats | python -c "
+import json, sys
+data = json.load(sys.stdin)
+print(f'Threats returned: {len(data)}')
+for t in data[:3]:
+    print(f'  score={t.get(\"threat_score\", 0)} rule={t.get(\"rule\", \"?\")} tags={len(t.get(\"attack_tags\", []))}')
+"
+# Expected: alerts with threat_score > 0, sorted descending
