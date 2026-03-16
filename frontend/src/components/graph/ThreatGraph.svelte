@@ -24,7 +24,7 @@
         group: 'nodes' as const,
       })),
       ...data.edges.map(e => ({
-        data: { id: e.id, source: e.source, target: e.target, label: e.type },
+        data: { id: e.id, source: e.src, target: e.dst, label: e.type },
         group: 'edges' as const,
       })),
     ])
