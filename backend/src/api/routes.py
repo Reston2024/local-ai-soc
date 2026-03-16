@@ -19,7 +19,7 @@ from backend.src.graph.builder import build_graph
 from backend.src.detection.rules import evaluate
 from backend.src.fixtures.loader import load_ndjson
 from backend.src.ingestion.syslog_parser import parse_syslog_line
-from backend.src.ingestion.opensearch_sink import try_index
+from backend.src.ingestion.opensearch_sink import try_index, OPENSEARCH_URL, INDEX_NAME, _get_client
 
 router = APIRouter()
 
@@ -38,12 +38,28 @@ FIXTURE_PATH = Path(__file__).parents[3] / "fixtures" / "ndjson" / "sample_event
 # Active ingestion sources observed this session (for /health reporting)
 _active_sources: set[str] = set()
 
+# Phase 3: Sigma rules loaded once at startup. Reload requires backend restart.
+try:
+    _SIGMA_RULES = _load_sigma_rules()
+except Exception:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("Sigma rule load failed — sigma detection disabled")
+    _SIGMA_RULES = []
+
 
 def _store_event(event: NormalizedEvent) -> list[Alert]:
     """Persist event + run detection. Returns triggered alerts."""
     _events.append(event.model_dump())
     _active_sources.add(event.source.value)
     new_alerts = evaluate(event)
+    # Phase 3: run Sigma rules alongside Python rules
+    for sigma_fn in _SIGMA_RULES:
+        try:
+            result = sigma_fn(event)
+            if result is not None:
+                new_alerts.append(result)
+        except Exception:
+            pass  # Individual sigma rule failure must not crash ingestion
     _alerts.extend(a.model_dump() for a in new_alerts)
     # Push to SSE subscribers (non-blocking)
     payload = json.dumps(event.model_dump(mode="json"))
@@ -94,6 +110,44 @@ def get_graph():
 @router.get("/alerts")
 def get_alerts():
     return _alerts
+
+
+@router.get("/search")
+def search_events(q: str = ""):
+    """Search soc-events index via OpenSearch simple_query_string.
+
+    Returns [] gracefully when OpenSearch is unavailable or q is empty.
+    Source of truth: OpenSearch index (not in-memory _events list).
+    """
+    if not q:
+        return []
+    if not OPENSEARCH_URL:
+        return []
+    client = _get_client()
+    if client is None:
+        return []
+    url = f"{OPENSEARCH_URL}/{INDEX_NAME}/_search"
+    payload = {
+        "query": {
+            "simple_query_string": {
+                "query": q,
+                "fields": ["host", "src_ip", "dst_ip", "event_type", "query",
+                           "user", "protocol"],
+                "default_operator": "AND"
+            }
+        },
+        "size": 100
+    }
+    try:
+        import json as _json
+        r = client.post(url, content=_json.dumps(payload),
+                        headers={"Content-Type": "application/json"})
+        if r.status_code != 200:
+            return []
+        hits = r.json().get("hits", {}).get("hits", [])
+        return [h["_source"] for h in hits]
+    except Exception:
+        return []
 
 
 @router.post("/fixtures/load")
