@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 7 (in progress)
+current_plan: "07-02 complete — hunt_engine.py with HuntTemplate dataclass + 4 SQL templates (suspicious_ip_comms, powershell_children, unusual_auth, ioc_search); P7-T08 and P7-T09 XPASS; next: 07-03"
+status: executing
+last_updated: "2026-03-17T02:38:05.425Z"
+progress:
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 24
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 7 (in progress)
 current_plan: "07-01 complete — CaseManager CRUD + tagging.py + SQLiteStore investigation methods; P7-T01/T02/T03 XPASS; next: 07-02"
 status: executing
 last_updated: "2026-03-17T02:40:00.000Z"
 progress:
-  [█████████░] 96%
+  [██████████] 100%
   total_phases: 7
   completed_phases: 4
   total_plans: 23
@@ -273,7 +289,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-17
 **Current phase:** Phase 7 (in progress)
-**Current plan:** 07-02 complete — hunt_engine.py with HuntTemplate dataclass + 4 SQL templates (suspicious_ip_comms, powershell_children, unusual_auth, ioc_search); P7-T08 and P7-T09 XPASS; next: 07-03
+**Current plan:** 07-03 complete — timeline_builder.py (build_timeline with confidence scoring) + artifact_store.py (save_artifact + get_artifact); P7-T12 + P7-T14 XPASS; next: 07-04
 **Overall status:** Executing
 
 ---
@@ -281,8 +297,8 @@ progress:
 ## Active Phase
 
 **Phase 7: Threat Hunting + Case Management**
-Status: IN PROGRESS (plan 07-02 complete — hunt engine)
-Next action: 07-03 (timeline builder + artifact store)
+Status: IN PROGRESS (plan 07-03 complete — timeline builder + artifact store)
+Next action: 07-04 (investigation routes)
 
 ## Progress
 
@@ -294,7 +310,7 @@ Next action: 07-03 (timeline builder + artifact store)
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
-| Phase 7: Threat Hunting + Case Management | IN PROGRESS | 3/N plans (07-00, 07-01, 07-02 complete) |
+| Phase 7: Threat Hunting + Case Management | IN PROGRESS | 4/N plans (07-00, 07-01, 07-02, 07-03 complete) |
 
 ## Key Decisions Made
 
@@ -359,6 +375,9 @@ Next action: 07-03 (timeline builder + artifact store)
 | tagging.py as free functions not a class (07-01) | Simplifies asyncio.to_thread() call pattern in route handlers; no state needed |
 | ioc_search param_keys=['ioc_value'] expands to 6 positional SQL params at execute time (07-02) | ILIKE wrapping (%value%) for text fields, exact match for IPs/hashes — single input covers all telemetry fields |
 | powershell_children passes param_list=None to fetch_df (07-02) | Matches Optional[list[Any]] = None signature; avoids empty list binding overhead for parameterless templates |
+| save_artifact handles sqlite_store=None gracefully (07-03) | Test isolation — unit test passes None; skipping insert_artifact preserves file write without AttributeError |
+| artifact_id positional 3rd arg in save_artifact (07-03) | Matches original stub and test call pattern; explicit artifact_id passed by test as "artifact-001" |
+| build_timeline returns [] for None stores (07-03) | Prevents AttributeError propagation; safe call pattern mirrors Phase 6 engine graceful fallbacks |
 
 ## Critical Pitfalls to Watch
 
@@ -438,3 +457,4 @@ Next action: 07-03 (timeline builder + artifact store)
 - 2026-03-17: Phase 7 plan 00 complete. Wave 0 TDD red baseline — backend/investigation/ package (7 files: 6 stubs + investigation_router), SQLiteStore _DDL extended with investigation_cases/case_artifacts/case_tags tables + 6 stub methods, test_phase7.py (16 xfail stubs P7-T01 through P7-T16). 41 passed + 16 xfailed + 42 xpassed in full suite. Stopped at: 07-00-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 01 complete. Wave 1 — CaseManager CRUD + tagging.py + SQLiteStore investigation methods. CaseManager (raw sqlite3.Connection interface), tagging.py (add_tag/remove_tag/list_tags), SQLiteStore 6 stub methods replaced. P7-T01/T02/T03 XPASS; 41 passed + 47 xpassed + 12 xfailed. Stopped at: 07-01-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 02 complete. Wave 1 — hunt_engine.py full implementation. HuntTemplate dataclass + HUNT_TEMPLATES dict (4 templates: suspicious_ip_comms, powershell_children, unusual_auth, ioc_search) + execute_hunt async dispatcher. P7-T08 and P7-T09 XPASS; 41 passed + 44 xpassed + 15 xfailed. Stopped at: 07-02-PLAN.md complete.
+- 2026-03-17: Phase 7 plan 03 complete. Wave 2 — timeline_builder.py (build_timeline: DuckDB fetch + entity extraction + confidence scoring, returns [] for None stores) + artifact_store.py (save_artifact: mkdir-p + asyncio.to_thread write + posix path SQLite metadata; get_artifact: direct artifact_id lookup). P7-T12 and P7-T14 XPASS; 41 passed + 49 xpassed + 10 xfailed. Stopped at: 07-03-PLAN.md complete.
