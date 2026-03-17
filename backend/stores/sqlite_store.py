@@ -512,20 +512,72 @@ class SQLiteStore:
         description: str = "",
         case_id: Optional[str] = None,
     ) -> str:
-        """Create a new investigation case and return its ID. (stub)"""
-        raise NotImplementedError
+        """Create a new investigation case and return its ID."""
+        cid = case_id or str(uuid4())
+        now = _now_iso()
+        self._conn.execute(
+            """
+            INSERT OR IGNORE INTO investigation_cases
+                (case_id, title, description, case_status,
+                 related_alerts, related_entities, timeline_events,
+                 analyst_notes, tags, artifacts, created_at, updated_at)
+            VALUES (?, ?, ?, 'open', ?, ?, ?, '', ?, ?, ?, ?)
+            """,
+            (
+                cid, title, description,
+                json.dumps([]), json.dumps([]), json.dumps([]),
+                json.dumps([]), json.dumps([]),
+                now, now,
+            ),
+        )
+        self._conn.commit()
+        log.debug("Investigation case created", case_id=cid, title=title)
+        return cid
 
     def get_investigation_case(self, case_id: str) -> Optional[dict[str, Any]]:
-        """Return an investigation case record as a dict, or None if not found. (stub)"""
-        raise NotImplementedError
+        """Return an investigation case record as a dict, or None if not found."""
+        row = self._conn.execute(
+            "SELECT * FROM investigation_cases WHERE case_id = ?", (case_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return self._parse_investigation_case(dict(row))
 
-    def list_investigation_cases(self, status: Optional[str] = None) -> list:
-        """List investigation cases, optionally filtered by status. (stub)"""
-        raise NotImplementedError
+    def list_investigation_cases(self, status: Optional[str] = None) -> list[dict[str, Any]]:
+        """List investigation cases, optionally filtered by status."""
+        if status:
+            rows = self._conn.execute(
+                "SELECT * FROM investigation_cases WHERE case_status = ? ORDER BY created_at DESC",
+                (status,),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM investigation_cases ORDER BY created_at DESC"
+            ).fetchall()
+        return [self._parse_investigation_case(dict(r)) for r in rows]
 
     def update_investigation_case(self, case_id: str, updates: dict) -> None:
-        """Update fields of an investigation case. (stub)"""
-        raise NotImplementedError
+        """Update fields of an investigation case (partial update)."""
+        _ARRAY_FIELDS = {
+            "related_alerts", "related_entities", "timeline_events", "tags", "artifacts"
+        }
+        serialized: dict[str, Any] = {}
+        for k, v in updates.items():
+            if k in _ARRAY_FIELDS and isinstance(v, list):
+                serialized[k] = json.dumps(v)
+            else:
+                serialized[k] = v
+
+        set_clause = ", ".join(f"{k} = ?" for k in serialized)
+        values = list(serialized.values())
+        values.append(_now_iso())  # updated_at
+        values.append(case_id)
+
+        self._conn.execute(
+            f"UPDATE investigation_cases SET {set_clause}, updated_at = ? WHERE case_id = ?",
+            values,
+        )
+        self._conn.commit()
 
     def insert_artifact(
         self,
@@ -534,13 +586,47 @@ class SQLiteStore:
         filename: str,
         file_path: str,
         file_size: Optional[int] = None,
+        mime_type: Optional[str] = None,
+        description: str = "",
     ) -> None:
-        """Insert an artifact record linked to an investigation case. (stub)"""
-        raise NotImplementedError
+        """Insert an artifact record linked to an investigation case."""
+        # Normalize path separators to forward slashes
+        normalized_path = str(file_path).replace("\\", "/")
+        self._conn.execute(
+            """
+            INSERT OR IGNORE INTO case_artifacts
+                (artifact_id, case_id, filename, file_path, file_size,
+                 mime_type, description, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                artifact_id, case_id, filename, normalized_path,
+                file_size, mime_type, description, _now_iso(),
+            ),
+        )
+        self._conn.commit()
 
-    def get_artifacts_by_case(self, case_id: str) -> list:
-        """Return all artifact records for a given investigation case. (stub)"""
-        raise NotImplementedError
+    def get_artifacts_by_case(self, case_id: str) -> list[dict[str, Any]]:
+        """Return all artifact records for a given investigation case."""
+        rows = self._conn.execute(
+            "SELECT * FROM case_artifacts WHERE case_id = ? ORDER BY created_at DESC",
+            (case_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def _parse_investigation_case(d: dict[str, Any]) -> dict[str, Any]:
+        """Parse JSON array fields in an investigation case dict."""
+        _ARRAY_FIELDS = [
+            "related_alerts", "related_entities", "timeline_events", "tags", "artifacts"
+        ]
+        for field in _ARRAY_FIELDS:
+            if field in d and isinstance(d[field], str):
+                try:
+                    d[field] = json.loads(d[field])
+                except json.JSONDecodeError:
+                    d[field] = []
+        return d
 
     # ------------------------------------------------------------------
     # Shutdown
