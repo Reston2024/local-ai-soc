@@ -462,7 +462,7 @@ Plans:
 **Goal:** Fix integration test regressions, add live osquery telemetry collection, expose a telemetry status API, and produce a reproducible smoke test + documentation for the operational system.
 **Requirements:** P8-T01, P8-T02, P8-T03, P8-T04, P8-T05, P8-T06, P8-T07, P8-T08, P8-T09, P8-T10, P8-T11, P8-T12
 **Depends on:** Phase 7
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 08-00-PLAN.md — Wave 0 (TDD baseline): Fix 4 failing integration tests + create xfail stubs (P8-T01–T04, P8-T08)
