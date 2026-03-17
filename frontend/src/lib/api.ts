@@ -366,7 +366,7 @@ export async function executeHunt(
   const res = await fetch(`${BASE}/api/hunt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ template, params }),
+    body: JSON.stringify({ template_id: template, params }),
   })
   return res.json()
 }
