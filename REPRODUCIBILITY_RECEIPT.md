@@ -129,12 +129,12 @@ scripts\smoke-test-phase1.ps1
 |---------|---------|--------|
 | Python | 3.12.x | uv |
 | uv | 0.10.6 | astral.sh |
-| fastapi | TBD | PyPI |
-| uvicorn | TBD | PyPI |
-| duckdb | 1.5.0 | PyPI |
-| chromadb | TBD | PyPI |
-| pydantic | TBD | PyPI |
-| httpx | TBD | PyPI |
+| fastapi | 0.115.12 | PyPI |
+| uvicorn | 0.34.3 | PyPI |
+| duckdb | 1.3.0 | PyPI |
+| chromadb | 1.5.5 | PyPI |
+| pydantic | 2.12.5 | PyPI |
+| httpx | 0.28.1 | PyPI |
 | pySigma | TBD | PyPI |
 | langgraph | TBD | PyPI |
 | evtx (pyevtx-rs) | TBD | PyPI |
@@ -177,3 +177,34 @@ Ollama model checksums: TBD
 - `OLLAMA_HOST=0.0.0.0` must be set as a Windows SYSTEM environment variable (not user)
 - Ollama must be restarted after setting the variable
 - Verify: `docker exec caddy curl http://host.docker.internal:11434`
+
+---
+
+## Phase 8 — Verified Dependency Versions (2026-03-17)
+
+| Package | Version |
+|---------|---------|
+| fastapi | 0.115.12 |
+| uvicorn | 0.34.3 |
+| duckdb | 1.3.0 |
+| pydantic-settings | 2.13.1 |
+| httpx | 0.28.1 |
+| chromadb | 1.5.5 |
+| pytest | 9.0.2 |
+| pytest-asyncio | 1.3.0 |
+
+---
+
+## Phase 8 — Production Hardening & Live Telemetry
+
+### Live osquery Collection
+- Set `OSQUERY_ENABLED=True` in `.env` to activate
+- Default log path: `C:\Program Files\osquery\log\osqueryd.results.log`
+- Install: `winget install osquery.osquery`
+- Copy `config/osquery/osquery.conf` to `C:\Program Files\osquery\osquery.conf`
+- If running as service: `icacls "C:\Program Files\osquery\log" /grant Users:R`
+
+### Smoke Test
+```powershell
+pwsh -File scripts\smoke-test-phase8.ps1
+```
