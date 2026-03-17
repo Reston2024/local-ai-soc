@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** ACTIVE — Phase 1 next
+**Status:** COMPLETE — All 8 phases delivered (v1.0 milestone)
 
 ---
 
@@ -457,29 +457,30 @@ Plans:
 
 ---
 
-## Phase 8: Production Hardening & Live Telemetry
+## Phase 8: Production Hardening & Live Telemetry ✅
 
 **Goal:** Fix integration test regressions, add live osquery telemetry collection, expose a telemetry status API, and produce a reproducible smoke test + documentation for the operational system.
+**Status:** COMPLETE — 2026-03-17
 **Requirements:** P8-T01, P8-T02, P8-T03, P8-T04, P8-T05, P8-T06, P8-T07, P8-T08, P8-T09, P8-T10, P8-T11, P8-T12
 **Depends on:** Phase 7
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed
 
 Plans:
-- [ ] 08-00-PLAN.md — Wave 0 (TDD baseline): Fix 4 failing integration tests + create xfail stubs (P8-T01–T04, P8-T08)
-- [ ] 08-01-PLAN.md — Wave 1: OsqueryCollector full implementation + OSQUERY_ENABLED config + main.py lifespan wiring
-- [ ] 08-02-PLAN.md — Wave 2: GET /api/telemetry/osquery/status endpoint + config/osquery/osquery.conf
-- [ ] 08-03-PLAN.md — Wave 3 (final): smoke-test-phase8.ps1 + REPRODUCIBILITY_RECEIPT.md + ARCHITECTURE.md updates
+- [x] 08-00-PLAN.md — Wave 0 (TDD baseline): Fix 4 failing integration tests + create xfail stubs (P8-T01–T04, P8-T08)
+- [x] 08-01-PLAN.md — Wave 1: OsqueryCollector full implementation + OSQUERY_ENABLED config + main.py lifespan wiring
+- [x] 08-02-PLAN.md — Wave 2: GET /api/telemetry/osquery/status endpoint + config/osquery/osquery.conf
+- [x] 08-03-PLAN.md — Wave 3 (final): smoke-test-phase8.ps1 + REPRODUCIBILITY_RECEIPT.md + ARCHITECTURE.md updates
 
 ### Definition of Done
 
-- [ ] `uv run pytest -q --tb=short` — 0 failures (4 integration test regressions fixed)
-- [ ] `uv run pytest tests/unit/test_osquery_collector.py -v` — P8-T01/T02/T03/T04 all XPASS
-- [ ] `uv run pytest tests/integration/test_osquery_pipeline.py -v` — P8-T08 XPASS
-- [ ] `GET /api/telemetry/osquery/status` returns 200 + JSON with enabled/running/lines_processed fields
-- [ ] `config/osquery/osquery.conf` exists with 4 scheduled queries
-- [ ] `scripts/smoke-test-phase8.ps1` exists and validates HTTPS health + Ollama GPU layers
-- [ ] REPRODUCIBILITY_RECEIPT.md — no TBD version placeholders
-- [ ] ARCHITECTURE.md — OsqueryCollector section present
+- [x] `uv run pytest -q --tb=short` — 0 failures (4 integration test regressions fixed)
+- [x] `uv run pytest tests/unit/test_osquery_collector.py -v` — P8-T01/T02/T03/T04 all XPASS
+- [x] `uv run pytest tests/integration/test_osquery_pipeline.py -v` — P8-T08 XPASS
+- [x] `GET /api/telemetry/osquery/status` returns 200 + JSON with enabled/running/lines_processed fields
+- [x] `config/osquery/osquery.conf` exists with 4 scheduled queries
+- [x] `scripts/smoke-test-phase8.ps1` exists and validates HTTPS health + Ollama GPU layers
+- [x] REPRODUCIBILITY_RECEIPT.md — no TBD version placeholders for core Python packages
+- [x] ARCHITECTURE.md — OsqueryCollector section present
 
 ---
 
