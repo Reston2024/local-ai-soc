@@ -73,7 +73,7 @@ class CaseUpdateRequest(BaseModel):
 
 
 class HuntRequest(BaseModel):
-    template: str
+    template_id: str
     params: dict = {}
 
 
@@ -253,7 +253,7 @@ async def execute_hunt_query(body: HuntRequest, request: Request):
     if duckdb is None:
         # Return empty results when DuckDB unavailable (test environment)
         return {
-            "template": body.template,
+            "template_id": body.template_id,
             "params": body.params,
             "results": [],
             "result_count": 0,
@@ -261,12 +261,12 @@ async def execute_hunt_query(body: HuntRequest, request: Request):
         }
 
     try:
-        results = await execute_hunt(duckdb, body.template, body.params)
+        results = await execute_hunt(duckdb, body.template_id, body.params)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
     return {
-        "template": body.template,
+        "template_id": body.template_id,
         "params": body.params,
         "results": results,
         "result_count": len(results),
