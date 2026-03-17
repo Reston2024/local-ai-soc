@@ -10,7 +10,7 @@ Architecture notes:
 Run with:
     uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 or via the startup script:
-    scripts/start.sh
+    scripts/start.cmd
 """
 
 from __future__ import annotations
