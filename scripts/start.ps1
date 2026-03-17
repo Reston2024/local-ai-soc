@@ -106,22 +106,31 @@ if (Test-Path $backendPid) {
     if ($oldPid -and (Get-Process -Id $oldPid -ErrorAction SilentlyContinue)) {
         Write-Warn "Stopping existing backend process (PID $oldPid)"
         Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 500
+        # Wait long enough for DuckDB to release its file lock on Windows.
+        # Stop-Process -Force terminates immediately; the OS still holds the
+        # file handle for a short window.  1.5 s is sufficient in practice.
+        Start-Sleep -Milliseconds 1500
     }
     Remove-Item $backendPid -Force
 }
 
 if ($DevMode) {
-    # Dev mode: reload on change
+    # Dev mode: visible window, local-only bind.
+    # NOTE: --reload is intentionally OMITTED.  DuckDB requires a single
+    # process (single-writer pattern); uvicorn --reload spawns a subprocess
+    # that would open a second DuckDB connection and deadlock.
     $proc = Start-Process -FilePath $VenvPython -ArgumentList @(
-        '-m', 'uvicorn', 'backend.main:create_app',
-        '--factory', '--host', '0.0.0.0', '--port', '8000',
-        '--reload', '--log-level', 'info'
+        '-m', 'uvicorn', 'backend.main:app',
+        '--host', '127.0.0.1', '--port', '8000',
+        '--workers', '1', '--log-level', 'info'
     ) -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Normal -RedirectStandardOutput $backendLog
 } else {
+    # Production mode: hidden window, local-only bind, single worker.
+    # Use backend.main:app (module-level instance) — avoids double create_app()
+    # that --factory would cause alongside the module-level app = create_app().
     $proc = Start-Process -FilePath $VenvPython -ArgumentList @(
-        '-m', 'uvicorn', 'backend.main:create_app',
-        '--factory', '--host', '0.0.0.0', '--port', '8000',
+        '-m', 'uvicorn', 'backend.main:app',
+        '--host', '127.0.0.1', '--port', '8000',
         '--workers', '1', '--log-level', 'info'
     ) -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $backendLog
 }

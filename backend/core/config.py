@@ -4,6 +4,7 @@ Application configuration loaded from environment / .env file.
 Uses pydantic-settings for type-validated settings with .env file support.
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +14,11 @@ class Settings(BaseSettings):
 
     All values can be overridden via environment variables or a .env file
     in the project root.  Field names are case-insensitive at load time.
+
+    OLLAMA_HOST is normalised so a bare IP/hostname coming from the shell
+    (e.g. OLLAMA_HOST=0.0.0.0 set by ``ollama serve``) does not silently
+    override the correct .env URL.  The validator adds the http:// scheme
+    and default port 11434 when they are absent.
     """
 
     model_config = SettingsConfigDict(
@@ -36,6 +42,35 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
+
+    @field_validator("OLLAMA_HOST", mode="before")
+    @classmethod
+    def normalize_ollama_host(cls, v: object) -> str:
+        """
+        Ensure OLLAMA_HOST is a full HTTP URL.
+
+        Handles the common case where the shell environment has
+        ``OLLAMA_HOST=0.0.0.0`` (set by ``ollama serve``) which is a
+        server-side bind address, not a valid client URL.
+
+        Rules:
+        - Value already starts with http:// or https:// → pass through
+        - Bare "0.0.0.0" (any-interface bind address) → use loopback
+        - Any other bare host/IP → add http:// scheme and :11434 port
+        """
+        raw = str(v).strip()
+        if raw.startswith(("http://", "https://")):
+            return raw
+        # Strip any trailing slash that might appear
+        host = raw.rstrip("/")
+        # 0.0.0.0 is a server bind address meaning "all interfaces".
+        # For a client URL this is meaningless — translate to loopback.
+        if host in ("0.0.0.0", "::"):
+            host = "127.0.0.1"
+        # Add port if not already present
+        if ":" not in host:
+            host = f"{host}:11434"
+        return f"http://{host}"
 
 
 # Module-level singleton so importers can do: from backend.core.config import settings

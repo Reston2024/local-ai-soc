@@ -46,10 +46,18 @@ localhost {
         }
     }
 
-    # Dashboard SPA — serve static files, fallback to index.html
-    handle /* {
+    # Dashboard SPA — served under /app/ subpath.
+    # uri strip_prefix removes /app before resolving against /srv/dashboard,
+    # so /app/assets/... maps to /srv/dashboard/assets/... correctly.
+    handle /app/* {
+        uri strip_prefix /app
         root * /srv/dashboard
         try_files {path} /index.html
         file_server
+    }
+
+    # Redirect root to dashboard
+    handle / {
+        redir /app/ temporary
     }
 }
