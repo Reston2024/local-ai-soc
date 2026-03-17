@@ -2,6 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; 102 passed 0 failures; Phase 8 FULLY COMPLETE
+status: completed
+last_updated: "2026-03-17T18:55:04Z"
+progress:
+  total_phases: 8
+  completed_phases: 8
+  total_plans: 33
+  completed_plans: 33
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (in progress)
 current_plan: 08-01 complete — OsqueryCollector live telemetry + OSQUERY_ENABLED config + main.py lifespan wiring; P8-T01/T02/T03/T04/T08 XPASS; 0 failures
 status: completed
@@ -400,17 +416,17 @@ progress:
 
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-17
-**Current phase:** Phase 8 (in progress)
-**Current plan:** 08-01 complete — OsqueryCollector live telemetry + OSQUERY_ENABLED config + main.py lifespan wiring; P8-T01/T02/T03/T04/T08 XPASS; 0 failures
-**Overall status:** Executing
+**Current phase:** Phase 8 (complete)
+**Current plan:** 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+**Overall status:** Complete
 
 ---
 
 ## Active Phase
 
 **Phase 8: Live Telemetry + OsqueryCollector**
-Status: IN PROGRESS (08-01 complete; remaining plans pending)
-Next action: Continue Phase 8 remaining plans
+Status: COMPLETE (08-00, 08-01, 08-02, 08-03 done)
+Next action: Milestone complete — ready for /gsd:complete-milestone
 
 ## Progress
 
@@ -423,7 +439,7 @@ Next action: Continue Phase 8 remaining plans
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
 | Phase 7: Threat Hunting + Case Management | COMPLETE | 7/7 plans (07-00, 07-01, 07-02, 07-03, 07-04, 07-05, 07-06 complete) |
-| Phase 8: Live Telemetry | IN PROGRESS | 1/N plans (08-01 complete) |
+| Phase 8: Live Telemetry | COMPLETE | 4/4 plans (08-00, 08-01, 08-02, 08-03 complete) |
 
 ## Key Decisions Made
 
@@ -585,3 +601,4 @@ Next action: Continue Phase 8 remaining plans
 - 2026-03-17: Phase 7 plan 05 complete. Wave 4 (final) — api.ts extended with 8 Phase 7 functions + 7 interfaces (CaseItem, TimelineEntry, CaseTimeline, HuntTemplate, HuntResult, HuntResponse, ArtifactUploadResponse). CasePanel.svelte (case list, create, detail, timeline) and HuntPanel.svelte (template selector, params, results table, pivot-to-case) created using Svelte 5 runes. frontend npm run build exits 0; 41 passed + 57 xpassed + 2 xfailed (no regressions). Phase 7 fully complete (6/6 plans). v1.0 milestone complete. Stopped at: 07-05-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 08 complete. Gap closure — scripts/start.cmd + stop.cmd + status.cmd (.cmd wrappers that check for pwsh, invoke PS7 scripts, or print winget install actionable error). REPRODUCIBILITY_RECEIPT.md Step 8 updated with Option A/B + pwsh note. README.md fully rewritten with Phase 7 complete status, Prerequisites table (PowerShell 7 bold row), Quick Start, Management Scripts table. Requirement P7-OPS-01 satisfied. Stopped at: 07-08-PLAN.md complete.
 - 2026-03-17: Phase 8 plan 01 complete. OsqueryCollector full implementation (asyncio log-tail + DuckDB write queue). OSQUERY_ENABLED/OSQUERY_LOG_PATH/OSQUERY_POLL_INTERVAL added to Settings (default False). Conditional collector startup/cancellation wired into main.py lifespan. P8-T01/T02/T03/T04/T08 XPASS; 102 passed 0 failures. Stopped at: 08-01-PLAN.md complete.
+- 2026-03-17: Phase 8 plan 03 complete. Documentation + smoke test finalization. scripts/smoke-test-phase8.ps1 (7 checks: HTTPS/HTTP/Ollama/GPU/osquery/pytest/dashboard), REPRODUCIBILITY_RECEIPT.md TBD versions filled (fastapi 0.115.12, duckdb 1.3.0, chromadb 1.5.5 etc.), ARCHITECTURE.md OsqueryCollector section added, main.py docstring corrected (start.sh→start.cmd, forward slash to avoid SyntaxWarning). 102 passed 0 failures. Phase 8 FULLY COMPLETE. v1.0 milestone complete.
