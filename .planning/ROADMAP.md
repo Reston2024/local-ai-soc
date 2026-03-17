@@ -365,7 +365,7 @@ Plans:
 **Depends on:** Phase 6 (causality engine, graph model, DuckDB + SQLite stores)
 **Goal:** Full investigation workflow layer — structured cases, threat hunting queries, timeline reconstruction, and forensic artifact storage.
 
-**Plans:** 9 plans (6 original + 3 gap closure)
+**Plans:** 9/9 plans complete
 
 Plans:
 - [ ] 07-00-PLAN.md — Wave 0: xfail stubs (16) + backend/investigation/ package stubs + SQLiteStore DDL extension

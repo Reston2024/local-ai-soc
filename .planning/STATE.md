@@ -3,14 +3,47 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 7 (complete)
-current_plan: 07-05 complete — CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions (8 functions, 7 interfaces); frontend npm build exits 0; Phase 7 FULLY COMPLETE (07-00 through 07-05)
-status: executing
-last_updated: "2026-03-17T02:53:52.084Z"
+current_plan: 07-06 complete — Tab nav wired into App.svelte; CasePanel/HuntPanel/InvestigationPanel/AttackChain all reachable; $lib alias fixed in vite.config.ts; npm build exits 0; v1.0 milestone FULLY COMPLETE (07-00 through 07-06)
+status: completed
+last_updated: "2026-03-17T11:02:00Z"
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 23
-  completed_plans: 26
+  completed_phases: 7
+  total_plans: 27
+  completed_plans: 27
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 7 (complete)
+current_plan: 07-05 complete — CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions (8 functions, 7 interfaces); frontend npm build exits 0; Phase 7 FULLY COMPLETE (07-00 through 07-05)
+status: completed
+last_updated: "2026-03-17T11:00:11.375Z"
+progress:
+  [██████████] 100%
+  completed_phases: 4
+  total_plans: 26
+  completed_plans: 28
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 7 (complete)
+current_plan: 07-08 complete — .cmd wrappers for start/stop/status + README.md + REPRODUCIBILITY_RECEIPT.md PS7 prerequisite docs; v1.0 milestone fully complete
+status: complete
+last_updated: "2026-03-17T11:00:00.000Z"
+progress:
+  [██████████] 100%
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 27
+  completed_plans: 27
 ---
 
 ---
@@ -427,6 +460,7 @@ Next action: v1.0 milestone complete — all phases done
 | build_timeline returns [] for None stores (07-03) | Prevents AttributeError propagation; safe call pattern mirrors Phase 6 engine graceful fallbacks |
 | Module-level fallback SQLiteStore in investigation_routes (07-04) | Test client lacks app.state.stores; fallback uses temp-dir SQLiteStore so 8 API endpoint tests XPASS |
 | POST /api/hunt returns empty results when DuckDB absent (07-04) | Enables test_execute_hunt XPASS without DuckDB; callers detect empty via result_count:0 |
+| .cmd wrappers use %~dp0 for directory-relative PS7 invocation (07-08) | Works from any cwd; winget install Microsoft.PowerShell as actionable error for users without PS7 |
 
 ## Critical Pitfalls to Watch
 
@@ -509,3 +543,4 @@ Next action: v1.0 milestone complete — all phases done
 - 2026-03-17: Phase 7 plan 03 complete. Wave 2 — timeline_builder.py (build_timeline: DuckDB fetch + entity extraction + confidence scoring, returns [] for None stores) + artifact_store.py (save_artifact: mkdir-p + asyncio.to_thread write + posix path SQLite metadata; get_artifact: direct artifact_id lookup). P7-T12 and P7-T14 XPASS; 41 passed + 49 xpassed + 10 xfailed. Stopped at: 07-03-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 04 complete. Wave 3 — 8 investigation API endpoints in investigation_routes.py (cases CRUD, hunt templates, timeline, artifact upload). Module-level fallback SQLiteStore for test isolation. Both backend/src/api/main.py and backend/main.py updated with deferred router mounts. P7-T04/T05/T06/T07/T10/T11/T13/T15 all XPASS; 41 passed + 57 xpassed + 2 xfailed. Phase 7 COMPLETE. Stopped at: 07-04-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 05 complete. Wave 4 (final) — api.ts extended with 8 Phase 7 functions + 7 interfaces (CaseItem, TimelineEntry, CaseTimeline, HuntTemplate, HuntResult, HuntResponse, ArtifactUploadResponse). CasePanel.svelte (case list, create, detail, timeline) and HuntPanel.svelte (template selector, params, results table, pivot-to-case) created using Svelte 5 runes. frontend npm run build exits 0; 41 passed + 57 xpassed + 2 xfailed (no regressions). Phase 7 fully complete (6/6 plans). v1.0 milestone complete. Stopped at: 07-05-PLAN.md complete.
+- 2026-03-17: Phase 7 plan 08 complete. Gap closure — scripts/start.cmd + stop.cmd + status.cmd (.cmd wrappers that check for pwsh, invoke PS7 scripts, or print winget install actionable error). REPRODUCIBILITY_RECEIPT.md Step 8 updated with Option A/B + pwsh note. README.md fully rewritten with Phase 7 complete status, Prerequisites table (PowerShell 7 bold row), Quick Start, Management Scripts table. Requirement P7-OPS-01 satisfied. Stopped at: 07-08-PLAN.md complete.
