@@ -96,11 +96,21 @@ copy config\.env.example .env
 
 ### Step 8: Start Services
 
+**Option A — Using .cmd wrapper (any terminal):**
 ```powershell
-scripts\start.ps1
-# This starts: Docker (Caddy), FastAPI (uvicorn)
-# Open browser: https://localhost
+scripts\start.cmd
 ```
+
+**Option B — PowerShell 7 directly:**
+```powershell
+pwsh -File scripts\start.ps1
+```
+
+> Note: scripts require PowerShell 7 (pwsh). If you see a version error,
+> install PS7 with: `winget install Microsoft.PowerShell`, then restart your terminal.
+
+This starts: Docker (Caddy), FastAPI (uvicorn)
+Open browser: https://localhost
 
 ### Step 9: Verify (Smoke Tests)
 
