@@ -2,12 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (in progress)
+current_plan: 08-01 complete — OsqueryCollector live telemetry + OSQUERY_ENABLED config + main.py lifespan wiring; P8-T01/T02/T03/T04/T08 XPASS; 0 failures
+status: completed
+last_updated: "2026-03-17T18:50:29.416Z"
+progress:
+  total_phases: 8
+  completed_phases: 5
+  total_plans: 30
+  completed_plans: 32
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 7 (complete)
 current_plan: 07-06 complete — Tab nav wired into App.svelte; CasePanel/HuntPanel/InvestigationPanel/AttackChain reachable; $lib alias fixed; npm build exits 0; v1.0 FULLY COMPLETE
 status: completed
 last_updated: "2026-03-17T18:40:44.520Z"
 progress:
-  total_phases: 8
+  [██████████] 100%
   completed_phases: 5
   total_plans: 30
   completed_plans: 30
