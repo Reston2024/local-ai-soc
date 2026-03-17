@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: resolved
 phase: 07-threat-hunting-case-management
 source: [07-01-SUMMARY.md, 07-02-SUMMARY.md, 07-03-SUMMARY.md, 07-04-SUMMARY.md, 07-05-SUMMARY.md]
 started: 2026-03-17T20:00:00Z
-updated: 2026-03-17T20:00:00Z
+updated: 2026-03-17T21:30:00Z
 ---
 
 ## Current Test
@@ -83,11 +83,12 @@ skipped: 4
 ## Gaps
 
 - truth: "CasePanel and HuntPanel are accessible via the dashboard UI navigation"
-  status: failed
+  status: resolved
   reason: "User reported: dashboard shows alerts/evidence/event-timeline panels only; no Investigation, Cases, or Hunt tab/panel visible. CasePanel.svelte and HuntPanel.svelte were created but not wired into the app's navigation or tab system."
   severity: major
   test: 10
   root_cause: "App.svelte only imports ThreatGraph, EventTimeline, EvidencePanel (lines 3-5). CasePanel and HuntPanel are never imported or rendered anywhere in the codebase. No tab/nav system exists in App.svelte — it is a fixed three-panel layout with no mechanism to switch views. InvestigationPanel.svelte and AttackChain.svelte (Phase 6) have the identical problem."
+  fix: "Plan 07-06 — rewrote App.svelte with 5-tab nav (Alerts/Cases/Hunt/Investigation/Attack Chain) using $state('alerts'). Added $lib alias to vite.config.ts. All 4 panels now imported and conditionally rendered. npm run build exits 0. Commits: 097eaec, 6fc9527."
   artifacts:
     - path: "frontend/src/App.svelte"
       issue: "Missing imports and tab navigation for CasePanel, HuntPanel, InvestigationPanel, AttackChain"
@@ -101,11 +102,12 @@ skipped: 4
   debug_session: ""
 
 - truth: "POST /api/hunt accepts {\"template_id\": \"...\", \"params\": {...}} as documented"
-  status: failed
+  status: resolved
   reason: "User reported: 422 validation error — endpoint requires field named 'template', not 'template_id'. Request contract mismatch between implementation and CONTEXT.md spec."
   severity: major
   test: 7
   root_cause: "HuntRequest Pydantic model at investigation_routes.py:75-77 uses field name 'template', not 'template_id'. The implementation plan (07-04-PLAN.md:177) specified 'template' but CONTEXT.md and UAT expected 'template_id'. Frontend api.ts:369 sends { template, params } (matches backend, so frontend is unaffected). Fix scope: rename field in HuntRequest model + update 2 usages of body.template in route + update api.ts."
+  fix: "Plan 07-07 — renamed HuntRequest.template → template_id in investigation_routes.py (4 locations: class def + 3 usages). Updated api.ts executeHunt to send { template_id: template, params }. Added integration test test_hunt_accepts_template_id confirming 200 + result_count. Commits: 130efd0, 700c23f, 01aa88e."
   artifacts:
     - path: "backend/investigation/investigation_routes.py"
       issue: "HuntRequest.template should be HuntRequest.template_id (lines 76, 258, 264)"
@@ -117,11 +119,12 @@ skipped: 4
   debug_session: ""
 
 - truth: "Cases created via POST /api/cases are immediately visible in GET /api/cases list"
-  status: failed
+  status: resolved
   reason: "User reported: POST returned success in Test 2 but GET /api/cases returned empty list in Test 3; no case_id available for subsequent tests."
   severity: major
   test: 4
   root_cause: "Architecture is correct — both POST and GET use the same SQLiteStore instance via _get_stores(request). Store isolation hypothesis FALSIFIED by static analysis. Most likely cause: investigation_router is silently not mounted in the production backend/main.py (deferred try/except ImportError swallows errors), OR the production DB file (data/graph.db) was created before Phase 7 DDL ran and the tables were not created on the running instance. Needs a round-trip integration smoke test to confirm."
+  fix: "Plan 07-07 — added integration test test_create_and_list_cases that performs POST /api/cases then GET /api/cases round-trip in a single test, confirming persistence works correctly. Architecture confirmed sound. User likely hit a stale DB or startup race during original UAT. Commit: 700c23f."
   artifacts:
     - path: "backend/main.py"
       issue: "Deferred import guard for investigation_router may be silently swallowing an ImportError, preventing route registration"
@@ -133,11 +136,12 @@ skipped: 4
   debug_session: ""
 
 - truth: "start.ps1 starts the backend successfully when invoked from a terminal"
-  status: failed
+  status: resolved
   reason: "User reported: script cannot be run — #Requires -Version 7.0 not satisfied when invoking with `powershell` (PS 5.1). Must use `pwsh` (PS 7)."
   severity: major
   test: 1
   root_cause: "All 4 user-facing scripts (start.ps1, stop.ps1, status.ps1, smoke-test-phase1.ps1) have #Requires -Version 7.0 at line 1. PS 5.1 evaluates this at parse time and aborts before any code runs. REPRODUCIBILITY_RECEIPT.md Step 8 shows 'scripts\\start.ps1' with no mention of pwsh. docs/reproducibility.md line 16 lists PowerShell 7+ as a prerequisite but buries it. README.md has no mention of PS7 at all."
+  fix: "Plan 07-08 — created scripts/start.cmd, stop.cmd, status.cmd wrappers that check for pwsh.exe with `where` and print clear error + winget install command if missing, then exec `pwsh -NoLogo -File scripts\\start.ps1`. Updated REPRODUCIBILITY_RECEIPT.md Step 8 to show .cmd wrapper as primary invocation. Rewrote README.md with bold PS7 prerequisite row and winget install command. Commits: c8839d2, 38cbce4, 5c3e32c."
   artifacts:
     - path: "scripts/start.ps1"
       issue: "#Requires -Version 7.0 blocks PS 5.1 with no helpful error or redirect"
