@@ -31,21 +31,30 @@ export interface EventsListResponse {
 
 export interface Detection {
   id: string
+  detection_id?: string
   rule_id: string
   rule_name: string
-  event_id: string
+  event_id?: string
+  matched_event_ids?: string[]
   severity: string
-  fired_at: string
-  details: Record<string, unknown>
+  fired_at?: string
+  attack_technique?: string
+  attack_tactic?: string
+  explanation?: string
+  details?: Record<string, unknown>
 }
 
 export interface GraphEntity {
-  id: string
-  type: string
-  label: string
-  properties: Record<string, unknown>
-  first_seen: string
-  last_seen: string
+  id?: string
+  entity_id?: string
+  type?: string
+  entity_type?: string
+  label?: string
+  entity_name?: string
+  properties?: Record<string, unknown>
+  attributes?: Record<string, unknown>
+  first_seen?: string
+  last_seen?: string
 }
 
 export interface GraphEdge {
@@ -117,13 +126,15 @@ export const api = {
   },
 
   detections: {
-    list: (params?: { limit?: number; severity?: string }) => {
+    list: (params?: { limit?: number; severity?: string; page?: number; page_size?: number }) => {
       const q = new URLSearchParams()
       if (params?.limit !== undefined) q.set('limit', String(params.limit))
       if (params?.severity) q.set('severity', params.severity)
-      // Backend router prefix is /api/detect (not /api/detections)
-      return request<{ detections: Detection[]; total: number }>(`/api/detect?${q}`)
+      if (params?.page !== undefined) q.set('page', String(params.page))
+      if (params?.page_size !== undefined) q.set('page_size', String(params.page_size))
+      return request<{ detections: Detection[]; total: number; page?: number; page_size?: number }>(`/api/detect?${q}`)
     },
+    run: () => request<{ count: number; detections: Detection[] }>('/api/detect/run', { method: 'POST' }),
   },
 
   graph: {
@@ -135,7 +146,29 @@ export const api = {
       if (params?.limit !== undefined) q.set('limit', String(params.limit))
       return request<{ entities: GraphEntity[] }>(`/api/graph/entities?${q}`)
     },
+    traverse: (entityId: string, depth = 2) =>
+      request<any>(`/api/graph/traverse/${encodeURIComponent(entityId)}?depth=${depth}`),
   },
+
+  investigate: (detectionId: string) =>
+    request<any>('/api/investigate', {
+      method: 'POST',
+      body: JSON.stringify({ detection_id: detectionId }),
+    }),
+
+  investigateEntity: (entityId: string, entityType = 'process') =>
+    request<any>('/api/investigate', {
+      method: 'POST',
+      body: JSON.stringify({ entity_id: entityId, entity_type: entityType }),
+    }),
+
+  correlate: () => request<any>('/api/correlate', { method: 'POST' }),
+
+  ingestEvents: (events: any[]) =>
+    request<any>('/api/ingest/events', {
+      method: 'POST',
+      body: JSON.stringify({ events }),
+    }),
 
   query: {
     ask: async (question: string, context_events?: string[]): Promise<string> => {
