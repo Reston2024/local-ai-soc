@@ -239,3 +239,134 @@ export async function getInvestigationSummary(
   })
   return r.json()
 }
+
+// ---- Phase 7: Case Management + Threat Hunting --------------------------
+
+export interface CaseItem {
+  case_id: string
+  title: string
+  description: string
+  case_status: 'open' | 'in-progress' | 'closed' | string
+  related_alerts: string[]
+  related_entities: string[]
+  analyst_notes: string
+  tags: string[]
+  artifacts: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface TimelineEntry {
+  timestamp: string
+  event_source: string
+  entity_references: string[]
+  related_alerts: string[]
+  confidence_score: number
+}
+
+export interface CaseTimeline {
+  case_id: string
+  timeline: TimelineEntry[]
+  total_events: number
+}
+
+export interface HuntTemplate {
+  name: string
+  description: string
+  param_keys: string[]
+}
+
+export interface HuntResult {
+  [key: string]: string | number | null
+}
+
+export interface HuntResponse {
+  template: string
+  params: Record<string, unknown>
+  results: HuntResult[]
+  result_count: number
+  executed_at: string
+}
+
+export interface ArtifactUploadResponse {
+  artifact_id: string
+  filename: string
+  file_size: number
+}
+
+export async function getCases(
+  status?: string,
+  limit = 20,
+  offset = 0
+): Promise<{ cases: CaseItem[]; total: number; limit: number; offset: number }> {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+  if (status) params.set('status', status)
+  const res = await fetch(`${BASE}/api/cases?${params}`)
+  return res.json()
+}
+
+export async function createCase(
+  title: string,
+  description = ''
+): Promise<{ case_id: string; title: string; case_status: string; created_at: string }> {
+  const res = await fetch(`${BASE}/api/cases`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description }),
+  })
+  return res.json()
+}
+
+export async function getCase(caseId: string): Promise<CaseItem> {
+  const res = await fetch(`${BASE}/api/cases/${caseId}`)
+  return res.json()
+}
+
+export async function patchCase(
+  caseId: string,
+  updates: Partial<Pick<CaseItem, 'case_status' | 'analyst_notes' | 'tags' | 'related_alerts' | 'related_entities'>>
+): Promise<CaseItem> {
+  const res = await fetch(`${BASE}/api/cases/${caseId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  })
+  return res.json()
+}
+
+export async function getCaseTimeline(caseId: string): Promise<CaseTimeline> {
+  const res = await fetch(`${BASE}/api/cases/${caseId}/timeline`)
+  return res.json()
+}
+
+export async function uploadArtifact(
+  caseId: string,
+  file: File,
+  description = ''
+): Promise<ArtifactUploadResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('description', description)
+  const res = await fetch(`${BASE}/api/cases/${caseId}/artifacts`, {
+    method: 'POST',
+    body: formData,
+  })
+  return res.json()
+}
+
+export async function getHuntTemplates(): Promise<{ templates: HuntTemplate[] }> {
+  const res = await fetch(`${BASE}/api/hunt/templates`)
+  return res.json()
+}
+
+export async function executeHunt(
+  template: string,
+  params: Record<string, unknown> = {}
+): Promise<HuntResponse> {
+  const res = await fetch(`${BASE}/api/hunt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ template, params }),
+  })
+  return res.json()
+}
