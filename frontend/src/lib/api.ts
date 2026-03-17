@@ -126,3 +126,116 @@ export function openEventStream(
   if (onError) es.onerror = onError
   return es
 }
+
+// --- Phase 6: Causality Engine ---
+
+export interface CausalityGraphNode {
+  id: string
+  type: string
+  label: string
+  attributes: Record<string, unknown>
+  first_seen: string
+  last_seen: string
+  evidence: string[]
+}
+
+export interface CausalityGraphEdge {
+  id: string
+  type: string
+  src: string   // NOTE: src not source
+  dst: string   // NOTE: dst not target
+  timestamp: string
+  evidence_event_ids: string[]
+}
+
+export interface AttackPath {
+  id: string
+  node_ids: string[]
+  edge_ids: string[]
+  severity: string
+  first_event: string
+  last_event: string
+}
+
+export interface MitreTechnique {
+  technique: string
+  tactic: string
+  name: string
+}
+
+export interface CausalityGraphResponse {
+  alert_id: string
+  nodes: CausalityGraphNode[]
+  edges: CausalityGraphEdge[]
+  attack_paths: AttackPath[]
+  chain: Record<string, unknown>[]
+  techniques: MitreTechnique[]
+  score: number
+  first_event: string
+  last_event: string
+}
+
+export interface InvestigationQueryRequest {
+  q?: string
+  entity_id?: string | null
+  technique?: string | null
+  severity?: string | null
+  limit?: number
+  offset?: number
+}
+
+export interface InvestigationQueryResponse {
+  nodes: CausalityGraphNode[]
+  edges: CausalityGraphEdge[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface InvestigationSummaryResponse {
+  alert_id: string
+  summary: string
+  techniques: MitreTechnique[]
+  score: number
+}
+
+// NOTE: All causality endpoints use /api/ prefix (per CONTEXT.md locked decision)
+
+export async function getAttackGraph(
+  alertId: string,
+  opts?: { from?: string; to?: string }
+): Promise<CausalityGraphResponse> {
+  const params = new URLSearchParams()
+  if (opts?.from) params.set('from', opts.from)
+  if (opts?.to) params.set('to', opts.to)
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  const r = await fetch(`/api/graph/${encodeURIComponent(alertId)}${qs}`)
+  return r.json()
+}
+
+export async function getAttackChain(alertId: string): Promise<CausalityGraphResponse> {
+  const r = await fetch(`/api/attack_chain/${encodeURIComponent(alertId)}`)
+  return r.json()
+}
+
+export async function investigationQuery(
+  params: InvestigationQueryRequest
+): Promise<InvestigationQueryResponse> {
+  const r = await fetch('/api/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  return r.json()
+}
+
+export async function getInvestigationSummary(
+  alertId: string
+): Promise<InvestigationSummaryResponse> {
+  const r = await fetch(`/api/investigate/${encodeURIComponent(alertId)}/summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+  return r.json()
+}
