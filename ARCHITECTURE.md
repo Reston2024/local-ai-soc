@@ -242,3 +242,37 @@ Analyst clicks entity →
 | Monolithic prompt templates | Each use-case (triage, hunt, summary) has different context and output needs. |
 | Docker for Ollama | WSL2 GPU passthrough adds complexity; native gets direct CUDA. |
 | PostgreSQL/Neo4j/Kafka/Elastic | None justified for single-desktop single-analyst scope. |
+
+---
+
+## Phase 8: Live Telemetry Collection (osquery)
+
+### OsqueryCollector
+
+**File:** `ingestion/osquery_collector.py`
+**Pattern:** Background asyncio task — log-tail-and-ingest loop
+
+The `OsqueryCollector` polls `osqueryd.results.log` every N seconds (default 5),
+reads new lines since the last read position (byte offset tracking), parses each
+line using the existing `OsqueryParser.parse_result()`, and writes normalized events
+to DuckDB via `store.execute_write()` (write queue — never direct connection).
+
+**Activation:** Set `OSQUERY_ENABLED=True` in `.env`. Default is `False` so the
+backend starts cleanly on machines without osquery installed.
+
+**Config fields** (backend/core/config.py):
+- `OSQUERY_ENABLED: bool = False`
+- `OSQUERY_LOG_PATH: str` — path to osqueryd.results.log
+- `OSQUERY_POLL_INTERVAL: int = 5` — seconds between checks
+
+**Status endpoint:** `GET /api/telemetry/osquery/status` — returns enabled, running,
+log_exists, lines_processed, error. Always HTTP 200.
+
+**osquery configuration:** `config/osquery/osquery.conf` — 4 scheduled queries:
+- `process_events` (30s): running processes + parent/cmdline
+- `network_events` (60s): established/listening sockets
+- `user_events` (60s): logged-in users
+- `file_events` (120s): System32 executables/DLLs
+
+**Pitfall:** If osquery runs as Windows SYSTEM service, grant log dir read access:
+`icacls "C:\Program Files\osquery\log" /grant Users:R`
