@@ -325,7 +325,7 @@ Plans:
 
 > **Note:** Scope redefined from original roadmap (osquery/IOC/hardening) by PRD in CONTEXT.md. Original hardening work is deferred.
 
-**Plans:** 4/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [ ] 06-00-PLAN.md — Wave 0: TDD stubs (14 xfail) + causality package stubs + ThreatGraph src/dst bug fix

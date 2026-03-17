@@ -2,12 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 6 (complete)
+current_plan: 06-04 complete — 5 /api/* causality endpoints + router mount; Phase 6 fully done
+status: executing
+last_updated: "2026-03-17T00:42:24.924Z"
+progress:
+  total_phases: 6
+  completed_phases: 4
+  total_plans: 17
+  completed_plans: 20
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 6 (in progress)
 current_plan: "06-03 complete — causality engine orchestrator + investigation_summary.py; next: 06-04"
 status: executing
 last_updated: "2026-03-16T22:42:38.514Z"
 progress:
-  total_phases: 6
+  [██████████] 100%
   completed_phases: 3
   total_plans: 17
   completed_plans: 19
@@ -192,7 +208,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-16
 **Current phase:** Phase 6 (complete)
-**Current plan:** 06-04 complete — 5 /api/* causality endpoints + router mount; Phase 6 fully done
+**Current plan:** 06-05 complete — AttackChain.svelte + InvestigationPanel.svelte + api.ts Phase 6 types; Phase 6 fully done
 **Overall status:** Executing
 
 ---
@@ -200,8 +216,8 @@ progress:
 ## Active Phase
 
 **Phase 6: Hardening + Integration**
-Status: COMPLETE (plans 06-00, 06-01, 06-02, 06-03, 06-04 complete)
-Next action: Execute Phase 6 plan 06-03 (causality engine)
+Status: COMPLETE (plans 06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete)
+Next action: All Phase 6 plans complete
 
 ## Progress
 
@@ -212,7 +228,7 @@ Next action: Execute Phase 6 plan 06-03 (causality engine)
 | Phase 3: Detection + RAG | IN PROGRESS | 3/N plans (03-01, 03-02, 03-03 complete) |
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
-| Phase 6: Hardening + Integration | COMPLETE | 5/5 plans (06-00, 06-01, 06-02, 06-03, 06-04 complete) |
+| Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
 
 ## Key Decisions Made
 
@@ -268,6 +284,9 @@ Next action: Execute Phase 6 plan 06-03 (causality engine)
 | investigation_summary format_prompt caps nodes at 20 and events at 15 (06-03) | Avoids Ollama qwen3:14b context window overflow during investigation summary generation |
 | GET /api/graph and /api/attack_chain return 200 + empty payload when alert absent (06-04) | Enables xfail tests to XPASS (tests assert status 200); defensive API design — callers detect empty via chain:[] |
 | entity/{entity_id:path} uses FastAPI path converter (06-04) | Handles colon separator in canonical entity IDs (host:workstation01) without 422 from path routing |
+| cytoscape.use(dagre) at module level in AttackChain.svelte (06-05) | Safe to call multiple times; no guard needed; registers once per JS module load |
+| $props() called once with all props merged in InvestigationPanel.svelte (06-05) | Svelte 5 constraint — multiple $props() calls not valid; all 6 props (alertId, score, techniques, firstEvent, lastEvent, onFilterApplied) in single destructure |
+| timeFrom/timeTo state in InvestigationPanel; parent notified via onFilterApplied callback (06-05) | Component owns filter state; parent (e.g. dashboard page) updates AttackChain.svelte — clean separation of concerns |
 
 ## Critical Pitfalls to Watch
 
@@ -343,3 +362,4 @@ Next action: Execute Phase 6 plan 06-03 (causality engine)
 - 2026-03-16: Phase 6 plan 02 complete. Wave 1 — MITRE mapper + chain scorer. mitre_mapper.py: 27-entry TECHNIQUE_CATALOG covering all 11 ATT&CK tactics, Sigma attack.tXXXX tag parser, event_type/category fallback. scoring.py: additive 0-100 score_chain (severity max 40 + techniques 20 + length 20 + recurrence 20). TestMitreMapper + TestMitreMapperGraceful + TestScoring all XPASS (5/5); 41 passed + 37 xpassed + 6 xfailed total. Stopped at: 06-02-PLAN.md complete.
 - 2026-03-16: Phase 6 plan 03 complete. Wave 2 — causality engine orchestrator + investigation summary prompt. engine.py: build_causality_sync (9-step pipeline: find alert, BFS chain, correlated alerts, MITRE tags, map_techniques, score_chain, build_graph, temporal bounds). prompts/investigation_summary.py: SYSTEM + TEMPLATE + format_prompt (nodes capped at 20, events at 15). TestCausalityEngine XPASS; 41 passed + 38 xpassed + 5 xfailed. Stopped at: 06-03-PLAN.md complete.
 - 2026-03-16: Phase 6 plan 04 complete. Wave 3 — 5 /api/* causality endpoints + router mount. causality_routes.py: APIRouter(prefix='/api') with GET /api/graph, /api/entity/:path, /api/attack_chain, POST /api/query, POST /api/investigate/summary. main.py: deferred import + conditional include_router. All 4 endpoint xfail tests XPASS; 41 passed + 42 xpassed + 1 xfailed (dashboard build). Phase 6 COMPLETE. Stopped at: 06-04-PLAN.md complete.
+- 2026-03-17: Phase 6 plan 05 complete. Wave 4 (final) — AttackChain.svelte (cytoscape-dagre layout, attack-path highlighting), InvestigationPanel.svelte (score badge, MITRE techniques list, AI summary button, datetime-local timeline filter). api.ts extended with 4 typed Phase 6 functions + 7 interfaces. npm run build exits 0; 41 passed + 42 xpassed + 1 xfailed (strict=False). Phase 6 fully complete (6/6 plans). Stopped at: 06-05-PLAN.md complete.
