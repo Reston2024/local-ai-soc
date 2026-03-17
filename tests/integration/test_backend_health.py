@@ -58,22 +58,23 @@ class TestEventsAPI:
         data = resp.json()
         assert "events" in data
         assert "total" in data
-        assert "offset" in data
-        assert "limit" in data
+        assert "page" in data
+        assert "page_size" in data
+        assert "has_next" in data
 
     def test_events_list_limit_param(self, client):
-        resp = client.get("/api/events?limit=5")
+        resp = client.get("/api/events?page_size=5")
         data = resp.json()
         assert len(data["events"]) <= 5
 
 
 class TestDetectionsAPI:
     def test_detections_list_returns_200(self, client):
-        resp = client.get("/api/detections")
+        resp = client.get("/api/detect")
         assert resp.status_code == 200
 
     def test_detections_has_detections_field(self, client):
-        resp = client.get("/api/detections")
+        resp = client.get("/api/detect")
         data = resp.json()
         assert "detections" in data
 
@@ -99,3 +100,12 @@ class TestOpenAPI:
         data = resp.json()
         assert "paths" in data
         assert len(data["paths"]) >= 5
+
+
+class TestTelemetryAPI:
+    @pytest.mark.xfail(strict=False, reason="Telemetry endpoint added in Wave 2 (P8-T09)")
+    def test_telemetry_osquery_status_returns_200(self, client):
+        resp = client.get("/api/telemetry/osquery/status")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "enabled" in data
