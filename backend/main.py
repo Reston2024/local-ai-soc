@@ -255,8 +255,8 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     try:
         from backend.causality.causality_routes import causality_router
-        app.include_router(causality_router)
-        log.info("Causality router mounted at /api")
+        app.include_router(causality_router, prefix="/api")
+        log.info("Causality router mounted at /api/causality")
     except ImportError as exc:
         log.warning("Causality module not available — skipping router mount: %s", exc)
 
@@ -266,6 +266,20 @@ def create_app() -> FastAPI:
         log.info("Investigation router mounted at /api")
     except ImportError as exc:
         log.warning("Investigation module not available — skipping router mount: %s", exc)
+
+    try:
+        from backend.api.correlate import router as correlate_router
+        app.include_router(correlate_router, prefix="/api")
+        log.info("Correlate router mounted at /api/correlate")
+    except ImportError as exc:
+        log.warning("Correlate router not available: %s", exc)
+
+    try:
+        from backend.api.investigate import router as investigate_router
+        app.include_router(investigate_router, prefix="/api")
+        log.info("Investigate router mounted at /api/investigate")
+    except ImportError as exc:
+        log.warning("Investigate router not available: %s", exc)
 
     try:
         from backend.api.telemetry import router as telemetry_router
