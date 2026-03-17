@@ -360,30 +360,78 @@ Plans:
 
 ---
 
+## Phase 7: Threat Hunting & Case Management
+**Status:** PLANNING COMPLETE
+**Depends on:** Phase 6 (causality engine, graph model, DuckDB + SQLite stores)
+**Goal:** Full investigation workflow layer — structured cases, threat hunting queries, timeline reconstruction, and forensic artifact storage.
+
+**Plans:** 6 plans
+
+Plans:
+- [ ] 07-00-PLAN.md — Wave 0: xfail stubs (16) + backend/investigation/ package stubs + SQLiteStore DDL extension
+- [ ] 07-01-PLAN.md — Wave 1: case_manager.py + tagging.py + SQLiteStore CRUD methods
+- [ ] 07-02-PLAN.md — Wave 1: hunt_engine.py (4 DuckDB SQL templates + execute_hunt) — parallel with 07-01
+- [ ] 07-03-PLAN.md — Wave 2: timeline_builder.py + artifact_store.py
+- [ ] 07-04-PLAN.md — Wave 3: investigation_routes.py (8 endpoints) + main.py router mount
+- [ ] 07-05-PLAN.md — Wave 4: CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions
+
+### Deliverables
+
+| Deliverable | Files | Verification |
+|-------------|-------|-------------|
+| Investigation package | `backend/investigation/` (6 modules) | 16 test_phase7.py tests XPASS |
+| SQLite schema extension | `backend/stores/sqlite_store.py` | investigation_cases, case_artifacts, case_tags tables |
+| Case management API | `POST /api/cases`, `GET /api/cases`, `GET /api/cases/{id}`, `PATCH /api/cases/{id}` | P7-T04/T05/T06/T07 XPASS |
+| Threat hunting API | `POST /api/hunt`, `GET /api/hunt/templates` | P7-T10/T11 XPASS |
+| Timeline API | `GET /api/cases/{id}/timeline` | P7-T13 XPASS |
+| Artifact API | `POST /api/cases/{id}/artifacts` | P7-T15 XPASS |
+| Dashboard panels | `frontend/src/components/panels/CasePanel.svelte`, `HuntPanel.svelte` | npm run build exits 0 |
+
+### Definition of Done
+
+- [ ] `uv run pytest backend/src/tests/test_phase7.py -v` — all 16 tests XPASS (P7-T01 through P7-T16)
+- [ ] `uv run pytest backend/src/tests/ -v` — full suite green (no regressions from Phases 3–6)
+- [ ] `cd frontend && npm run build` exits 0
+- [ ] POST /api/cases returns 200 with case_id
+- [ ] GET /api/cases returns paginated list
+- [ ] GET /api/hunt/templates returns 4 templates (suspicious_ip_comms, powershell_children, unusual_auth, ioc_search)
+- [ ] GET /api/cases/{id}/timeline returns ordered timeline entries with confidence_score
+- [ ] POST /api/cases/{id}/artifacts returns artifact_id and writes file to data/artifacts/
+- [ ] CasePanel.svelte renders case list, create form, timeline view (Svelte 5 runes)
+- [ ] HuntPanel.svelte renders template selector, params, results table, pivot-to-case button
+
+---
+
 ## Phased Capability Timeline
 
-| Capability | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 | Phase 6 |
-|-----------|---------|---------|---------|---------|---------|---------|
-| Infrastructure (Ollama, FastAPI, Caddy) | ✓ | | | | | |
-| EVTX/JSON/CSV ingestion | | ✓ | | | | |
-| Normalized event storage | | ✓ | | | | |
-| Sigma rule detection | | | ✓ | | | |
-| ATT&CK enrichment | | | ✓ | | | |
-| AI Q&A with citations | | | ✓ | | | |
-| Contextual anomaly detection | | | ✓ | | | |
-| Graph correlation | | | | ✓ | | |
-| Event clustering / investigation threads | | | | ✓ | | |
-| Timeline view | | | | | ✓ | |
-| Graph visualization | | | | | ✓ | |
-| Detection panel + drilldown | | | | | ✓ | |
-| Causality engine + attack chain reconstruction | | | | | | ✓ |
-| AI investigation summaries | | | | | | ✓ |
-| Interactive attack graph (dagre + highlighting) | | | | | | ✓ |
-| MITRE ATT&CK expanded mapping (25+ techniques) | | | | | | ✓ |
+| Capability | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 | Phase 6 | Phase 7 |
+|-----------|---------|---------|---------|---------|---------|---------|---------|
+| Infrastructure (Ollama, FastAPI, Caddy) | ✓ | | | | | | |
+| EVTX/JSON/CSV ingestion | | ✓ | | | | | |
+| Normalized event storage | | ✓ | | | | | |
+| Sigma rule detection | | | ✓ | | | | |
+| ATT&CK enrichment | | | ✓ | | | | |
+| AI Q&A with citations | | | ✓ | | | | |
+| Contextual anomaly detection | | | ✓ | | | | |
+| Graph correlation | | | | ✓ | | | |
+| Event clustering / investigation threads | | | | ✓ | | | |
+| Timeline view | | | | | ✓ | | |
+| Graph visualization | | | | | ✓ | | |
+| Detection panel + drilldown | | | | | ✓ | | |
+| Causality engine + attack chain reconstruction | | | | | | ✓ | |
+| AI investigation summaries | | | | | | ✓ | |
+| Interactive attack graph (dagre + highlighting) | | | | | | ✓ | |
+| MITRE ATT&CK expanded mapping (25+ techniques) | | | | | | ✓ | |
+| Structured case management (SQLite-backed) | | | | | | | ✓ |
+| Threat hunting queries (4 DuckDB templates) | | | | | | | ✓ |
+| Timeline reconstruction with confidence scoring | | | | | | | ✓ |
+| Forensic artifact storage | | | | | | | ✓ |
+| Case + Hunt dashboard panels | | | | | | | ✓ |
 
 **System becomes analyst-usable at Phase 3 completion.**
 **System becomes excellent at Phase 5 completion.**
 **System becomes production-quality at Phase 6 completion.**
+**System becomes investigation-ready at Phase 7 completion.**
 
 ---
 
@@ -408,4 +456,5 @@ Plans:
 
 *Roadmap generated: 2026-03-15*
 *Phase 6 scope updated: 2026-03-16 (Threat Causality Engine — see 06-CONTEXT.md)*
-*Run `/gsd:execute-phase 06-hardening-integration` to begin execution.*
+*Phase 7 added: 2026-03-17 (Threat Hunting & Case Management — see 07-CONTEXT.md)*
+*Run `/gsd:execute-phase 07-threat-hunting-case-management` to begin execution.*
