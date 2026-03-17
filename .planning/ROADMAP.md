@@ -450,14 +450,41 @@ Plans:
 | SigmaHQ/sigma-cli | **USE NOW** | Phase 3 | Rule management CLI |
 | cytoscape-dagre | **USE NOW** | Phase 6 | Hierarchical DAG layout for attack chain visualization |
 | mitreattack-python | **REJECT** | — | Requires 12MB STIX bundle download; static dict approach sufficient |
-| osquery/osquery | **DEFER** | Post-v1 | Deferred by Phase 6 scope redefinition |
+| osquery/osquery | **USE NOW** | Phase 8 | Deferred from Phase 6 — live Windows telemetry via log-tail collector |
 | open-webui/open-webui | **DEFER** | Phase 6+ | Optional companion chat UI. Not a replacement for custom dashboard. |
 | Velocidex/velociraptor | **DEFER** | If multi-host | Fleet tool, overkill for single desktop |
 | wazuh/wazuh | **REJECT** | — | 8+ vCPU Java fleet SIEM. No unique value vs DuckDB + Sigma + osquery. |
 
 ---
 
+## Phase 8: Production Hardening & Live Telemetry
+
+**Goal:** Fix integration test regressions, add live osquery telemetry collection, expose a telemetry status API, and produce a reproducible smoke test + documentation for the operational system.
+**Requirements:** P8-T01, P8-T02, P8-T03, P8-T04, P8-T05, P8-T06, P8-T07, P8-T08, P8-T09, P8-T10, P8-T11, P8-T12
+**Depends on:** Phase 7
+**Plans:** 4 plans
+
+Plans:
+- [ ] 08-00-PLAN.md — Wave 0 (TDD baseline): Fix 4 failing integration tests + create xfail stubs (P8-T01–T04, P8-T08)
+- [ ] 08-01-PLAN.md — Wave 1: OsqueryCollector full implementation + OSQUERY_ENABLED config + main.py lifespan wiring
+- [ ] 08-02-PLAN.md — Wave 2: GET /api/telemetry/osquery/status endpoint + config/osquery/osquery.conf
+- [ ] 08-03-PLAN.md — Wave 3 (final): smoke-test-phase8.ps1 + REPRODUCIBILITY_RECEIPT.md + ARCHITECTURE.md updates
+
+### Definition of Done
+
+- [ ] `uv run pytest -q --tb=short` — 0 failures (4 integration test regressions fixed)
+- [ ] `uv run pytest tests/unit/test_osquery_collector.py -v` — P8-T01/T02/T03/T04 all XPASS
+- [ ] `uv run pytest tests/integration/test_osquery_pipeline.py -v` — P8-T08 XPASS
+- [ ] `GET /api/telemetry/osquery/status` returns 200 + JSON with enabled/running/lines_processed fields
+- [ ] `config/osquery/osquery.conf` exists with 4 scheduled queries
+- [ ] `scripts/smoke-test-phase8.ps1` exists and validates HTTPS health + Ollama GPU layers
+- [ ] REPRODUCIBILITY_RECEIPT.md — no TBD version placeholders
+- [ ] ARCHITECTURE.md — OsqueryCollector section present
+
+---
+
 *Roadmap generated: 2026-03-15*
 *Phase 6 scope updated: 2026-03-16 (Threat Causality Engine — see 06-CONTEXT.md)*
 *Phase 7 added: 2026-03-17 (Threat Hunting & Case Management — see 07-CONTEXT.md)*
-*Run `/gsd:execute-phase 07-threat-hunting-case-management` to begin execution.*
+*Phase 8 added: 2026-03-17 (Production Hardening & Live Telemetry — see 08-CONTEXT.md)*
+*Run `/gsd:execute-phase 08-8` to begin execution.*
