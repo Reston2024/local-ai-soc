@@ -219,6 +219,23 @@ def create_app() -> FastAPI:
     app.include_router(export_router,  prefix="/api")           # /api/export
 
     # -----------------------------------------------------------------------
+    # Deferred routers (graceful degradation if modules absent)
+    # -----------------------------------------------------------------------
+    try:
+        from backend.causality.causality_routes import causality_router
+        app.include_router(causality_router)
+        log.info("Causality router mounted at /api")
+    except ImportError as exc:
+        log.warning("Causality module not available — skipping router mount: %s", exc)
+
+    try:
+        from backend.investigation.investigation_routes import investigation_router
+        app.include_router(investigation_router)
+        log.info("Investigation router mounted at /api")
+    except ImportError as exc:
+        log.warning("Investigation module not available — skipping router mount: %s", exc)
+
+    # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
     dashboard_dist = Path("dashboard") / "dist"

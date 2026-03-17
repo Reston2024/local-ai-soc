@@ -9,6 +9,12 @@ try:
 except ImportError:
     _causality_router = None
 
+# Phase 7 investigation endpoints (deferred — graceful if investigation_routes absent)
+try:
+    from backend.investigation.investigation_routes import investigation_router as _investigation_router
+except ImportError:
+    _investigation_router = None
+
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -25,6 +31,8 @@ def create_app() -> FastAPI:
     app.include_router(router)
     if _causality_router is not None:
         app.include_router(_causality_router)
+    if _investigation_router is not None:
+        app.include_router(_investigation_router)
     return app
 
 
