@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 6 (complete)
+current_plan: 06-05 complete — AttackChain.svelte + InvestigationPanel.svelte + api.ts Phase 6 types; Phase 6 fully done
+status: executing
+last_updated: "2026-03-17T02:28:01.372Z"
+progress:
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 21
+  percent: 91
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 6 (complete)
 current_plan: 06-04 complete — 5 /api/* causality endpoints + router mount; Phase 6 fully done
 status: executing
 last_updated: "2026-03-17T00:42:24.924Z"
 progress:
-  total_phases: 6
+  [█████████░] 91%
   completed_phases: 4
   total_plans: 17
   completed_plans: 20
@@ -206,18 +222,18 @@ progress:
 # Project State
 
 **Project:** AI-SOC-Brain
-**Last updated:** 2026-03-16
-**Current phase:** Phase 6 (complete)
-**Current plan:** 06-05 complete — AttackChain.svelte + InvestigationPanel.svelte + api.ts Phase 6 types; Phase 6 fully done
+**Last updated:** 2026-03-17
+**Current phase:** Phase 7 (in progress)
+**Current plan:** 07-00 complete — Wave 0 TDD red baseline (investigation/ stubs + test_phase7.py 16 xfail stubs + SQLiteStore DDL extension); next: 07-01
 **Overall status:** Executing
 
 ---
 
 ## Active Phase
 
-**Phase 6: Hardening + Integration**
-Status: COMPLETE (plans 06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete)
-Next action: All Phase 6 plans complete
+**Phase 7: Threat Hunting + Case Management**
+Status: IN PROGRESS (plan 07-00 complete — Wave 0 baseline)
+Next action: 07-01 (CaseManager implementation + investigation REST API)
 
 ## Progress
 
@@ -229,6 +245,7 @@ Next action: All Phase 6 plans complete
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
+| Phase 7: Threat Hunting + Case Management | IN PROGRESS | 1/N plans (07-00 complete) |
 
 ## Key Decisions Made
 
@@ -287,6 +304,8 @@ Next action: All Phase 6 plans complete
 | cytoscape.use(dagre) at module level in AttackChain.svelte (06-05) | Safe to call multiple times; no guard needed; registers once per JS module load |
 | $props() called once with all props merged in InvestigationPanel.svelte (06-05) | Svelte 5 constraint — multiple $props() calls not valid; all 6 props (alertId, score, techniques, firstEvent, lastEvent, onFilterApplied) in single destructure |
 | timeFrom/timeTo state in InvestigationPanel; parent notified via onFilterApplied callback (06-05) | Component owns filter state; parent (e.g. dashboard page) updates AttackChain.svelte — clean separation of concerns |
+| investigation_cases table name (not cases) in Phase 7 DDL (07-00) | Avoids FK conflict with existing `cases` table referenced by entities/detections tables |
+| strict=False on all Phase 7 xfail stubs (07-00) | Consistent with Phase 5/6 pattern; xpass acceptable before implementation |
 
 ## Critical Pitfalls to Watch
 
@@ -363,3 +382,4 @@ Next action: All Phase 6 plans complete
 - 2026-03-16: Phase 6 plan 03 complete. Wave 2 — causality engine orchestrator + investigation summary prompt. engine.py: build_causality_sync (9-step pipeline: find alert, BFS chain, correlated alerts, MITRE tags, map_techniques, score_chain, build_graph, temporal bounds). prompts/investigation_summary.py: SYSTEM + TEMPLATE + format_prompt (nodes capped at 20, events at 15). TestCausalityEngine XPASS; 41 passed + 38 xpassed + 5 xfailed. Stopped at: 06-03-PLAN.md complete.
 - 2026-03-16: Phase 6 plan 04 complete. Wave 3 — 5 /api/* causality endpoints + router mount. causality_routes.py: APIRouter(prefix='/api') with GET /api/graph, /api/entity/:path, /api/attack_chain, POST /api/query, POST /api/investigate/summary. main.py: deferred import + conditional include_router. All 4 endpoint xfail tests XPASS; 41 passed + 42 xpassed + 1 xfailed (dashboard build). Phase 6 COMPLETE. Stopped at: 06-04-PLAN.md complete.
 - 2026-03-17: Phase 6 plan 05 complete. Wave 4 (final) — AttackChain.svelte (cytoscape-dagre layout, attack-path highlighting), InvestigationPanel.svelte (score badge, MITRE techniques list, AI summary button, datetime-local timeline filter). api.ts extended with 4 typed Phase 6 functions + 7 interfaces. npm run build exits 0; 41 passed + 42 xpassed + 1 xfailed (strict=False). Phase 6 fully complete (6/6 plans). Stopped at: 06-05-PLAN.md complete.
+- 2026-03-17: Phase 7 plan 00 complete. Wave 0 TDD red baseline — backend/investigation/ package (7 files: 6 stubs + investigation_router), SQLiteStore _DDL extended with investigation_cases/case_artifacts/case_tags tables + 6 stub methods, test_phase7.py (16 xfail stubs P7-T01 through P7-T16). 41 passed + 16 xfailed + 42 xpassed in full suite. Stopped at: 07-00-PLAN.md complete.
