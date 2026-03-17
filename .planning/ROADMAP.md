@@ -365,7 +365,7 @@ Plans:
 **Depends on:** Phase 6 (causality engine, graph model, DuckDB + SQLite stores)
 **Goal:** Full investigation workflow layer — structured cases, threat hunting queries, timeline reconstruction, and forensic artifact storage.
 
-**Plans:** 6/6 plans complete
+**Plans:** 9 plans (6 original + 3 gap closure)
 
 Plans:
 - [ ] 07-00-PLAN.md — Wave 0: xfail stubs (16) + backend/investigation/ package stubs + SQLiteStore DDL extension
@@ -373,7 +373,10 @@ Plans:
 - [ ] 07-02-PLAN.md — Wave 1: hunt_engine.py (4 DuckDB SQL templates + execute_hunt) — parallel with 07-01
 - [ ] 07-03-PLAN.md — Wave 2: timeline_builder.py + artifact_store.py
 - [ ] 07-04-PLAN.md — Wave 3: investigation_routes.py (8 endpoints) + main.py router mount
-- [x] 07-05-PLAN.md — Wave 4: CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions (completed 2026-03-17)
+- [x] 07-05-PLAN.md — Wave 4: CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions (completed 2026-03-17)
+- [ ] 07-06-PLAN.md — Gap closure Wave 1: App.svelte tab nav + import all 4 new panels
+- [ ] 07-07-PLAN.md — Gap closure Wave 1: HuntRequest.template_id rename + integration round-trip test
+- [ ] 07-08-PLAN.md — Gap closure Wave 1: scripts/.cmd wrappers + REPRODUCIBILITY_RECEIPT.md + README.md PS7 docs
 
 ### Deliverables
 
