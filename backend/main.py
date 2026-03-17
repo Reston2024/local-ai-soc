@@ -132,6 +132,30 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.stores = stores
     app.state.ollama = ollama
 
+    # 8. Conditional osquery live telemetry collector
+    osquery_task: asyncio.Task | None = None
+    if settings.OSQUERY_ENABLED:
+        try:
+            from ingestion.osquery_collector import OsqueryCollector
+            from pathlib import Path as _Path
+            _collector = OsqueryCollector(
+                log_path=_Path(settings.OSQUERY_LOG_PATH),
+                duckdb_store=duckdb_store,
+                interval_sec=settings.OSQUERY_POLL_INTERVAL,
+            )
+            osquery_task = asyncio.ensure_future(_collector.run())
+            app.state.osquery_collector = _collector
+            log.info(
+                "OsqueryCollector started",
+                log_path=settings.OSQUERY_LOG_PATH,
+                interval_sec=settings.OSQUERY_POLL_INTERVAL,
+            )
+        except ImportError as exc:
+            log.warning("OsqueryCollector not available — skipping: %s", exc)
+    else:
+        log.info("osquery collection disabled (OSQUERY_ENABLED=False)")
+        app.state.osquery_collector = None
+
     log.info("All stores and services initialised — ready to serve requests")
 
     # Yield control to the running application
@@ -141,6 +165,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Shutdown
     # ---------------------
     log.info("AI-SOC-Brain shutting down...")
+
+    # Cancel osquery collector task if running
+    if osquery_task is not None and not osquery_task.done():
+        osquery_task.cancel()
+        try:
+            await osquery_task
+        except asyncio.CancelledError:
+            pass
 
     # Cancel DuckDB write worker
     if not write_worker_task.done():

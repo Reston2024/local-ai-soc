@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # osquery live telemetry collector
+    OSQUERY_ENABLED: bool = False  # Default OFF — set True in .env when osquery is installed
+    OSQUERY_LOG_PATH: str = r"C:\Program Files\osquery\log\osqueryd.results.log"
+    OSQUERY_POLL_INTERVAL: int = 5  # seconds between log checks
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
