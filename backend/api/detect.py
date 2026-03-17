@@ -26,6 +26,10 @@ log = get_logger(__name__)
 router = APIRouter(prefix="/detect", tags=["detect"])
 
 
+def _get_stores(request: Request):
+    return request.app.state.stores
+
+
 # ---------------------------------------------------------------------------
 # Request model for manual detection creation
 # ---------------------------------------------------------------------------
@@ -146,6 +150,45 @@ async def create_detection(
     return JSONResponse(
         status_code=201,
         content={"detection_id": detection_id, "status": "created"},
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /detect/run
+# ---------------------------------------------------------------------------
+
+
+@router.post("/run")
+async def run_detection(
+    request: Request,
+    case_id: Optional[str] = Query(default=None),
+) -> JSONResponse:
+    """Run all Sigma rules against stored events. Returns new DetectionRecords."""
+    stores = _get_stores(request)
+
+    from detections.matcher import SigmaMatcher
+    from pathlib import Path as _Path
+
+    matcher = SigmaMatcher(stores=stores)
+
+    rules_dirs = [_Path("fixtures/sigma"), _Path("rules/sigma")]
+    loaded = 0
+    for d in rules_dirs:
+        if d.exists():
+            loaded += matcher.load_rules_dir(str(d))
+
+    log.info("run_detection: loaded %d Sigma rules, running...", loaded)
+
+    detections = await matcher.run_all(case_id=case_id)
+    if detections:
+        await matcher.save_detections(detections)
+
+    log.info("run_detection: found %d detections", len(detections))
+    return JSONResponse(
+        content={
+            "count": len(detections),
+            "detections": [d.model_dump(mode="json") for d in detections],
+        }
     )
 
 
