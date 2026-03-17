@@ -267,6 +267,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("Investigation module not available — skipping router mount: %s", exc)
 
+    try:
+        from backend.api.telemetry import router as telemetry_router
+        app.include_router(telemetry_router, prefix="/api")
+        log.info("Telemetry router mounted at /api/telemetry")
+    except ImportError as exc:
+        log.warning("Telemetry module not available — skipping router mount: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
