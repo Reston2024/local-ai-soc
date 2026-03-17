@@ -3,6 +3,10 @@
   import ThreatGraph from './components/graph/ThreatGraph.svelte'
   import EventTimeline from './components/timeline/EventTimeline.svelte'
   import EvidencePanel from './components/panels/EvidencePanel.svelte'
+  import CasePanel from './components/panels/CasePanel.svelte'
+  import HuntPanel from './components/panels/HuntPanel.svelte'
+  import InvestigationPanel from './components/panels/InvestigationPanel.svelte'
+  import AttackChain from './components/graph/AttackChain.svelte'
   import { getHealth, getAlerts, loadFixtures } from './lib/api'
 
   // ── State (Svelte 5 runes) ──────────────────────────────────────────────
@@ -11,6 +15,7 @@
   let selectedNode = $state<any>(null)
   let lastRefresh = $state<Date | null>(null)
   let ingestSources = $state<string[]>([])
+  let activeTab = $state<'alerts' | 'cases' | 'hunt' | 'investigation' | 'attackchain'>('alerts')
 
   // ── Polling ────────────────────────────────────────────────────────────
   // Graph (ThreatGraph) and Timeline (EventTimeline) each poll internally.
@@ -55,7 +60,7 @@
 <div class="soc-layout">
   <!-- Status Bar -->
   <header class="status-bar">
-    <span class="title">AI SOC Brain — Phase 2</span>
+    <span class="title">AI SOC Brain — v1.0</span>
 
     <!-- Health indicator -->
     <span class="health">
@@ -89,37 +94,64 @@
     <button onclick={handleLoadFixtures}>Load Fixtures</button>
   </header>
 
-  <div class="main-content">
-    <!-- Left Rail — Alert feed -->
-    <aside class="left-rail card">
-      <h3>Alerts</h3>
-      {#each alerts.slice(0, 30) as alert}
-        <div class="alert-item">
-          <span class="badge badge-{alert.severity}">{alert.severity}</span>
-          <span class="rule">{alert.rule}</span>
-        </div>
-      {/each}
-      {#if alerts.length === 0}
-        <p class="muted">No alerts — load fixtures or send live events</p>
-      {/if}
-      {#if alerts.length > 30}
-        <p class="muted">+{alerts.length - 30} more…</p>
-      {/if}
-    </aside>
+  <!-- Tab Navigation -->
+  <nav class="tab-bar">
+    <button class:active={activeTab === 'alerts'} onclick={() => activeTab = 'alerts'}>Alerts</button>
+    <button class:active={activeTab === 'cases'} onclick={() => activeTab = 'cases'}>Cases</button>
+    <button class:active={activeTab === 'hunt'} onclick={() => activeTab = 'hunt'}>Hunt</button>
+    <button class:active={activeTab === 'investigation'} onclick={() => activeTab = 'investigation'}>Investigation</button>
+    <button class:active={activeTab === 'attackchain'} onclick={() => activeTab = 'attackchain'}>Attack Chain</button>
+  </nav>
 
-    <!-- Center — Threat Graph (polls /graph every 10s internally) -->
-    <main class="center-panel">
-      <ThreatGraph onNodeSelect={(n: any) => selectedNode = n} />
-    </main>
+  {#if activeTab === 'alerts'}
+    <div class="main-content">
+      <!-- Left Rail — Alert feed -->
+      <aside class="left-rail card">
+        <h3>Alerts</h3>
+        {#each alerts.slice(0, 30) as alert}
+          <div class="alert-item">
+            <span class="badge badge-{alert.severity}">{alert.severity}</span>
+            <span class="rule">{alert.rule}</span>
+          </div>
+        {/each}
+        {#if alerts.length === 0}
+          <p class="muted">No alerts — load fixtures or send live events</p>
+        {/if}
+        {#if alerts.length > 30}
+          <p class="muted">+{alerts.length - 30} more…</p>
+        {/if}
+      </aside>
 
-    <!-- Right — Evidence Panel -->
-    <EvidencePanel selected={selectedNode} />
-  </div>
+      <!-- Center — Threat Graph (polls /graph every 10s internally) -->
+      <main class="center-panel">
+        <ThreatGraph onNodeSelect={(n: any) => selectedNode = n} />
+      </main>
 
-  <!-- Bottom — Event Timeline (polls /timeline every 10s internally) -->
-  <footer class="timeline-bar">
-    <EventTimeline />
-  </footer>
+      <!-- Right — Evidence Panel -->
+      <EvidencePanel selected={selectedNode} />
+    </div>
+
+    <!-- Bottom — Event Timeline (polls /timeline every 10s internally) -->
+    <footer class="timeline-bar">
+      <EventTimeline />
+    </footer>
+  {/if}
+
+  {#if activeTab === 'cases'}
+    <div class="tab-content"><CasePanel /></div>
+  {/if}
+
+  {#if activeTab === 'hunt'}
+    <div class="tab-content"><HuntPanel /></div>
+  {/if}
+
+  {#if activeTab === 'investigation'}
+    <div class="tab-content"><InvestigationPanel /></div>
+  {/if}
+
+  {#if activeTab === 'attackchain'}
+    <div class="tab-content"><AttackChain /></div>
+  {/if}
 </div>
 
 <style>
@@ -154,6 +186,20 @@
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
   .dot-green { background: #10b981; box-shadow: 0 0 6px #10b981; }
   .dot-red   { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+  .tab-bar {
+    display: flex; gap: 2px; padding: 0 14px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .tab-bar button {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--muted); padding: 6px 14px; cursor: pointer; font-size: 12px;
+    font-weight: 500; transition: color 0.15s;
+  }
+  .tab-bar button:hover { color: var(--fg); }
+  .tab-bar button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { flex: 1; overflow-y: auto; padding: 16px; }
 
   .main-content { flex: 1; display: flex; overflow: hidden; }
 
