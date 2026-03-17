@@ -77,14 +77,30 @@
     ]
   }
 
+  // Normalize entity fields: backend may return entity_id/entity_name/entity_type
+  function normalizeEntity(e: GraphEntity): GraphEntity {
+    return {
+      id: e.id ?? e.entity_id ?? '',
+      entity_id: e.entity_id ?? e.id ?? '',
+      type: e.type ?? e.entity_type ?? '',
+      entity_type: e.entity_type ?? e.type ?? '',
+      label: e.label ?? e.entity_name ?? e.id ?? e.entity_id ?? '',
+      entity_name: e.entity_name ?? e.label ?? '',
+      properties: e.properties ?? e.attributes ?? {},
+      attributes: e.attributes ?? e.properties ?? {},
+      first_seen: e.first_seen ?? '',
+      last_seen: e.last_seen ?? '',
+    }
+  }
+
   async function loadEntities() {
     loading = true
     error = null
     try {
       const res = await api.graph.entities({ type: typeFilter || undefined, limit: 100 })
-      entities = res.entities
+      entities = (res.entities ?? []).map(normalizeEntity)
       if (entities.length > 0) {
-        await loadSubgraph(entities[0].id)
+        await loadSubgraph(entities[0].id ?? entities[0].entity_id ?? '')
       } else {
         renderEmpty()
         loading = false
@@ -100,6 +116,10 @@
     error = null
     try {
       const graph = await api.graph.entity(entityId, depth)
+      // Normalize entities in the subgraph response
+      if (graph.entities) {
+        graph.entities = graph.entities.map(normalizeEntity)
+      }
       renderGraph(graph)
     } catch (e) {
       error = String(e)
@@ -121,9 +141,10 @@
     })
     cy.on('tap', 'node', (evt) => {
       const data = evt.target.data()
-      selectedEntity = entities.find(e => e.id === data.id) ?? {
-        id: data.id, type: data.type, label: data.label,
-        properties: {}, first_seen: '', last_seen: ''
+      selectedEntity = entities.find(e => (e.id ?? e.entity_id) === data.id) ?? {
+        id: data.id, entity_id: data.id, type: data.type, entity_type: data.type,
+        label: data.label, entity_name: data.label,
+        properties: {}, attributes: {}, first_seen: '', last_seen: ''
       }
     })
     cy.on('tap', (evt) => {
@@ -136,7 +157,12 @@
     cy!.elements().remove()
 
     const nodes = graph.entities.map(e => ({
-      data: { id: e.id, label: e.label.slice(0, 24), type: e.type, ...e.properties }
+      data: {
+        id: e.id ?? e.entity_id,
+        label: (e.label ?? e.entity_name ?? '').slice(0, 24),
+        type: e.type ?? e.entity_type,
+        ...(e.properties ?? e.attributes ?? {})
+      }
     }))
 
     const edges = graph.edges.map(e => ({
@@ -197,18 +223,18 @@
     {#if selectedEntity}
       <div class="entity-panel">
         <div class="panel-header">
-          <span class="entity-type" style="color: {typeColors[selectedEntity.type] ?? '#8b949e'}">{selectedEntity.type}</span>
+          <span class="entity-type" style="color: {typeColors[selectedEntity.type ?? selectedEntity.entity_type ?? ''] ?? '#8b949e'}">{selectedEntity.type ?? selectedEntity.entity_type}</span>
           <button class="btn-close" onclick={() => selectedEntity = null}>✕</button>
         </div>
-        <div class="panel-label">{selectedEntity.label}</div>
+        <div class="panel-label">{selectedEntity.label ?? selectedEntity.entity_name}</div>
         <div class="panel-section">
           <div class="panel-row"><span>First seen</span><span>{selectedEntity.first_seen ? new Date(selectedEntity.first_seen).toLocaleString() : '—'}</span></div>
           <div class="panel-row"><span>Last seen</span><span>{selectedEntity.last_seen ? new Date(selectedEntity.last_seen).toLocaleString() : '—'}</span></div>
         </div>
-        {#if Object.keys(selectedEntity.properties).length > 0}
+        {#if Object.keys(selectedEntity.properties ?? selectedEntity.attributes ?? {}).length > 0}
           <div class="panel-section">
             <div class="panel-sub">Properties</div>
-            {#each Object.entries(selectedEntity.properties) as [k, v]}
+            {#each Object.entries(selectedEntity.properties ?? selectedEntity.attributes ?? {}) as [k, v]}
               <div class="panel-row">
                 <span class="prop-key">{k}</span>
                 <span class="prop-val mono">{String(v).slice(0, 60)}</span>
@@ -216,7 +242,7 @@
             {/each}
           </div>
         {/if}
-        <button class="btn btn-primary full" onclick={() => selectedEntity && loadSubgraph(selectedEntity.id)}>
+        <button class="btn btn-primary full" onclick={() => selectedEntity && loadSubgraph(selectedEntity.id ?? selectedEntity.entity_id ?? '')}>
           Expand {depth}-hop subgraph
         </button>
       </div>
