@@ -1,12 +1,14 @@
-"""Causality engine API endpoints — Phase 6.
+"""Causality engine API endpoints — Phase 8 rewrite.
 
-Mounted at /api prefix via app.include_router(causality_router) in main.py.
-All 5 endpoints follow the deferred import + asyncio.to_thread pattern.
+Mounted at /api prefix via app.include_router(causality_router, prefix="/api").
+Routes use the /causality sub-prefix to avoid conflicts with backend/api/graph.py.
+
+All routes read from DuckDB/SQLite instead of the legacy in-memory lists.
 """
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 # --- Deferred imports (graceful degradation if causality package absent) ---
 try:
@@ -19,29 +21,98 @@ try:
 except ImportError:
     _format_summary_prompt = None  # type: ignore[assignment]
 
-# Share the in-memory event/alert stores with the existing routes module
-from backend.src.api.routes import _events, _alerts  # noqa: E402
+causality_router = APIRouter(prefix="/causality", tags=["causality"])
 
-causality_router = APIRouter(prefix="/api", tags=["causality"])
+# Column order matches normalized_events DDL in duckdb_store.py
+_EVENT_COLUMNS = [
+    "event_id", "timestamp", "ingested_at", "source_type", "source_file",
+    "hostname", "username", "process_name", "process_id",
+    "parent_process_name", "parent_process_id",
+    "file_path", "file_hash_sha256", "command_line",
+    "src_ip", "src_port", "dst_ip", "dst_port", "domain", "url",
+    "event_type", "severity", "confidence", "detection_source",
+    "attack_technique", "attack_tactic",
+    "raw_event", "tags", "case_id",
+]
+
+
+def _row_to_dict(row: tuple) -> dict:
+    """Convert a DuckDB tuple row to a field-name-keyed dict."""
+    d = {}
+    for i, col in enumerate(_EVENT_COLUMNS):
+        if i < len(row):
+            val = row[i]
+            if hasattr(val, "isoformat"):
+                val = val.isoformat()
+            d[col] = val
+    return d
+
+
+async def _fetch_events_for_detection(stores, detection: dict) -> list[dict]:
+    """Fetch NormalizedEvent dicts for matched event IDs in a detection."""
+    if not detection:
+        return []
+    matched_ids = detection.get("matched_event_ids") or []
+    if not matched_ids:
+        return []
+    placeholders = ",".join(["?" for _ in matched_ids])
+    rows = await stores.duckdb.fetch_all(
+        f"SELECT * FROM normalized_events WHERE event_id IN ({placeholders}) ORDER BY timestamp",
+        list(matched_ids),
+    )
+    return [_row_to_dict(row) for row in rows]
+
+
+async def _fetch_recent_events(stores, limit: int = 500) -> list[dict]:
+    """Fetch the most recent events from DuckDB."""
+    rows = await stores.duckdb.fetch_all(
+        "SELECT * FROM normalized_events ORDER BY timestamp DESC LIMIT ?",
+        [limit],
+    )
+    return [_row_to_dict(row) for row in rows]
 
 
 # ---------------------------------------------------------------------------
-# GET /api/graph/{alert_id}
+# GET /api/causality/graph/{alert_id}
 # ---------------------------------------------------------------------------
 
 @causality_router.get("/graph/{alert_id}")
-async def get_causality_graph(alert_id: str):
+async def get_causality_graph(alert_id: str, request: Request):
     """Return causality graph centered on a specific alert.
     Nodes and edges represent the causal chain of events around the alert.
     Returns an empty graph (200) when the alert is not found.
     """
     if _build_causality is None:
         raise HTTPException(status_code=503, detail="Causality engine not available")
+
+    stores = request.app.state.stores
+
+    detection = await asyncio.to_thread(stores.sqlite.get_detection, alert_id)
+    events = await _fetch_events_for_detection(stores, detection) if detection else []
+
+    if not events:
+        events = await _fetch_recent_events(stores)
+
+    # Engine expects events with "id" key for BFS lookups
+    events_for_engine = [{**e, "id": e["event_id"]} for e in events]
+
+    # Build a synthetic alert dict for the engine
+    alerts_for_engine = []
+    if detection:
+        first_event_id = (detection.get("matched_event_ids") or [None])[0]
+        alerts_for_engine = [{
+            "id": alert_id,
+            "event_id": first_event_id,
+            "severity": detection.get("severity", "medium"),
+            "description": detection.get("explanation", ""),
+            "attack_tags": [],
+        }]
+
     result = await asyncio.to_thread(
-        lambda: _build_causality(alert_id, list(_events), list(_alerts))
+        lambda: _build_causality(alert_id, events_for_engine, alerts_for_engine)
     )
+
     if not result:
-        # Return empty graph payload (200) instead of 404 so tests can XPASS
         return {
             "alert_id": alert_id,
             "nodes": [],
@@ -57,82 +128,96 @@ async def get_causality_graph(alert_id: str):
 
 
 # ---------------------------------------------------------------------------
-# GET /api/entity/{entity_id}
+# GET /api/causality/entity/{entity_id}
 # ---------------------------------------------------------------------------
 
 @causality_router.get("/entity/{entity_id:path}")
-async def get_entity(entity_id: str):
+async def get_entity(entity_id: str, request: Request):
     """Return entity details and related events.
     entity_id is a canonical ID of the form 'type:value' (e.g. 'host:workstation01').
     """
     if _build_causality is None:
         raise HTTPException(status_code=503, detail="Causality engine not available")
+
     entity_type, _, entity_value = entity_id.partition(":")
     if not entity_type or not entity_value:
         raise HTTPException(status_code=400, detail="entity_id must be 'type:value' format")
 
+    # Map entity type to NormalizedEvent field names
     type_field_map = {
-        "host": "host",
+        "host": ["hostname"],
         "ip": ["src_ip", "dst_ip"],
-        "domain": "query",
-        "user": "user",
-        "process": "process",
+        "domain": ["domain"],
+        "user": ["username"],
+        "process": ["process_name"],
+        "file": ["file_path"],
     }
     fields = type_field_map.get(entity_type)
-    if isinstance(fields, str):
-        fields = [fields]
     if not fields:
         raise HTTPException(status_code=400, detail=f"Unknown entity type: {entity_type!r}")
 
-    related = [
-        e for e in _events
-        if any(
-            str(e.get(f, "")).lower() == entity_value.lower()
-            for f in fields
-        )
-    ]
-    related_alerts = [
-        a for a in _alerts
-        if a.get("event_id") in {e.get("id") for e in related}
-    ]
+    stores = request.app.state.stores
 
-    try:
-        from backend.src.graph.builder import build_graph
-        graph = build_graph(related, related_alerts)
-        entity_node = next((n for n in graph.nodes if n.id == entity_id), None)
-    except Exception:
-        entity_node = None
+    # Build WHERE clause for the entity search
+    conditions = " OR ".join(f"LOWER({f}) = LOWER(?)" for f in fields)
+    params = [entity_value] * len(fields)
+    rows = await stores.duckdb.fetch_all(
+        f"SELECT * FROM normalized_events WHERE {conditions} ORDER BY timestamp LIMIT 100",
+        params,
+    )
+    related = [_row_to_dict(row) for row in rows]
 
     return {
         "entity_id": entity_id,
         "type": entity_type,
         "value": entity_value,
-        "attributes": entity_node.attributes if entity_node else {},
-        "first_seen": entity_node.first_seen if entity_node else "",
-        "last_seen": entity_node.last_seen if entity_node else "",
+        "attributes": {},
+        "first_seen": related[0].get("timestamp", "") if related else "",
+        "last_seen": related[-1].get("timestamp", "") if related else "",
         "related_event_count": len(related),
         "related_events": related[:50],
-        "related_alert_count": len(related_alerts),
+        "related_alert_count": 0,
     }
 
 
 # ---------------------------------------------------------------------------
-# GET /api/attack_chain/{alert_id}
+# GET /api/causality/attack_chain/{alert_id}
 # ---------------------------------------------------------------------------
 
 @causality_router.get("/attack_chain/{alert_id}")
-async def get_attack_chain(alert_id: str):
+async def get_attack_chain(alert_id: str, request: Request):
     """Return the attack chain for a specific alert.
     Chain edges are ordered by timestamp (earliest first).
     Returns an empty chain (200) when the alert is not found.
     """
     if _build_causality is None:
         raise HTTPException(status_code=503, detail="Causality engine not available")
+
+    stores = request.app.state.stores
+
+    detection = await asyncio.to_thread(stores.sqlite.get_detection, alert_id)
+    events = await _fetch_events_for_detection(stores, detection) if detection else []
+
+    if not events:
+        events = await _fetch_recent_events(stores)
+
+    events_for_engine = [{**e, "id": e["event_id"]} for e in events]
+    alerts_for_engine = []
+    if detection:
+        first_event_id = (detection.get("matched_event_ids") or [None])[0]
+        alerts_for_engine = [{
+            "id": alert_id,
+            "event_id": first_event_id,
+            "severity": detection.get("severity", "medium"),
+            "description": detection.get("explanation", ""),
+            "attack_tags": [],
+        }]
+
     result = await asyncio.to_thread(
-        lambda: _build_causality(alert_id, list(_events), list(_alerts))
+        lambda: _build_causality(alert_id, events_for_engine, alerts_for_engine)
     )
+
     if not result:
-        # Return empty chain payload (200) so tests can XPASS
         return {
             "alert_id": alert_id,
             "edges": [],
@@ -154,73 +239,68 @@ async def get_attack_chain(alert_id: str):
 
 
 # ---------------------------------------------------------------------------
-# POST /api/query
+# POST /api/causality/query
 # ---------------------------------------------------------------------------
 
 @causality_router.post("/query")
-async def investigation_query(request_body: dict):
+async def investigation_query(request: Request, request_body: dict):
     """Flexible investigation query endpoint.
     Accepts: {"q": str, "entity_id": str|null, "technique": str|null,
               "severity": str|null, "limit": int=20, "offset": int=0}
-    Returns: {"nodes": [...], "edges": [...], "total": int}
+    Returns: {"events": [...], "total": int}
     """
+    stores = request.app.state.stores
+
     q = str(request_body.get("q", "")).lower()
-    entity_id = request_body.get("entity_id")
-    technique = request_body.get("technique")
     severity = request_body.get("severity")
+    technique = request_body.get("technique")
     limit = min(int(request_body.get("limit", 20)), 100)
     offset = int(request_body.get("offset", 0))
 
-    filtered = list(_events)
-    if q:
-        filtered = [
-            e for e in filtered
-            if q in str(e.get("host", "")).lower()
-            or q in str(e.get("event_type", "")).lower()
-            or q in str(e.get("src_ip", "")).lower()
-            or q in str(e.get("dst_ip", "")).lower()
-            or q in str(e.get("query", "")).lower()
-        ]
-    if severity:
-        filtered = [e for e in filtered if e.get("severity", "").lower() == severity.lower()]
-    if technique:
-        technique_event_ids = {
-            a.get("event_id") for a in _alerts
-            if any(
-                t.get("technique", "").upper() == technique.upper()
-                for t in (a.get("attack_tags") or [])
-            )
-        }
-        filtered = [e for e in filtered if e.get("id") in technique_event_ids] if technique_event_ids else []
+    conditions = []
+    params: list = []
 
-    related_alerts = [
-        a for a in _alerts
-        if a.get("event_id") in {e.get("id") for e in filtered}
-    ]
-    try:
-        from backend.src.graph.builder import build_graph
-        page_events = filtered[offset:offset + limit]
-        graph = build_graph(page_events, related_alerts)
-        nodes = [n.model_dump() for n in graph.nodes]
-        edges = [e.model_dump() for e in graph.edges]
-    except Exception:
-        nodes, edges = [], []
+    if q:
+        conditions.append(
+            "(LOWER(hostname) LIKE ? OR LOWER(event_type) LIKE ? "
+            "OR LOWER(src_ip) LIKE ? OR LOWER(dst_ip) LIKE ? OR LOWER(domain) LIKE ?)"
+        )
+        like_q = f"%{q}%"
+        params.extend([like_q, like_q, like_q, like_q, like_q])
+    if severity:
+        conditions.append("LOWER(severity) = LOWER(?)")
+        params.append(severity)
+    if technique:
+        conditions.append("LOWER(attack_technique) LIKE ?")
+        params.append(f"%{technique.lower()}%")
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    count_rows = await stores.duckdb.fetch_all(
+        f"SELECT COUNT(*) FROM normalized_events {where}",
+        params if params else None,
+    )
+    total = count_rows[0][0] if count_rows else 0
+
+    rows = await stores.duckdb.fetch_all(
+        f"SELECT * FROM normalized_events {where} ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+        (params + [limit, offset]) if params else [limit, offset],
+    )
+    events = [_row_to_dict(row) for row in rows]
 
     return {
-        "nodes": nodes,
-        "edges": edges,
-        "total": len(filtered),
+        "events": events,
+        "total": total,
         "limit": limit,
         "offset": offset,
     }
 
 
 # ---------------------------------------------------------------------------
-# POST /api/investigate/{alert_id}/summary
+# POST /api/causality/investigate/{alert_id}/summary
 # ---------------------------------------------------------------------------
 
 @causality_router.post("/investigate/{alert_id}/summary")
-async def get_investigation_summary(alert_id: str):
+async def get_investigation_summary(alert_id: str, request: Request):
     """Generate an AI-assisted investigation summary for an alert.
     Returns a completed summary string (not streaming).
     Read-only — does not modify underlying data.
@@ -230,14 +310,31 @@ async def get_investigation_summary(alert_id: str):
     if _build_causality is None:
         raise HTTPException(status_code=503, detail="Causality engine not available")
 
+    stores = request.app.state.stores
+
+    detection = await asyncio.to_thread(stores.sqlite.get_detection, alert_id)
+    if not detection:
+        raise HTTPException(status_code=404, detail=f"Alert {alert_id!r} not found")
+
+    events = await _fetch_events_for_detection(stores, detection)
+    events_for_engine = [{**e, "id": e["event_id"]} for e in events]
+
+    first_event_id = (detection.get("matched_event_ids") or [None])[0]
+    alerts_for_engine = [{
+        "id": alert_id,
+        "event_id": first_event_id,
+        "severity": detection.get("severity", "medium"),
+        "description": detection.get("explanation", ""),
+        "attack_tags": [],
+    }]
+
     result = await asyncio.to_thread(
-        lambda: _build_causality(alert_id, list(_events), list(_alerts))
+        lambda: _build_causality(alert_id, events_for_engine, alerts_for_engine)
     )
     if not result:
         raise HTTPException(status_code=404, detail=f"Alert {alert_id!r} not found")
 
-    alert = next((a for a in _alerts if a.get("id") == alert_id), None)
-    severity = alert.get("severity", "unknown") if alert else "unknown"
+    severity = detection.get("severity", "unknown")
 
     prompt = _format_summary_prompt(
         alert_id=alert_id,
@@ -259,7 +356,11 @@ async def get_investigation_summary(alert_id: str):
                 f"{ollama_host}/api/generate",
                 json={"model": model, "prompt": prompt, "stream": False},
             )
-            summary = resp.json().get("response", "") if resp.status_code == 200 else f"[LLM unavailable: HTTP {resp.status_code}]"
+            summary = (
+                resp.json().get("response", "")
+                if resp.status_code == 200
+                else f"[LLM unavailable: HTTP {resp.status_code}]"
+            )
     except Exception as exc:
         summary = f"[LLM unavailable: {type(exc).__name__}]"
 

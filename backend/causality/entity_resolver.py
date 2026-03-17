@@ -3,13 +3,14 @@
 import re
 
 # Maps logical entity_type names to the raw field key in an event dict
+# Field names match NormalizedEvent / normalized_events DuckDB columns
 FIELD_MAP = {
-    "host": "host",
-    "user": "user",
-    "process": "process",
+    "host": "hostname",
+    "user": "username",
+    "process": "process_name",
     "ip_src": "src_ip",
     "ip_dst": "dst_ip",
-    "domain": "query",
+    "domain": "domain",
     "file": "file_path",
 }
 
