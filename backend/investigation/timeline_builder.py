@@ -94,4 +94,45 @@ async def build_timeline(case_id: str, duckdb_store, sqlite_store) -> list[dict]
         }
         timeline.append(entry)
 
+    # ------------------------------------------------------------------
+    # Fallback: if no case-tagged events found, include events whose
+    # event_id appears in any of the case's linked alert matched_event_ids
+    # ------------------------------------------------------------------
+    if not timeline and alert_ids:
+        try:
+            from backend.stores.sqlite_store import SQLiteStore as _SQLiteStore  # noqa: F401
+            # Collect matched_event_ids from all related detections
+            expanded_event_ids: list[str] = []
+            for detection_id in alert_ids:
+                try:
+                    det = await asyncio.to_thread(sqlite_store.get_detection, detection_id)
+                    if det and det.get("matched_event_ids"):
+                        expanded_event_ids.extend(det["matched_event_ids"])
+                except Exception:
+                    pass
+
+            if expanded_event_ids:
+                placeholders = ",".join("?" for _ in expanded_event_ids)
+                fallback_rows = await duckdb_store.fetch_df(
+                    f"SELECT * FROM normalized_events WHERE event_id IN ({placeholders}) ORDER BY timestamp ASC",
+                    expanded_event_ids,
+                )
+                for row in fallback_rows:
+                    entry = {
+                        "timestamp": _safe_timestamp(row),
+                        "event_source": row.get("source_type") or "unknown",
+                        "entity_references": _extract_entity_refs(row),
+                        "related_alerts": [
+                            aid for aid in alert_ids
+                            if row.get("event_id") in (
+                                det.get("matched_event_ids") or []
+                                if (det := sqlite_store.get_detection(aid)) else []
+                            )
+                        ],
+                        "confidence_score": _score_confidence(row, alert_ids),
+                    }
+                    timeline.append(entry)
+        except Exception as exc:
+            log.warning("build_timeline: fallback event fetch failed: %s", exc)
+
     return timeline
