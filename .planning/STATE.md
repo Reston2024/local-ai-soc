@@ -2,12 +2,61 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 7 (in progress)
+current_plan: "07-01 complete — CaseManager CRUD + tagging.py + SQLiteStore investigation methods; P7-T01/T02/T03 XPASS; next: 07-02"
+status: executing
+last_updated: "2026-03-17T02:40:00.000Z"
+progress:
+  [█████████░] 96%
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 22
+  percent: 96
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 7 (in progress)
+current_plan: "07-02 complete — hunt_engine.py with HuntTemplate dataclass + 4 SQL templates (suspicious_ip_comms, powershell_children, unusual_auth, ioc_search); P7-T08 and P7-T09 XPASS; next: 07-03"
+status: executing
+last_updated: "2026-03-17T02:32:22.163Z"
+progress:
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 23
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 7 (in progress)
+current_plan: "07-00 complete — Wave 0 TDD red baseline (investigation/ stubs + test_phase7.py 16 xfail stubs + SQLiteStore DDL extension); next: 07-01"
+status: executing
+last_updated: "2026-03-17T02:31:45.098Z"
+progress:
+  [██████████] 100%
+  completed_phases: 4
+  total_plans: 23
+  completed_plans: 22
+  percent: 96
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 6 (complete)
 current_plan: 06-05 complete — AttackChain.svelte + InvestigationPanel.svelte + api.ts Phase 6 types; Phase 6 fully done
 status: executing
 last_updated: "2026-03-17T02:28:01.372Z"
 progress:
-  total_phases: 7
+  [██████████] 96%
   completed_phases: 4
   total_plans: 23
   completed_plans: 21
@@ -224,7 +273,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-17
 **Current phase:** Phase 7 (in progress)
-**Current plan:** 07-00 complete — Wave 0 TDD red baseline (investigation/ stubs + test_phase7.py 16 xfail stubs + SQLiteStore DDL extension); next: 07-01
+**Current plan:** 07-02 complete — hunt_engine.py with HuntTemplate dataclass + 4 SQL templates (suspicious_ip_comms, powershell_children, unusual_auth, ioc_search); P7-T08 and P7-T09 XPASS; next: 07-03
 **Overall status:** Executing
 
 ---
@@ -232,8 +281,8 @@ progress:
 ## Active Phase
 
 **Phase 7: Threat Hunting + Case Management**
-Status: IN PROGRESS (plan 07-00 complete — Wave 0 baseline)
-Next action: 07-01 (CaseManager implementation + investigation REST API)
+Status: IN PROGRESS (plan 07-02 complete — hunt engine)
+Next action: 07-03 (timeline builder + artifact store)
 
 ## Progress
 
@@ -245,7 +294,7 @@ Next action: 07-01 (CaseManager implementation + investigation REST API)
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
-| Phase 7: Threat Hunting + Case Management | IN PROGRESS | 1/N plans (07-00 complete) |
+| Phase 7: Threat Hunting + Case Management | IN PROGRESS | 3/N plans (07-00, 07-01, 07-02 complete) |
 
 ## Key Decisions Made
 
@@ -306,6 +355,8 @@ Next action: 07-01 (CaseManager implementation + investigation REST API)
 | timeFrom/timeTo state in InvestigationPanel; parent notified via onFilterApplied callback (06-05) | Component owns filter state; parent (e.g. dashboard page) updates AttackChain.svelte — clean separation of concerns |
 | investigation_cases table name (not cases) in Phase 7 DDL (07-00) | Avoids FK conflict with existing `cases` table referenced by entities/detections tables |
 | strict=False on all Phase 7 xfail stubs (07-00) | Consistent with Phase 5/6 pattern; xpass acceptable before implementation |
+| ioc_search param_keys=['ioc_value'] expands to 6 positional SQL params at execute time (07-02) | ILIKE wrapping (%value%) for text fields, exact match for IPs/hashes — single input covers all telemetry fields |
+| powershell_children passes param_list=None to fetch_df (07-02) | Matches Optional[list[Any]] = None signature; avoids empty list binding overhead for parameterless templates |
 
 ## Critical Pitfalls to Watch
 
@@ -383,3 +434,4 @@ Next action: 07-01 (CaseManager implementation + investigation REST API)
 - 2026-03-16: Phase 6 plan 04 complete. Wave 3 — 5 /api/* causality endpoints + router mount. causality_routes.py: APIRouter(prefix='/api') with GET /api/graph, /api/entity/:path, /api/attack_chain, POST /api/query, POST /api/investigate/summary. main.py: deferred import + conditional include_router. All 4 endpoint xfail tests XPASS; 41 passed + 42 xpassed + 1 xfailed (dashboard build). Phase 6 COMPLETE. Stopped at: 06-04-PLAN.md complete.
 - 2026-03-17: Phase 6 plan 05 complete. Wave 4 (final) — AttackChain.svelte (cytoscape-dagre layout, attack-path highlighting), InvestigationPanel.svelte (score badge, MITRE techniques list, AI summary button, datetime-local timeline filter). api.ts extended with 4 typed Phase 6 functions + 7 interfaces. npm run build exits 0; 41 passed + 42 xpassed + 1 xfailed (strict=False). Phase 6 fully complete (6/6 plans). Stopped at: 06-05-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 00 complete. Wave 0 TDD red baseline — backend/investigation/ package (7 files: 6 stubs + investigation_router), SQLiteStore _DDL extended with investigation_cases/case_artifacts/case_tags tables + 6 stub methods, test_phase7.py (16 xfail stubs P7-T01 through P7-T16). 41 passed + 16 xfailed + 42 xpassed in full suite. Stopped at: 07-00-PLAN.md complete.
+- 2026-03-17: Phase 7 plan 02 complete. Wave 1 — hunt_engine.py full implementation. HuntTemplate dataclass + HUNT_TEMPLATES dict (4 templates: suspicious_ip_comms, powershell_children, unusual_auth, ioc_search) + execute_hunt async dispatcher. P7-T08 and P7-T09 XPASS; 41 passed + 44 xpassed + 15 xfailed. Stopped at: 07-02-PLAN.md complete.
