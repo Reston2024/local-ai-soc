@@ -3,11 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 7 (complete)
+current_plan: 07-06 complete — Tab nav wired into App.svelte; CasePanel/HuntPanel/InvestigationPanel/AttackChain reachable; $lib alias fixed; npm build exits 0; v1.0 FULLY COMPLETE
+status: completed
+last_updated: "2026-03-17T18:40:44.520Z"
+progress:
+  total_phases: 8
+  completed_phases: 5
+  total_plans: 30
+  completed_plans: 30
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 7 (complete)
 current_plan: 07-07 complete — HuntRequest.template renamed to template_id (gap-closure); api.ts executeHunt body key fixed; 2 integration tests confirm case round-trip and hunt 422-fix; v1.0 milestone fully complete
 status: completed
 last_updated: "2026-03-17T11:05:00Z"
 progress:
-  total_phases: 7
+  [██████████] 100%
   completed_phases: 7
   total_plans: 28
   completed_plans: 28
@@ -368,17 +384,17 @@ progress:
 
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-17
-**Current phase:** Phase 7 (complete)
-**Current plan:** 07-06 complete — Tab nav wired into App.svelte; CasePanel/HuntPanel/InvestigationPanel/AttackChain reachable; $lib alias fixed; npm build exits 0; v1.0 FULLY COMPLETE
-**Overall status:** Complete
+**Current phase:** Phase 8 (in progress)
+**Current plan:** 08-01 complete — OsqueryCollector live telemetry + OSQUERY_ENABLED config + main.py lifespan wiring; P8-T01/T02/T03/T04/T08 XPASS; 0 failures
+**Overall status:** Executing
 
 ---
 
 ## Active Phase
 
-**Phase 7: Threat Hunting + Case Management**
-Status: COMPLETE (all 7 plans 07-00 through 07-06 complete)
-Next action: v1.0 milestone complete — all phases done
+**Phase 8: Live Telemetry + OsqueryCollector**
+Status: IN PROGRESS (08-01 complete; remaining plans pending)
+Next action: Continue Phase 8 remaining plans
 
 ## Progress
 
@@ -391,6 +407,7 @@ Next action: v1.0 milestone complete — all phases done
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
 | Phase 7: Threat Hunting + Case Management | COMPLETE | 7/7 plans (07-00, 07-01, 07-02, 07-03, 07-04, 07-05, 07-06 complete) |
+| Phase 8: Live Telemetry | IN PROGRESS | 1/N plans (08-01 complete) |
 
 ## Key Decisions Made
 
@@ -461,6 +478,9 @@ Next action: v1.0 milestone complete — all phases done
 | Module-level fallback SQLiteStore in investigation_routes (07-04) | Test client lacks app.state.stores; fallback uses temp-dir SQLiteStore so 8 API endpoint tests XPASS |
 | POST /api/hunt returns empty results when DuckDB absent (07-04) | Enables test_execute_hunt XPASS without DuckDB; callers detect empty via result_count:0 |
 | .cmd wrappers use %~dp0 for directory-relative PS7 invocation (07-08) | Works from any cwd; winget install Microsoft.PowerShell as actionable error for users without PS7 |
+| OSQUERY_ENABLED defaults False (08-01) | Backend starts cleanly without osquery installed; set True in .env to enable live telemetry |
+| _build_row() wraps to_duckdb_row() in list() (08-01) | to_duckdb_row() returns tuple but execute_write expects list[Any]; conversion required for DuckDB write queue |
+| OsqueryCollector imported inside lifespan if-block (08-01) | Graceful ImportError fallback matches deferred-import pattern from Phase 5/6 |
 
 ## Critical Pitfalls to Watch
 
@@ -506,6 +526,10 @@ Next action: v1.0 milestone complete — all phases done
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 8 added: 8
+
 ### Pending Todos
 
 - 0 todos pending
@@ -544,3 +568,4 @@ Next action: v1.0 milestone complete — all phases done
 - 2026-03-17: Phase 7 plan 04 complete. Wave 3 — 8 investigation API endpoints in investigation_routes.py (cases CRUD, hunt templates, timeline, artifact upload). Module-level fallback SQLiteStore for test isolation. Both backend/src/api/main.py and backend/main.py updated with deferred router mounts. P7-T04/T05/T06/T07/T10/T11/T13/T15 all XPASS; 41 passed + 57 xpassed + 2 xfailed. Phase 7 COMPLETE. Stopped at: 07-04-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 05 complete. Wave 4 (final) — api.ts extended with 8 Phase 7 functions + 7 interfaces (CaseItem, TimelineEntry, CaseTimeline, HuntTemplate, HuntResult, HuntResponse, ArtifactUploadResponse). CasePanel.svelte (case list, create, detail, timeline) and HuntPanel.svelte (template selector, params, results table, pivot-to-case) created using Svelte 5 runes. frontend npm run build exits 0; 41 passed + 57 xpassed + 2 xfailed (no regressions). Phase 7 fully complete (6/6 plans). v1.0 milestone complete. Stopped at: 07-05-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 08 complete. Gap closure — scripts/start.cmd + stop.cmd + status.cmd (.cmd wrappers that check for pwsh, invoke PS7 scripts, or print winget install actionable error). REPRODUCIBILITY_RECEIPT.md Step 8 updated with Option A/B + pwsh note. README.md fully rewritten with Phase 7 complete status, Prerequisites table (PowerShell 7 bold row), Quick Start, Management Scripts table. Requirement P7-OPS-01 satisfied. Stopped at: 07-08-PLAN.md complete.
+- 2026-03-17: Phase 8 plan 01 complete. OsqueryCollector full implementation (asyncio log-tail + DuckDB write queue). OSQUERY_ENABLED/OSQUERY_LOG_PATH/OSQUERY_POLL_INTERVAL added to Settings (default False). Conditional collector startup/cancellation wired into main.py lifespan. P8-T01/T02/T03/T04/T08 XPASS; 102 passed 0 failures. Stopped at: 08-01-PLAN.md complete.
