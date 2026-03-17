@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 7 (complete)
-current_plan: 07-06 complete — Tab nav wired into App.svelte; CasePanel/HuntPanel/InvestigationPanel/AttackChain all reachable; $lib alias fixed in vite.config.ts; npm build exits 0; v1.0 milestone FULLY COMPLETE (07-00 through 07-06)
+current_plan: 07-07 complete — HuntRequest.template renamed to template_id (gap-closure); api.ts executeHunt body key fixed; 2 integration tests confirm case round-trip and hunt 422-fix; v1.0 milestone fully complete
 status: completed
-last_updated: "2026-03-17T11:02:00Z"
+last_updated: "2026-03-17T11:05:00Z"
 progress:
   total_phases: 7
   completed_phases: 7
-  total_plans: 27
-  completed_plans: 27
+  total_plans: 28
+  completed_plans: 28
   percent: 100
 ---
 
@@ -369,7 +369,7 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-17
 **Current phase:** Phase 7 (complete)
-**Current plan:** 07-05 complete — CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions (8 functions, 7 interfaces); frontend npm build exits 0; Phase 7 FULLY COMPLETE (07-00 through 07-05)
+**Current plan:** 07-06 complete — Tab nav wired into App.svelte; CasePanel/HuntPanel/InvestigationPanel/AttackChain reachable; $lib alias fixed; npm build exits 0; v1.0 FULLY COMPLETE
 **Overall status:** Complete
 
 ---
@@ -377,7 +377,7 @@ progress:
 ## Active Phase
 
 **Phase 7: Threat Hunting + Case Management**
-Status: COMPLETE (all 6 plans 07-00 through 07-05 complete)
+Status: COMPLETE (all 7 plans 07-00 through 07-06 complete)
 Next action: v1.0 milestone complete — all phases done
 
 ## Progress
@@ -390,7 +390,7 @@ Next action: v1.0 milestone complete — all phases done
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
-| Phase 7: Threat Hunting + Case Management | COMPLETE | 6/6 plans (07-00, 07-01, 07-02, 07-03, 07-04, 07-05 complete) |
+| Phase 7: Threat Hunting + Case Management | COMPLETE | 7/7 plans (07-00, 07-01, 07-02, 07-03, 07-04, 07-05, 07-06 complete) |
 
 ## Key Decisions Made
 
