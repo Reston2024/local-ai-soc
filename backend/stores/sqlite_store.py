@@ -82,6 +82,46 @@ CREATE INDEX IF NOT EXISTS idx_edges_source     ON edges (source_id);
 CREATE INDEX IF NOT EXISTS idx_edges_target     ON edges (target_id);
 CREATE INDEX IF NOT EXISTS idx_detections_case  ON detections (case_id);
 CREATE INDEX IF NOT EXISTS idx_detections_rule  ON detections (rule_id);
+
+CREATE TABLE IF NOT EXISTS investigation_cases (
+    case_id         TEXT PRIMARY KEY,
+    title           TEXT NOT NULL,
+    description     TEXT DEFAULT '',
+    case_status     TEXT NOT NULL DEFAULT 'open',
+    related_alerts  TEXT DEFAULT '[]',
+    related_entities TEXT DEFAULT '[]',
+    timeline_events TEXT DEFAULT '[]',
+    analyst_notes   TEXT DEFAULT '',
+    tags            TEXT DEFAULT '[]',
+    artifacts       TEXT DEFAULT '[]',
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS case_artifacts (
+    artifact_id     TEXT PRIMARY KEY,
+    case_id         TEXT NOT NULL,
+    filename        TEXT NOT NULL,
+    file_path       TEXT NOT NULL,
+    file_size       INTEGER,
+    mime_type       TEXT,
+    description     TEXT DEFAULT '',
+    created_at      TEXT NOT NULL,
+    FOREIGN KEY (case_id) REFERENCES investigation_cases (case_id)
+);
+
+CREATE TABLE IF NOT EXISTS case_tags (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_id         TEXT NOT NULL,
+    tag             TEXT NOT NULL,
+    created_at      TEXT NOT NULL,
+    UNIQUE(case_id, tag),
+    FOREIGN KEY (case_id) REFERENCES investigation_cases (case_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_inv_cases_status ON investigation_cases (case_status);
+CREATE INDEX IF NOT EXISTS idx_artifacts_case   ON case_artifacts (case_id);
+CREATE INDEX IF NOT EXISTS idx_tags_case        ON case_tags (case_id);
 """
 
 
@@ -457,6 +497,50 @@ class SQLiteStore:
             "edge_count": edge_count,
             "detection_count": detection_count,
         }
+
+    # ------------------------------------------------------------------
+    # Shutdown
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Investigation case management (stubs — Phase 7 Plan 01 will implement)
+    # ------------------------------------------------------------------
+
+    def create_investigation_case(
+        self,
+        title: str,
+        description: str = "",
+        case_id: Optional[str] = None,
+    ) -> str:
+        """Create a new investigation case and return its ID. (stub)"""
+        raise NotImplementedError
+
+    def get_investigation_case(self, case_id: str) -> Optional[dict[str, Any]]:
+        """Return an investigation case record as a dict, or None if not found. (stub)"""
+        raise NotImplementedError
+
+    def list_investigation_cases(self, status: Optional[str] = None) -> list:
+        """List investigation cases, optionally filtered by status. (stub)"""
+        raise NotImplementedError
+
+    def update_investigation_case(self, case_id: str, updates: dict) -> None:
+        """Update fields of an investigation case. (stub)"""
+        raise NotImplementedError
+
+    def insert_artifact(
+        self,
+        artifact_id: str,
+        case_id: str,
+        filename: str,
+        file_path: str,
+        file_size: Optional[int] = None,
+    ) -> None:
+        """Insert an artifact record linked to an investigation case. (stub)"""
+        raise NotImplementedError
+
+    def get_artifacts_by_case(self, case_id: str) -> list:
+        """Return all artifact records for a given investigation case. (stub)"""
+        raise NotImplementedError
 
     # ------------------------------------------------------------------
     # Shutdown
