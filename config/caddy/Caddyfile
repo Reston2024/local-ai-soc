@@ -20,7 +20,19 @@ localhost {
     # TLS with local cert (Caddy generates and trusts automatically)
     tls internal
 
-    # API proxy — forward to FastAPI on host
+    # SSE streaming — must be listed BEFORE handle /api/* (Caddy: first match wins).
+    # flush_interval -1 disables response buffering so tokens stream to the browser.
+    handle /api/query/* {
+        reverse_proxy host.docker.internal:8000 {
+            flush_interval -1
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # API proxy — forward all other /api/* to FastAPI on host
     handle /api/* {
         reverse_proxy host.docker.internal:8000 {
             header_up Host {host}
@@ -36,14 +48,6 @@ localhost {
 
     handle /health {
         reverse_proxy host.docker.internal:8000
-    }
-
-    # SSE streaming — disable buffering
-    handle /api/query/* {
-        reverse_proxy host.docker.internal:8000 {
-            flush_interval -1
-            header_up Host {host}
-        }
     }
 
     # Dashboard SPA — served under /app/ subpath.
