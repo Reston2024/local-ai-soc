@@ -2,12 +2,28 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 7 (complete)
+current_plan: 07-04 complete — 8 investigation API endpoints (cases CRUD, hunt, timeline, artifacts); P7-T04/T05/T06/T07/T10/T11/T13/T15 XPASS; Phase 7 fully complete (07-00 through 07-04 done)
+status: executing
+last_updated: "2026-03-17T02:48:53.218Z"
+progress:
+  total_phases: 7
+  completed_phases: 5
+  total_plans: 23
+  completed_plans: 26
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 7 (in progress)
 current_plan: "07-03 complete — timeline_builder.py (build_timeline with confidence scoring) + artifact_store.py (save_artifact + get_artifact); P7-T12 + P7-T14 XPASS; next: 07-04"
 status: executing
 last_updated: "2026-03-17T02:43:04.242Z"
 progress:
-  total_phases: 7
+  [██████████] 100%
   completed_phases: 4
   total_plans: 23
   completed_plans: 25
@@ -305,16 +321,16 @@ progress:
 **Project:** AI-SOC-Brain
 **Last updated:** 2026-03-17
 **Current phase:** Phase 7 (complete)
-**Current plan:** 07-04 complete — 8 investigation API endpoints (cases CRUD, hunt, timeline, artifacts); P7-T04/T05/T06/T07/T10/T11/T13/T15 XPASS; Phase 7 fully complete (07-00 through 07-04 done)
-**Overall status:** Executing
+**Current plan:** 07-05 complete — CasePanel.svelte + HuntPanel.svelte + api.ts Phase 7 extensions (8 functions, 7 interfaces); frontend npm build exits 0; Phase 7 FULLY COMPLETE (07-00 through 07-05)
+**Overall status:** Complete
 
 ---
 
 ## Active Phase
 
 **Phase 7: Threat Hunting + Case Management**
-Status: COMPLETE (all 5 plans 07-00 through 07-04 complete)
-Next action: Phase 7 complete — all requirements P7-T01 through P7-T15 XPASS
+Status: COMPLETE (all 6 plans 07-00 through 07-05 complete)
+Next action: v1.0 milestone complete — all phases done
 
 ## Progress
 
@@ -326,7 +342,7 @@ Next action: Phase 7 complete — all requirements P7-T01 through P7-T15 XPASS
 | Phase 4: Graph + Correlation | COMPLETE | 3/3 plans (04-01, 04-02, 04-03 complete) |
 | Phase 5: Dashboard | COMPLETE | 5/5 plans (05-00, 05-01, 05-02, 05-03, 05-04 complete) |
 | Phase 6: Hardening + Integration | COMPLETE | 6/6 plans (06-00, 06-01, 06-02, 06-03, 06-04, 06-05 complete) |
-| Phase 7: Threat Hunting + Case Management | COMPLETE | 5/5 plans (07-00, 07-01, 07-02, 07-03, 07-04 complete) |
+| Phase 7: Threat Hunting + Case Management | COMPLETE | 6/6 plans (07-00, 07-01, 07-02, 07-03, 07-04, 07-05 complete) |
 
 ## Key Decisions Made
 
@@ -477,3 +493,4 @@ Next action: Phase 7 complete — all requirements P7-T01 through P7-T15 XPASS
 - 2026-03-17: Phase 7 plan 02 complete. Wave 1 — hunt_engine.py full implementation. HuntTemplate dataclass + HUNT_TEMPLATES dict (4 templates: suspicious_ip_comms, powershell_children, unusual_auth, ioc_search) + execute_hunt async dispatcher. P7-T08 and P7-T09 XPASS; 41 passed + 44 xpassed + 15 xfailed. Stopped at: 07-02-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 03 complete. Wave 2 — timeline_builder.py (build_timeline: DuckDB fetch + entity extraction + confidence scoring, returns [] for None stores) + artifact_store.py (save_artifact: mkdir-p + asyncio.to_thread write + posix path SQLite metadata; get_artifact: direct artifact_id lookup). P7-T12 and P7-T14 XPASS; 41 passed + 49 xpassed + 10 xfailed. Stopped at: 07-03-PLAN.md complete.
 - 2026-03-17: Phase 7 plan 04 complete. Wave 3 — 8 investigation API endpoints in investigation_routes.py (cases CRUD, hunt templates, timeline, artifact upload). Module-level fallback SQLiteStore for test isolation. Both backend/src/api/main.py and backend/main.py updated with deferred router mounts. P7-T04/T05/T06/T07/T10/T11/T13/T15 all XPASS; 41 passed + 57 xpassed + 2 xfailed. Phase 7 COMPLETE. Stopped at: 07-04-PLAN.md complete.
+- 2026-03-17: Phase 7 plan 05 complete. Wave 4 (final) — api.ts extended with 8 Phase 7 functions + 7 interfaces (CaseItem, TimelineEntry, CaseTimeline, HuntTemplate, HuntResult, HuntResponse, ArtifactUploadResponse). CasePanel.svelte (case list, create, detail, timeline) and HuntPanel.svelte (template selector, params, results table, pivot-to-case) created using Svelte 5 runes. frontend npm run build exits 0; 41 passed + 57 xpassed + 2 xfailed (no regressions). Phase 7 fully complete (6/6 plans). v1.0 milestone complete. Stopped at: 07-05-PLAN.md complete.
