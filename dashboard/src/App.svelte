@@ -7,11 +7,18 @@
   import GraphView from './views/GraphView.svelte'
   import QueryView from './views/QueryView.svelte'
   import IngestView from './views/IngestView.svelte'
+  import InvestigationPanel from './components/InvestigationPanel.svelte'
 
-  type View = 'events' | 'detections' | 'graph' | 'query' | 'ingest'
+  type View = 'events' | 'detections' | 'graph' | 'query' | 'ingest' | 'investigation'
 
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
+  let investigatingId = $state<string>('')
+
+  function handleInvestigate(detectionId: string) {
+    investigatingId = detectionId
+    currentView = 'investigation'
+  }
 
   onMount(async () => {
     try {
@@ -32,11 +39,12 @@
   })
 
   const nav = [
-    { id: 'detections', label: 'Detections', icon: '⚡' },
-    { id: 'events',     label: 'Events',     icon: '📋' },
-    { id: 'graph',      label: 'Graph',      icon: '🔗' },
-    { id: 'query',      label: 'AI Query',   icon: '🤖' },
-    { id: 'ingest',     label: 'Ingest',     icon: '📥' },
+    { id: 'detections',    label: 'Detections',   icon: '⚡' },
+    { id: 'investigation', label: 'Investigation', icon: '🔍' },
+    { id: 'events',        label: 'Events',        icon: '📋' },
+    { id: 'graph',         label: 'Graph',         icon: '🔗' },
+    { id: 'query',         label: 'AI Query',      icon: '🤖' },
+    { id: 'ingest',        label: 'Ingest',        icon: '📥' },
   ] as const
 
   const statusColor = {
@@ -61,10 +69,13 @@
           <button
             class="nav-item"
             class:active={currentView === item.id}
-            onclick={() => currentView = item.id}
+            onclick={() => { currentView = item.id as View }}
           >
             <span class="nav-icon">{item.icon}</span>
             <span class="nav-label">{item.label}</span>
+            {#if item.id === 'investigation' && investigatingId}
+              <span class="inv-dot" title="Active investigation"></span>
+            {/if}
           </button>
         </li>
       {/each}
@@ -78,7 +89,9 @@
   <!-- Main content -->
   <main class="main-content">
     {#if currentView === 'detections'}
-      <DetectionsView />
+      <DetectionsView onInvestigate={handleInvestigate} />
+    {:else if currentView === 'investigation'}
+      <InvestigationPanel detectionId={investigatingId} />
     {:else if currentView === 'events'}
       <EventsView />
     {:else if currentView === 'graph'}
@@ -151,6 +164,7 @@
     text-align: left;
     transition: background 0.1s, color 0.1s;
     border-radius: 0;
+    position: relative;
   }
 
   .nav-item:hover {
@@ -165,6 +179,16 @@
   }
 
   .nav-icon { font-size: 15px; }
+
+  .nav-label { flex: 1; }
+
+  .inv-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green, #3fb950);
+    flex-shrink: 0;
+  }
 
   .sidebar-footer {
     padding: 12px 16px;
