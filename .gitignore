@@ -37,3 +37,53 @@ caddy_data/
 # OS
 .DS_Store
 Thumbs.db
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+secrets/
+config/*.secret
+config/*.key
+evidence/
+artifacts/
+*.pcap
+*.evtx
+
+# --- Security / Certificates ---
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# --- Secrets ---
+secrets/
+config/*.secret
+config/*.key
+
+# --- Evidence / SOC Data ---
+evidence/
+artifacts/
+*.pcap
+*.evtx
+
+# --- AI / Models ---
+models/
+*.bin
+*.gguf
+*.pt
+*.onnx
+
+# --- IDE ---
+.vscode/
+.idea/
+
+# --- Temp ---
+*.bak
+*.tmp
+*.swp
+
+.claude/settings.local.json

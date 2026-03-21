@@ -111,3 +111,12 @@ None - no external service configuration required.
 ---
 *Phase: 08-8*
 *Completed: 2026-03-17*
+
+## Self-Check: PASSED
+
+- FOUND: `ingestion/osquery_collector.py`
+- FOUND: `tests/unit/test_osquery_collector.py`
+- FOUND: `tests/integration/test_osquery_pipeline.py`
+- FOUND: `.planning/phases/08-8/08-00-SUMMARY.md`
+- Commits verified: `c092200`, `2bf4c96`, `e545c55`
+- Full suite: 102 passed, 1 skipped, 6 xfailed — 0 failures

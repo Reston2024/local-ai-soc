@@ -1,0 +1,26 @@
+title: Registry Run Key Persistence
+id: 8a9f2b1c-3d4e-5f67-8901-ab2cd3ef4567
+status: test
+description: Detects process writing to Windows registry Run keys for persistence
+author: AI-SOC-Brain Phase 8
+date: 2026/03/17
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        event_type: 'registry_write'
+        command_line|contains: 'CurrentVersion\Run'
+    condition: selection
+falsepositives:
+    - Legitimate software installation
+level: high
+tags:
+    - attack.persistence
+    - attack.t1547.001
+fields:
+    - hostname
+    - username
+    - process_name
+    - command_line
+    - file_path

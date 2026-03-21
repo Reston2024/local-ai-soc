@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** COMPLETE — All 8 phases delivered (v1.0 milestone)
+**Status:** IN PROGRESS — Phase 9 planning
 
 ---
 
@@ -484,8 +484,29 @@ Plans:
 
 ---
 
+---
+
+## Phase 9: Intelligence & Analyst Augmentation
+**Status:** PLANNING
+**Depends on:** Phase 8 (full investigation platform operational)
+**Goal:** Transform the system from a data-driven investigation tool into an intelligent SOC assistant that prioritizes threats, explains what is happening, and reduces analyst cognitive load.
+
+### Requirements
+- P9-T01: Risk scoring engine assigns numeric scores to events, entities, and attack paths
+- P9-T02: Anomaly/prioritization layer flags unusual process chains and parent-child relationships
+- P9-T03: AI analyst (Ollama) explains attack chains grounded in stored evidence
+- P9-T04: Investigation explanation engine generates "what happened", "why it matters", "next steps"
+- P9-T05: Dashboard shows risk scores, highlighted attack path, top suspicious entities
+- P9-T06: /api/score endpoint returns risk-scored entities
+- P9-T07: /api/explain endpoint returns Ollama-generated grounded explanation
+- P9-T08: /api/top-threats endpoint returns ranked threat list
+- P9-T09: Case management — save investigation snapshot, store graph + metadata, retrieve
+- P9-T10: Verification — system identifies most suspicious node, AI explanation matches graph evidence
+
+---
+
 *Roadmap generated: 2026-03-15*
 *Phase 6 scope updated: 2026-03-16 (Threat Causality Engine — see 06-CONTEXT.md)*
 *Phase 7 added: 2026-03-17 (Threat Hunting & Case Management — see 07-CONTEXT.md)*
 *Phase 8 added: 2026-03-17 (Production Hardening & Live Telemetry — see 08-CONTEXT.md)*
-*Run `/gsd:execute-phase 08-8` to begin execution.*
+*Phase 9 added: 2026-03-17 (Intelligence & Analyst Augmentation)*

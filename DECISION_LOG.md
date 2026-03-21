@@ -256,3 +256,78 @@
 - One false-positive automated kill-process on a production system would permanently destroy analyst trust in the tool.
 
 **Future phase:** Autonomous response with explicit analyst pre-approval may be considered in v2+ after the investigation workflow is proven reliable.
+
+
+---
+
+## ADR-015: Causality Engine Rewired to DuckDB (Phase 8 v2)
+
+**Date:** 2026-03-17
+**Status:** ACCEPTED — retroactive fix
+
+**Context:** `backend/causality/causality_routes.py` was importing `_events` and `_alerts` from `backend.src.api.routes` — in-memory lists populated only by the old Phase 1-4 in-memory ingestion path. In production (DuckDB ingestion), these lists are always empty. The entire causality engine was a dead branch.
+
+**Decision:** Rewrite all causality route handlers to query `request.app.state.stores` (DuckDB for events, SQLite for detections) directly. Zero in-memory state. Entity resolver field mapping fixed to use `hostname`/`username`/`process_name` (NormalizedEvent canonical names) rather than stale `host`/`user`/`process` names.
+
+**Trade-offs:** Causality routes now require running DuckDB to be useful. Acceptable — they were never useful before. The deferred import pattern was preserved for the causality router mount.
+
+**Root cause:** Architecture drift between Phase 1 (in-memory prototype) and Phase 3+ (DuckDB production). No integration test caught the dead branch until Phase 8 verification.
+
+---
+
+## ADR-016: Unified Investigation Endpoint (Phase 8 v2)
+
+**Date:** 2026-03-17
+**Status:** ACCEPTED
+
+**Context:** Investigation required coordinating: detection lookup (SQLite) → event fetch (DuckDB) → entity clustering (correlation/clustering.py) → Cytoscape graph building → timeline → MITRE technique extraction → summary. No single endpoint orchestrated this flow.
+
+**Decision:** Create `POST /api/investigate` in `backend/api/investigate.py`. This endpoint:
+1. Loads detection from SQLite by `detection_id`
+2. Fetches matched events from DuckDB
+3. Expands via Union-Find entity clustering to related events
+4. Builds Cytoscape-format graph directly from event fields (no SQLite graph lookup required)
+5. Returns `{detection, events, graph, timeline, attack_chain, techniques, entity_clusters, summary}`
+
+**Alternatives considered:**
+- Multi-step client-side orchestration (fetch detection, then events, then graph separately) — rejected: too many round trips, forces client to understand internal schema
+- Use existing SQLite graph entities table — retained as fallback but not primary path; fresh investigations build graph from events directly
+
+**Key design:** Graph always returns HTTP 200 with Cytoscape `elements.nodes`/`elements.edges` structure. Never 404/500 on empty results.
+
+---
+
+## ADR-017: FastAPI Route Ordering — Static Before Parametric
+
+**Date:** 2026-03-17
+**Status:** ACCEPTED — documented pitfall
+
+**Context:** `POST /api/detect/run` returned HTTP 405 Method Not Allowed because `GET /api/detect/{detection_id}` was registered first. Starlette matches paths before checking methods — `/run` matched `/{detection_id}` (allowing GET only) before reaching `POST /run`.
+
+**Decision:** Always register static sub-path routes (`/run`, `/status`, `/case`) BEFORE parametric catch-all routes (`/{id}`) in the same router. Order in the Python file = registration order = routing priority.
+
+**Rule added to conventions:** In any FastAPI router, all named static sub-routes must appear before `/{param}` catch-all routes.
+
+---
+
+## ADR-018: APT Scenario Fixture for Integration Verification
+
+**Date:** 2026-03-17
+**Status:** ACCEPTED
+
+**Context:** Phase 8 v2 required proving the end-to-end investigation pipeline works. A real Windows environment with live attack tools was not available. Synthetic fixture needed to be realistic enough to validate the full pipeline.
+
+**Decision:** Create `fixtures/ndjson/apt_scenario.ndjson` — 15 NormalizedEvent-format events representing "Operation NightCrawler":
+- Initial access: winword.exe macro drops powershell.exe
+- Execution: PowerShell encoded command, IEX download cradle
+- C2: svchosts.exe beaconing to 185.220.101.45:4444
+- Persistence: HKCU Run key
+- Discovery: whoami/net user/ipconfig
+- Credential access: LSASS access
+- Lateral movement: WMI spawn on WORKSTATION-02
+- Impact: DC authentication failure from WORKSTATION-01
+
+**Verified:** Ingest 15 events, run detection, run investigation — produces 53-node graph, 42 edges, 11 MITRE techniques, reconstructed process ancestry chain.
+
+**Sigma rules created:** c2_beacon.yml (T1071.001), registry_persistence.yml (T1547.001), lsass_access.yml (T1003.001), wmi_lateral.yml (T1047).
+

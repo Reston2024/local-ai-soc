@@ -1,0 +1,25 @@
+title: WMI Lateral Movement Process Spawn
+id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
+status: test
+description: Detects processes spawned via WMI for lateral movement
+author: AI-SOC-Brain Phase 8
+date: 2026/03/17
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        event_type: 'process_create'
+        parent_process_name|contains: 'WmiPrvSE'
+    condition: selection
+falsepositives:
+    - Legitimate WMI automation
+level: high
+tags:
+    - attack.lateral_movement
+    - attack.t1047
+fields:
+    - hostname
+    - process_name
+    - parent_process_name
+    - command_line
