@@ -224,3 +224,95 @@ export async function getGraphCorrelate(eventId: string): Promise<any> {
   const r = await fetch(`${BASE}/graph/correlate?event_id=${encodeURIComponent(eventId)}`)
   return r.json()
 }
+
+// --- Phase 9: Intelligence & Analyst Augmentation ---
+
+export interface ScoreRequest {
+  detection_id?: string;
+  event_ids?: string[];
+}
+
+export interface ScoreResponse {
+  scored_entities: Record<string, number>;
+  top_entity: string | null;
+  top_score: number;
+}
+
+export interface ThreatItem {
+  id: string;
+  rule_name: string;
+  severity: string;
+  risk_score: number;
+  attack_technique: string | null;
+  attack_tactic: string | null;
+}
+
+export interface TopThreatsResponse {
+  threats: ThreatItem[];
+  total: number;
+}
+
+export interface ExplainRequest {
+  detection_id?: string;
+  investigation?: Record<string, unknown>;
+}
+
+export interface ExplainResponse {
+  what_happened: string;
+  why_it_matters: string;
+  recommended_next_steps: string;
+  evidence_context: string;
+  error?: string;
+}
+
+export interface SavedInvestigation {
+  id: string;
+  detection_id: string;
+  graph_snapshot: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export async function score(request: ScoreRequest): Promise<ScoreResponse> {
+  const resp = await fetch('/api/score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!resp.ok) throw new Error(`score: HTTP ${resp.status}`);
+  return resp.json();
+}
+
+export async function topThreats(limit = 10): Promise<TopThreatsResponse> {
+  const resp = await fetch(`/api/top-threats?limit=${limit}`);
+  if (!resp.ok) throw new Error(`topThreats: HTTP ${resp.status}`);
+  return resp.json();
+}
+
+export async function explain(request: ExplainRequest): Promise<ExplainResponse> {
+  const resp = await fetch('/api/explain', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  if (!resp.ok) throw new Error(`explain: HTTP ${resp.status}`);
+  return resp.json();
+}
+
+export async function saveInvestigation(
+  detectionId: string,
+  graphSnapshot: Record<string, unknown>,
+  metadata: Record<string, unknown> = {},
+): Promise<SavedInvestigation> {
+  const resp = await fetch('/api/investigations/saved', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      detection_id: detectionId,
+      graph_snapshot: graphSnapshot,
+      metadata,
+    }),
+  });
+  if (!resp.ok) throw new Error(`saveInvestigation: HTTP ${resp.status}`);
+  return resp.json();
+}
