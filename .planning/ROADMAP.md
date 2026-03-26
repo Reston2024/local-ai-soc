@@ -528,10 +528,18 @@ Plans:
 **Depends on:** Phase 9 complete
 **Goal:** Close the material compliance gaps identified in the audit-grade compliance report (2026-03-25). Deliver: CI/CD pipeline, prompt injection sanitization, missing operational scripts, Caddy hardening, dependency pinning completion, API authentication, LLM audit logging, and security test coverage. Move posture from "prototype" to "partially compliant / audit-ready for limited scope."
 
-**Plans:** 0/0 plans complete
+**Plans:** 0/9 plans complete
 
 Plans:
-(planned)
+- [ ] 10-01-PLAN.md — Wave 0: TDD stubs for all Phase 10 test files
+- [ ] 10-02-PLAN.md — Wave 1: Prompt injection sanitization (normalizer.py + security tests)
+- [ ] 10-03-PLAN.md — Wave 1: API authentication layer (auth.py + main.py wiring)
+- [ ] 10-04-PLAN.md — Wave 1: LLM audit logging (ollama_client.py + logging.py)
+- [ ] 10-05-PLAN.md — Wave 2: Dependency pinning + REPRODUCIBILITY_RECEIPT.md VERIFIED
+- [ ] 10-06-PLAN.md — Wave 2: CI/CD pipeline (.github/workflows/ci.yml)
+- [ ] 10-07-PLAN.md — Wave 3: Firewall scripts (configure-firewall.ps1 + verify-firewall.ps1)
+- [ ] 10-08-PLAN.md — Wave 3: Docker/Caddy hardening + ACL script
+- [ ] 10-09-PLAN.md — Wave 4: Documentation cleanup (manifest, ADR-019, reproducibility)
 
 ### Requirements
 - P10-T01: CI/CD pipeline — GitHub Actions workflow with lint, test, dependency-audit, secret-scan jobs; test results are machine-verifiable artifacts
