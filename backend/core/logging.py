@@ -144,6 +144,22 @@ def setup_logging(log_level: str = "INFO", log_dir: str = "logs") -> None:
         file_handler.setLevel(numeric_level)
         file_handler.setFormatter(formatter)
         root.addHandler(file_handler)
+
+        # LLM Audit Logger — separate file, no propagation to root logger
+        llm_audit_log = log_path / "llm_audit.jsonl"
+        llm_audit_handler = logging.handlers.RotatingFileHandler(
+            llm_audit_log,
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=5,
+            encoding="utf-8",
+        )
+        llm_audit_handler.setFormatter(formatter)  # reuse same JSON formatter
+
+        llm_audit_logger = logging.getLogger("llm_audit")
+        llm_audit_logger.setLevel(logging.INFO)
+        llm_audit_logger.addHandler(llm_audit_handler)
+        llm_audit_logger.propagate = False  # do NOT send to root/backend logger
+
     except OSError as exc:
         # If we cannot write to the log directory, continue with console only.
         root.warning("Could not open log file: %s", exc)

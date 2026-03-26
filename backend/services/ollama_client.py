@@ -14,12 +14,21 @@ Ollama API reference: https://github.com/ollama/ollama/blob/main/docs/api.md
 
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 from typing import AsyncIterator, Callable, Optional
 
 import httpx
 
 from backend.core.logging import get_logger
+
+_audit_log = logging.getLogger("llm_audit")
+
+
+def _sha256_short(text: str) -> str:
+    """Return first 16 hex chars of SHA-256 hash of text."""
+    return hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()[:16]
 
 log = get_logger(__name__)
 
@@ -141,6 +150,13 @@ class OllamaClient:
         Raises:
             OllamaError: If the API call fails.
         """
+        _audit_log.info("", extra={
+            "event_type": "llm_embed",
+            "model": self.embed_model,
+            "prompt_length": len(text),
+            "prompt_hash": _sha256_short(text),
+            "status": "start",
+        })
         try:
             resp = await self._client.post(
                 "/api/embeddings",
@@ -157,14 +173,38 @@ class OllamaClient:
             embedding = data.get("embedding", [])
             if not embedding:
                 raise OllamaError(f"Empty embedding returned for model {self.embed_model!r}")
+            embedding_str = str(embedding)
+            _audit_log.info("", extra={
+                "event_type": "llm_embed",
+                "model": self.embed_model,
+                "prompt_length": len(text),
+                "prompt_hash": _sha256_short(text),
+                "response_length": len(embedding),
+                "response_hash": _sha256_short(embedding_str),
+                "status": "complete",
+            })
             return embedding
         except OllamaError:
             raise
         except httpx.HTTPStatusError as exc:
+            _audit_log.info("", extra={
+                "event_type": "llm_embed",
+                "model": self.embed_model,
+                "prompt_hash": _sha256_short(text),
+                "status": "error",
+                "error_type": "HTTPStatusError",
+            })
             raise OllamaError(
                 f"Ollama embed HTTP error {exc.response.status_code}: {exc.response.text}"
             ) from exc
         except Exception as exc:
+            _audit_log.info("", extra={
+                "event_type": "llm_embed",
+                "model": self.embed_model,
+                "prompt_hash": _sha256_short(text),
+                "status": "error",
+                "error_type": type(exc).__name__,
+            })
             raise OllamaError(f"Ollama embed failed: {exc}") from exc
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
@@ -226,8 +266,9 @@ class OllamaClient:
         Raises:
             OllamaError: If the API call fails.
         """
+        _effective_model = model or self.model
         payload: dict = {
-            "model": model or self.model,
+            "model": _effective_model,
             "prompt": prompt,
             "stream": False,
             "options": {"temperature": temperature},
@@ -235,6 +276,13 @@ class OllamaClient:
         if system:
             payload["system"] = system
 
+        _audit_log.info("", extra={
+            "event_type": "llm_generate",
+            "model": _effective_model,
+            "prompt_length": len(prompt),
+            "prompt_hash": _sha256_short(prompt),
+            "status": "start",
+        })
         try:
             resp = await self._client.post(
                 "/api/generate",
@@ -255,14 +303,37 @@ class OllamaClient:
                 prompt_len=len(prompt),
                 response_len=len(response_text),
             )
+            _audit_log.info("", extra={
+                "event_type": "llm_generate",
+                "model": _effective_model,
+                "prompt_length": len(prompt),
+                "prompt_hash": _sha256_short(prompt),
+                "response_length": len(response_text),
+                "response_hash": _sha256_short(response_text),
+                "status": "complete",
+            })
             return response_text
         except OllamaError:
             raise
         except httpx.HTTPStatusError as exc:
+            _audit_log.info("", extra={
+                "event_type": "llm_generate",
+                "model": _effective_model,
+                "prompt_hash": _sha256_short(prompt),
+                "status": "error",
+                "error_type": "HTTPStatusError",
+            })
             raise OllamaError(
                 f"Ollama generate HTTP error {exc.response.status_code}: {exc.response.text}"
             ) from exc
         except Exception as exc:
+            _audit_log.info("", extra={
+                "event_type": "llm_generate",
+                "model": _effective_model,
+                "prompt_hash": _sha256_short(prompt),
+                "status": "error",
+                "error_type": type(exc).__name__,
+            })
             raise OllamaError(f"Ollama generate failed: {exc}") from exc
 
     # ------------------------------------------------------------------
