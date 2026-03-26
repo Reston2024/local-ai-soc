@@ -93,7 +93,7 @@
 
 | Deliverable | Files | Verification |
 |-------------|-------|-------------|
-| Normalized event schema | `backend/models/event.py` | 10 fixture events validate without error | 4/9 | In Progress|  | New parser added without changing existing code |
+| Normalized event schema | `backend/models/event.py` | 10 fixture events validate without error | 5/9 | In Progress|  | New parser added without changing existing code |
 | EVTX parser (pyevtx-rs) | `ingestion/parsers/evtx.py` | 100MB+ Security.evtx parses without memory spike |
 | JSON/NDJSON/CSV parsers | `ingestion/parsers/json_ndjson.py`, `ingestion/parsers/csv_parser.py` | 3 fixture files ingest correctly | 2/3 | Complete    | 2026-03-16 | Deduplication on re-ingest tested |
 | Chroma embedding loader | `ingestion/loader.py` | Semantic search returns relevant events |
@@ -527,7 +527,7 @@ Plans:
 **Depends on:** Phase 9 complete
 **Goal:** Close the material compliance gaps identified in the audit-grade compliance report (2026-03-25). Deliver: CI/CD pipeline, prompt injection sanitization, missing operational scripts, Caddy hardening, dependency pinning completion, API authentication, LLM audit logging, and security test coverage. Move posture from "prototype" to "partially compliant / audit-ready for limited scope."
 
-**Plans:** 4/9 plans executed
+**Plans:** 5/9 plans executed
 
 Plans:
 - [ ] 10-01-PLAN.md — Wave 0: TDD stubs for all Phase 10 test files
