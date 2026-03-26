@@ -331,3 +331,39 @@
 
 **Sigma rules created:** c2_beacon.yml (T1071.001), registry_persistence.yml (T1547.001), lsass_access.yml (T1003.001), wmi_lateral.yml (T1047).
 
+---
+
+## ADR-019: backend/src/ Directory — Deprecation and Scheduled Deletion
+
+**Date:** 2026-03-26
+**Status:** Accepted
+**Deciders:** AI-SOC-Brain Phase 10 compliance hardening
+
+### Context
+
+The `backend/src/` directory exists as a legacy artifact from Phase 1-2 development when
+the project structure was still being established. The canonical Python package layout is
+`backend/` (flat, no `src/` nesting). The `backend/src/` path is not imported anywhere in
+the active codebase (verified 2026-03-25 audit).
+
+The Phase 10 compliance audit flagged this as a documentation contradiction — some early
+docs reference `backend/src/` paths that no longer correspond to active code.
+
+### Decision
+
+**Retire, do not delete in Phase 10.** Mark the directory as deprecated with header
+comments and document this ADR. Deletion is deferred to Phase 11 to avoid any unforeseen
+import path regressions during the compliance hardening window.
+
+### Consequences
+
+- `backend/src/__init__.py` receives a deprecation header comment
+- `docs/manifest.md` documents `backend/src/` under "Deprecated Paths"
+- Phase 11 executor must delete `backend/src/` entirely and verify no import breakage
+- No code imports `backend/src.*` — deletion risk is low
+
+### Alternatives Considered
+
+- **Delete in Phase 10:** Rejected — increases blast radius of compliance-only phase
+- **Keep indefinitely:** Rejected — causes ongoing audit confusion
+
