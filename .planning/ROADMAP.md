@@ -491,7 +491,7 @@ Plans:
 **Depends on:** Phase 8 (full investigation platform operational)
 **Goal:** Transform the system from a data-driven investigation tool into an intelligent SOC assistant that prioritizes threats, explains what is happening, and reduces analyst cognitive load.
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 - [x] 09-00-PLAN.md — Wave 0: TDD stubs (all 9 xfail test classes across 7 test files)
@@ -500,7 +500,7 @@ Plans:
 - [ ] 09-03-PLAN.md — Wave 2: POST /api/score + GET /api/top-threats routers + main.py wiring
 - [ ] 09-04-PLAN.md — Wave 2: explain_engine.py + POST /api/explain router (parallel with 09-03)
 - [ ] 09-05-PLAN.md — Wave 3: Dashboard upgrade — InvestigationPanel.svelte risk badges + panels + api.ts extensions
-- [ ] 09-06-PLAN.md — Wave 4: Saved investigations API + full Phase 9 suite verification
+- [x] 09-06-PLAN.md — Wave 4: Saved investigations API + full Phase 9 suite verification (completed 2026-03-26)
 
 ### Requirements
 - P9-T01: Risk scoring engine assigns numeric scores to events, entities, and attack paths
