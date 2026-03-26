@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: completed
-last_updated: "2026-03-26T20:24:24.018Z"
+last_updated: "2026-03-26T20:25:34.545Z"
 progress:
   total_phases: 11
   completed_phases: 8
   total_plans: 50
-  completed_plans: 52
+  completed_plans: 53
   percent: 100
 ---
 
@@ -841,4 +841,25 @@ decisions:
   - "11-02: Docker unavailable during execution — Caddy digest pinning deferred with explicit TODO(P11-T02) comment containing exact commands"
   - "11-02: engine.py deferred import patched from backend.src.graph.builder to canonical graph.builder path before backend/src/ deletion"
   - "11-02: Used build_causality_sync (not build_alert_chain) for import verification — plan had incorrect function name"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 11 (in progress)
+current_plan: 11-01 complete — Wave 0 test stubs: 5 new unit test files + unit marker in pyproject.toml; 27 new tests; 139 total unit tests collectible without errors
+status: in_progress
+last_updated: "2026-03-26T20:25:00Z"
+progress:
+  completed_phases: 10
+  total_plans: 6
+  completed_plans: 3
+  percent: 50
+decisions:
+  - "11-01: rule_to_sql takes SigmaRule object not raw YAML — tests use SigmaRule.from_yaml() then pass to matcher"
+  - "11-01: DuckDBStore constructor takes data_dir not file path; initialise_schema() (British spelling); start_write_worker() required before writes"
+  - "11-01: fetch_all returns list[tuple] not list[dict] — assertions use index access"
+  - "11-01: IngestionLoader.ingest_file returns IngestionResult with errors list on missing file (no raise)"
+  - "11-01: build_timeline signature is (case_id, duckdb_store, sqlite_store) — test mocks sqlite_store returning None"
 ---
