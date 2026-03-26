@@ -569,7 +569,7 @@ Plans:
 - P11-T03: Raise test coverage to ≥70% — add unit tests for ingestion pipeline, detection/matching, and store wrappers until `pytest --cov-fail-under=70` passes; update CI threshold from 25 to 70
 - P11-T04: Documentation update — update docs/manifest.md to remove `backend/src/` from deprecated paths (it no longer exists); update ROADMAP.md status for Phase 11
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 11-01-PLAN.md — Wave 0 test stubs (pyproject.toml marker, 5 new test files)
