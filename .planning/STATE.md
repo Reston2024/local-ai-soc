@@ -5,9 +5,25 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: completed
+last_updated: "2026-03-26T20:24:24.018Z"
+progress:
+  total_phases: 11
+  completed_phases: 8
+  total_plans: 50
+  completed_plans: 52
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: completed
 last_updated: "2026-03-26T16:46:04.400Z"
 progress:
-  total_phases: 10
+  [██████████] 100%
   completed_phases: 7
   total_plans: 46
   completed_plans: 48
@@ -807,3 +823,22 @@ Next action: Milestone complete — ready for /gsd:complete-milestone
 - 2026-03-17: Phase 8 plan 03 complete. Documentation + smoke test finalization. scripts/smoke-test-phase8.ps1 (7 checks: HTTPS/HTTP/Ollama/GPU/osquery/pytest/dashboard), REPRODUCIBILITY_RECEIPT.md TBD versions filled (fastapi 0.115.12, duckdb 1.3.0, chromadb 1.5.5 etc.), ARCHITECTURE.md OsqueryCollector section added, main.py docstring corrected (start.sh→start.cmd, forward slash to avoid SyntaxWarning). 102 passed 0 failures. Phase 8 FULLY COMPLETE. v1.0 milestone complete.
 - 2026-03-26: Phase 10 plan 07 complete. Firewall hardening scripts for Ollama port 11434 (T-03). configure-firewall.ps1: Admin elevation check, idempotent remove+create, BLOCK rule (all) + ALLOW rule (127.0.0.1 + 172.16.0.0/12). verify-firewall.ps1: read-only rule checks, exits 0/1. status.ps1: non-blocking firewall preflight added after banner. Stops at: 10-07-PLAN.md complete.
 - 2026-03-26: Phase 10 plan 09 complete. Documentation cleanup. docs/manifest.md regenerated to Phase 9-10 reality (full file tree, updated API endpoints, deprecated paths section). ADR-019 appended to DECISION_LOG.md (backend/src/ deprecation — mark Phase 10, delete Phase 11). docs/reproducibility.md stub replaced with redirect to REPRODUCIBILITY_RECEIPT.md. docs/decision-log.md diverged content replaced with redirect to canonical DECISION_LOG.md. backend/src/__init__.py deprecation header added. 99 passed 2 xfailed 16 xpassed. Commit 5ac8679. Stops at: 10-09-PLAN.md complete.
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 11 (in progress)
+current_plan: 11-02 complete — backend/src/ deleted (32 files, 3874 lines), backend/Dockerfile deleted, engine.py deferred import patched to canonical graph.builder, Caddy digest pinning deferred (Docker unavailable)
+status: in_progress
+last_updated: "2026-03-26T20:29:00Z"
+progress:
+  completed_phases: 10
+  total_plans: 6
+  completed_plans: 2
+  percent: 33
+decisions:
+  - "11-02: Docker unavailable during execution — Caddy digest pinning deferred with explicit TODO(P11-T02) comment containing exact commands"
+  - "11-02: engine.py deferred import patched from backend.src.graph.builder to canonical graph.builder path before backend/src/ deletion"
+  - "11-02: Used build_causality_sync (not build_alert_chain) for import verification — plan had incorrect function name"
+---
