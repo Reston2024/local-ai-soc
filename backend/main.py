@@ -21,12 +21,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.core.auth import verify_token
 from backend.core.config import Settings
 from backend.core.deps import Stores
 from backend.core.logging import get_logger, setup_logging
@@ -242,76 +243,76 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     # Routers
     # -----------------------------------------------------------------------
-    app.include_router(health_router)                          # /health
-    app.include_router(events_router,  prefix="/api")           # /api/events
-    app.include_router(ingest_router,  prefix="/api")           # /api/ingest
-    app.include_router(query_router,   prefix="/api")           # /api/query
-    app.include_router(detect_router,  prefix="/api")           # /api/detect
-    app.include_router(graph_router,   prefix="/api")           # /api/graph
-    app.include_router(export_router,  prefix="/api")           # /api/export
+    app.include_router(health_router)                          # /health — unauthenticated
+    app.include_router(events_router,  prefix="/api", dependencies=[Depends(verify_token)])   # /api/events
+    app.include_router(ingest_router,  prefix="/api", dependencies=[Depends(verify_token)])   # /api/ingest
+    app.include_router(query_router,   prefix="/api", dependencies=[Depends(verify_token)])   # /api/query
+    app.include_router(detect_router,  prefix="/api", dependencies=[Depends(verify_token)])   # /api/detect
+    app.include_router(graph_router,   prefix="/api", dependencies=[Depends(verify_token)])   # /api/graph
+    app.include_router(export_router,  prefix="/api", dependencies=[Depends(verify_token)])   # /api/export
 
     # -----------------------------------------------------------------------
     # Deferred routers (graceful degradation if modules absent)
     # -----------------------------------------------------------------------
     try:
         from backend.causality.causality_routes import causality_router
-        app.include_router(causality_router, prefix="/api")
+        app.include_router(causality_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("Causality router mounted at /api/causality")
     except ImportError as exc:
         log.warning("Causality module not available — skipping router mount: %s", exc)
 
     try:
         from backend.investigation.investigation_routes import investigation_router
-        app.include_router(investigation_router)
+        app.include_router(investigation_router, dependencies=[Depends(verify_token)])
         log.info("Investigation router mounted at /api")
     except ImportError as exc:
         log.warning("Investigation module not available — skipping router mount: %s", exc)
 
     try:
         from backend.api.correlate import router as correlate_router
-        app.include_router(correlate_router, prefix="/api")
+        app.include_router(correlate_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("Correlate router mounted at /api/correlate")
     except ImportError as exc:
         log.warning("Correlate router not available: %s", exc)
 
     try:
         from backend.api.investigate import router as investigate_router
-        app.include_router(investigate_router, prefix="/api")
+        app.include_router(investigate_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("Investigate router mounted at /api/investigate")
     except ImportError as exc:
         log.warning("Investigate router not available: %s", exc)
 
     try:
         from backend.api.telemetry import router as telemetry_router
-        app.include_router(telemetry_router, prefix="/api")
+        app.include_router(telemetry_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("Telemetry router mounted at /api/telemetry")
     except ImportError as exc:
         log.warning("Telemetry module not available — skipping router mount: %s", exc)
 
     try:
         from backend.api.score import router as score_router
-        app.include_router(score_router, prefix="/api")
+        app.include_router(score_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("score router mounted at /api/score")
     except ImportError as exc:
         log.warning("score router not available: %s", exc)
 
     try:
         from backend.api.top_threats import router as top_threats_router
-        app.include_router(top_threats_router, prefix="/api")
+        app.include_router(top_threats_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("top-threats router mounted at /api/top-threats")
     except ImportError as exc:
         log.warning("top-threats router not available: %s", exc)
 
     try:
         from backend.api.explain import router as explain_router
-        app.include_router(explain_router, prefix="/api")
+        app.include_router(explain_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("explain router mounted at /api/explain")
     except ImportError as exc:
         log.warning("explain router not available: %s", exc)
 
     try:
         from backend.api.investigations import router as investigations_router
-        app.include_router(investigations_router, prefix="/api")
+        app.include_router(investigations_router, prefix="/api", dependencies=[Depends(verify_token)])
         log.info("investigations router mounted at /api/investigations")
     except ImportError as exc:
         log.warning("investigations router not available: %s", exc)

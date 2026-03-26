@@ -20,7 +20,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from backend.core.logging import get_logger
-from backend.models.event import DetectionRecord
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/detect", tags=["detect"])

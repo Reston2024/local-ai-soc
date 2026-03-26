@@ -56,4 +56,81 @@ class EventListResponse(BaseModel):
     has_next: bool
 
 
-__all__ = ["NormalizedEvent", "EventListResponse"]
+class GraphEntity(BaseModel):
+    """An entity node in the investigation graph (host, user, process, etc.)."""
+
+    id: str
+    type: str
+    label: str = ""
+    attributes: dict = Field(default_factory=dict)
+    first_seen: str = ""
+    last_seen: str = ""
+    evidence: list[str] = Field(default_factory=list)
+
+
+class GraphEdge(BaseModel):
+    """A directed relationship edge between two graph entities."""
+
+    id: str
+    type: str
+    src: str
+    dst: str
+    timestamp: str = ""
+    evidence_event_ids: list[str] = Field(default_factory=list)
+
+
+class GraphResponse(BaseModel):
+    """Response model for graph traversal and case-graph endpoints."""
+
+    entities: list[GraphEntity] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+    total_entities: int = 0
+    total_edges: int = 0
+
+    @classmethod
+    def from_stores(
+        cls,
+        entities: list[dict],
+        edges: list[dict],
+        root_entity_id: Optional[str] = None,
+        depth: Optional[int] = None,
+    ) -> "GraphResponse":
+        """Build a GraphResponse from raw dicts returned by the SQLite store."""
+        entity_objs = [
+            GraphEntity(
+                id=e.get("id", ""),
+                type=e.get("entity_type", e.get("type", "")),
+                label=e.get("entity_name", e.get("label", e.get("id", ""))),
+                attributes=e.get("attributes", {}),
+                first_seen=str(e.get("first_seen", "")),
+                last_seen=str(e.get("last_seen", "")),
+                evidence=e.get("evidence", []),
+            )
+            for e in entities
+        ]
+        edge_objs = [
+            GraphEdge(
+                id=ed.get("id", ""),
+                type=ed.get("edge_type", ed.get("type", "")),
+                src=ed.get("source_id", ed.get("src", "")),
+                dst=ed.get("target_id", ed.get("dst", "")),
+                timestamp=str(ed.get("timestamp", "")),
+                evidence_event_ids=ed.get("evidence_event_ids", []),
+            )
+            for ed in edges
+        ]
+        return cls(
+            entities=entity_objs,
+            edges=edge_objs,
+            total_entities=len(entity_objs),
+            total_edges=len(edge_objs),
+        )
+
+
+__all__ = [
+    "NormalizedEvent",
+    "EventListResponse",
+    "GraphEntity",
+    "GraphEdge",
+    "GraphResponse",
+]
