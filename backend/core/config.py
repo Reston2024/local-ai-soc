@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     OSQUERY_LOG_PATH: str = r"C:\Program Files\osquery\log\osqueryd.results.log"
     OSQUERY_POLL_INTERVAL: int = 5  # seconds between log checks
 
+    # Authentication (optional — empty string = open/dev mode)
+    AUTH_TOKEN: str = ""
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
