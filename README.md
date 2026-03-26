@@ -2,8 +2,10 @@
 
 Local Windows desktop AI cybersecurity investigation platform.
 
-Phase 7 complete — ingestion, detection, graph correlation, causality engine,
-threat hunting, case management, Svelte 5 dashboard.
+Phase 10 complete — ingestion, detection, graph correlation, causality engine,
+threat hunting, case management, Svelte 5 dashboard, compliance hardening (auth,
+audit logging, CI pipeline, dep pinning, ACL/firewall scripts). Phase 11 cleanup
+complete: backend/src/ deleted, test coverage ≥70%, CI threshold enforced.
 
 ## Prerequisites
 
