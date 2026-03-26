@@ -29,6 +29,13 @@ Write-Host "  AI-SOC-Brain  |  Service Status" -ForegroundColor White
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host ""
 
+# --- Firewall Preflight ---
+Write-Host "[*] Checking firewall configuration (T-03)..." -ForegroundColor Cyan
+& "$PSScriptRoot\verify-firewall.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "  Firewall check failed — run scripts/configure-firewall.ps1 as Administrator to fix"
+}
+
 Check-Service "FastAPI Backend" "http://localhost:8000/health"
 Check-Service "Ollama"          "http://localhost:11434"
 
