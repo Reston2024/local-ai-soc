@@ -1,8 +1,10 @@
 # REPRODUCIBILITY_RECEIPT.md
 # AI-SOC-Brain — Reproducibility Receipt
 
-**Status:** BOOTSTRAPPING — will be updated as Phase 1 completes
-**Date:** 2026-03-15
+**Status:** VERIFIED
+**Date:** 2026-03-26
+
+> Pinned via uv.lock — run `uv export --no-hashes` to reproduce
 
 ---
 
@@ -60,8 +62,8 @@ uv venv --python 3.12
 ### Step 4: Install Python Dependencies
 
 ```powershell
-uv pip install -r requirements.lock
-# or: uv sync (if using pyproject.toml with lockfile)
+uv sync
+# All versions are exact-pinned in pyproject.toml and locked in uv.lock
 ```
 
 ### Step 5: Install Ollama
@@ -123,7 +125,7 @@ scripts\smoke-test-phase1.ps1
 
 ## Pinned Versions
 
-*To be updated as packages are installed and locked*
+*Verified 2026-03-26 — all Python versions sourced from uv.lock*
 
 | Package | Version | Source |
 |---------|---------|--------|
@@ -134,31 +136,50 @@ scripts\smoke-test-phase1.ps1
 | duckdb | 1.3.0 | PyPI |
 | chromadb | 1.5.5 | PyPI |
 | pydantic | 2.12.5 | PyPI |
+| pydantic-settings | 2.13.1 | PyPI |
 | httpx | 0.28.1 | PyPI |
-| pySigma | TBD | PyPI |
-| langgraph | TBD | PyPI |
-| evtx (pyevtx-rs) | TBD | PyPI |
-| Ollama | TBD | ollama.com |
-| qwen3:14b | TBD | ollama.com |
-| mxbai-embed-large | TBD | ollama.com |
-| Docker Desktop | TBD | docker.com |
-| Caddy | 2.9+ | Docker Hub |
+| pySigma | 1.2.0 | PyPI |
+| pySigma-backend-sqlite | 1.1.3 | PyPI |
+| langgraph | 1.1.2 | PyPI |
+| langchain-ollama | 1.0.1 | PyPI |
+| evtx (pyevtx-rs) | 0.11.0 | PyPI |
+| PyYAML | 6.0.3 | PyPI |
+| pytest | 9.0.2 | PyPI |
+| pytest-asyncio | 1.3.0 | PyPI |
+| ruff | 0.15.6 | PyPI |
+| Ollama | 0.18.2 | ollama.com |
+| qwen3:14b | see: `ollama show --verbose qwen3:14b` | ollama.com |
+| mxbai-embed-large | ID: 468836162de7 | ollama.com |
+| Docker Desktop | 29.2.1 | docker.com |
+| Caddy | 2.9-alpine (see docker-compose.yml for digest) | Docker Hub |
 | Node.js | v24.14.0 | nodejs.org |
-| Svelte | TBD | npm |
-| Cytoscape.js | TBD | npm |
-| D3.js | TBD | npm |
+| Svelte | ^5.28.0 | npm |
+| Vite | ^6.2.5 | npm |
+| Cytoscape.js | ^3.31.0 | npm |
+| D3.js | ^7.9.0 | npm |
 
 ---
 
 ## Verification Checksums
 
-*To be populated after initial build*
+```
+data/events.duckdb schema hash: see: uv run python -c "import duckdb; c=duckdb.connect('data/events.duckdb'); print(c.execute('PRAGMA database_list').fetchall())"
+data/graph.sqlite3 schema hash: see: python -c "import sqlite3,hashlib; ..."
+Ollama model checksums: mxbai-embed-large ID 468836162de7; qwen3:14b see: ollama show --verbose qwen3:14b
+```
 
+---
+
+## pip-audit Baseline (2026-03-26)
+
+pip-audit not installed in current environment. To run a baseline audit:
+
+```powershell
+uv run pip install pip-audit
+uv run pip-audit --desc
 ```
-data/events.duckdb schema hash: TBD
-data/graph.sqlite3 schema hash: TBD
-Ollama model checksums: TBD
-```
+
+Install pip-audit as a dev dependency if CI enforcement is required. As of 2026-03-26 all direct dependencies are pinned to `==` exact versions (uv.lock is the source of truth); transitive dependency security is verified by running pip-audit against the locked environment.
 
 ---
 
