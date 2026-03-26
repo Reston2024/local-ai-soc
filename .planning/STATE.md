@@ -3,11 +3,46 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 9 (in progress)
+current_plan: 09-04 complete — explain_engine.py (build_evidence_context, generate_explanation, _parse_explanation_sections) + POST /api/explain router with graceful Ollama fallback; main.py deferred mount; 6 XPASS 82 passed 10 xpassed 0 new failures
+status: in_progress
+last_updated: "2026-03-26T07:05:00Z"
+progress:
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 40
+  completed_plans: 38
+  percent: 95
+decisions:
+  - "09-04: Removed strict=True xfail markers after implementation — tests pass cleanly rather than XPASS(strict) FAILED (consistent with 09-01/02/03 pattern)"
+  - "09-04: OllamaClient accessed via request.app.state.ollama — verified pattern, not unverified get_ollama_client() from deps.py"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-26T07:04:36.242Z"
+progress:
+  total_phases: 9
+  completed_phases: 6
+  total_plans: 37
+  completed_plans: 40
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 9 (in progress)
 current_plan: 09-03 complete — POST /api/score + GET /api/top-threats FastAPI routers; SQLite risk_score write-back; both routers mounted in main.py via try/except; 6 XPASS 82 passed 6 xfailed 0 failed
 status: in_progress
 last_updated: "2026-03-26T07:02:00Z"
 progress:
-  total_phases: 9
+  [██████████] 100%
   completed_phases: 8
   total_plans: 40
   completed_plans: 37
