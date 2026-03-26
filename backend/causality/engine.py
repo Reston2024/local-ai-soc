@@ -81,7 +81,7 @@ def build_causality_sync(alert_id: str, events: list, alerts: list) -> dict:
 
     # Step 8: Build graph (import deferred to avoid startup failure if builder absent)
     try:
-        from backend.src.graph.builder import build_graph
+        from graph.builder import build_graph
         alert_dicts = [a if isinstance(a, dict) else a.model_dump() for a in chain_alerts]
         graph = build_graph(chain_events, alert_dicts)
         nodes = [n.model_dump() for n in graph.nodes]
