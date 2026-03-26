@@ -39,6 +39,19 @@ Write-Host "  AI-SOC-Brain  |  Starting services" -ForegroundColor White
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray
 Write-Host ""
 
+# --- ACL Preflight (non-blocking warning) ---
+$DataDir = Join-Path $PSScriptRoot "..\data"
+if (Test-Path $DataDir) {
+    $acl = Get-Acl $DataDir -ErrorAction SilentlyContinue
+    $hasEveryoneAccess = $acl.Access | Where-Object {
+        $_.IdentityReference -match "Everyone" -and $_.AccessControlType -eq "Allow"
+    }
+    if ($hasEveryoneAccess) {
+        Write-Warning "[SECURITY] data/ is accessible to 'Everyone'."
+        Write-Warning "           Run: pwsh scripts/configure-acls.ps1 (as Administrator) to restrict access."
+    }
+}
+
 # --- Pre-flight checks ---
 Write-Step "Pre-flight checks"
 
