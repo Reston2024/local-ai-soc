@@ -66,10 +66,9 @@ class ChromaStore:
         Returns:
             A Chroma Collection handle.
         """
-        meta = metadata or {}
         collection = self._client.get_or_create_collection(
             name=name,
-            metadata=meta,
+            **({"metadata": metadata} if metadata else {}),
         )
         log.debug("Collection ready", collection=name)
         return collection
@@ -106,12 +105,15 @@ class ChromaStore:
             metadatas:       Optional per-document metadata dicts.
         """
         collection = self.get_or_create_collection(collection_name)
-        collection.upsert(
-            ids=ids,
-            documents=documents,
-            embeddings=embeddings,
-            metadatas=metadatas or [{} for _ in ids],
-        )
+        # Chroma 1.5+ rejects empty metadata dicts — only pass metadatas when provided
+        upsert_kwargs: dict = {
+            "ids": ids,
+            "documents": documents,
+            "embeddings": embeddings,
+        }
+        if metadatas:
+            upsert_kwargs["metadatas"] = metadatas
+        collection.upsert(**upsert_kwargs)
         log.debug(
             "Documents added to Chroma",
             collection=collection_name,
