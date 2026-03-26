@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** IN PROGRESS — Phase 9 execution (09-00 complete: wave-0 TDD stubs)
+**Status:** COMPLETE — All 9 phases delivered (v1.0 milestone)
 
 ---
 
@@ -140,8 +140,8 @@
 
 ---
 
-## Phase 3: Detection + RAG (Scoped)
-**Status:** PLANNING COMPLETE
+## Phase 3: Detection + RAG (Scoped) ✅
+**Status:** COMPLETE — 2026-03-16
 **Depends on:** Phase 2 complete (need ingested events in DuckDB + Chroma)
 **Goal:** OpenSearch live indexing + Sigma YAML detection rules surfaced in /alerts. Keep all 32 existing tests passing.
 
@@ -209,8 +209,8 @@ Plans:
 
 ---
 
-## Phase 4: Graph + Correlation
-**Status:** PLANNING COMPLETE
+## Phase 4: Graph + Correlation ✅
+**Status:** COMPLETE — 2026-03-16
 **Depends on:** Phase 3 (need detection records + entity edges from ingestion)
 **Goal:** Build queryable investigation graph and correlate events into investigation threads.
 
@@ -255,8 +255,8 @@ Plans:
 
 ---
 
-## Phase 5: Dashboard
-**Status:** PLANNING COMPLETE
+## Phase 5: Dashboard ✅
+**Status:** COMPLETE — 2026-03-16
 **Depends on:** Phase 4 (all API endpoints stable and returning real data)
 **Goal:** Suricata EVE JSON ingestion, ATT&CK-aware threat scoring, and score/tag display in the existing dashboard.
 
@@ -318,8 +318,8 @@ Plans:
 
 ---
 
-## Phase 6: Hardening + Integration
-**Status:** PLANNING COMPLETE
+## Phase 6: Hardening + Integration ✅
+**Status:** COMPLETE — 2026-03-16
 **Depends on:** Phase 5 (system fully functional, ready for operational polish)
 **Goal:** Threat Causality & Investigation Engine — reconstruct attack chains from correlated events, expose via investigation graph APIs, and surface in the SOC dashboard.
 
@@ -360,8 +360,8 @@ Plans:
 
 ---
 
-## Phase 7: Threat Hunting & Case Management
-**Status:** PLANNING COMPLETE
+## Phase 7: Threat Hunting & Case Management ✅
+**Status:** COMPLETE — 2026-03-17
 **Depends on:** Phase 6 (causality engine, graph model, DuckDB + SQLite stores)
 **Goal:** Full investigation workflow layer — structured cases, threat hunting queries, timeline reconstruction, and forensic artifact storage.
 
@@ -486,8 +486,8 @@ Plans:
 
 ---
 
-## Phase 9: Intelligence & Analyst Augmentation
-**Status:** PLANNING COMPLETE
+## Phase 9: Intelligence & Analyst Augmentation ✅
+**Status:** COMPLETE — 2026-03-26
 **Depends on:** Phase 8 (full investigation platform operational)
 **Goal:** Transform the system from a data-driven investigation tool into an intelligent SOC assistant that prioritizes threats, explains what is happening, and reduces analyst cognitive load.
 
@@ -500,7 +500,8 @@ Plans:
 - [ ] 09-03-PLAN.md — Wave 2: POST /api/score + GET /api/top-threats routers + main.py wiring
 - [ ] 09-04-PLAN.md — Wave 2: explain_engine.py + POST /api/explain router (parallel with 09-03)
 - [ ] 09-05-PLAN.md — Wave 3: Dashboard upgrade — InvestigationPanel.svelte risk badges + panels + api.ts extensions
-- [x] 09-06-PLAN.md — Wave 4: Saved investigations API + full Phase 9 suite verification (completed 2026-03-26)
+- [x] 09-06-PLAN.md — Wave 4: Saved investigations API + full Phase 9 suite verification
+ (completed 2026-03-26)
 
 ### Requirements
 - P9-T01: Risk scoring engine assigns numeric scores to events, entities, and attack paths

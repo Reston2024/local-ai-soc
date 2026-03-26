@@ -71,7 +71,7 @@ artifacts/
 *.evtx
 
 # --- AI / Models ---
-models/
+/models/
 *.bin
 *.gguf
 *.pt

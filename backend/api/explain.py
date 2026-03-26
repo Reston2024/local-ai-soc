@@ -44,7 +44,7 @@ async def _run_explanation(request: Request, body: ExplainRequest) -> ExplainRes
     if body.investigation:
         investigation = body.investigation
     elif body.detection_id:
-        investigation = await _assemble_investigation(body.detection_id)
+        investigation = await _assemble_investigation(request, body.detection_id)
 
     evidence_context = build_evidence_context(investigation)
 
@@ -61,12 +61,11 @@ async def _run_explanation(request: Request, body: ExplainRequest) -> ExplainRes
     )
 
 
-async def _assemble_investigation(detection_id: str) -> dict:
+async def _assemble_investigation(request: Request, detection_id: str) -> dict:
     """Build a minimal investigation dict from SQLite detection record."""
     import json
-    from backend.core.deps import get_sqlite_store
     try:
-        sqlite_store = next(get_sqlite_store())
+        sqlite_store = request.app.state.stores.sqlite
         row = await asyncio.to_thread(
             lambda: sqlite_store._conn.execute(
                 "SELECT id, rule_name, severity, attack_technique, attack_tactic, "
@@ -93,8 +92,7 @@ async def _assemble_investigation(detection_id: str) -> dict:
         # Optionally enrich with DuckDB events
         if matched_ids:
             try:
-                from backend.core.deps import get_duckdb_store
-                duckdb_store = next(get_duckdb_store())
+                duckdb_store = request.app.state.stores.duckdb
                 placeholders = ",".join("?" * len(matched_ids))
                 event_rows = await duckdb_store.fetch_all(
                     f"SELECT * FROM normalized_events WHERE event_id IN ({placeholders})",
