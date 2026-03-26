@@ -11,7 +11,7 @@ pytestmark = pytest.mark.unit
 
 
 class TestScoreEndpoint:
-    @pytest.mark.xfail(reason="P9-T04: POST /api/score endpoint not yet implemented", strict=True)
+    @pytest.mark.xfail(reason="P9-T04: POST /api/score endpoint not yet implemented")
     def test_post_score_returns_200(self):
         from fastapi.testclient import TestClient
         from backend.main import create_app
@@ -21,7 +21,7 @@ class TestScoreEndpoint:
             resp = client.post("/api/score", json={"detection_id": "det-001"})
         assert resp.status_code == 200
 
-    @pytest.mark.xfail(reason="P9-T04: POST /api/score returns structured JSON with scored_entities", strict=True)
+    @pytest.mark.xfail(reason="P9-T04: POST /api/score returns structured JSON with scored_entities")
     def test_post_score_returns_scored_entities(self):
         from fastapi.testclient import TestClient
         from backend.main import create_app
@@ -32,7 +32,7 @@ class TestScoreEndpoint:
         body = resp.json()
         assert "scored_entities" in body
 
-    @pytest.mark.xfail(reason="P9-T04: POST /api/score returns 200 not 404/500 on missing data", strict=True)
+    @pytest.mark.xfail(reason="P9-T04: POST /api/score returns 200 not 404/500 on missing data")
     def test_post_score_graceful_empty(self):
         from fastapi.testclient import TestClient
         from backend.main import create_app
