@@ -3,11 +3,31 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 9 (in progress)
+current_plan: 09-02 complete — SQLiteStore saved_investigations table + risk_score migration + 3 CRUD methods (save_investigation, list_saved_investigations, get_saved_investigation); 82 passed 12 xfailed 4 xpassed 0 failed
+status: in_progress
+last_updated: "2026-03-25T00:00:00Z"
+progress:
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 40
+  completed_plans: 36
+  percent: 90
+decisions:
+  - "09-02: Used uuid4().hex as investigation ID — consistent with existing uuid4() usage in store"
+  - "09-02: ALTER TABLE migration wrapped in try/except for idempotency on existing databases"
+  - "09-02: Removed strict=True xfail markers after implementation — tests pass cleanly"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 9 (in progress)
 current_plan: 09-01 complete — backend/intelligence package with risk_scorer.py (MITRE_WEIGHTS, score_entity, score_detection, enrich_nodes_with_risk_score) and anomaly_rules.py (ANO-001 through ANO-004, check_event_anomalies); 79 passed 15 xfailed 0 failed
 status: in_progress
 last_updated: "2026-03-26T06:52:00Z"
 progress:
-  total_phases: 9
+  [██████████] 100%
   completed_phases: 8
   total_plans: 40
   completed_plans: 35
