@@ -122,6 +122,16 @@ CREATE TABLE IF NOT EXISTS case_tags (
 CREATE INDEX IF NOT EXISTS idx_inv_cases_status ON investigation_cases (case_status);
 CREATE INDEX IF NOT EXISTS idx_artifacts_case   ON case_artifacts (case_id);
 CREATE INDEX IF NOT EXISTS idx_tags_case        ON case_tags (case_id);
+
+CREATE TABLE IF NOT EXISTS saved_investigations (
+    id              TEXT PRIMARY KEY,
+    detection_id    TEXT,
+    graph_snapshot  TEXT NOT NULL,
+    metadata        TEXT,
+    created_at      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_inv_detection ON saved_investigations (detection_id);
 """
 
 
@@ -155,6 +165,16 @@ class SQLiteStore:
         # Apply schema
         self._conn.executescript(_DDL)
         self._conn.commit()
+
+        # Backward-compatible migration: add risk_score to detections if absent
+        try:
+            self._conn.execute(
+                "ALTER TABLE detections ADD COLUMN risk_score INTEGER DEFAULT 0"
+            )
+            self._conn.commit()
+        except Exception:
+            pass  # column already exists — idempotent
+
         log.info("SQLite store initialised", db_path=self._db_path)
 
     # ------------------------------------------------------------------
@@ -627,6 +647,68 @@ class SQLiteStore:
                 except json.JSONDecodeError:
                     d[field] = []
         return d
+
+    # ------------------------------------------------------------------
+    # Saved investigations (Phase 9)
+    # ------------------------------------------------------------------
+
+    def save_investigation(
+        self,
+        detection_id: str,
+        graph_snapshot: dict,
+        metadata: dict,
+    ) -> str:
+        """Persist an investigation snapshot. Returns the new investigation ID."""
+        from uuid import uuid4 as _uuid4
+        inv_id = _uuid4().hex
+        created_at = _now_iso()
+        self._conn.execute(
+            "INSERT INTO saved_investigations "
+            "(id, detection_id, graph_snapshot, metadata, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                inv_id,
+                detection_id,
+                json.dumps(graph_snapshot),
+                json.dumps(metadata),
+                created_at,
+            ),
+        )
+        self._conn.commit()
+        return inv_id
+
+    def list_saved_investigations(self) -> list[dict[str, Any]]:
+        """Return all saved investigation records (newest first)."""
+        rows = self._conn.execute(
+            "SELECT id, detection_id, metadata, created_at "
+            "FROM saved_investigations ORDER BY created_at DESC"
+        ).fetchall()
+        return [
+            {
+                "id": row[0],
+                "detection_id": row[1],
+                "metadata": json.loads(row[2] or "{}"),
+                "created_at": row[3],
+            }
+            for row in rows
+        ]
+
+    def get_saved_investigation(self, investigation_id: str) -> Optional[dict[str, Any]]:
+        """Return a single saved investigation by ID, or None if not found."""
+        row = self._conn.execute(
+            "SELECT id, detection_id, graph_snapshot, metadata, created_at "
+            "FROM saved_investigations WHERE id = ?",
+            (investigation_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "detection_id": row[1],
+            "graph_snapshot": json.loads(row[2] or "{}"),
+            "metadata": json.loads(row[3] or "{}"),
+            "created_at": row[4],
+        }
 
     # ------------------------------------------------------------------
     # Shutdown
