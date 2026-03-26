@@ -3,6 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 9 (in progress)
+current_plan: 09-03 complete — POST /api/score + GET /api/top-threats FastAPI routers; SQLite risk_score write-back; both routers mounted in main.py via try/except; 6 XPASS 82 passed 6 xfailed 0 failed
+status: in_progress
+last_updated: "2026-03-26T07:02:00Z"
+progress:
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 40
+  completed_plans: 37
+  percent: 92
+decisions:
+  - "09-03: Used request.app.state.stores pattern instead of plan's get_sqlite_store() generators — deps.py only exposes get_stores() Stores container"
+  - "09-03: Imported score_entity at module level in score.py so test mock patch works correctly"
+  - "09-03: top-threats gracefully handles missing app.state.stores for unit tests without lifespan"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 9 (in progress)
 current_plan: 09-02 complete — SQLiteStore saved_investigations table + risk_score migration + 3 CRUD methods (save_investigation, list_saved_investigations, get_saved_investigation); 82 passed 12 xfailed 4 xpassed 0 failed
 status: in_progress
 last_updated: "2026-03-25T00:00:00Z"
