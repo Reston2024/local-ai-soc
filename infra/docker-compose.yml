@@ -1,3 +1,7 @@
+# DEPRECATED — Phase 2-3 only, not production
+# This file was used during early development phases.
+# The canonical docker-compose.yml is at the repository root.
+# Scheduled for deletion in Phase 11 per ADR-019.
 # AI SOC Brain — Docker Compose (Phase 3)
 # OpenSearch: unconditionally active; backend depends_on opensearch (service_healthy).
 # Syslog: Vector exposes UDP 514 + TCP 6514 for live telemetry ingestion.
