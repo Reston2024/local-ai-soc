@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** IN PROGRESS — Phase 9 planning
+**Status:** IN PROGRESS — Phase 9 execution (09-00 complete: wave-0 TDD stubs)
 
 ---
 
@@ -494,7 +494,7 @@ Plans:
 **Plans:** 7 plans in 4 waves
 
 Plans:
-- [ ] 09-00-PLAN.md — Wave 0: TDD stubs (all 9 xfail test classes across 7 test files)
+- [x] 09-00-PLAN.md — Wave 0: TDD stubs (all 9 xfail test classes across 7 test files)
 - [ ] 09-01-PLAN.md — Wave 1: backend/intelligence/ package — risk_scorer.py + anomaly_rules.py
 - [ ] 09-02-PLAN.md — Wave 1: SQLite schema extension — risk_score column + saved_investigations table (parallel with 09-01)
 - [ ] 09-03-PLAN.md — Wave 2: POST /api/score + GET /api/top-threats routers + main.py wiring
