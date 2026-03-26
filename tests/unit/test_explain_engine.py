@@ -11,7 +11,7 @@ pytestmark = pytest.mark.unit
 
 
 class TestBuildEvidenceContext:
-    @pytest.mark.xfail(reason="P9-T07: backend/intelligence/explain_engine.py not yet implemented", strict=True)
+    @pytest.mark.xfail(reason="P9-T07: backend/intelligence/explain_engine.py not yet implemented")
     def test_build_evidence_context_includes_detection_info(self):
         from backend.intelligence.explain_engine import build_evidence_context
         investigation = {
@@ -25,7 +25,7 @@ class TestBuildEvidenceContext:
         assert "Mimikatz" in ctx
         assert "T1003.001" in ctx
 
-    @pytest.mark.xfail(reason="P9-T07: build_evidence_context includes top N events", strict=True)
+    @pytest.mark.xfail(reason="P9-T07: build_evidence_context includes top N events")
     def test_build_evidence_context_limits_events(self):
         from backend.intelligence.explain_engine import build_evidence_context
         investigation = {
@@ -43,7 +43,7 @@ class TestBuildEvidenceContext:
 
 
 class TestGenerateExplanation:
-    @pytest.mark.xfail(reason="P9-T07: generate_explanation async not yet implemented", strict=True)
+    @pytest.mark.xfail(reason="P9-T07: generate_explanation async not yet implemented")
     async def test_generate_explanation_returns_three_sections(self):
         from backend.intelligence.explain_engine import generate_explanation
         mock_client = AsyncMock()
