@@ -2,12 +2,49 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 9 (complete)
+current_plan: 09-05 complete — InvestigationPanel risk score Cytoscape selectors (4 color tiers) + Top Suspicious Entities panel + AI Explanation panel; api.ts extended with score(), topThreats(), explain(), saveInvestigation(); npm run build exits 0; Phase 9 FULLY COMPLETE
+status: complete
+last_updated: "2026-03-26T07:08:00Z"
+progress:
+  [██████████] 100%
+  total_phases: 9
+  completed_phases: 9
+  total_plans: 40
+  completed_plans: 40
+  percent: 100
+decisions:
+  - "09-05: Used relative ../lib/api.ts import path in InvestigationPanel consistent with existing import pattern"
+  - "09-05: Placed Top Suspicious Entities and AI Explanation panels outside investigation-layout div as full-width supplemental sections"
+  - "09-05: Generate button passes detectionId prop directly to loadExplanation() rather than empty string placeholder"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-26T07:08:00.985Z"
+progress:
+  total_phases: 9
+  completed_phases: 6
+  total_plans: 37
+  completed_plans: 41
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 9 (in progress)
 current_plan: 09-04 complete — explain_engine.py (build_evidence_context, generate_explanation, _parse_explanation_sections) + POST /api/explain router with graceful Ollama fallback; main.py deferred mount; 6 XPASS 82 passed 10 xpassed 0 new failures
 status: in_progress
 last_updated: "2026-03-26T07:05:00Z"
 progress:
-  total_phases: 9
+  [██████████] 100%
   completed_phases: 8
   total_plans: 40
   completed_plans: 38
