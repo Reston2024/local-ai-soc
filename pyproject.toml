@@ -61,3 +61,6 @@ select = ["E", "W", "F", "I"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "unit: unit tests (no external I/O)",
+]
