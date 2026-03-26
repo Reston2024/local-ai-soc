@@ -66,7 +66,7 @@ ai-soc-brain/
 │   │   ├── chroma_store.py           ← ChromaDB PersistentClient wrapper
 │   │   ├── duckdb_store.py           ← DuckDB store with write queue pattern
 │   │   └── sqlite_store.py           ← SQLite store (graph edges, detections, cases)
-│   └── src/                          ← DEPRECATED (see "Deprecated Paths" below)
+│   └── src/                          ← DELETED in Phase 11 (see "Deprecated Paths" below)
 │
 ├── ingestion/                        ← Event parsing and normalization pipeline
 │   ├── __init__.py
@@ -254,11 +254,8 @@ The following routers are loaded via `try/except ImportError` in `main.py` for g
 
 ## Deprecated Paths
 
-- `backend/src/` — Legacy path from early development (Phases 1-5). Marked deprecated per ADR-019.
-  Contents have been superseded by the canonical `backend/` flat package layout.
-  The `backend/src/` path is not imported anywhere in the active codebase.
-  Scheduled for deletion in Phase 11.
+- `backend/src/` — DELETED in Phase 11 (2026-03-26). Legacy path from early development (Phases 1-5); marked deprecated per ADR-019. Contents were superseded by the canonical `backend/` flat package layout. The directory was not imported anywhere in the active codebase and has been removed.
 
 ---
 
-*Manifest last regenerated: 2026-03-26 (Phase 10 compliance hardening)*
+*Manifest last regenerated: 2026-03-26 (Phase 11 cleanup — backend/src/ deleted, CI threshold raised to 70%)*

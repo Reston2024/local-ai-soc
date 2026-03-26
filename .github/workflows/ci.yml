@@ -42,7 +42,7 @@ jobs:
             --cov=detections \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
-            --cov-fail-under=25 \
+            --cov-fail-under=70 \
             --junitxml=junit.xml \
             -q
       - name: Upload test results
