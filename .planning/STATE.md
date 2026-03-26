@@ -3,11 +3,31 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 9 (in progress)
+current_plan: 09-01 complete — backend/intelligence package with risk_scorer.py (MITRE_WEIGHTS, score_entity, score_detection, enrich_nodes_with_risk_score) and anomaly_rules.py (ANO-001 through ANO-004, check_event_anomalies); 79 passed 15 xfailed 0 failed
+status: in_progress
+last_updated: "2026-03-26T06:52:00Z"
+progress:
+  total_phases: 9
+  completed_phases: 8
+  total_plans: 40
+  completed_plans: 35
+  percent: 88
+decisions:
+  - "09-01: Removed strict=True xfail markers after implementation — tests pass cleanly rather than XPASS(strict) FAILED"
+  - "09-01: MITRE_WEIGHTS as plain dict[str, int] — .get() lookup with default 0, easily extensible"
+  - "09-01: Pure-function intelligence modules established as pattern for Phase 9 (no I/O, dict in / int or list out)"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 9 (in progress)
 current_plan: 09-00 complete — 7 xfail stub files (28 tests); wave-0 TDD baseline for intelligence analyst augmentation; 66 passed 28 xfailed exit 0
 status: in_progress
 last_updated: "2026-03-25T00:00:00Z"
 progress:
-  total_phases: 9
+  [██████████] 100%
   completed_phases: 8
   total_plans: 40
   completed_plans: 34
