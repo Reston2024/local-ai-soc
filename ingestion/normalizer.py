@@ -110,8 +110,18 @@ def normalize_event(event: NormalizedEvent | dict) -> NormalizedEvent:
         # Provide defaults for required fields when accepting raw dicts
         raw = event.copy()
         raw.setdefault("event_id", str(uuid4()))
-        raw.setdefault("timestamp", datetime.now(tz=timezone.utc))
-        raw.setdefault("ingested_at", datetime.now(tz=timezone.utc))
+        now = datetime.now(tz=timezone.utc)
+        raw.setdefault("timestamp", now)
+        raw.setdefault("ingested_at", now)
+        # Parse string timestamps to datetime so _ensure_utc() works correctly
+        for _ts_field in ("timestamp", "ingested_at"):
+            val = raw[_ts_field]
+            if isinstance(val, str):
+                try:
+                    parsed = datetime.fromisoformat(val.replace("Z", "+00:00"))
+                    raw[_ts_field] = parsed
+                except ValueError:
+                    raw[_ts_field] = now
         event = NormalizedEvent(**raw)
     updates: dict = {}
 
