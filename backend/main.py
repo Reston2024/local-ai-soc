@@ -288,6 +288,20 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("Telemetry module not available — skipping router mount: %s", exc)
 
+    try:
+        from backend.api.score import router as score_router
+        app.include_router(score_router, prefix="/api")
+        log.info("score router mounted at /api/score")
+    except ImportError as exc:
+        log.warning("score router not available: %s", exc)
+
+    try:
+        from backend.api.top_threats import router as top_threats_router
+        app.include_router(top_threats_router, prefix="/api")
+        log.info("top-threats router mounted at /api/top-threats")
+    except ImportError as exc:
+        log.warning("top-threats router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
