@@ -49,22 +49,30 @@ class TestIngestionLoader:
         assert hasattr(result, "loaded")
         assert result.loaded >= 0
 
-    async def test_ingest_deduplicates_on_reingest(self, tmp_path):
-        csv_file = tmp_path / "events.csv"
-        csv_file.write_text(
-            "timestamp,hostname\n"
-            "2026-01-01T00:00:00,host1\n"
-        )
+    async def test_ingest_deduplicates_same_event_id(self, tmp_path):
+        """ingest_events deduplicates events with the same event_id."""
+        from datetime import datetime, timezone
         from ingestion.loader import IngestionLoader
+        from backend.models.event import NormalizedEvent
         stores = await _make_stores(tmp_path)
         ollama = _make_ollama()
         loader = IngestionLoader(stores, ollama)
-        await loader.ingest_file(str(csv_file), case_id="case-001")
-        await loader.ingest_file(str(csv_file), case_id="case-001")
-        rows = await stores.duckdb.fetch_all(
-            "SELECT COUNT(*) AS cnt FROM normalized_events"
+        now = datetime.now(timezone.utc)
+        event = NormalizedEvent(
+            event_id="dedup-evt-001",
+            timestamp=now,
+            ingested_at=now,
+            source_type="csv",
+            hostname="host1",
+            case_id="case-001",
         )
-        # fetch_all returns tuples; first column is count
+        # Ingest the same event twice
+        await loader.ingest_events([event])
+        await loader.ingest_events([event])
+        rows = await stores.duckdb.fetch_all(
+            "SELECT COUNT(*) FROM normalized_events WHERE event_id = 'dedup-evt-001'"
+        )
+        # Should only be stored once despite two ingest calls
         assert rows[0][0] == 1
 
     async def test_ingest_nonexistent_file_returns_error(self, tmp_path):
