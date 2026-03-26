@@ -96,7 +96,11 @@ class _KwargsAdapter(logging.LoggerAdapter):
         _log_kwargs = {"exc_info", "stack_info", "stacklevel", "extra"}
         for key in list(kwargs.keys()):
             if key not in _log_kwargs:
-                extra[key] = kwargs.pop(key)
+                value = kwargs.pop(key)
+                # Rename keys that collide with LogRecord reserved attributes
+                # to avoid KeyError in logging.makeRecord.
+                safe_key = f"ctx_{key}" if key in _JsonFormatter._RESERVED else key
+                extra[safe_key] = value
         kwargs["extra"] = extra
         return msg, kwargs
 
