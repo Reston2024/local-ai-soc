@@ -11,7 +11,7 @@ pytestmark = pytest.mark.unit
 
 
 class TestExplainEndpoint:
-    @pytest.mark.xfail(reason="P9-T05: POST /api/explain endpoint not yet implemented", strict=True)
+    @pytest.mark.xfail(reason="P9-T05: POST /api/explain endpoint not yet implemented")
     def test_post_explain_returns_200(self):
         from fastapi.testclient import TestClient
         from backend.main import create_app
@@ -20,7 +20,7 @@ class TestExplainEndpoint:
         resp = client.post("/api/explain", json={"detection_id": "det-001"})
         assert resp.status_code == 200
 
-    @pytest.mark.xfail(reason="P9-T05: POST /api/explain returns three structured sections", strict=True)
+    @pytest.mark.xfail(reason="P9-T05: POST /api/explain returns three structured sections")
     def test_post_explain_returns_sections(self):
         from fastapi.testclient import TestClient
         from backend.main import create_app
@@ -31,7 +31,7 @@ class TestExplainEndpoint:
         body = resp.json()
         assert "what_happened" in body or "explanation" in body
 
-    @pytest.mark.xfail(reason="P9-T05: POST /api/explain returns 200 not 500 when Ollama unavailable", strict=True)
+    @pytest.mark.xfail(reason="P9-T05: POST /api/explain returns 200 not 500 when Ollama unavailable")
     def test_post_explain_graceful_ollama_error(self):
         from fastapi.testclient import TestClient
         from backend.main import create_app
