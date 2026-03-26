@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import { api } from '../lib/api.ts'
+  import { score, topThreats, explain, type ThreatItem, type ExplainResponse } from '../lib/api.ts'
 
   let { detectionId = '' }: { detectionId?: string } = $props()
 
@@ -10,6 +11,28 @@
   let selectedNode = $state<any>(null)
   let cytoscapeEl: HTMLElement | undefined = $state()
   let cy: any = null
+
+  // Phase 9 state
+  let topEntities = $state<ThreatItem[]>([])
+  let explanation = $state<ExplainResponse | null>(null)
+  let explainLoading = $state(false)
+  let showExplanation = $state(false)
+
+  // Load top threats when component mounts or detection changes
+  $effect(() => {
+    topThreats(5).then(r => { topEntities = r.threats }).catch(() => {})
+  })
+
+  async function loadExplanation(detectionId: string) {
+    explainLoading = true
+    try {
+      explanation = await explain({ detection_id: detectionId })
+    } catch {
+      explanation = null
+    } finally {
+      explainLoading = false
+    }
+  }
 
   // Load investigation when detectionId changes
   $effect(() => {
@@ -99,7 +122,24 @@
               'border-color': '#60a5fa',
               'border-width': 3,
             }
-          }
+          },
+          // Risk score color tiers — Phase 9
+          {
+            selector: 'node[risk_score > 80]',
+            style: { 'border-color': '#ef4444', 'border-width': 4 }  // red — critical
+          },
+          {
+            selector: 'node[risk_score > 60][risk_score <= 80]',
+            style: { 'border-color': '#f97316', 'border-width': 3 }  // orange — high
+          },
+          {
+            selector: 'node[risk_score > 30][risk_score <= 60]',
+            style: { 'border-color': '#eab308', 'border-width': 2 }  // yellow — moderate
+          },
+          {
+            selector: 'node[risk_score <= 30]',
+            style: { 'border-color': '#22c55e', 'border-width': 1 }  // green — low
+          },
         ],
         layout: { name: 'cose', animate: false, padding: 20, nodeRepulsion: 4000 } as any,
       })
@@ -206,6 +246,65 @@
           </div>
         {/if}
       </div>
+    </div>
+
+    <!-- Top Suspicious Entities — Phase 9 -->
+    {#if topEntities.length > 0}
+      <div class="mt-4 rounded border border-gray-700 p-3">
+        <h3 class="mb-2 text-sm font-semibold text-orange-400">Top Suspicious Entities</h3>
+        <ul class="space-y-1">
+          {#each topEntities as entity}
+            <li class="flex items-center justify-between text-xs">
+              <span class="truncate text-gray-200">{entity.rule_name}</span>
+              <span class="ml-2 rounded px-1.5 py-0.5 font-mono text-white"
+                style="background: {entity.risk_score > 80 ? '#ef4444' : entity.risk_score > 60 ? '#f97316' : entity.risk_score > 30 ? '#eab308' : '#22c55e'}">
+                {entity.risk_score}
+              </span>
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+
+    <!-- AI Explanation Panel — Phase 9 -->
+    <div class="mt-4 rounded border border-gray-700 p-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold text-blue-400">AI Explanation</h3>
+        <div class="flex gap-2">
+          <button
+            class="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-500 disabled:opacity-50"
+            disabled={explainLoading}
+            onclick={() => { showExplanation = true; loadExplanation(detectionId) }}
+          >
+            {explainLoading ? 'Generating…' : 'Generate'}
+          </button>
+          {#if explanation}
+            <button
+              class="rounded bg-gray-600 px-2 py-1 text-xs text-white hover:bg-gray-500"
+              onclick={() => { showExplanation = !showExplanation }}
+            >
+              {showExplanation ? 'Hide' : 'Show'}
+            </button>
+          {/if}
+        </div>
+      </div>
+
+      {#if showExplanation && explanation}
+        <div class="mt-2 space-y-2 text-xs text-gray-300">
+          <div>
+            <p class="font-semibold text-white">What Happened</p>
+            <p class="mt-0.5 whitespace-pre-wrap">{explanation.what_happened}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-white">Why It Matters</p>
+            <p class="mt-0.5 whitespace-pre-wrap">{explanation.why_it_matters}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-white">Recommended Next Steps</p>
+            <p class="mt-0.5 whitespace-pre-wrap">{explanation.recommended_next_steps}</p>
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
