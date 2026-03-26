@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** COMPLETE — All 9 phases delivered (v1.0 milestone)
+**Status:** IN PROGRESS — Phase 10 (Compliance Hardening) active
 
 ---
 
@@ -522,3 +522,29 @@ Plans:
 *Phase 7 added: 2026-03-17 (Threat Hunting & Case Management — see 07-CONTEXT.md)*
 *Phase 8 added: 2026-03-17 (Production Hardening & Live Telemetry — see 08-CONTEXT.md)*
 *Phase 9 added: 2026-03-17 (Intelligence & Analyst Augmentation)*
+
+## Phase 10: Compliance Hardening
+**Status:** TODO
+**Depends on:** Phase 9 complete
+**Goal:** Close the material compliance gaps identified in the audit-grade compliance report (2026-03-25). Deliver: CI/CD pipeline, prompt injection sanitization, missing operational scripts, Caddy hardening, dependency pinning completion, API authentication, LLM audit logging, and security test coverage. Move posture from "prototype" to "partially compliant / audit-ready for limited scope."
+
+**Plans:** 0/0 plans complete
+
+Plans:
+(planned)
+
+### Requirements
+- P10-T01: CI/CD pipeline — GitHub Actions workflow with lint, test, dependency-audit, secret-scan jobs; test results are machine-verifiable artifacts
+- P10-T02: Prompt injection sanitization — ingestion/normalizer.py scrubs LLM injection patterns before embedding; tested by new security tests
+- P10-T03: Firewall config script — scripts/configure-firewall.ps1 blocks Ollama port 11434 from non-local interfaces; scripts/verify-firewall.ps1 checks rule state
+- P10-T04: Caddy admin hardening — docker-compose.yml CADDY_ADMIN fixed to 127.0.0.1:2019; Caddy image pinned to immutable digest
+- P10-T05: Dependency pinning — all pyproject.toml >= specifiers converted to == using uv.lock as source; backend/requirements.txt removed; REPRODUCIBILITY_RECEIPT.md TBD entries completed
+- P10-T06: API authentication — shared secret token (env-configured) on all non-health endpoints; Depends() guard; tests for 401 behavior
+- P10-T07: LLM audit logging — ollama_client.py logs prompt hash + response hash to dedicated logs/llm_audit.jsonl handler
+- P10-T08: Data directory ACL script — scripts/configure-acls.ps1 enforces icacls restriction on data/
+- P10-T09: Security test suite — tests/security/ with injection scrubbing tests, Sigma SQL injection test, auth tests, file upload path traversal test
+- P10-T10: Documentation cleanup — docs/manifest.md updated to Phase 9 reality; REPRODUCIBILITY_RECEIPT.md status → VERIFIED; backend/src/ retirement ADR-019
+
+---
+
+*Phase 10 added: 2026-03-26 (Compliance Hardening — from audit report 2026-03-25)*
