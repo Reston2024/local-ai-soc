@@ -6,6 +6,7 @@ normalize_event() is a pure function (no I/O) that:
 - Normalises severity to a controlled vocabulary
 - Ensures timestamps are timezone-aware UTC datetimes
 - Strips null bytes and control characters from string fields
+- Strips prompt-injection patterns from string fields
 - Truncates command_line and raw_event to 8 KB
 """
 
@@ -22,6 +23,30 @@ log = get_logger(__name__)
 
 _MAX_CMDLINE = 8 * 1024   # 8 KB
 _MAX_RAW     = 8 * 1024   # 8 KB
+
+# Compiled regex of known prompt-injection patterns (case-insensitive)
+_INJECTION_PATTERNS = re.compile(
+    r"(?i)(?:"
+    r"ignore\s+previous\s+instructions?"
+    r"|\[/?INST\]"
+    r"|<\|(?:system|user|assistant)\|>"
+    r"|###"
+    r"|---SYSTEM"
+    r"|---INSTRUCTION"
+    r"|ignore\s+\S+\s+(?:instruction|prompt|context)"
+    r")",
+)
+
+
+def _scrub_injection(text: str) -> str:
+    """Strip prompt-injection patterns from a string field.
+
+    Called after null-byte/_clean_str stripping (step 5 in normalize_event).
+    Does NOT log the original value — caller is responsible for audit trail
+    if needed.
+    """
+    return _INJECTION_PATTERNS.sub("", text).strip()
+
 
 # Mapping of severity aliases to canonical values
 _SEVERITY_MAP: dict[str, str] = {
@@ -67,7 +92,7 @@ def _ensure_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc)
 
 
-def normalize_event(event: NormalizedEvent) -> NormalizedEvent:
+def normalize_event(event: NormalizedEvent | dict) -> NormalizedEvent:
     """
     Return a new NormalizedEvent with normalised field values.
 
@@ -75,11 +100,19 @@ def normalize_event(event: NormalizedEvent) -> NormalizedEvent:
     same result as calling it once.
 
     Args:
-        event: The raw event as produced by a parser.
+        event: The raw event as produced by a parser, or a raw dict that
+               will be coerced into a NormalizedEvent before normalisation.
 
     Returns:
         A new NormalizedEvent instance with all normalisation applied.
     """
+    if isinstance(event, dict):
+        # Provide defaults for required fields when accepting raw dicts
+        raw = event.copy()
+        raw.setdefault("event_id", str(uuid4()))
+        raw.setdefault("timestamp", datetime.now(tz=timezone.utc))
+        raw.setdefault("ingested_at", datetime.now(tz=timezone.utc))
+        event = NormalizedEvent(**raw)
     updates: dict = {}
 
     # ------------------------------------------------------------------ #
@@ -156,6 +189,20 @@ def normalize_event(event: NormalizedEvent) -> NormalizedEvent:
         if len(re_val.encode("utf-8")) > _MAX_RAW:
             encoded = re_val.encode("utf-8")[:_MAX_RAW]
             updates["raw_event"] = encoded.decode("utf-8", errors="ignore")
+
+    # ------------------------------------------------------------------ #
+    # 7. Strip prompt-injection patterns from risk-bearing string fields
+    # ------------------------------------------------------------------ #
+    # Operates on the already-cleaned values (incorporating step 5/6 updates)
+    def _current(field: str) -> str | None:
+        return updates.get(field, getattr(event, field, None))
+
+    for _inj_field in ("command_line", "raw_event", "domain", "url", "file_path"):
+        val = _current(_inj_field)
+        if isinstance(val, str):
+            scrubbed = _scrub_injection(val)
+            if scrubbed != val:
+                updates[_inj_field] = scrubbed or None
 
     # ------------------------------------------------------------------ #
     # Apply all collected updates atomically
