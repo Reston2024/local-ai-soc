@@ -559,7 +559,7 @@ Plans:
 ---
 
 ## Phase 11: Cleanup & Coverage
-**Status:** TODO
+**Status:** COMPLETE
 **Depends on:** Phase 10 complete
 **Goal:** Complete the deferred cleanup items from Phase 10: delete the legacy `backend/src/` directory, pin the Caddy image digest, raise test coverage from the Phase 10 baseline (25%) toward 70%, and update CI coverage threshold to match.
 
@@ -569,13 +569,13 @@ Plans:
 - P11-T03: Raise test coverage to ≥70% — add unit tests for ingestion pipeline, detection/matching, and store wrappers until `pytest --cov-fail-under=70` passes; update CI threshold from 25 to 70
 - P11-T04: Documentation update — update docs/manifest.md to remove `backend/src/` from deprecated paths (it no longer exists); update ROADMAP.md status for Phase 11
 
-**Plans:** 3/4 plans executed
+**Plans:** 4 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Wave 0 test stubs (pyproject.toml marker, 5 new test files)
-- [ ] 11-02-PLAN.md — backend/src/ deletion + Caddy digest pin
-- [ ] 11-03-PLAN.md — Coverage tests: matcher, stores, parsers, loader, timeline_builder
-- [ ] 11-04-PLAN.md — CI threshold 70 + documentation cleanup
+- [x] 11-01-PLAN.md — Wave 0 test stubs (pyproject.toml marker, 5 new test files)
+- [x] 11-02-PLAN.md — backend/src/ deletion + Caddy digest pin
+- [x] 11-03-PLAN.md — Coverage tests: matcher, stores, parsers, loader, timeline_builder
+- [x] 11-04-PLAN.md — CI threshold 70 + documentation cleanup
 
 ---
 
