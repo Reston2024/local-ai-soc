@@ -119,3 +119,13 @@ None - no external service configuration required.
 ---
 *Phase: 09-intelligence-analyst-augmentation*
 *Completed: 2026-03-26*
+
+## Self-Check: PASSED
+
+- FOUND: backend/intelligence/__init__.py
+- FOUND: backend/intelligence/risk_scorer.py
+- FOUND: backend/intelligence/anomaly_rules.py
+- FOUND: .planning/phases/09-intelligence-analyst-augmentation/09-01-SUMMARY.md
+- FOUND commit: 0618843 (feat: risk_scorer.py)
+- FOUND commit: bd7aecc (feat: anomaly_rules.py)
+- FOUND commit: d7bd8f1 (docs: plan metadata)
