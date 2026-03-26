@@ -487,9 +487,20 @@ Plans:
 ---
 
 ## Phase 9: Intelligence & Analyst Augmentation
-**Status:** PLANNING
+**Status:** PLANNING COMPLETE
 **Depends on:** Phase 8 (full investigation platform operational)
 **Goal:** Transform the system from a data-driven investigation tool into an intelligent SOC assistant that prioritizes threats, explains what is happening, and reduces analyst cognitive load.
+
+**Plans:** 7 plans in 4 waves
+
+Plans:
+- [ ] 09-00-PLAN.md — Wave 0: TDD stubs (all 9 xfail test classes across 7 test files)
+- [ ] 09-01-PLAN.md — Wave 1: backend/intelligence/ package — risk_scorer.py + anomaly_rules.py
+- [ ] 09-02-PLAN.md — Wave 1: SQLite schema extension — risk_score column + saved_investigations table (parallel with 09-01)
+- [ ] 09-03-PLAN.md — Wave 2: POST /api/score + GET /api/top-threats routers + main.py wiring
+- [ ] 09-04-PLAN.md — Wave 2: explain_engine.py + POST /api/explain router (parallel with 09-03)
+- [ ] 09-05-PLAN.md — Wave 3: Dashboard upgrade — InvestigationPanel.svelte risk badges + panels + api.ts extensions
+- [ ] 09-06-PLAN.md — Wave 4: Saved investigations API + full Phase 9 suite verification
 
 ### Requirements
 - P9-T01: Risk scoring engine assigns numeric scores to events, entities, and attack paths
