@@ -2,19 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 12 (in progress)
-current_plan: 12-03 complete — 50 EVTX parser unit tests (97% coverage); unittest.mock.patch pattern for pyevtx-rs; no binary .evtx fixtures; CI coverage gate 73.26% > 70%
+current_phase: Phase 12 (complete — awaiting PR merge)
+current_plan: 12-05 complete — feature/phase-12-api-hardening pushed to origin; 74.03% coverage (547 tests); PR ready at https://github.com/Reston2024/local-ai-soc/pull/new/feature/phase-12-api-hardening
 status: in_progress
-last_updated: "2026-03-27T07:45:00Z"
+last_updated: "2026-03-27T08:15:00Z"
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 55
-  completed_plans: 58
+  completed_plans: 60
   percent: 100
 decisions:
-  - "12-03: patch at usage site ingestion.parsers.evtx_parser.evtx.PyEvtxParser; hand-crafted JSON dicts match pyevtx-rs {event_record_id, timestamp, data} format; no binary .evtx fixtures added"
-  - "12-03: CI coverage gate uses --cov=backend --cov=ingestion --cov=detections scope matching ci.yml (73.26% total, well above 70% threshold)"
+  - "12-05: Plan 12-04 (Caddy digest pin) executed inline during 12-05 — Docker was available; caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0"
+  - "12-05: gh CLI unavailable — PR opened via browser by orchestrator after push to origin/feature/phase-12-api-hardening"
+  - "12-05: Final CI gate: 74.03% coverage, 547 passed, exit 0 — all Phase 12 changes confirmed green"
 ---
 
 ---
