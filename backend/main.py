@@ -326,6 +326,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("investigations router not available: %s", exc)
 
+    try:
+        from backend.api.metrics import router as metrics_router
+        app.include_router(metrics_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("metrics router mounted at /api/metrics")
+    except ImportError as exc:
+        log.warning("metrics router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
