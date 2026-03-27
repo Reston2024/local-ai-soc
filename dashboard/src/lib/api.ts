@@ -212,6 +212,10 @@ export const api = {
     },
     status: (jobId: string) => request<IngestJobStatus>(`/api/ingest/status/${jobId}`),
   },
+
+  metrics: {
+    kpis: () => request<KpiSnapshot>('/api/metrics/kpis'),
+  },
 }
 
 // Phase 4: direct graph helpers (bypass /api prefix — backend graph routes at /graph)
@@ -271,6 +275,26 @@ export interface SavedInvestigation {
   graph_snapshot: Record<string, unknown>;
   metadata: Record<string, unknown>;
   created_at: string;
+}
+
+export interface KpiValue {
+  label: string
+  value: number
+  unit: string
+  trend: 'up' | 'down' | 'flat'
+}
+
+export interface KpiSnapshot {
+  computed_at: string
+  mttd: KpiValue
+  mttr: KpiValue
+  mttc: KpiValue
+  false_positive_rate: KpiValue
+  alert_volume_24h: KpiValue
+  active_rules: KpiValue
+  open_cases: KpiValue
+  assets_monitored: KpiValue
+  log_sources: KpiValue
 }
 
 export async function score(request: ScoreRequest): Promise<ScoreResponse> {
