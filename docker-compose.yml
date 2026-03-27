@@ -6,10 +6,7 @@
 
 services:
   caddy:
-    # TODO(P11-T02): pin to immutable digest — Docker was unavailable during 11-02 execution
-    # Run: docker pull caddy:2.9-alpine && docker inspect caddy:2.9-alpine --format '{{index .RepoDigests 0}}'
-    # Then update to: image: caddy:2.9-alpine@sha256:<digest>
-    image: caddy:2.9-alpine  # UNPINNED — pin to digest when Docker is available
+    image: caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0
     container_name: ai-soc-brain-caddy
     restart: unless-stopped
     ports:
