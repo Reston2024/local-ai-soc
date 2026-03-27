@@ -59,10 +59,12 @@ class OllamaClient:
         base_url: str = "http://127.0.0.1:11434",
         model: str = "qwen3:14b",
         embed_model: str = "mxbai-embed-large",
+        cybersec_model: str = "",  # empty = fall back to self.model
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.embed_model = embed_model
+        self.cybersec_model = cybersec_model or model  # fallback to default
 
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
@@ -79,6 +81,7 @@ class OllamaClient:
             base_url=self.base_url,
             model=self.model,
             embed_model=self.embed_model,
+            cybersec_model=self.cybersec_model,
         )
 
     # ------------------------------------------------------------------
@@ -250,15 +253,18 @@ class OllamaClient:
         system: Optional[str] = None,
         temperature: float = 0.1,
         model: Optional[str] = None,
+        use_cybersec_model: bool = False,
     ) -> str:
         """
         Generate a complete text response (non-streaming).
 
         Args:
-            prompt:      The user prompt.
-            system:      Optional system message prepended to the context.
-            temperature: Sampling temperature (default 0.1 for factual tasks).
-            model:       Override the default model for this call.
+            prompt:              The user prompt.
+            system:              Optional system message prepended to the context.
+            temperature:         Sampling temperature (default 0.1 for factual tasks).
+            model:               Override the default model for this call.
+            use_cybersec_model:  If True, route to self.cybersec_model instead of
+                                 self.model (ADR-020).
 
         Returns:
             The model's text response as a string.
@@ -266,7 +272,7 @@ class OllamaClient:
         Raises:
             OllamaError: If the API call fails.
         """
-        _effective_model = model or self.model
+        _effective_model = model or (self.cybersec_model if use_cybersec_model else self.model)
         payload: dict = {
             "model": _effective_model,
             "prompt": prompt,
@@ -347,17 +353,20 @@ class OllamaClient:
         on_token: Optional[Callable[[str], None]] = None,
         temperature: float = 0.1,
         model: Optional[str] = None,
+        use_cybersec_model: bool = False,
     ) -> str:
         """
         Generate a streaming text response token by token.
 
         Args:
-            prompt:      The user prompt.
-            system:      Optional system message.
-            on_token:    Optional synchronous callback called for each token.
-                         Receives the token string.  Use for SSE streaming.
-            temperature: Sampling temperature.
-            model:       Override the default model for this call.
+            prompt:              The user prompt.
+            system:              Optional system message.
+            on_token:            Optional synchronous callback called for each token.
+                                 Receives the token string.  Use for SSE streaming.
+            temperature:         Sampling temperature.
+            model:               Override the default model for this call.
+            use_cybersec_model:  If True, route to self.cybersec_model instead of
+                                 self.model (ADR-020).
 
         Returns:
             The complete response text assembled from all tokens.
@@ -365,8 +374,9 @@ class OllamaClient:
         Raises:
             OllamaError: If the API call fails.
         """
+        _stream_model = model or (self.cybersec_model if use_cybersec_model else self.model)
         payload: dict = {
-            "model": model or self.model,
+            "model": _stream_model,
             "prompt": prompt,
             "stream": True,
             "options": {"temperature": temperature},

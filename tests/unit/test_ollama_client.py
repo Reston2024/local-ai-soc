@@ -220,6 +220,90 @@ class TestOllamaClientListModels:
         assert result == []
 
 
+class TestCybersecModelRouting:
+    """Tests for cybersec model routing — ADR-020 (Plan 13-02)."""
+
+    def test_cybersec_model_stored_when_provided(self):
+        from backend.services.ollama_client import OllamaClient
+
+        c = OllamaClient(cybersec_model="foundation-sec:8b")
+        assert c.cybersec_model == "foundation-sec:8b"
+
+    def test_cybersec_model_falls_back_to_model_when_not_provided(self):
+        from backend.services.ollama_client import OllamaClient
+
+        c = OllamaClient(model="qwen3:14b")
+        # When cybersec_model not given, should fall back to self.model
+        assert c.cybersec_model == "qwen3:14b"
+
+    async def test_generate_routes_to_cybersec_model_when_flag_set(self):
+        from backend.services.ollama_client import OllamaClient
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        c = OllamaClient(model="qwen3:14b", cybersec_model="foundation-sec:8b")
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"response": "cyber answer", "done": True}
+
+        with patch.object(c._client, "post", new=AsyncMock(return_value=mock_response)) as mock_post:
+            result = await c.generate("What is CVE-2024-1234?", use_cybersec_model=True)
+
+        assert result == "cyber answer"
+        call_kwargs = mock_post.call_args
+        payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
+        assert payload["model"] == "foundation-sec:8b"
+
+    async def test_generate_uses_default_model_without_flag(self):
+        from backend.services.ollama_client import OllamaClient
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        c = OllamaClient(model="qwen3:14b", cybersec_model="foundation-sec:8b")
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"response": "default answer", "done": True}
+
+        with patch.object(c._client, "post", new=AsyncMock(return_value=mock_response)) as mock_post:
+            result = await c.generate("What is the weather?")
+
+        assert result == "default answer"
+        call_kwargs = mock_post.call_args
+        payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
+        assert payload["model"] == "qwen3:14b"
+
+    async def test_stream_generate_routes_to_cybersec_model_when_flag_set(self):
+        import json
+        from backend.services.ollama_client import OllamaClient
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        c = OllamaClient(model="qwen3:14b", cybersec_model="foundation-sec:8b")
+
+        # Build a minimal async context manager mock for stream
+        chunks = [
+            json.dumps({"response": "sec", "done": False}).encode(),
+            json.dumps({"response": " answer", "done": True}).encode(),
+        ]
+
+        async def _aiter_lines():
+            for chunk in chunks:
+                yield chunk.decode()
+
+        mock_stream_ctx = MagicMock()
+        mock_stream_ctx.__aenter__ = AsyncMock(return_value=mock_stream_ctx)
+        mock_stream_ctx.__aexit__ = AsyncMock(return_value=False)
+        mock_stream_ctx.raise_for_status = MagicMock()
+        mock_stream_ctx.aiter_lines = _aiter_lines
+
+        with patch.object(c._client, "stream", return_value=mock_stream_ctx) as mock_stream:
+            result = await c.stream_generate("Explain MITRE T1059", use_cybersec_model=True)
+
+        assert "sec" in result or result  # streamed tokens assembled
+        call_kwargs = mock_stream.call_args
+        payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][2]
+        assert payload["model"] == "foundation-sec:8b"
+
+
 class TestSha256Short:
     def test_sha256_short_returns_16_chars(self):
         from backend.services.ollama_client import _sha256_short

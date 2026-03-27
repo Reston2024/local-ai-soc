@@ -128,6 +128,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         base_url=settings.OLLAMA_HOST,
         model=settings.OLLAMA_MODEL,
         embed_model=settings.OLLAMA_EMBED_MODEL,
+        cybersec_model=settings.OLLAMA_CYBERSEC_MODEL,
     )
 
     # 7. Attach to app.state
