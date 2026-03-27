@@ -21,7 +21,7 @@ from typing import Any
 
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
-from backend.models.event import GraphEdge, GraphEntity, GraphResponse
+from backend.models.event import GraphResponse
 
 log = get_logger(__name__)
 

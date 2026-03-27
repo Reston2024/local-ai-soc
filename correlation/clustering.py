@@ -17,10 +17,9 @@ entirely in-process using data fetched from DuckDB and SQLite.
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 

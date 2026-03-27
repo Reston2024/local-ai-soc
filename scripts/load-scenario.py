@@ -13,7 +13,6 @@ from pathlib import Path
 
 import httpx
 
-
 BASE_URL = "http://localhost:8000"
 FIXTURE_PATH = Path(__file__).parent.parent / "fixtures" / "ndjson" / "apt_scenario.ndjson"
 
