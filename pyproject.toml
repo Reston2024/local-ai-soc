@@ -27,6 +27,8 @@ dependencies = [
     "PyYAML==6.0.3",
     # Ingestion
     "evtx==0.11.0",
+    # Data seeding
+    "datasets>=2.21.0",
     # Dev / test
     "pytest==9.0.2",
     "pytest-asyncio==1.3.0",
