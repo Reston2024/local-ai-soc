@@ -22,6 +22,7 @@ localhost {
 
     # SSE streaming — must be listed BEFORE handle /api/* (Caddy: first match wins).
     # flush_interval -1 disables response buffering so tokens stream to the browser.
+    # No request_body limit here: query payloads are small JSON and SSE needs unbuffered response.
     handle /api/query/* {
         reverse_proxy host.docker.internal:8000 {
             flush_interval -1
@@ -32,8 +33,26 @@ localhost {
         }
     }
 
-    # API proxy — forward all other /api/* to FastAPI on host
+    # File upload endpoint — allow up to 100MB for evidence uploads.
+    # Must appear BEFORE handle /api/* (Caddy: first match wins).
+    handle /api/ingest/file {
+        request_body {
+            max_size 100MB
+        }
+        reverse_proxy host.docker.internal:8000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # API proxy — forward all other /api/* to FastAPI on host.
+    # 10MB body limit blocks accidental oversized payloads before they reach Python.
     handle /api/* {
+        request_body {
+            max_size 10MB
+        }
         reverse_proxy host.docker.internal:8000 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
