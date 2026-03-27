@@ -1,7 +1,9 @@
 """Unit tests for JSON/NDJSON event parser."""
 import json
-import pytest
 from pathlib import Path
+
+import pytest
+
 from backend.models.event import NormalizedEvent
 from ingestion.parsers.json_parser import JsonParser
 
@@ -72,7 +74,6 @@ class TestJsonParserNDJSON:
         assert len(events) == 2
 
     def test_ndjson_timestamp_is_utc(self, parser, tmp_path):
-        from datetime import timezone
         ndjson = json.dumps({"timestamp": "2026-03-14T09:00:00Z", "hostname": "H1"})
         f = tmp_path / "test.ndjson"
         f.write_text(ndjson)

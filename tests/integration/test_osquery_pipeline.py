@@ -19,7 +19,6 @@ import pytest
 
 from ingestion.osquery_collector import OsqueryCollector
 
-
 MOCK_PROCESS_LINE = json.dumps({
     "name": "processes",
     "hostIdentifier": "WORKSTATION-01",
@@ -27,7 +26,7 @@ MOCK_PROCESS_LINE = json.dumps({
     "unixTime": 1742205600,
     "action": "snapshot",
     "snapshot": [
-        {"pid": "4821", "name": "powershell.exe", "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "cmdline": "powershell.exe -nop -w hidden", "parent": "1234"},
+        {"pid": "4821", "name": "powershell.exe", "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "cmdline": "powershell.exe -nop -w hidden", "parent": "1234"},  # noqa: E501
         {"pid": "9042", "name": "cmd.exe", "cmdline": "cmd.exe /c whoami", "parent": "4821"},
     ],
 })

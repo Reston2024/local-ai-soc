@@ -1,7 +1,7 @@
 """Unit tests for entity extractor."""
-import pytest
 import uuid
 from datetime import datetime, timezone
+
 from backend.models.event import NormalizedEvent
 from ingestion.entity_extractor import extract_entities_and_edges
 

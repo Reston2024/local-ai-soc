@@ -10,14 +10,14 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-from backend.investigation.case_manager import CaseManager
-from backend.investigation.hunt_engine import execute_hunt, HUNT_TEMPLATES
-from backend.investigation.timeline_builder import build_timeline
-from backend.investigation.artifact_store import save_artifact
 from backend.core.logging import get_logger
+from backend.investigation.artifact_store import save_artifact
+from backend.investigation.case_manager import CaseManager
+from backend.investigation.hunt_engine import HUNT_TEMPLATES, execute_hunt
+from backend.investigation.timeline_builder import build_timeline
 
 log = get_logger(__name__)
 
@@ -36,8 +36,9 @@ def _get_fallback_sqlite():
     global _fallback_sqlite
     if _fallback_sqlite is None:
         try:
-            from backend.stores.sqlite_store import SQLiteStore
             import tempfile
+
+            from backend.stores.sqlite_store import SQLiteStore
             _fallback_sqlite = SQLiteStore(data_dir=tempfile.mkdtemp())
         except Exception as exc:
             log.warning("Could not create fallback SQLiteStore: %s", exc)

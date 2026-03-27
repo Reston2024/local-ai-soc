@@ -1,3 +1,3 @@
-from backend.models.event import NormalizedEvent, EventListResponse
+from backend.models.event import EventListResponse, NormalizedEvent
 
 __all__ = ["NormalizedEvent", "EventListResponse"]

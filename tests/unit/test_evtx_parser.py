@@ -11,8 +11,6 @@ import json
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from ingestion.parsers.evtx_parser import (
     EvtxParser,
     _determine_event_type,
@@ -122,7 +120,7 @@ SYSMON_WITH_HASHES = {
                     "Data": [
                         {
                             "@Name": "Hashes",
-                            "#text": "MD5=abc123,SHA256=deadbeef1234567890abcdef12345678deadbeef1234567890abcdef12345678,SHA1=aabbcc",
+                            "#text": "MD5=abc123,SHA256=deadbeef1234567890abcdef12345678deadbeef1234567890abcdef12345678,SHA1=aabbcc",  # noqa: E501
                         },
                         {"@Name": "ImageLoaded", "#text": "C:\\evil.dll"},
                     ]

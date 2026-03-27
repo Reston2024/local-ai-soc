@@ -10,7 +10,7 @@ Covers:
 import asyncio
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -19,7 +19,8 @@ pytestmark = pytest.mark.unit
 
 def _make_mock_stores(sqlite_store=None):
     """Build a minimal mock Stores container."""
-    from unittest.mock import MagicMock, AsyncMock
+    from unittest.mock import AsyncMock, MagicMock
+
     from backend.core.deps import Stores
 
     # Mock DuckDB with async methods
@@ -48,6 +49,7 @@ def _make_mock_stores(sqlite_store=None):
 def _build_app(tmp_path=None, stores=None):
     """Build a TestClient app with override state."""
     from fastapi.testclient import TestClient
+
     from backend.main import create_app
 
     app = create_app()
@@ -70,6 +72,7 @@ def _build_app(tmp_path=None, stores=None):
 class TestHealthEndpoint:
     def test_health_returns_200(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         app.state.stores = _make_mock_stores()
@@ -81,6 +84,7 @@ class TestHealthEndpoint:
 
     def test_health_endpoint_exists(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         app.state.stores = _make_mock_stores()
@@ -98,10 +102,12 @@ class TestHealthEndpoint:
 
 class TestDetectEndpoint:
     def _make_client(self):
+        import tempfile
+
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         from backend.stores.sqlite_store import SQLiteStore
-        import tempfile, os
 
         # Use a real SQLite store for detect endpoints (they use _conn directly)
         tmpdir = tempfile.mkdtemp()
@@ -192,9 +198,10 @@ class TestDetectEndpoint:
 class TestEventsEndpoint:
     def _make_client_with_duckdb(self, tmp_path):
         from fastapi.testclient import TestClient
+
+        from backend.core.deps import Stores
         from backend.main import create_app
         from backend.stores.duckdb_store import DuckDBStore
-        from backend.core.deps import Stores
 
         duckdb = DuckDBStore(str(tmp_path / "duckdb"))
 

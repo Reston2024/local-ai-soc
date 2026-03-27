@@ -6,7 +6,7 @@ All ingestion parsers, API endpoints, and stores import from here.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field

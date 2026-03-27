@@ -16,7 +16,6 @@ or via the startup script:
 from __future__ import annotations
 
 import asyncio
-import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
@@ -30,12 +29,11 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from backend.core.rate_limit import limiter
-
 from backend.core.auth import verify_token
 from backend.core.config import Settings
 from backend.core.deps import Stores
 from backend.core.logging import get_logger, setup_logging
+from backend.core.rate_limit import limiter
 
 # ---------------------------------------------------------------------------
 # Bootstrap logging ASAP (before any other import that might emit log records)
@@ -47,22 +45,21 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Import stores + services (after logging is set up)
 # ---------------------------------------------------------------------------
-from backend.stores.chroma_store import ChromaStore
-from backend.stores.duckdb_store import DuckDBStore
-from backend.stores.sqlite_store import SQLiteStore
-from backend.services.ollama_client import OllamaClient
+from backend.api.detect import router as detect_router  # noqa: E402
+from backend.api.events import router as events_router  # noqa: E402
+from backend.api.export import router as export_router  # noqa: E402
+from backend.api.graph import router as graph_router  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Import routers
 # ---------------------------------------------------------------------------
-from backend.api.health import router as health_router
-from backend.api.ingest import router as ingest_router
-from backend.api.query import router as query_router
-from backend.api.detect import router as detect_router
-from backend.api.graph import router as graph_router
-from backend.api.events import router as events_router
-from backend.api.export import router as export_router
-
+from backend.api.health import router as health_router  # noqa: E402
+from backend.api.ingest import router as ingest_router  # noqa: E402
+from backend.api.query import router as query_router  # noqa: E402
+from backend.services.ollama_client import OllamaClient  # noqa: E402
+from backend.stores.chroma_store import ChromaStore  # noqa: E402
+from backend.stores.duckdb_store import DuckDBStore  # noqa: E402
+from backend.stores.sqlite_store import SQLiteStore  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Lifespan context manager
@@ -142,8 +139,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     osquery_task: asyncio.Task | None = None
     if settings.OSQUERY_ENABLED:
         try:
-            from ingestion.osquery_collector import OsqueryCollector
             from pathlib import Path as _Path
+
+            from ingestion.osquery_collector import OsqueryCollector
             _collector = OsqueryCollector(
                 log_path=_Path(settings.OSQUERY_LOG_PATH),
                 duckdb_store=duckdb_store,
@@ -207,8 +205,6 @@ def create_app() -> FastAPI:
     Separated from module-level instantiation so it can be called in tests
     with different configurations.
     """
-    settings = Settings()
-
     app = FastAPI(
         title="AI-SOC-Brain",
         description=(

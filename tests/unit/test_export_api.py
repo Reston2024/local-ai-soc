@@ -2,8 +2,9 @@
 
 Uses a mocked DuckDB store and a real SQLiteStore.
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 pytestmark = pytest.mark.unit
 
@@ -11,8 +12,9 @@ pytestmark = pytest.mark.unit
 def _build_app(tmp_path, duckdb_rows=None, sqlite_store=None):
     """Build a TestClient with mocked stores."""
     from fastapi.testclient import TestClient
-    from backend.main import create_app
+
     from backend.core.deps import Stores
+    from backend.main import create_app
 
     duckdb = MagicMock()
     duckdb.fetch_all = AsyncMock(return_value=[])

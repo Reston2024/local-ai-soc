@@ -32,16 +32,13 @@ raw rule text.
 
 from __future__ import annotations
 
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-import yaml
-from sigma.collection import SigmaCollection
-from sigma.conditions import ConditionAND, ConditionOR
+from sigma.conditions import ConditionAND
 from sigma.modifiers import (
     SigmaAllModifier,
     SigmaContainsModifier,
@@ -503,7 +500,6 @@ class SigmaMatcher:
         Returns None if no split point was found.
         """
         op_upper = f" {operator.upper()} "
-        op_lower = f" {operator.lower()} "
         parts: list[str] = []
         depth = 0
         current_start = 0

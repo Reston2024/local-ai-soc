@@ -14,7 +14,6 @@ Schema aligns with the NormalizedEvent model in backend/models/event.py.
 """
 
 import asyncio
-import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional

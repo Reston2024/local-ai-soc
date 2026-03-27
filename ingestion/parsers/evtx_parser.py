@@ -216,7 +216,7 @@ class EvtxParser(BaseParser):
                 raw_event_id_node.get("#text") or raw_event_id_node.get("@Qualifiers")
             )
             if win_event_id is None:
-                win_event_id = _safe_int(raw_event_id_node.get("@Qualifiers", "").split(":")[0] if isinstance(raw_event_id_node.get("@Qualifiers"), str) else None)
+                win_event_id = _safe_int(raw_event_id_node.get("@Qualifiers", "").split(":")[0] if isinstance(raw_event_id_node.get("@Qualifiers"), str) else None)  # noqa: E501
         else:
             win_event_id = _safe_int(raw_event_id_node)
 

@@ -1,5 +1,6 @@
 """Threat hunting query engine — 4 DuckDB SQL templates for analyst hypothesis testing."""
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 

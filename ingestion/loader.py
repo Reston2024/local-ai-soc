@@ -399,7 +399,6 @@ class IngestionLoader:
             if not embeddable:
                 continue
 
-            batch_events = [e for e, _ in embeddable]
             batch_texts = [txt for _, txt in embeddable]
 
             try:

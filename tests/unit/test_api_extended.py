@@ -2,10 +2,8 @@
 
 Uses TestClient with mocked/real stores.
 """
-import asyncio
-import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 pytestmark = pytest.mark.unit
@@ -13,11 +11,11 @@ pytestmark = pytest.mark.unit
 
 def _build_app_with_real_sqlite(tmp_path):
     """Build a TestClient with real SQLite store and mocked DuckDB/Chroma."""
-    import tempfile
     from fastapi.testclient import TestClient
+
+    from backend.core.deps import Stores
     from backend.main import create_app
     from backend.stores.sqlite_store import SQLiteStore
-    from backend.core.deps import Stores
 
     sqlite = SQLiteStore(str(tmp_path))
 
@@ -173,8 +171,9 @@ class TestHealthEndpointDetailed:
     def test_health_json_keys(self, tmp_path):
         """Health endpoint JSON should have status key."""
         from fastapi.testclient import TestClient
-        from backend.main import create_app
+
         from backend.core.deps import Stores
+        from backend.main import create_app
 
         duckdb = MagicMock()
         duckdb.fetch_all = AsyncMock(return_value=[(1,)])

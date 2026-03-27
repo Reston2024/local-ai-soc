@@ -1,7 +1,7 @@
 """Unit tests for ingestion normalizer."""
-import pytest
 import uuid
 from datetime import datetime, timezone
+
 from backend.models.event import NormalizedEvent
 from ingestion.normalizer import normalize_event
 

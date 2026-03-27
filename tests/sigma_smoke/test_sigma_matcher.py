@@ -1,10 +1,12 @@
 """Smoke tests for Sigma rule matching against DuckDB."""
-import pytest
-import duckdb
 from pathlib import Path
 from unittest.mock import MagicMock
+
+import duckdb
+import pytest
+
+from detections.field_map import INTEGER_COLUMNS, SIGMA_FIELD_MAP
 from detections.matcher import SigmaMatcher
-from detections.field_map import SIGMA_FIELD_MAP, INTEGER_COLUMNS
 
 
 class TestSigmaFieldMap:

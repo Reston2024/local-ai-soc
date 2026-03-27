@@ -12,7 +12,6 @@ Schema design:
 - cases:    investigation case containers grouping entities and detections
 """
 
-import asyncio
 import json
 import sqlite3
 from datetime import datetime, timezone

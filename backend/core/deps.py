@@ -20,10 +20,10 @@ from fastapi import Depends, Request
 from backend.core.config import Settings
 
 if TYPE_CHECKING:
+    from backend.services.ollama_client import OllamaClient
     from backend.stores.chroma_store import ChromaStore
     from backend.stores.duckdb_store import DuckDBStore
     from backend.stores.sqlite_store import SQLiteStore
-    from backend.services.ollama_client import OllamaClient
 
 
 class Stores:

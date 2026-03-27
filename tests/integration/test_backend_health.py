@@ -3,9 +3,8 @@
 These tests require the backend to be running at http://localhost:8000.
 Skip automatically if backend is not reachable.
 """
-import pytest
 import httpx
-
+import pytest
 
 BASE_URL = "http://localhost:8000"
 

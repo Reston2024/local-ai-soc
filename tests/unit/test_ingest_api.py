@@ -3,8 +3,9 @@
 Uses a real SQLiteStore, mocked DuckDB, mocked Chroma, mocked Ollama.
 """
 import io
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 pytestmark = pytest.mark.unit
 
@@ -12,8 +13,9 @@ pytestmark = pytest.mark.unit
 def _build_app(tmp_path):
     """Build a TestClient with stores needed for ingest endpoints."""
     from fastapi.testclient import TestClient
-    from backend.main import create_app
+
     from backend.core.deps import Stores
+    from backend.main import create_app
     from backend.stores.sqlite_store import SQLiteStore
 
     duckdb = MagicMock()

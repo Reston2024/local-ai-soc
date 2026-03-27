@@ -15,20 +15,19 @@ embedding, and SQLite graph extraction in one pipeline call.
 from __future__ import annotations
 
 import asyncio
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from backend.core.logging import get_logger
 from backend.core.rate_limit import limiter
 from backend.models.event import NormalizedEvent
 from backend.stores.chroma_store import DEFAULT_COLLECTION
-from ingestion.loader import IngestionLoader, IngestionResult, get_job_status
+from ingestion.loader import IngestionLoader, get_job_status
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -213,7 +212,6 @@ async def _run_ingestion_job(
 ) -> None:
     """Background task that runs the full ingestion pipeline for an uploaded file."""
     from ingestion.loader import IngestionLoader, _set_job
-    from backend.core.deps import Stores
 
     loader = IngestionLoader(stores=stores, ollama_client=ollama)
     try:

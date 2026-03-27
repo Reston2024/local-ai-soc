@@ -49,8 +49,9 @@ class TestTimelineBuilder:
     async def test_build_timeline_returns_list_for_missing_case(self, tmp_path):
         """build_timeline returns [] when the case is not found in sqlite_store."""
         from unittest.mock import MagicMock
-        from backend.stores.duckdb_store import DuckDBStore
+
         from backend.investigation.timeline_builder import build_timeline
+        from backend.stores.duckdb_store import DuckDBStore
 
         store = DuckDBStore(str(tmp_path / "tl"))
         store.start_write_worker()
@@ -118,6 +119,7 @@ class TestTimelineBuilder:
     async def test_build_timeline_returns_empty_for_none_store(self, tmp_path):
         """build_timeline returns [] when duckdb_store is None."""
         from unittest.mock import MagicMock
+
         from backend.investigation.timeline_builder import build_timeline
 
         sqlite_store = MagicMock()
@@ -126,8 +128,8 @@ class TestTimelineBuilder:
 
     async def test_build_timeline_returns_empty_for_none_sqlite(self, tmp_path):
         """build_timeline returns [] when sqlite_store is None."""
-        from backend.stores.duckdb_store import DuckDBStore
         from backend.investigation.timeline_builder import build_timeline
+        from backend.stores.duckdb_store import DuckDBStore
 
         store = DuckDBStore(str(tmp_path / "tl2"))
         store.start_write_worker()
@@ -141,8 +143,9 @@ class TestTimelineBuilder:
         import uuid
         from datetime import datetime, timezone
         from unittest.mock import MagicMock
-        from backend.stores.duckdb_store import DuckDBStore
+
         from backend.investigation.timeline_builder import build_timeline
+        from backend.stores.duckdb_store import DuckDBStore
 
         store = DuckDBStore(str(tmp_path / "tl3"))
         store.start_write_worker()

@@ -5,7 +5,6 @@ import asyncio
 import logging
 
 from fastapi import APIRouter, Query, Request
-
 from pydantic import BaseModel
 
 log = logging.getLogger(__name__)

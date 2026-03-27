@@ -118,6 +118,7 @@ async def start_investigation(request: Request) -> JSONResponse:
     if events:
         try:
             import asyncio
+
             from correlation.clustering import cluster_events_by_entity
 
             matched_event_ids = {e["event_id"] for e in events}

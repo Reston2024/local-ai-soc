@@ -47,7 +47,7 @@ build-backend = "hatchling.build"
 packages = ["backend", "ingestion", "detections", "correlation", "graph", "prompts"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
 
 [tool.ruff.lint]

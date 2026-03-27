@@ -31,7 +31,7 @@ _MAX_RAW = 8 * 1024  # 8 KB
 # ---------------------------------------------------------------------------
 
 _HOSTNAME_KEYS = frozenset({"hostname", "host", "computer", "computername", "machine", "node"})
-_USERNAME_KEYS = frozenset({"username", "user", "account", "subjectusername", "targetusername", "user_name", "account_name"})
+_USERNAME_KEYS = frozenset({"username", "user", "account", "subjectusername", "targetusername", "user_name", "account_name"})  # noqa: E501
 _PROCESS_KEYS = frozenset({"process", "process_name", "image", "newprocessname", "processname", "process_image"})
 _PID_KEYS = frozenset({"pid", "process_id", "processid", "newprocessid"})
 _PPID_KEYS = frozenset({"ppid", "parent_pid", "parent_process_id", "parentprocessid"})
@@ -44,7 +44,7 @@ _SRC_PORT_KEYS = frozenset({"src_port", "source_port", "sourceport"})
 _FILE_PATH_KEYS = frozenset({"file_path", "filepath", "targetfilename", "targetobject", "filename", "path"})
 _FILE_HASH_KEYS = frozenset({"file_hash_sha256", "sha256", "hash", "hashes"})
 _DOMAIN_KEYS = frozenset({"domain", "destinationhostname", "dest_hostname", "fqdn", "queryname"})
-_TIMESTAMP_KEYS = frozenset({"timestamp", "time", "eventtime", "@timestamp", "date", "created_at", "event_time", "datetime"})
+_TIMESTAMP_KEYS = frozenset({"timestamp", "time", "eventtime", "@timestamp", "date", "created_at", "event_time", "datetime"})  # noqa: E501
 _EVENT_TYPE_KEYS = frozenset({"event_type", "eventtype", "type", "action", "category"})
 _SEVERITY_KEYS = frozenset({"severity", "level", "alert_severity", "priority"})
 _TAGS_KEYS = frozenset({"tags", "labels"})

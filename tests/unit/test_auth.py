@@ -1,7 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 from fastapi import HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
-from unittest.mock import patch
 
 
 @pytest.mark.asyncio

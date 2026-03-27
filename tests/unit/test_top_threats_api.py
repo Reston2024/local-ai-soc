@@ -13,6 +13,7 @@ class TestTopThreatsEndpoint:
     @pytest.mark.xfail(reason="P9-T06: GET /api/top-threats endpoint not yet implemented")
     def test_get_top_threats_returns_200(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         client = TestClient(app)
@@ -22,6 +23,7 @@ class TestTopThreatsEndpoint:
     @pytest.mark.xfail(reason="P9-T06: GET /api/top-threats returns list")
     def test_get_top_threats_returns_list(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         client = TestClient(app)
@@ -33,6 +35,7 @@ class TestTopThreatsEndpoint:
     @pytest.mark.xfail(reason="P9-T06: GET /api/top-threats respects ?limit= query param")
     def test_get_top_threats_limit_param(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         client = TestClient(app)

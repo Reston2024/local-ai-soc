@@ -348,6 +348,7 @@ async def get_investigation_summary(alert_id: str, request: Request):
 
     try:
         import os
+
         import httpx
         ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
         model = os.getenv("OLLAMA_MODEL", "qwen3:14b")

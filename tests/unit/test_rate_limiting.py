@@ -1,6 +1,5 @@
 """Tests for slowapi rate limiting integration."""
 import os
-import pytest
 from unittest.mock import patch
 
 
@@ -9,6 +8,7 @@ def test_limiter_disabled_in_testing_mode():
     with patch.dict(os.environ, {"TESTING": "1"}):
         # Re-import to pick up new env
         import importlib
+
         import backend.core.rate_limit as rl_module
         importlib.reload(rl_module)
         assert rl_module.limiter.enabled is False
@@ -19,6 +19,7 @@ def test_limiter_enabled_in_production_mode():
     env_without_testing = {k: v for k, v in os.environ.items() if k != "TESTING"}
     with patch.dict(os.environ, env_without_testing, clear=True):
         import importlib
+
         import backend.core.rate_limit as rl_module
         importlib.reload(rl_module)
         assert rl_module.limiter.enabled is True
@@ -26,8 +27,9 @@ def test_limiter_enabled_in_production_mode():
 
 def test_slowapi_middleware_registered():
     """SlowAPIMiddleware must be registered in the app's middleware stack."""
-    from backend.main import create_app
     from slowapi.middleware import SlowAPIMiddleware
+
+    from backend.main import create_app
 
     with patch.dict(os.environ, {"TESTING": "1"}):
         app = create_app()
@@ -41,8 +43,9 @@ def test_slowapi_middleware_registered():
 
 def test_rate_limit_exceeded_handler_registered():
     """RateLimitExceeded handler must be registered."""
-    from backend.main import create_app
     from slowapi.errors import RateLimitExceeded
+
+    from backend.main import create_app
 
     with patch.dict(os.environ, {"TESTING": "1"}):
         app = create_app()

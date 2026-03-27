@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from ingestion.parsers.osquery_parser import OsqueryParser
 
 if TYPE_CHECKING:
-    from backend.stores.duckdb_store import DuckDBStore
+    pass
 
 log = logging.getLogger(__name__)
 

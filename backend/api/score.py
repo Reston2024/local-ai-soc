@@ -3,13 +3,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from backend.intelligence.risk_scorer import score_detection, score_entity, enrich_nodes_with_risk_score
 from backend.intelligence.anomaly_rules import check_event_anomalies
+from backend.intelligence.risk_scorer import (
+    enrich_nodes_with_risk_score,
+    score_detection,
+    score_entity,
+)
 
 log = logging.getLogger(__name__)
 router = APIRouter()

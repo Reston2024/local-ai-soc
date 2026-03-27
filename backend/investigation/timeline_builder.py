@@ -1,16 +1,17 @@
 """Timeline reconstruction — aggregates DuckDB events + causality chain for a case."""
 from __future__ import annotations
+
 import asyncio
-from datetime import datetime, timezone
 
 # Deferred causality import (mirrors Phase 5/6 deferred import pattern)
 try:
-    from backend.causality.attack_chain_builder import find_causal_chain
+    from backend.causality.attack_chain_builder import find_causal_chain  # noqa: F401
     _CHAIN_BUILDER_AVAILABLE = True
 except ImportError:
     _CHAIN_BUILDER_AVAILABLE = False
 
 from backend.core.logging import get_logger
+
 log = get_logger(__name__)
 
 

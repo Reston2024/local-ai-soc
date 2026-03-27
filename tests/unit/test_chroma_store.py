@@ -23,7 +23,7 @@ class TestChromaStore:
         assert collection.name == "test_collection"
 
     def test_get_or_create_default_collection(self, tmp_path):
-        from backend.stores.chroma_store import ChromaStore, DEFAULT_COLLECTION
+        from backend.stores.chroma_store import DEFAULT_COLLECTION, ChromaStore
         store = ChromaStore(str(tmp_path))
         collection = store.get_or_create_collection()
         assert collection.name == DEFAULT_COLLECTION
@@ -162,7 +162,7 @@ class TestChromaStore:
         assert count == 2
 
     async def test_initialise_default_collections(self, tmp_path):
-        from backend.stores.chroma_store import ChromaStore, DEFAULT_COLLECTION
+        from backend.stores.chroma_store import DEFAULT_COLLECTION, ChromaStore
         store = ChromaStore(str(tmp_path))
         await store.initialise_default_collections(embed_model="test-model")
         names = store.list_collections()

@@ -4,8 +4,9 @@ Tests P9-T05 (explain endpoint returns 200, structured sections, graceful Ollama
 Wave 0: all stubs are xfail.
 Plan 05 will implement backend/api/explain.py and wire into main.py.
 """
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 pytestmark = pytest.mark.unit
 
@@ -14,6 +15,7 @@ class TestExplainEndpoint:
     @pytest.mark.xfail(reason="P9-T05: POST /api/explain endpoint not yet implemented")
     def test_post_explain_returns_200(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         client = TestClient(app)
@@ -23,6 +25,7 @@ class TestExplainEndpoint:
     @pytest.mark.xfail(reason="P9-T05: POST /api/explain returns three structured sections")
     def test_post_explain_returns_sections(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         client = TestClient(app)
@@ -34,6 +37,7 @@ class TestExplainEndpoint:
     @pytest.mark.xfail(reason="P9-T05: POST /api/explain returns 200 not 500 when Ollama unavailable")
     def test_post_explain_graceful_ollama_error(self):
         from fastapi.testclient import TestClient
+
         from backend.main import create_app
         app = create_app()
         client = TestClient(app)

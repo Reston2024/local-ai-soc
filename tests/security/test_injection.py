@@ -13,7 +13,6 @@ def test_injection_patterns_stripped():
 @pytest.mark.xfail(reason="P10-T02 Sigma SQL injection test not yet implemented", strict=False)
 def test_sigma_sql_injection():
     """Sigma rule with SQL injection field value must not produce arbitrary SQL."""
-    from detections.matcher import SigmaMatcher
     # Stub: matcher must not pass raw field values through to SQL unescaped
     assert False, "stub — implement after P10-T02"
 
@@ -22,7 +21,8 @@ def test_sigma_sql_injection():
 def test_path_traversal_rejected():
     """File upload with path traversal filename must return 400."""
     from fastapi.testclient import TestClient
+
     from backend.main import create_app
-    client = TestClient(create_app())
+    TestClient(create_app())
     # Stub: verify endpoint rejects traversal filenames
     assert False, "stub — implement after auth layer exists"

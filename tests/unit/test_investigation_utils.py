@@ -5,9 +5,9 @@ Covers:
 - backend/investigation/hunt_engine.py
 - backend/api/investigate.py (pure functions)
 """
-import sqlite3
-import pytest
 from uuid import uuid4
+
+import pytest
 
 pytestmark = pytest.mark.unit
 
@@ -18,8 +18,9 @@ pytestmark = pytest.mark.unit
 
 def _make_case_db():
     """Create an in-memory SQLite DB with the investigation_cases schema."""
-    from backend.stores.sqlite_store import SQLiteStore
     import tempfile
+
+    from backend.stores.sqlite_store import SQLiteStore
     store = SQLiteStore(data_dir=tempfile.mkdtemp())
     return store._conn
 
@@ -71,7 +72,7 @@ class TestCaseManager:
         from backend.investigation.case_manager import CaseManager
         conn = _make_case_db()
         cm = CaseManager()
-        cid1 = cm.create_investigation_case(conn, "Open Case")
+        cm.create_investigation_case(conn, "Open Case")
         cid2 = cm.create_investigation_case(conn, "Another Open Case")
         cm.update_investigation_case(conn, cid2, {"case_status": "closed"})
         open_cases = cm.list_investigation_cases(conn, status="open")
@@ -141,16 +142,18 @@ class TestHuntEngine:
             assert len(tmpl.sql) > 0
 
     async def test_execute_hunt_unknown_template_raises(self, tmp_path):
-        from backend.investigation.hunt_engine import execute_hunt
         from unittest.mock import AsyncMock, MagicMock
+
+        from backend.investigation.hunt_engine import execute_hunt
         store = MagicMock()
         store.fetch_df = AsyncMock(return_value=[])
         with pytest.raises(ValueError, match="Unknown hunt template"):
             await execute_hunt(store, "nonexistent_template", {})
 
     async def test_execute_hunt_powershell_children(self, tmp_path):
-        from backend.investigation.hunt_engine import execute_hunt
         from unittest.mock import AsyncMock, MagicMock
+
+        from backend.investigation.hunt_engine import execute_hunt
         store = MagicMock()
         store.fetch_df = AsyncMock(return_value=[])
         result = await execute_hunt(store, "powershell_children", {})
@@ -158,8 +161,9 @@ class TestHuntEngine:
         store.fetch_df.assert_called_once()
 
     async def test_execute_hunt_suspicious_ip_comms(self):
-        from backend.investigation.hunt_engine import execute_hunt
         from unittest.mock import AsyncMock, MagicMock
+
+        from backend.investigation.hunt_engine import execute_hunt
         store = MagicMock()
         store.fetch_df = AsyncMock(return_value=[{"hostname": "host1"}])
         result = await execute_hunt(store, "suspicious_ip_comms", {"dst_ip": "10.0.0.1"})
@@ -171,8 +175,9 @@ class TestHuntEngine:
         assert any("10.0.0.1" in str(a) for a in call_args)
 
     async def test_execute_hunt_ioc_search_multiplies_params(self):
-        from backend.investigation.hunt_engine import execute_hunt
         from unittest.mock import AsyncMock, MagicMock
+
+        from backend.investigation.hunt_engine import execute_hunt
         store = MagicMock()
         store.fetch_df = AsyncMock(return_value=[])
         await execute_hunt(store, "ioc_search", {"ioc_value": "malicious.exe"})
@@ -182,8 +187,9 @@ class TestHuntEngine:
         assert len(params) == 6
 
     async def test_execute_hunt_unusual_auth_uses_threshold(self):
-        from backend.investigation.hunt_engine import execute_hunt
         from unittest.mock import AsyncMock, MagicMock
+
+        from backend.investigation.hunt_engine import execute_hunt
         store = MagicMock()
         store.fetch_df = AsyncMock(return_value=[])
         await execute_hunt(store, "unusual_auth", {"threshold": 20})
@@ -283,6 +289,7 @@ class TestInvestigateHelpers:
 
     def test_safe_val_datetime(self):
         from datetime import datetime, timezone
+
         from backend.api.investigate import _safe_val
         dt = datetime(2026, 1, 1, tzinfo=timezone.utc)
         result = _safe_val(dt)
@@ -297,8 +304,8 @@ class TestInvestigateHelpers:
 
     def test_normalize_event(self):
         from datetime import datetime, timezone
+
         from backend.api.investigate import _normalize_event
-        from unittest.mock import MagicMock
         dt = datetime(2026, 1, 1, tzinfo=timezone.utc)
         row = {"event_id": "e1", "timestamp": dt, "hostname": "host1"}
         result = _normalize_event(row)

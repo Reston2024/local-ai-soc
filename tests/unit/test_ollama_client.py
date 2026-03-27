@@ -1,6 +1,7 @@
 """Unit tests for backend/services/ollama_client.py using mocked httpx."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 pytestmark = pytest.mark.unit
 
@@ -85,6 +86,7 @@ class TestOllamaClientEmbed:
 
     async def test_embed_raises_on_http_status_error(self):
         import httpx
+
         from backend.services.ollama_client import OllamaError
         client = _make_client()
 
@@ -172,6 +174,7 @@ class TestOllamaClientGenerate:
 
     async def test_generate_raises_on_http_status_error(self):
         import httpx
+
         from backend.services.ollama_client import OllamaError
         client = _make_client()
 

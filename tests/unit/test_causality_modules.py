@@ -9,6 +9,7 @@ Covers:
 - backend/investigation/tagging.py
 """
 import sqlite3
+
 import pytest
 
 pytestmark = pytest.mark.unit
@@ -240,8 +241,9 @@ class TestScoringModule:
 
     def test_score_chain_object_alert(self):
         """Alert can be an object with .severity attribute."""
-        from backend.causality.scoring import score_chain
         from types import SimpleNamespace
+
+        from backend.causality.scoring import score_chain
         alert = SimpleNamespace(severity="high")
         result = score_chain([], [alert], [])
         assert result == 30
@@ -292,7 +294,7 @@ class TestTagging:
         assert tags.count("apt") == 1
 
     def test_remove_tag(self):
-        from backend.investigation.tagging import add_tag, remove_tag, list_tags
+        from backend.investigation.tagging import add_tag, list_tags, remove_tag
         conn = self._make_db()
         add_tag(conn, "case-001", "lateral-movement")
         remove_tag(conn, "case-001", "lateral-movement")
@@ -300,7 +302,7 @@ class TestTagging:
         assert "lateral-movement" not in tags
 
     def test_remove_nonexistent_tag_is_noop(self):
-        from backend.investigation.tagging import remove_tag, list_tags
+        from backend.investigation.tagging import list_tags, remove_tag
         conn = self._make_db()
         remove_tag(conn, "case-001", "does-not-exist")  # should not raise
         tags = list_tags(conn, "case-001")

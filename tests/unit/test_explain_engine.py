@@ -4,8 +4,9 @@ Tests P9-T07 (build_evidence_context, generate_explanation).
 Wave 0: all stubs are xfail.
 Plan 05 will implement backend/intelligence/explain_engine.py.
 """
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 pytestmark = pytest.mark.unit
 

@@ -64,8 +64,8 @@ async def save_investigation(
         )
     except Exception as exc:
         log.warning("save_investigation error: %s", exc)
-        from datetime import datetime, timezone
         import uuid
+        from datetime import datetime, timezone
         return SaveInvestigationResponse(
             id=uuid.uuid4().hex,
             detection_id=body.detection_id,

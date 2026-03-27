@@ -202,7 +202,6 @@ async def export_case_bundle(case_id: str, request: Request) -> JSONResponse:
     def _fetch_edges(ids: set[str]) -> list[dict]:
         all_edges: list[dict] = []
         seen: set = set()
-        import json as _json
         for eid in ids:
             for edge in stores.sqlite.get_edges_from(eid, depth=1):
                 if edge["target_id"] in ids:

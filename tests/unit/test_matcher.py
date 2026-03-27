@@ -1,5 +1,6 @@
 """Unit tests for detections/matcher.py — Sigma rule SQL compilation."""
 import pytest
+
 pytestmark = pytest.mark.unit
 
 _SIMPLE_RULE = """
@@ -206,7 +207,7 @@ class TestSigmaFieldMap:
         assert "src_port" in INTEGER_COLUMNS
 
     def test_integer_columns_are_subset_of_field_map_values(self):
-        from detections.field_map import SIGMA_FIELD_MAP, INTEGER_COLUMNS
+        from detections.field_map import INTEGER_COLUMNS, SIGMA_FIELD_MAP
         all_columns = set(SIGMA_FIELD_MAP.values())
         for col in INTEGER_COLUMNS:
             assert col in all_columns, f"INTEGER_COLUMN {col} not in SIGMA_FIELD_MAP values"
@@ -215,6 +216,7 @@ class TestSigmaFieldMap:
 class TestRuleToSql:
     def _make_matcher(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -355,6 +357,7 @@ class TestRuleToSql:
 class TestSigmaMatcherInit:
     def test_instantiation_succeeds(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -362,6 +365,7 @@ class TestSigmaMatcherInit:
 
     def test_rule_count_starts_at_zero(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -369,6 +373,7 @@ class TestSigmaMatcherInit:
 
     def test_load_rules_dir_empty(self, tmp_path):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -378,6 +383,7 @@ class TestSigmaMatcherInit:
 
     def test_load_rules_dir_nonexistent_path(self, tmp_path):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -399,6 +405,7 @@ detection:
     condition: selection
 """)
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -408,6 +415,7 @@ detection:
 
     def test_load_rule_yaml_valid(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -417,6 +425,7 @@ detection:
 
     def test_load_rule_yaml_invalid_returns_none(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -440,6 +449,7 @@ detection:
     condition: selection
 """)
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         stores = MagicMock()
         matcher = SigmaMatcher(stores)
@@ -453,6 +463,7 @@ class TestValueToSqlFragment:
 
     def _make_matcher(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         return SigmaMatcher(MagicMock())
 
@@ -491,28 +502,32 @@ class TestConditionSplitting:
 
     def _make_matcher(self):
         from unittest.mock import MagicMock
+
         from detections.matcher import SigmaMatcher
         return SigmaMatcher(MagicMock())
 
     def test_split_on_and(self):
-        from detections.matcher import SigmaMatcher
         from unittest.mock import MagicMock
+
+        from detections.matcher import SigmaMatcher
         matcher = SigmaMatcher(MagicMock())
         parts = matcher._split_condition("sel1 and sel2", "and")
         assert parts is not None
         assert len(parts) == 2
 
     def test_split_on_or(self):
-        from detections.matcher import SigmaMatcher
         from unittest.mock import MagicMock
+
+        from detections.matcher import SigmaMatcher
         matcher = SigmaMatcher(MagicMock())
         parts = matcher._split_condition("sel1 or sel2", "or")
         assert parts is not None
         assert len(parts) == 2
 
     def test_no_split_on_simple_term(self):
-        from detections.matcher import SigmaMatcher
         from unittest.mock import MagicMock
+
+        from detections.matcher import SigmaMatcher
         matcher = SigmaMatcher(MagicMock())
         parts = matcher._split_condition("selection", "and")
         assert parts is None

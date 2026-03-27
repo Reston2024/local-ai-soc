@@ -1,7 +1,7 @@
 """Unit tests for ingestion/loader.py — batch logic with mocked stores."""
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 pytestmark = pytest.mark.unit
@@ -34,7 +34,7 @@ def _make_ollama():
     return client
 
 
-def _make_event(event_id: str | None = None, hostname: str = "host1") -> "NormalizedEvent":
+def _make_event(event_id: str | None = None, hostname: str = "host1") -> "NormalizedEvent":  # noqa: F821
     from backend.models.event import NormalizedEvent
     now = datetime.now(timezone.utc)
     return NormalizedEvent(
@@ -67,8 +67,8 @@ class TestIngestionLoader:
 
     async def test_ingest_deduplicates_same_event_id(self, tmp_path):
         """ingest_events deduplicates events with the same event_id."""
-        from ingestion.loader import IngestionLoader
         from backend.models.event import NormalizedEvent
+        from ingestion.loader import IngestionLoader
         stores = await _make_stores(tmp_path)
         ollama = _make_ollama()
         loader = IngestionLoader(stores, ollama)

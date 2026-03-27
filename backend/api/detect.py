@@ -11,7 +11,6 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
 
@@ -116,8 +115,9 @@ async def run_detection(
     """Run all Sigma rules against stored events. Returns new DetectionRecords."""
     stores = _get_stores(request)
 
-    from detections.matcher import SigmaMatcher
     from pathlib import Path as _Path
+
+    from detections.matcher import SigmaMatcher
 
     matcher = SigmaMatcher(stores=stores)
 

@@ -1,6 +1,7 @@
 """Unit tests for backend/stores/sqlite_store.py — edges, detections, investigations."""
-import pytest
 from uuid import uuid4
+
+import pytest
 
 pytestmark = pytest.mark.unit
 
