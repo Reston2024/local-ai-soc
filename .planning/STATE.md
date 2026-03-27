@@ -3,6 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 13 (in progress)
+current_plan: 13-03 complete — scripts/seed_siem_data.py streams darkknight25/Advanced_SIEM_Dataset (HF datasets>=2.21.0); dry-run verified exit 0; trust_remote_code=False; --limit 500 default
+status: in_progress
+last_updated: "2026-03-27T14:30:00Z"
+progress:
+  [██████████] 100%
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 63
+  percent: 100
+decisions:
+  - "13-03: datasets>=2.21.0 (resolved 4.8.4) added for HF dataset streaming; trust_remote_code=False enforced; severity alias map converts info/informational/debug to low for seed data"
+  - "13-01: Foundation-Sec-8B (Cisco Foundation AI, Apache 2.0) selected as OLLAMA_CYBERSEC_MODEL; Q4_K_M quantisation (~4.8 GB) fits alongside qwen3:14b (~9 GB) within RTX 5080 16 GB VRAM budget"
+  - "13-01: Seneca-Cybersecurity-LLM rejected due to unclear licence, undocumented training data, individual publisher, no first-party GGUF"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 13 (in progress)
 current_plan: 13-01 complete — ADR-020-hf-model.md written; Foundation-Sec-8B (Cisco, Apache 2.0, Q4_K_M) selected as OLLAMA_CYBERSEC_MODEL; hardware fit verified for RTX 5080 16 GB VRAM
 status: in_progress
 last_updated: "2026-03-27T14:15:00Z"
