@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from backend.core.logging import get_logger
+from backend.core.rate_limit import limiter
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/detect", tags=["detect"])
@@ -106,6 +107,7 @@ async def list_detections(
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("10/minute")
 @router.post("/run")
 async def run_detection(
     request: Request,

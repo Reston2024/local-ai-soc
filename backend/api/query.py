@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.core.logging import get_logger
+from backend.core.rate_limit import limiter
 from backend.stores.chroma_store import DEFAULT_COLLECTION
 
 log = get_logger(__name__)
@@ -142,6 +143,7 @@ async def semantic_search(
 # ---------------------------------------------------------------------------
 
 
+@limiter.limit("30/minute")
 @router.post("/ask")
 async def ask(body: AskRequest, request: Request) -> JSONResponse:
     """

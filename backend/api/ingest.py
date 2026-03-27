@@ -25,6 +25,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, UploadFi
 from fastapi.responses import JSONResponse
 
 from backend.core.logging import get_logger
+from backend.core.rate_limit import limiter
 from backend.models.event import NormalizedEvent
 from backend.stores.chroma_store import DEFAULT_COLLECTION
 from ingestion.loader import IngestionLoader, IngestionResult, get_job_status
@@ -231,6 +232,7 @@ async def _run_ingestion_job(
         _set_job(job_id, "error", error=str(exc))
 
 
+@limiter.limit("10/minute")
 @router.post("/file", status_code=202)
 async def upload_file(
     request: Request,
