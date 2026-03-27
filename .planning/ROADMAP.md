@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** IN PROGRESS — Phase 10 (Compliance Hardening) active
+**Status:** IN PROGRESS — Phase 12 (API Hardening & Parser Coverage) next
 
 ---
 
@@ -580,3 +580,28 @@ Plans:
 ---
 
 *Phase 11 added: 2026-03-26 (Cleanup & Coverage — deferred items from Phase 10)*
+
+---
+
+## Phase 12: API Hardening & Parser Coverage
+**Status:** TODO
+**Depends on:** Phase 11 complete
+**Goal:** Move the repo from B to A- on the external security critique scorecard. Three attack surfaces: (1) API surface — add rate limiting and request size guards so the local endpoint can't be trivially abused; (2) EVTX parser — currently 15% test coverage, the most critical ingestion path for Windows SOC work; (3) PR workflow — Phase 12 is executed on a feature branch and merged via pull request, establishing the first visible PR in the repo's history and closing the "0 PRs" credibility gap.
+
+### Requirements
+- P12-T01: API rate limiting — add per-endpoint rate limiting to FastAPI using `slowapi` (or equivalent); configure sensible defaults for ingest, detect, query, and investigate endpoints; add tests
+- P12-T02: Request size limits — enforce max body size on ingest and query endpoints to prevent memory exhaustion from oversized evidence payloads; configure in Caddy (client_max_body_size) and FastAPI (ContentLengthLimit middleware)
+- P12-T03: EVTX parser coverage — raise `ingestion/parsers/evtx_parser.py` from 15% to ≥60% test coverage; tests must cover valid EVTX parsing, malformed input handling, and field normalization output
+- P12-T04: Caddy image digest pin — complete P11-T02 deferred item: run `docker inspect caddy:2.9-alpine`, update `docker-compose.yml` image to `caddy:2.9-alpine@sha256:<digest>`; requires Docker Desktop running
+- P12-T05: PR workflow — all Phase 12 work done on `feature/phase-12-hardening` branch, merged to `main` via pull request; PR body includes test evidence and smoke-test output
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Create feature branch + rate limiting (slowapi, SlowAPIMiddleware, per-endpoint decorators)
+- [ ] 12-02-PLAN.md — Caddy request_body size limits (100MB ingest, 10MB general API)
+- [ ] 12-03-PLAN.md — EVTX parser coverage: 15% to 80%+ (7 test classes, no binary fixtures)
+- [ ] 12-04-PLAN.md — Caddy image digest pin (Docker checkpoint required)
+- [ ] 12-05-PLAN.md — PR workflow: push branch, open PR, merge to main, sync master
+
+*Phase 12 added: 2026-03-26 (API Hardening & Parser Coverage)*
