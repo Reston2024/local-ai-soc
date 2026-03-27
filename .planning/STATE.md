@@ -3,6 +3,28 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 13 (in progress)
+current_plan: 13-02 complete — OLLAMA_CYBERSEC_MODEL=foundation-sec:8b wired into Settings and OllamaClient; use_cybersec_model=True flag routes generate()/stream_generate() to cybersec model; main.py updated; 8 new tests; 555 passing
+status: in_progress
+last_updated: "2026-03-27T10:59:50Z"
+progress:
+  [██████████] 100%
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 62
+  percent: 100
+decisions:
+  - "13-02: cybersec_model='' default in OllamaClient.__init__ falls back to self.model — zero breaking changes to existing instantiations"
+  - "13-02: use_cybersec_model=False is an opt-in flag on generate()/stream_generate() — all existing callers unaffected"
+  - "13-01: Foundation-Sec-8B (Cisco Foundation AI, Apache 2.0) selected as OLLAMA_CYBERSEC_MODEL; Q4_K_M quantisation (~4.8 GB) fits alongside qwen3:14b (~9 GB) within RTX 5080 16 GB VRAM budget"
+  - "13-01: Seneca-Cybersecurity-LLM rejected due to unclear licence, undocumented training data, individual publisher, no first-party GGUF"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 13 (in progress)
 current_plan: 13-03 complete — scripts/seed_siem_data.py streams darkknight25/Advanced_SIEM_Dataset (HF datasets>=2.21.0); dry-run verified exit 0; trust_remote_code=False; --limit 500 default
 status: in_progress
 last_updated: "2026-03-27T14:30:00Z"
