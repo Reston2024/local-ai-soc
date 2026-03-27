@@ -3,11 +3,30 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 12 (in progress)
+current_plan: 12-03 complete — 50 EVTX parser unit tests (97% coverage); unittest.mock.patch pattern for pyevtx-rs; no binary .evtx fixtures; CI coverage gate 73.26% > 70%
+status: in_progress
+last_updated: "2026-03-27T07:45:00Z"
+progress:
+  total_phases: 12
+  completed_phases: 11
+  total_plans: 55
+  completed_plans: 58
+  percent: 100
+decisions:
+  - "12-03: patch at usage site ingestion.parsers.evtx_parser.evtx.PyEvtxParser; hand-crafted JSON dicts match pyevtx-rs {event_record_id, timestamp, data} format; no binary .evtx fixtures added"
+  - "12-03: CI coverage gate uses --cov=backend --cov=ingestion --cov=detections scope matching ci.yml (73.26% total, well above 70% threshold)"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 12 (in progress)
 current_plan: 12-02 complete — Caddy request_body size limits (100MB for /api/ingest/file, 10MB for /api/*); /api/query/* SSE handler unchanged; caddy validate passes
 status: in_progress
 last_updated: "2026-03-27T07:36:11Z"
 progress:
-  total_phases: 12
+  [██████████] 100%
   completed_phases: 11
   total_plans: 55
   completed_plans: 57
