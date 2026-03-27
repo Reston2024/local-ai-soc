@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
-status: completed
-last_updated: "2026-03-26T21:06:11.481Z"
+current_phase: Phase 12 (in progress)
+current_plan: 12-01 complete — slowapi==0.1.9 rate limiting on ingest/file (10/min), query/ask (30/min), detect/run (10/min); TESTING=1 guard; 4 unit tests pass; 497 existing tests pass; feature/phase-12-api-hardening branch created
+status: in_progress
+last_updated: "2026-03-27T18:52:00Z"
 progress:
-  total_phases: 11
-  completed_phases: 9
-  total_plans: 50
-  completed_plans: 55
-  percent: 100
+  total_phases: 12
+  completed_phases: 11
+  total_plans: 54
+  completed_plans: 56
+  percent: 97
+decisions:
+  - "12-01: Decorator order must be @limiter.limit ABOVE @router.post in source when from __future__ import annotations is present — FastAPI receives slowapi-wrapped function with string ForwardRefs it cannot resolve otherwise"
+  - "12-01: TESTING=1 guard in conftest.py via os.environ.setdefault prevents rate limiting from affecting test suite"
 ---
 
 ---
