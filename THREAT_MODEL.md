@@ -144,8 +144,8 @@
 - All configuration via `.env` file (never hardcoded).
 - `.env` in `.gitignore`.
 - `.env.example` with placeholder values committed.
-- Pre-commit check in `scripts/pre-commit-check.ps1`: scan staged files for common secret patterns.
-- No external service credentials needed for Phase 1-5 (fully local).
+- CI secret scan via `gitleaks/gitleaks-action@v2` in `.github/workflows/ci.yml` (`secret-scan` job) — runs on every push and PR, blocks merge on detection.
+- No external service credentials needed for local-only deployment.
 
 **OWASP ASVS:** V2.10 Service Authentication.
 
@@ -159,9 +159,9 @@
 **Impact:** HIGH — analysis platform has access to sensitive security evidence.
 
 **Controls:**
-- Pin all dependencies to exact versions in `pyproject.toml` and lockfile.
-- Use `uv pip install` with a lockfile to prevent version drift.
-- Verify package checksums in `REPRODUCIBILITY_RECEIPT.md`.
+- Pin all dependencies to exact `==` versions in `pyproject.toml` sourced from `uv.lock`.
+- CI dependency audit via `pip-audit` in `.github/workflows/ci.yml` (`dependency-audit` job) — runs on every push, fails on known CVEs.
+- Verify package checksums in `REPRODUCIBILITY_RECEIPT.md` (status: VERIFIED 2026-03-26).
 - Use only packages from PyPI with established maintainer history.
 - No packages installed from Git URLs or local paths (except project itself).
 

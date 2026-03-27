@@ -1,0 +1,227 @@
+.....................s.................................................. [ 14%]
+........................................................................ [ 29%]
+...............................................XXXXXX................... [ 44%]
+........................................................................ [ 59%]
+........................................................................ [ 73%]
+............................................................XXXX........ [ 88%]
+XXX.............................................XXX...xx                 [100%]
+============================== warnings summary ===============================
+tests/unit/test_api_endpoints.py::TestEventsEndpoint::test_list_events_with_inserted_event
+tests/unit/test_api_extended.py::TestQueryEndpoints::test_semantic_search_returns_200
+  C:\Users\Admin\AI-SOC-Brain\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <coroutine object DuckDBStore.write_worker at 0x0000021AD910F640>
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 158, in get
+      await getter
+  GeneratorExit
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AI-SOC-Brain\backend\stores\duckdb_store.py", line 139, in write_worker
+      op: _WriteOp = await self._write_queue.get()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 160, in get
+      getter.cancel()  # Just in case getter is not done yet.
+      ^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 799, in call_soon
+      self._check_closed()
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 545, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/unit/test_api_endpoints.py::TestEventsEndpoint::test_get_single_event_not_found
+  C:\Users\Admin\AI-SOC-Brain\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <coroutine object DuckDBStore.write_worker at 0x0000021AD910FE40>
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\pathlib.py", line 555, in drive
+      return self._drv
+             ^^^^^^^^^
+  AttributeError: 'WindowsPath' object has no attribute '_drv'
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 158, in get
+      await getter
+  GeneratorExit
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AI-SOC-Brain\backend\stores\duckdb_store.py", line 139, in write_worker
+      op: _WriteOp = await self._write_queue.get()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 160, in get
+      getter.cancel()  # Just in case getter is not done yet.
+      ^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 799, in call_soon
+      self._check_closed()
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 545, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/unit/test_api_extended.py::TestQueryEndpoints::test_semantic_search_returns_200
+  C:\Users\Admin\AI-SOC-Brain\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <coroutine object DuckDBStore.write_worker at 0x0000021AD9341B40>
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 158, in get
+      await getter
+  GeneratorExit
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AI-SOC-Brain\backend\stores\duckdb_store.py", line 139, in write_worker
+      op: _WriteOp = await self._write_queue.get()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 160, in get
+      getter.cancel()  # Just in case getter is not done yet.
+      ^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 799, in call_soon
+      self._check_closed()
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 545, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/unit/test_api_extended.py::TestQueryEndpoints::test_semantic_search_returns_200
+  C:\Users\Admin\AI-SOC-Brain\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <coroutine object DuckDBStore.write_worker at 0x0000021AD910EF40>
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 158, in get
+      await getter
+  GeneratorExit
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AI-SOC-Brain\backend\stores\duckdb_store.py", line 139, in write_worker
+      op: _WriteOp = await self._write_queue.get()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 160, in get
+      getter.cancel()  # Just in case getter is not done yet.
+      ^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 799, in call_soon
+      self._check_closed()
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 545, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+tests/unit/test_api_extended.py::TestQueryEndpoints::test_semantic_search_returns_200
+  C:\Users\Admin\AI-SOC-Brain\.venv\Lib\site-packages\_pytest\unraisableexception.py:67: PytestUnraisableExceptionWarning: Exception ignored in: <coroutine object DuckDBStore.write_worker at 0x0000021AD910FB40>
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 158, in get
+      await getter
+  GeneratorExit
+  
+  During handling of the above exception, another exception occurred:
+  
+  Traceback (most recent call last):
+    File "C:\Users\Admin\AI-SOC-Brain\backend\stores\duckdb_store.py", line 139, in write_worker
+      op: _WriteOp = await self._write_queue.get()
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\queues.py", line 160, in get
+      getter.cancel()  # Just in case getter is not done yet.
+      ^^^^^^^^^^^^^^^
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 799, in call_soon
+      self._check_closed()
+    File "C:\Users\Admin\AppData\Roaming\uv\python\cpython-3.12.12-windows-x86_64-none\Lib\asyncio\base_events.py", line 545, in _check_closed
+      raise RuntimeError('Event loop is closed')
+  RuntimeError: Event loop is closed
+  
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.12-final-0 _______________
+
+Name                                            Stmts   Miss  Cover   Missing
+-----------------------------------------------------------------------------
+backend\__init__.py                                 0      0   100%
+backend\api\__init__.py                             0      0   100%
+backend\api\correlate.py                           13      5    62%   20-28
+backend\api\detect.py                              90      9    90%   76-77, 95-96, 132, 151-153, 210
+backend\api\events.py                              88     34    61%   90-91, 93-94, 99-100, 102-103, 105-106, 166-217, 250-257
+backend\api\explain.py                             54     17    69%   45, 55-56, 69-104
+backend\api\export.py                             117     13    89%   63-64, 66-67, 207-212, 219-221
+backend\api\graph.py                              130     14    89%   124-127, 238-239, 258-265, 302-307, 319
+backend\api\health.py                              56      4    93%   38, 61, 114-115
+backend\api\ingest.py                             103     32    69%   72-104, 124-134, 162, 169, 181-189, 225-231, 269
+backend\api\investigate.py                        155    119    23%   39, 68-317
+backend\api\investigations.py                      58     11    81%   65-69, 86-88, 109-111
+backend\api\query.py                               99     37    63%   90-91, 107-108, 158-159, 167, 176-178, 195-202, 224-265
+backend\api\score.py                               62     29    53%   39, 42-44, 54-104, 112-116
+backend\api\telemetry.py                           21     11    48%   30-48
+backend\api\top_threats.py                         30      4    87%   48-69
+backend\causality\__init__.py                       0      0   100%
+backend\causality\attack_chain_builder.py          33      2    94%   51, 55
+backend\causality\causality_routes.py             142    121    15%   16-17, 21-22, 41-48, 53-63, 68-72, 85-127, 139-170, 193-230, 252-290, 308-367
+backend\causality\engine.py                        55      6    89%   48, 85-89
+backend\causality\entity_resolver.py               33      1    97%   84
+backend\causality\mitre_mapper.py                  18      0   100%
+backend\causality\scoring.py                       33      1    97%   57
+backend\core\__init__.py                            0      0   100%
+backend\core\auth.py                                9      0   100%
+backend\core\config.py                             28      1    96%   71
+backend\core\deps.py                               17      3    82%   54, 59, 64
+backend\core\logging.py                            69      8    88%   65, 67, 71-80, 116, 163-165
+backend\intelligence\__init__.py                    0      0   100%
+backend\intelligence\anomaly_rules.py              25      1    96%   48
+backend\intelligence\explain_engine.py             39      1    97%   52
+backend\intelligence\risk_scorer.py                26      0   100%
+backend\investigation\__init__.py                   0      0   100%
+backend\investigation\artifact_store.py            29     21    28%   27-55, 65-75
+backend\investigation\case_manager.py              49      2    96%   31-32
+backend\investigation\hunt_engine.py               22      0   100%
+backend\investigation\investigation_routes.py     133     87    35%   37-45, 50-55, 86-96, 115-121, 130-137, 146-158, 167-177, 191-230, 239-243, 252-268
+backend\investigation\tagging.py                   17      0   100%
+backend\investigation\timeline_builder.py          76     26    66%   10-11, 51, 54, 74, 82-84, 102-136
+backend\main.py                                   171     73    57%   88-190, 261-262, 268-269, 275-276, 282-283, 289-290, 296-297, 303-304, 310-311, 317-318, 332, 377, 399-402
+backend\models\__init__.py                          2      0   100%
+backend\models\event.py                           104      8    92%   63, 66, 106, 110, 116, 118, 199-210
+backend\services\__init__.py                        0      0   100%
+backend\services\ollama_client.py                 153     48    69%   317, 368-424, 445-479
+backend\stores\__init__.py                          0      0   100%
+backend\stores\chroma_store.py                     52      1    98%   172
+backend\stores\duckdb_store.py                     92      7    92%   144-151, 252, 281-282
+backend\stores\sqlite_store.py                    203     31    85%   175-176, 213, 267-268, 281-284, 371-372, 400-403, 483-484, 499-500, 563, 569, 587, 614-627, 631-635, 647-648, 722-723
+detections\__init__.py                              0      0   100%
+detections\backends\__init__.py                     0      0   100%
+detections\field_map.py                             3      0   100%
+detections\matcher.py                             331     81    76%   98, 132-138, 173, 233-234, 241-246, 306, 313, 324-331, 360-362, 372, 384, 396, 405, 410, 421, 423, 434-443, 457-459, 471, 480-482, 516, 518, 560-561, 568-575, 580-628, 663, 668, 680-681, 711-737
+detections\pipelines\__init__.py                    0      0   100%
+ingestion\__init__.py                               0      0   100%
+ingestion\entity_extractor.py                      60      9    85%   100, 102, 104, 117, 140-141, 183, 211, 227
+ingestion\loader.py                               194     40    79%   176, 182-188, 203-210, 325, 336-341, 371-374, 400, 441-444, 479-493, 499-502
+ingestion\normalizer.py                            86      7    92%   83, 123-124, 139, 149, 195, 222
+ingestion\osquery_collector.py                     69     24    65%   55-62, 70-73, 78-80, 87-89, 99-105, 112, 125
+ingestion\parsers\__init__.py                       0      0   100%
+ingestion\parsers\base.py                          11      0   100%
+ingestion\parsers\csv_parser.py                   115     16    86%   66-67, 75, 82-83, 96-99, 130-132, 175-178, 188
+ingestion\parsers\evtx_parser.py                  141    120    15%   30-35, 44-53, 58-62, 67-115, 134-161, 187-289, 324-352
+ingestion\parsers\json_parser.py                  160     42    74%   68-69, 83-96, 100, 106, 108-110, 142-145, 151, 227-232, 260-267, 285-291, 295-296, 299-304, 312-313
+ingestion\parsers\osquery_parser.py               126     61    52%   41-42, 73-76, 91-95, 126-131, 188-240, 277-281
+ingestion\registry.py                              15      3    80%   50, 65, 70
+-----------------------------------------------------------------------------
+TOTAL                                            4017   1191    70%
+Required test coverage of 70% reached. Total coverage: 70.35%
+469 passed, 1 skipped, 2 xfailed, 16 xpassed, 6 warnings in 10.06s
