@@ -2,12 +2,32 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 13 (in progress)
+current_plan: 13-01 complete — ADR-020-hf-model.md written; Foundation-Sec-8B (Cisco, Apache 2.0, Q4_K_M) selected as OLLAMA_CYBERSEC_MODEL; hardware fit verified for RTX 5080 16 GB VRAM
+status: in_progress
+last_updated: "2026-03-27T14:15:00Z"
+progress:
+  [██████████] 100%
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 61
+  percent: 100
+decisions:
+  - "13-01: Foundation-Sec-8B (Cisco Foundation AI, Apache 2.0) selected as OLLAMA_CYBERSEC_MODEL; Q4_K_M quantisation (~4.8 GB) fits alongside qwen3:14b (~9 GB) within RTX 5080 16 GB VRAM budget"
+  - "13-01: Seneca-Cybersecurity-LLM rejected due to unclear licence, undocumented training data, individual publisher, no first-party GGUF"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 12 (complete — awaiting PR merge)
 current_plan: 12-05 complete — feature/phase-12-api-hardening pushed to origin; 74.03% coverage (547 tests); PR ready at https://github.com/Reston2024/local-ai-soc/pull/new/feature/phase-12-api-hardening
 status: in_progress
 last_updated: "2026-03-27T08:15:00Z"
 progress:
-  total_phases: 12
+  [██████████] 100%
   completed_phases: 11
   total_plans: 55
   completed_plans: 60
