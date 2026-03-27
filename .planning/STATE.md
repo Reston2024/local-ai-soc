@@ -2,10 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 13 (in progress)
-current_plan: 13-04 complete — MetricsService (9 KPI functions, asyncio.gather), GET /api/metrics/kpis with APScheduler 60s cache, apscheduler>=3.10.0 added; 582 tests passing
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-03-27T14:28:27Z"
+last_updated: "2026-03-27T14:34:10.382Z"
+progress:
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 65
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 13 (in progress)
+current_plan: 13-05 complete — DetectionsView live KPIs (MTTD/MTTR/MTTC/FP Rate/Active Rules/24h Alerts) with 60s polling; AssetsView wired to api.health, api.graph.entities, api.events.list; P13-T06 and P13-T07 satisfied
+status: in_progress
+last_updated: "2026-03-27T14:33:00Z"
 progress:
   [██████████] 100%
   total_phases: 13
@@ -14,6 +30,8 @@ progress:
   completed_plans: 64
   percent: 100
 decisions:
+  - "13-05: KPI polling via $effect + setInterval(60_000) with cleanup return — Svelte 5 rune lifecycle pattern"
+  - "13-05: AssetsView uses $derived ingestionSources from api.health() + api.events.list() — live pipeline health wired for P13-T07"
   - "13-04: APScheduler module-level singleton pattern used for KPI cache — globals survive across requests within single uvicorn worker"
   - "13-04: Cold-start inline compute: first request computes KPIs synchronously rather than returning 503"
   - "13-04: FP rate proxy metric — low-severity no-case detections / total; true FP tracking deferred to analyst feedback UI"
