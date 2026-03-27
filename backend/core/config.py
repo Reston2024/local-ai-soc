@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     OLLAMA_HOST: str = "http://127.0.0.1:11434"
     OLLAMA_MODEL: str = "qwen3:14b"
     OLLAMA_EMBED_MODEL: str = "mxbai-embed-large"
+    # Cybersecurity-specialised model (ADR-020) — used for investigation/triage prompts
+    OLLAMA_CYBERSEC_MODEL: str = "foundation-sec:8b"
 
     # Logging
     LOG_LEVEL: str = "INFO"
