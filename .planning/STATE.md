@@ -3,11 +3,32 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 12 (in progress)
+current_plan: 12-02 complete — Caddy request_body size limits (100MB for /api/ingest/file, 10MB for /api/*); /api/query/* SSE handler unchanged; caddy validate passes
+status: in_progress
+last_updated: "2026-03-27T07:36:11Z"
+progress:
+  total_phases: 12
+  completed_phases: 11
+  total_plans: 55
+  completed_plans: 57
+  percent: 100
+decisions:
+  - "12-02: Caddy-only request_body limits (no FastAPI middleware) — proxy blocks oversized requests before Python allocates memory"
+  - "12-02: /api/ingest/file handler at 100MB placed before /api/* at 10MB (Caddy first-match-wins); SSE /api/query/* excluded from body limits"
+  - "12-01: Decorator order must be @limiter.limit ABOVE @router.post when from __future__ import annotations is present"
+  - "12-01: TESTING=1 guard in conftest.py via os.environ.setdefault prevents rate limiting from affecting test suite"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 12 (in progress)
 current_plan: 12-01 complete — slowapi==0.1.9 rate limiting on ingest/file (10/min), query/ask (30/min), detect/run (10/min); TESTING=1 guard; 4 unit tests pass; 497 existing tests pass; feature/phase-12-api-hardening branch created
 status: in_progress
 last_updated: "2026-03-27T18:52:00Z"
 progress:
-  total_phases: 12
+  [██████████] 100%
   completed_phases: 11
   total_plans: 54
   completed_plans: 56

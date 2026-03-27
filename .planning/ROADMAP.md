@@ -595,7 +595,7 @@ Plans:
 - P12-T04: Caddy image digest pin — complete P11-T02 deferred item: run `docker inspect caddy:2.9-alpine`, update `docker-compose.yml` image to `caddy:2.9-alpine@sha256:<digest>`; requires Docker Desktop running
 - P12-T05: PR workflow — all Phase 12 work done on `feature/phase-12-hardening` branch, merged to `main` via pull request; PR body includes test evidence and smoke-test output
 
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 - [ ] 12-01-PLAN.md — Create feature branch + rate limiting (slowapi, SlowAPIMiddleware, per-endpoint decorators)
