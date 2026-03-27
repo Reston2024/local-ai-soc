@@ -26,6 +26,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+from backend.core.rate_limit import limiter
 
 from backend.core.auth import verify_token
 from backend.core.config import Settings
@@ -239,6 +244,13 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
+
+    # -----------------------------------------------------------------------
+    # Rate limiting — disabled when TESTING=1 (SlowAPI via slowapi==0.1.9)
+    # -----------------------------------------------------------------------
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
 
     # -----------------------------------------------------------------------
     # Routers
