@@ -605,3 +605,30 @@ Plans:
 - [ ] 12-05-PLAN.md — PR workflow: push branch, open PR, merge to main, sync master
 
 *Phase 12 added: 2026-03-26 (API Hardening & Parser Coverage)*
+
+---
+
+## Phase 13: Mature SOC Metrics, KPIs & HF Model Upgrade
+**Status:** TODO
+**Depends on:** Phase 12 complete
+**Goal:** Elevate AI SOC Brain from a capable detection engine to a credible SOC command centre by (1) upgrading the local LLM to a cybersecurity-specialised model via the industry-standard LLMOps security-first selection process, (2) implementing the full Metrics & KPIs layer (MTTD, MTTR, MTTC, alert volume trends, false positive rate, assets monitored, log sources, active rules, open cases), and (3) wiring those metrics into the Svelte dashboard with live polling and the polished navy/cyan UI theme.
+
+### Requirements
+- P13-T01: HF model security review & selection — evaluate Foundation-Sec-8B (fdtn-ai) and Seneca-Cybersecurity-LLM (AlicanKiraz0) GGUF variants; document security scan results, hardware fit, and selection rationale in docs/ADR-020-hf-model.md; configure chosen model as `model_cybersec` in backend/core/config.py (Settings) alongside existing default
+- P13-T02: Ollama cybersec model integration — add model-selection logic to backend/services/ollama_client.py so investigation summaries, AI Query, and triage prompts can optionally route to the cybersec model; controlled by OLLAMA_CYBERSEC_MODEL env var; no breaking changes to existing flows
+- P13-T03: HF dataset seed script — write scripts/seed_siem_data.py that downloads a small slice (≤500 rows) of darkknight25/Advanced_SIEM_Dataset via the HF datasets library, normalises records to NormalizedEvent schema, and ingests them via IngestionLoader; enables realistic KPI testing without real events
+- P13-T04: Backend metrics service — create backend/services/metrics_service.py with functions: compute_mttd(), compute_mttr(), compute_mttc(), compute_false_positive_rate(), compute_alert_volume(), compute_active_rules(), compute_open_cases(); each queries DuckDB/SQLite stores; all return typed Pydantic models
+- P13-T05: GET /api/metrics/kpis endpoint — add router backend/api/metrics.py returning all KPIs in one JSON payload; 60-second APScheduler background task recomputes and caches results; endpoint returns cached value instantly
+- P13-T06: Svelte KPI dashboard — replace DetectionsView metric card stubs with live data from /api/metrics/kpis; add MTTD, MTTR, MTTC, False Positive Rate, Active Cases, Active Rules, Pipeline cards alongside existing severity pills; polling every 60 s; last-updated timestamp; consistent cyan/navy theme
+- P13-T07: Assets & Coverage live data — wire AssetsView.svelte to real entity counts from the graph store and ingestion source health from /api/health; replace hardcoded zeros with live values
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — HF model security review & ADR-020 (P13-T01)
+- [ ] 13-02-PLAN.md — OLLAMA_CYBERSEC_MODEL config & OllamaClient routing (P13-T02)
+- [ ] 13-03-PLAN.md — HF SIEM dataset seed script (P13-T03)
+- [ ] 13-04-PLAN.md — Backend metrics service + GET /api/metrics/kpis endpoint (P13-T04, P13-T05)
+- [ ] 13-05-PLAN.md — Svelte KPI dashboard + AssetsView live data (P13-T06, P13-T07)
+
+*Phase 13 added: 2026-03-27 (Mature SOC Metrics, KPIs & HF Model Upgrade)*
