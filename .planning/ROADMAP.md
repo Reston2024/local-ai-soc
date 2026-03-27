@@ -622,7 +622,7 @@ Plans:
 - P13-T06: Svelte KPI dashboard — replace DetectionsView metric card stubs with live data from /api/metrics/kpis; add MTTD, MTTR, MTTC, False Positive Rate, Active Cases, Active Rules, Pipeline cards alongside existing severity pills; polling every 60 s; last-updated timestamp; consistent cyan/navy theme
 - P13-T07: Assets & Coverage live data — wire AssetsView.svelte to real entity counts from the graph store and ingestion source health from /api/health; replace hardcoded zeros with live values
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [ ] 13-01-PLAN.md — HF model security review & ADR-020 (P13-T01)

@@ -3,6 +3,46 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 13 (in progress)
+current_plan: 13-04 complete — MetricsService (9 KPI functions, asyncio.gather), GET /api/metrics/kpis with APScheduler 60s cache, apscheduler>=3.10.0 added; 582 tests passing
+status: in_progress
+last_updated: "2026-03-27T14:28:27Z"
+progress:
+  [██████████] 100%
+  total_phases: 13
+  completed_phases: 11
+  total_plans: 60
+  completed_plans: 64
+  percent: 100
+decisions:
+  - "13-04: APScheduler module-level singleton pattern used for KPI cache — globals survive across requests within single uvicorn worker"
+  - "13-04: Cold-start inline compute: first request computes KPIs synchronously rather than returning 503"
+  - "13-04: FP rate proxy metric — low-severity no-case detections / total; true FP tracking deferred to analyst feedback UI"
+  - "13-03: datasets>=2.21.0 (resolved 4.8.4) added for HF dataset streaming; trust_remote_code=False enforced"
+  - "13-02: cybersec_model='' default in OllamaClient.__init__ falls back to self.model — zero breaking changes"
+  - "13-01: Foundation-Sec-8B (Cisco Foundation AI, Apache 2.0) selected as OLLAMA_CYBERSEC_MODEL"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-27T14:29:13.138Z"
+progress:
+  total_phases: 13
+  completed_phases: 10
+  total_plans: 60
+  completed_plans: 64
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 13 (in progress)
 current_plan: 13-02 complete — OLLAMA_CYBERSEC_MODEL=foundation-sec:8b wired into Settings and OllamaClient; use_cybersec_model=True flag routes generate()/stream_generate() to cybersec model; main.py updated; 8 new tests; 555 passing
 status: in_progress
 last_updated: "2026-03-27T10:59:50Z"
