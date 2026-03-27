@@ -67,22 +67,66 @@ New-Item -ItemType Directory -Force -Path $LogsDir | Out-Null
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 Write-OK "Data directories ready"
 
-# Check Docker
+# --- Ensure Docker Desktop is running ---
+Write-Step "Checking Docker Desktop"
+$dockerReady = $false
 try {
     $null = docker info 2>&1
-    Write-OK "Docker running"
+    $dockerReady = $true
+    Write-OK "Docker already running"
 } catch {
-    Write-Fail "Docker not running. Start Docker Desktop first."
-    exit 1
+    Write-Step "Starting Docker Desktop..."
+    Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+    # Poll up to 90 s for the Docker daemon to become ready
+    $deadline = (Get-Date).AddSeconds(90)
+    while ((Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 3
+        try {
+            $null = docker info 2>&1
+            $dockerReady = $true
+            break
+        } catch { }
+    }
+    if ($dockerReady) {
+        Write-OK "Docker Desktop started"
+    } else {
+        Write-Fail "Docker Desktop did not become ready within 90 s — aborting"
+        exit 1
+    }
 }
 
-# Check Ollama (non-fatal — backend degrades gracefully)
+# --- Ensure Ollama is running ---
+Write-Step "Checking Ollama"
+$ollamaRunning = $false
 try {
-    $ollamaResp = Invoke-RestMethod -Uri 'http://localhost:11434' -TimeoutSec 3 -ErrorAction SilentlyContinue
-    Write-OK "Ollama running: $ollamaResp"
-} catch {
-    Write-Warn "Ollama not responding at localhost:11434 — AI features will be degraded"
-    Write-Warn "Start Ollama: C:\Users\Admin\AppData\Local\Programs\Ollama\ollama.exe serve"
+    $null = Invoke-RestMethod -Uri 'http://localhost:11434' -TimeoutSec 3 -ErrorAction Stop
+    $ollamaRunning = $true
+    Write-OK "Ollama already running"
+} catch { }
+
+if (-not $ollamaRunning) {
+    Write-Step "Starting Ollama..."
+    $ollamaExe = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
+    if (Test-Path $ollamaExe) {
+        Start-Process -FilePath $ollamaExe -ArgumentList 'serve' -WindowStyle Hidden
+        # Poll up to 30 s for Ollama to become ready
+        $deadline = (Get-Date).AddSeconds(30)
+        while ((Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 2
+            try {
+                $null = Invoke-RestMethod -Uri 'http://localhost:11434' -TimeoutSec 2 -ErrorAction Stop
+                $ollamaRunning = $true
+                break
+            } catch { }
+        }
+        if ($ollamaRunning) {
+            Write-OK "Ollama started"
+        } else {
+            Write-Warn "Ollama did not respond within 30 s — AI features will be degraded"
+        }
+    } else {
+        Write-Warn "Ollama not found at $ollamaExe — AI features will be degraded"
+    }
 }
 
 # --- Build dashboard (unless skipped) ---
