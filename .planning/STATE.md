@@ -3,6 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 14 (in progress)
+current_plan: 14-03 complete — llm_calls DDL in duckdb_store.py; OllamaClient duckdb_store param + _write_telemetry() hook in generate()/stream_generate(); stream_generate_iter use_cybersec_model param; KpiSnapshot avg_latency_ms_per_model/total_llm_calls/error_rate fields; 65 new tests all green
+status: in_progress
+last_updated: "2026-03-28T11:58:00Z"
+progress:
+  [██████████] 100%
+  total_phases: 14
+  completed_phases: 11
+  total_plans: 65
+  completed_plans: 70
+  percent: 100
+decisions:
+  - "14-03: duckdb_store=None default in OllamaClient.__init__ preserves backward compat — existing callers unaffected"
+  - "14-03: TYPE_CHECKING guard for DuckDBStore import avoids circular import at runtime"
+  - "14-03: INSERT OR IGNORE for llm_calls rows — idempotent on UUID PK; _compute_llm_kpis catches all exceptions for graceful KPI degradation"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 14 (in progress)
 current_plan: 14-04 complete — GET /api/investigations/{id}/timeline (TimelineItem + merge_and_sort_timeline 4-source + router); all 3 Wave-0 stub tests green; edges table adapted from graph_edges; get_detections_by_case used
 status: in_progress
 last_updated: "2026-03-27T11:57:00Z"
