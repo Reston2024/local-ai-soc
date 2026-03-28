@@ -2,6 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-28T18:45:59.179Z"
+progress:
+  total_phases: 14
+  completed_phases: 12
+  total_plans: 66
+  completed_plans: 71
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 14 (in progress)
 current_plan: 14-06 complete — eval_models.py --dry-run bypasses DuckDB via synthetic placeholder rows; 2 new dry-run unit tests; all 10 unit tests green
 status: in_progress

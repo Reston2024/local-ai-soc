@@ -338,7 +338,7 @@ Plans:
 
 | Deliverable | Files | Verification |
 |-------------|-------|-------------|
-| Causality engine package | `backend/causality/engine.py`, `entity_resolver.py`, `attack_chain_builder.py`, `mitre_mapper.py`, `scoring.py` | 14 test_phase6.py tests XPASS | 6/6 | Complete   | 2026-03-28 | GET /graph/{alert_id}, GET /entity/{id}, GET /attack_chain/{alert_id}, POST /query return 200 |
+| Causality engine package | `backend/causality/engine.py`, `entity_resolver.py`, `attack_chain_builder.py`, `mitre_mapper.py`, `scoring.py` | 14 test_phase6.py tests XPASS | 6/6 | Complete    | 2026-03-28 | GET /graph/{alert_id}, GET /entity/{id}, GET /attack_chain/{alert_id}, POST /query return 200 |
 | AI investigation summary | `prompts/investigation_summary.py` | POST /investigate/{alert_id}/summary returns summary string |
 | Attack chain dashboard | `frontend/src/components/graph/AttackChain.svelte`, `panels/InvestigationPanel.svelte` | npm run build exits 0 |
 | ThreatGraph bug fix | `frontend/src/components/graph/ThreatGraph.svelte` | Edges render (e.src/e.dst mapping fixed) |
