@@ -656,3 +656,67 @@ Plans:
 - [ ] 14-05-PLAN.md — InvestigationView: two-panel workbench with timeline + AI Copilot SSE chat
 
 *Phase 14 added: 2026-03-27 (LLMOps Evaluation & Investigation AI Copilot)*
+
+## Phase 15: Attack Graph UI
+**Status:** TODO
+**Depends on:** Phase 14 complete
+**Goal:** Transform the stub Attack Graph view into a production interactive network graph using Cytoscape.js — rendering entities (users, devices, IPs, processes) as nodes and their relationships (lateral movement, process chains, network connections) as edges, with risk-scored colouring, MITRE ATT&CK tactic overlays, and drill-down to InvestigationView. Follows MITRE ATT&CK Navigator and SANS graph analysis best practices.
+
+### Requirements
+- P15-T01: Graph data API extension — GET /api/graph/{investigation_id} returns nodes (entity type, name, risk_score, attributes) and edges (relationship type, timestamp, MITRE tactic/technique) for an investigation; GET /api/graph/global returns the full cross-investigation entity graph (paginated); both endpoints read from the existing SQLite graph store
+- P15-T02: Cytoscape.js graph component — Svelte 5 GraphView.svelte renders a force-directed or hierarchical layout using cytoscape npm package; nodes sized by risk_score, coloured by entity type (user=blue, device=green, IP=orange, process=red); edges labelled with relationship type; tooltips show entity attributes on hover
+- P15-T03: Attack path highlighting — given a selected detection or investigation, the graph highlights the shortest attack path (BFS from source entity to target entity) using a distinct visual style (thick red edges, pulsing nodes); toggle between full graph and attack-path-only view
+- P15-T04: Graph ↔ Investigation integration — clicking a node in GraphView navigates to InvestigationView for that entity's associated investigation; "Open in Graph" button in InvestigationView launches GraphView centred on the investigation's primary entity
+
+### Plans
+**Plans:** 0/0 plans complete
+
+*Phase 15 added: 2026-03-28 (Attack Graph UI)*
+
+## Phase 16: Threat Hunting Workspace
+**Status:** TODO
+**Depends on:** Phase 15 complete
+**Goal:** Deliver a proactive threat hunting workspace that closes the gap between reactive alert triage and proactive adversary discovery — following SANS FOR508 threat hunting methodology and MITRE ATT&CK data source coverage model. Analysts can build structured hunt hypotheses, execute DuckDB queries with AI assistance, save/replay hunts, and visualise anomaly baselines.
+
+### Requirements
+- P16-T01: Hunt hypothesis engine — SQLite hunts table stores hunt name, hypothesis, MITRE tactic/technique, query, status (active/archived), created_at, last_run_at, result_count; GET /api/hunts lists all hunts; POST /api/hunts creates; PUT /api/hunts/{id} updates; DELETE /api/hunts/{id} archives
+- P16-T02: AI-assisted query builder — POST /api/hunts/suggest accepts a natural-language hypothesis and returns a structured DuckDB SQL query + explanation using foundation-sec:8b; analyst reviews/edits before saving; query is validated against the normalized_events schema before execution
+- P16-T03: Hunt execution engine — POST /api/hunts/{id}/run executes the saved DuckDB query against normalized_events; returns matching events with entity enrichment; execution time, row count, and result sample stored in hunt record; results streamed via SSE for long-running queries
+- P16-T04: Anomaly baseline view — GET /api/analytics/baselines returns per-entity statistical baselines (event frequency, process counts, connection counts) computed from a 7-day rolling window in DuckDB; Svelte HuntingView renders a time-series chart (SVG sparklines or lightweight chart library) showing baseline vs. observed activity with anomaly markers
+
+### Plans
+**Plans:** 0/0 plans complete
+
+*Phase 16 added: 2026-03-28 (Threat Hunting Workspace)*
+
+## Phase 17: SOAR & Playbook Engine
+**Status:** TODO
+**Depends on:** Phase 16 complete
+**Goal:** Deliver a human-in-the-loop SOAR capability following the CACAO Playbook standard and NIST SP 800-61r3 incident response lifecycle — allowing analysts to define response playbooks as ordered action sequences, manually execute them against investigations, track execution state, and record evidence. No autonomous response — every action requires analyst approval per the REQUIREMENTS.md human-in-the-loop constraint.
+
+### Requirements
+- P17-T01: Playbook data model — SQLite playbooks table (playbook_id, name, description, trigger_conditions JSON, steps JSON array, version, created_at); playbook_runs table (run_id, playbook_id, investigation_id, status, started_at, completed_at, steps_completed JSON, analyst_notes); GET /api/playbooks lists; POST /api/playbooks creates; GET /api/playbooks/{id}/runs lists run history
+- P17-T02: Built-in playbook library — ship 5 starter playbooks aligned to NIST IR phases: (1) Phishing Initial Triage, (2) Lateral Movement Investigation, (3) Privilege Escalation Response, (4) Data Exfiltration Containment, (5) Malware Isolation — each as a JSON step sequence with analyst-approval gates and evidence-collection prompts
+- P17-T03: Playbook execution engine — POST /api/playbooks/{id}/run/{investigation_id} starts a run; PATCH /api/playbook-runs/{run_id}/step/{step_n} advances to next step (analyst must explicitly confirm each step); each step result and analyst note stored in steps_completed; SSE endpoint streams step-completion events to the Svelte frontend
+- P17-T04: PlaybooksView Svelte component — lists available playbooks with trigger-condition summaries; "Run Playbook" button on InvestigationView launches PlaybooksView in context; running playbook shows step-by-step checklist with confirm/skip/note controls; completed runs show audit trail with timestamps
+
+### Plans
+**Plans:** 0/0 plans complete
+
+*Phase 17 added: 2026-03-28 (SOAR & Playbook Engine)*
+
+## Phase 18: Reporting & Compliance
+**Status:** TODO
+**Depends on:** Phase 17 complete
+**Goal:** Deliver executive and operational reporting capabilities aligned to NIST CSF 2.0, CIS Controls v8, and SOC 2 Type II evidence requirements — enabling analysts to generate PDF investigation reports, trend dashboards with MTTD/MTTR/MTTC time-series, MITRE ATT&CK coverage heatmaps, and exportable compliance artefacts. Closes the "reporting & auditing" gap identified in the SOC maturity assessment.
+
+### Requirements
+- P18-T01: Report generation API — POST /api/reports/investigation/{id} generates a structured investigation report (timeline, entities, detections, AI Copilot chat, playbook run audit trail); POST /api/reports/executive generates a period summary (date range, alert volume, MTTD/MTTR trends, top tactics, false positive rate); reports stored as JSON in SQLite and rendered to PDF via WeasyPrint or reportlab (local, no cloud)
+- P18-T02: MITRE ATT&CK coverage heatmap — GET /api/analytics/mitre-coverage returns a matrix of tactic/technique coverage (detected, hunted, playbook-covered vs. not covered) derived from detections + hunt results + playbooks; Svelte ReportingView renders an ATT&CK navigator-style grid with colour-coded coverage cells
+- P18-T03: Trend charts and KPI history — GET /api/analytics/trends?metric=mttd&days=30 returns time-series data from a new daily_kpi_snapshots DuckDB table populated by an APScheduler daily job; ReportingView renders MTTD/MTTR/MTTC/alert-volume trend lines using SVG charts
+- P18-T04: Compliance evidence export — GET /api/reports/compliance?framework=nist-csf generates a structured evidence package mapping each NIST CSF 2.0 subcategory to artefacts in the system (detections, investigations, playbook runs, KPI snapshots); exported as a ZIP containing JSON evidence files and a human-readable HTML summary
+
+### Plans
+**Plans:** 0/0 plans complete
+
+*Phase 18 added: 2026-03-28 (Reporting & Compliance)*

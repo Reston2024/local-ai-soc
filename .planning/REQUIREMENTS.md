@@ -531,3 +531,39 @@ All backend components must log to JSON format at `logs/` with fields: `timestam
 
 *Requirements approved: 2026-03-15*
 *Mode: YOLO — proceeding directly to roadmap*
+
+## Phase 15: Attack Graph UI
+**Goal:** Interactive Cytoscape.js network graph for entity relationships and attack path visualisation.
+
+- P15-T01: Graph data API — GET /api/graph/{investigation_id} + GET /api/graph/global returning nodes/edges from SQLite graph store
+- P15-T02: Cytoscape.js GraphView.svelte — force-directed layout, risk-scored node sizing, entity-type colouring, edge labels
+- P15-T03: Attack path highlighting — BFS shortest path from source to target entity with visual distinction
+- P15-T04: Graph ↔ Investigation integration — node click navigates to InvestigationView; "Open in Graph" from InvestigationView
+
+## Phase 16: Threat Hunting Workspace
+**Goal:** SANS FOR508-aligned proactive hunting with AI query builder, saved hunts, and anomaly baselines.
+
+- P16-T01: Hunt hypothesis engine — SQLite hunts table, full CRUD API
+- P16-T02: AI-assisted query builder — POST /api/hunts/suggest with foundation-sec:8b NL→DuckDB SQL
+- P16-T03: Hunt execution engine — SSE-streamed query execution against normalized_events
+- P16-T04: Anomaly baseline view — 7-day rolling DuckDB baselines + Svelte time-series chart
+
+## Phase 17: SOAR & Playbook Engine
+**Goal:** CACAO-standard human-in-the-loop playbook execution with NIST IR lifecycle alignment. No autonomous response.
+
+- P17-T01: Playbook data model — SQLite playbooks + playbook_runs tables, CRUD API
+- P17-T02: Built-in playbook library — 5 starter playbooks (Phishing, Lateral Movement, PrivEsc, Data Exfil, Malware)
+- P17-T03: Playbook execution engine — step-by-step analyst-gated execution with SSE streaming
+- P17-T04: PlaybooksView Svelte component — checklist UI with confirm/skip/note controls and audit trail
+
+## Phase 18: Reporting & Compliance
+**Goal:** NIST CSF 2.0 / CIS Controls v8 / SOC 2 aligned reporting with PDF generation, MITRE ATT&CK heatmap, and compliance evidence export.
+
+- P18-T01: Report generation API — investigation + executive PDF reports via WeasyPrint/reportlab
+- P18-T02: MITRE ATT&CK coverage heatmap — tactic/technique coverage matrix in Svelte ReportingView
+- P18-T03: Trend charts and KPI history — APScheduler daily_kpi_snapshots + SVG trend lines
+- P18-T04: Compliance evidence export — NIST CSF 2.0 evidence ZIP with JSON artefacts + HTML summary
+
+---
+
+*Phases 15–18 added: 2026-03-28 (SOC maturity gap closure — Attack Graph, Hunting, SOAR, Reporting)*
