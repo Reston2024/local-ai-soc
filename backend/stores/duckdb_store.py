@@ -69,6 +69,25 @@ _CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_events_case_id   ON normalized_events (case_id)",
 ]
 
+_CREATE_LLM_CALLS_TABLE = """
+CREATE TABLE IF NOT EXISTS llm_calls (
+    call_id          TEXT PRIMARY KEY,
+    called_at        TIMESTAMP NOT NULL,
+    model            TEXT NOT NULL,
+    endpoint         TEXT NOT NULL,
+    prompt_chars     INTEGER,
+    completion_chars INTEGER,
+    latency_ms       INTEGER,
+    success          BOOLEAN NOT NULL DEFAULT TRUE,
+    error_type       TEXT
+)
+"""
+
+_CREATE_LLM_CALLS_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_llm_calls_model ON llm_calls (model)",
+    "CREATE INDEX IF NOT EXISTS idx_llm_calls_at    ON llm_calls (called_at)",
+]
+
 
 # ---------------------------------------------------------------------------
 # Write-queue item
@@ -118,6 +137,9 @@ class DuckDBStore:
         """Create tables and indexes if they do not exist."""
         await self.execute_write(_CREATE_EVENTS_TABLE)
         for idx_sql in _CREATE_INDEXES:
+            await self.execute_write(idx_sql)
+        await self.execute_write(_CREATE_LLM_CALLS_TABLE)
+        for idx_sql in _CREATE_LLM_CALLS_INDEXES:
             await self.execute_write(idx_sql)
         log.info("DuckDB schema initialised")
 

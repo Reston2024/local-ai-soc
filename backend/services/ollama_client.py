@@ -17,9 +17,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import AsyncIterator, Callable, Optional
+import time
+from typing import TYPE_CHECKING, AsyncIterator, Callable, Optional
 
 import httpx
+
+if TYPE_CHECKING:
+    from backend.stores.duckdb_store import DuckDBStore
 
 from backend.core.logging import get_logger
 
@@ -60,11 +64,13 @@ class OllamaClient:
         model: str = "qwen3:14b",
         embed_model: str = "mxbai-embed-large",
         cybersec_model: str = "",  # empty = fall back to self.model
+        duckdb_store: "Optional[DuckDBStore]" = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.embed_model = embed_model
         self.cybersec_model = cybersec_model or model  # fallback to default
+        self._duckdb_store = duckdb_store
 
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
@@ -98,6 +104,47 @@ class OllamaClient:
 
     async def __aexit__(self, *_: object) -> None:
         await self.close()
+
+    # ------------------------------------------------------------------
+    # LLMOps telemetry
+    # ------------------------------------------------------------------
+
+    async def _write_telemetry(
+        self,
+        *,
+        model: str,
+        endpoint: str,
+        prompt_chars: int,
+        completion_chars: int,
+        latency_ms: int,
+        success: bool,
+        error_type: Optional[str] = None,
+    ) -> None:
+        """Write one telemetry row to llm_calls in DuckDB.
+
+        No-ops silently when no store was provided at init time.
+        """
+        if self._duckdb_store is None:
+            return
+        import uuid
+        from datetime import datetime, timezone
+        await self._duckdb_store.execute_write(
+            """INSERT OR IGNORE INTO llm_calls
+               (call_id, called_at, model, endpoint, prompt_chars,
+                completion_chars, latency_ms, success, error_type)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [
+                str(uuid.uuid4()),
+                datetime.now(timezone.utc).isoformat(),
+                model,
+                endpoint,
+                prompt_chars,
+                completion_chars,
+                latency_ms,
+                success,
+                error_type,
+            ],
+        )
 
     # ------------------------------------------------------------------
     # Health check
@@ -289,6 +336,7 @@ class OllamaClient:
             "prompt_hash": _sha256_short(prompt),
             "status": "start",
         })
+        t0 = time.monotonic_ns()
         try:
             resp = await self._client.post(
                 "/api/generate",
@@ -318,6 +366,14 @@ class OllamaClient:
                 "response_hash": _sha256_short(response_text),
                 "status": "complete",
             })
+            await self._write_telemetry(
+                model=_effective_model,
+                endpoint="generate",
+                prompt_chars=len(prompt),
+                completion_chars=len(response_text),
+                latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
+                success=True,
+            )
             return response_text
         except OllamaError:
             raise
@@ -329,6 +385,15 @@ class OllamaClient:
                 "status": "error",
                 "error_type": "HTTPStatusError",
             })
+            await self._write_telemetry(
+                model=_effective_model,
+                endpoint="generate",
+                prompt_chars=len(prompt),
+                completion_chars=0,
+                latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
+                success=False,
+                error_type="HTTPStatusError",
+            )
             raise OllamaError(
                 f"Ollama generate HTTP error {exc.response.status_code}: {exc.response.text}"
             ) from exc
@@ -340,6 +405,15 @@ class OllamaClient:
                 "status": "error",
                 "error_type": type(exc).__name__,
             })
+            await self._write_telemetry(
+                model=_effective_model,
+                endpoint="generate",
+                prompt_chars=len(prompt),
+                completion_chars=0,
+                latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
+                success=False,
+                error_type=type(exc).__name__,
+            )
             raise OllamaError(f"Ollama generate failed: {exc}") from exc
 
     # ------------------------------------------------------------------
@@ -385,6 +459,8 @@ class OllamaClient:
             payload["system"] = system
 
         full_response: list[str] = []
+        t0 = time.monotonic_ns()
+        _stream_error: Optional[Exception] = None
 
         try:
             async with self._client.stream(
@@ -419,10 +495,30 @@ class OllamaClient:
         except OllamaError:
             raise
         except httpx.HTTPStatusError as exc:
+            _stream_error = exc
+            await self._write_telemetry(
+                model=_stream_model,
+                endpoint="stream_generate",
+                prompt_chars=len(prompt),
+                completion_chars=len("".join(full_response)),
+                latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
+                success=False,
+                error_type="HTTPStatusError",
+            )
             raise OllamaError(
                 f"Ollama stream HTTP error {exc.response.status_code}: {exc.response.text}"
             ) from exc
         except Exception as exc:
+            _stream_error = exc
+            await self._write_telemetry(
+                model=_stream_model,
+                endpoint="stream_generate",
+                prompt_chars=len(prompt),
+                completion_chars=len("".join(full_response)),
+                latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
+                success=False,
+                error_type=type(exc).__name__,
+            )
             raise OllamaError(f"Ollama stream failed: {exc}") from exc
 
         result = "".join(full_response)
@@ -431,6 +527,15 @@ class OllamaClient:
             model=payload["model"],
             response_len=len(result),
         )
+        if _stream_error is None:
+            await self._write_telemetry(
+                model=_stream_model,
+                endpoint="stream_generate",
+                prompt_chars=len(prompt),
+                completion_chars=len(result),
+                latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
+                success=True,
+            )
         return result
 
     # ------------------------------------------------------------------
@@ -443,6 +548,7 @@ class OllamaClient:
         system: Optional[str] = None,
         temperature: float = 0.1,
         model: Optional[str] = None,
+        use_cybersec_model: bool = False,
     ) -> AsyncIterator[str]:
         """
         Yield tokens one at a time as an async generator.
@@ -452,8 +558,9 @@ class OllamaClient:
             async for token in client.stream_generate_iter(prompt):
                 yield f"data: {json.dumps({'token': token})}\n\n"
         """
+        _effective_model = model or (self.cybersec_model if use_cybersec_model else self.model)
         payload: dict = {
-            "model": model or self.model,
+            "model": _effective_model,
             "prompt": prompt,
             "stream": True,
             "options": {"temperature": temperature},

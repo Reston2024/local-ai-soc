@@ -129,6 +129,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         model=settings.OLLAMA_MODEL,
         embed_model=settings.OLLAMA_EMBED_MODEL,
         cybersec_model=settings.OLLAMA_CYBERSEC_MODEL,
+        duckdb_store=duckdb_store,
     )
 
     # 7. Attach to app.state
@@ -332,6 +333,13 @@ def create_app() -> FastAPI:
         log.info("metrics router mounted at /api/metrics")
     except ImportError as exc:
         log.warning("metrics router not available: %s", exc)
+
+    try:
+        from backend.api.timeline import router as timeline_router
+        app.include_router(timeline_router, dependencies=[Depends(verify_token)])
+        log.info("timeline router mounted at /api/investigations/{id}/timeline")
+    except ImportError as exc:
+        log.warning("timeline router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
