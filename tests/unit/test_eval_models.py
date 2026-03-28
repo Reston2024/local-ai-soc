@@ -1,17 +1,17 @@
 """
-Wave-0 test stub: output contract for scripts/eval_models.py.
-
-These tests are intentionally RED until plan 14-02 implements
-scripts/eval_models.py with EvalResult and score_response().
+Tests for scripts/eval_models.py — EvalResult schema, score_response(),
+and dry-run row generation behaviour.
 """
 
+import asyncio
 import pytest
 
 try:
-    from scripts.eval_models import EvalResult, score_response
+    from scripts.eval_models import EvalResult, score_response, _eval_one_row
 except ImportError:
     EvalResult = None  # type: ignore
     score_response = None  # type: ignore
+    _eval_one_row = None  # type: ignore
 
 
 # ---------------------------------------------------------------------------
@@ -118,3 +118,75 @@ def test_eval_result_prompt_type_summarise():
         timestamp="2026-01-01T00:00:00Z",
     )
     assert r.prompt_type == "summarise"
+
+
+# ---------------------------------------------------------------------------
+# _eval_one_row dry-run mode (no DuckDB, no HTTP)
+# ---------------------------------------------------------------------------
+
+
+def test_eval_one_row_dry_run_returns_eval_result():
+    """_eval_one_row in dry-run mode returns EvalResult without making HTTP calls."""
+    assert _eval_one_row is not None, "scripts.eval_models not implemented yet"
+    assert EvalResult is not None, "scripts.eval_models not implemented yet"
+
+    dry_run_row = (
+        "dry-run-id",
+        "process_create",
+        "WORKSTATION-01",
+        "cmd.exe",
+        "cmd.exe /c whoami",
+        "high",
+        "T1059",
+    )
+
+    result = asyncio.run(
+        _eval_one_row(
+            row=dry_run_row,
+            model="qwen3:14b",
+            prompt_type="triage",
+            row_idx=0,
+            ollama_base_url="http://localhost:11434",
+            dry_run=True,
+        )
+    )
+
+    assert isinstance(result, EvalResult)
+    assert result.model == "qwen3:14b"
+    assert result.prompt_type == "triage"
+    assert result.latency_ms == 0
+    assert result.eval_count == 0
+    assert result.keyword_recall == 1.0
+    assert "T" in result.timestamp and result.timestamp.endswith("Z")
+
+
+def test_eval_one_row_dry_run_summarise():
+    """_eval_one_row in dry-run mode works for summarise prompt_type."""
+    assert _eval_one_row is not None, "scripts.eval_models not implemented yet"
+    assert EvalResult is not None, "scripts.eval_models not implemented yet"
+
+    dry_run_row = (
+        "dry-run-id",
+        "process_create",
+        "WORKSTATION-01",
+        "cmd.exe",
+        "cmd.exe /c whoami",
+        "high",
+        "T1059",
+    )
+
+    result = asyncio.run(
+        _eval_one_row(
+            row=dry_run_row,
+            model="foundation-sec:8b",
+            prompt_type="summarise",
+            row_idx=2,
+            ollama_base_url="http://localhost:11434",
+            dry_run=True,
+        )
+    )
+
+    assert isinstance(result, EvalResult)
+    assert result.prompt_id == "row-2-summarise"
+    assert result.latency_ms == 0
+    assert result.keyword_recall == 1.0

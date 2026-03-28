@@ -270,30 +270,42 @@ async def main() -> None:
     output_path = Path(_PROJECT_ROOT) / "data" / "eval_results.jsonl"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Initialize DuckDB store
-    duckdb_store = DuckDBStore(settings.DATA_DIR)
-    # Start write worker (needed for initialise_schema)
-    worker_task = duckdb_store.start_write_worker()
-    await duckdb_store.initialise_schema()
-
-    try:
-        # Fetch rows
-        sql = (
-            "SELECT event_id, event_type, hostname, process_name, command_line, "
-            "severity, attack_technique "
-            "FROM normalized_events LIMIT ?"
+    if args.dry_run:
+        # Bypass DuckDB entirely — generate synthetic placeholder rows.
+        # This avoids the exclusive write-lock conflict when the backend is running.
+        _DRY_RUN_ROW = (
+            "dry-run-id",        # event_id
+            "process_create",    # event_type
+            "WORKSTATION-01",    # hostname
+            "cmd.exe",           # process_name
+            "cmd.exe /c whoami", # command_line
+            "high",              # severity
+            "T1059",             # attack_technique
         )
-        rows = await duckdb_store.fetch_all(sql, [args.limit])
-    finally:
-        worker_task.cancel()
-        try:
-            await worker_task
-        except asyncio.CancelledError:
-            pass
+        rows: list[tuple] = [_DRY_RUN_ROW] * args.limit
+    else:
+        # Initialize DuckDB store (requires exclusive write lock)
+        duckdb_store = DuckDBStore(settings.DATA_DIR)
+        worker_task = duckdb_store.start_write_worker()
+        await duckdb_store.initialise_schema()
 
-    if not rows:
-        print("[!] No rows found in normalized_events. Run seed_siem_data.py first.")
-        return
+        try:
+            sql = (
+                "SELECT event_id, event_type, hostname, process_name, command_line, "
+                "severity, attack_technique "
+                "FROM normalized_events LIMIT ?"
+            )
+            rows = await duckdb_store.fetch_all(sql, [args.limit])
+        finally:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
+
+        if not rows:
+            print("[!] No rows found in normalized_events. Run seed_siem_data.py first.")
+            return
 
     print(
         f"[*] Evaluating {len(rows)} rows x 2 models x 2 prompt types "
