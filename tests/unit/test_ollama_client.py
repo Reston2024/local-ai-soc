@@ -317,3 +317,132 @@ class TestSha256Short:
     def test_sha256_short_different_inputs(self):
         from backend.services.ollama_client import _sha256_short
         assert _sha256_short("abc") != _sha256_short("xyz")
+
+
+# ---------------------------------------------------------------------------
+# Plan 14-03: LLMOps telemetry — DuckDB store param + _write_telemetry
+# ---------------------------------------------------------------------------
+
+class TestOllamaClientDuckDBStore:
+    def test_instantiation_without_store_still_works(self):
+        """OllamaClient() with no duckdb_store arg instantiates fine (no regression)."""
+        from backend.services.ollama_client import OllamaClient
+        c = OllamaClient(base_url="http://127.0.0.1:11434", model="test-model", embed_model="test-embed")
+        assert c is not None
+
+    def test_instantiation_with_duckdb_store_stores_it(self):
+        """OllamaClient(duckdb_store=mock_store) stores it on self._duckdb_store."""
+        from backend.services.ollama_client import OllamaClient
+        mock_store = MagicMock()
+        c = OllamaClient(duckdb_store=mock_store)
+        assert c._duckdb_store is mock_store
+
+    def test_duckdb_store_defaults_to_none(self):
+        """When no store provided, _duckdb_store is None."""
+        from backend.services.ollama_client import OllamaClient
+        c = OllamaClient()
+        assert c._duckdb_store is None
+
+    async def test_write_telemetry_is_noop_when_store_is_none(self):
+        """_write_telemetry() does nothing when _duckdb_store is None."""
+        from backend.services.ollama_client import OllamaClient
+        c = OllamaClient()
+        # Should not raise
+        await c._write_telemetry(
+            model="test-model",
+            endpoint="generate",
+            prompt_chars=10,
+            completion_chars=20,
+            latency_ms=100,
+            success=True,
+        )
+
+    async def test_write_telemetry_calls_execute_write_when_store_present(self):
+        """_write_telemetry() calls execute_write on the store when present."""
+        from backend.services.ollama_client import OllamaClient
+        mock_store = MagicMock()
+        mock_store.execute_write = AsyncMock()
+        c = OllamaClient(duckdb_store=mock_store)
+        await c._write_telemetry(
+            model="qwen3:14b",
+            endpoint="generate",
+            prompt_chars=42,
+            completion_chars=100,
+            latency_ms=250,
+            success=True,
+        )
+        assert mock_store.execute_write.called
+
+    async def test_generate_calls_write_telemetry_on_success(self):
+        """generate() records telemetry on success."""
+        from backend.services.ollama_client import OllamaClient
+        mock_store = MagicMock()
+        mock_store.execute_write = AsyncMock()
+        c = OllamaClient(duckdb_store=mock_store)
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"response": "test answer", "done": True}
+
+        with patch.object(c._client, "post", new=AsyncMock(return_value=mock_response)):
+            result = await c.generate("test prompt")
+
+        assert result == "test answer"
+        assert mock_store.execute_write.called
+
+    async def test_stream_generate_calls_write_telemetry_on_success(self):
+        """stream_generate() records telemetry after stream completes."""
+        import json as _json
+        from backend.services.ollama_client import OllamaClient
+        mock_store = MagicMock()
+        mock_store.execute_write = AsyncMock()
+        c = OllamaClient(duckdb_store=mock_store)
+
+        chunks = [
+            _json.dumps({"response": "hello", "done": False}).encode(),
+            _json.dumps({"response": " world", "done": True}).encode(),
+        ]
+
+        async def _aiter_lines():
+            for chunk in chunks:
+                yield chunk.decode()
+
+        mock_stream_ctx = MagicMock()
+        mock_stream_ctx.__aenter__ = AsyncMock(return_value=mock_stream_ctx)
+        mock_stream_ctx.__aexit__ = AsyncMock(return_value=False)
+        mock_stream_ctx.raise_for_status = MagicMock()
+        mock_stream_ctx.aiter_lines = _aiter_lines
+
+        with patch.object(c._client, "stream", return_value=mock_stream_ctx):
+            result = await c.stream_generate("test prompt")
+
+        assert mock_store.execute_write.called
+
+    async def test_stream_generate_iter_accepts_use_cybersec_model(self):
+        """stream_generate_iter() accepts use_cybersec_model kwarg without error."""
+        import json as _json
+        from backend.services.ollama_client import OllamaClient
+        c = OllamaClient(model="qwen3:14b", cybersec_model="foundation-sec:8b")
+
+        chunks = [
+            _json.dumps({"response": "tok", "done": True}).encode(),
+        ]
+
+        async def _aiter_lines():
+            for chunk in chunks:
+                yield chunk.decode()
+
+        mock_stream_ctx = MagicMock()
+        mock_stream_ctx.__aenter__ = AsyncMock(return_value=mock_stream_ctx)
+        mock_stream_ctx.__aexit__ = AsyncMock(return_value=False)
+        mock_stream_ctx.raise_for_status = MagicMock()
+        mock_stream_ctx.aiter_lines = _aiter_lines
+
+        with patch.object(c._client, "stream", return_value=mock_stream_ctx) as mock_stream:
+            tokens = []
+            async for tok in c.stream_generate_iter("test", use_cybersec_model=True):
+                tokens.append(tok)
+
+        call_kwargs = mock_stream.call_args
+        payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][2]
+        assert payload["model"] == "foundation-sec:8b"
