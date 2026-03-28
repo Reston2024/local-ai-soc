@@ -255,3 +255,124 @@ class TestComputeAllKpis:
         # Should never raise, even with empty tables
         snap = await svc.compute_all_kpis()
         assert snap is not None
+
+
+# ---------------------------------------------------------------------------
+# Plan 14-03: LLMOps KPI fields on KpiSnapshot
+# ---------------------------------------------------------------------------
+
+class TestKpiSnapshotLlmopsFields:
+    def test_kpi_snapshot_has_avg_latency_ms_per_model_field(self):
+        """KpiSnapshot must include avg_latency_ms_per_model: dict[str, float]."""
+        from datetime import datetime, timezone
+        from backend.services.metrics_service import KpiSnapshot, KpiValue
+        snap = KpiSnapshot(
+            computed_at=datetime.now(tz=timezone.utc),
+            mttd=KpiValue(label="MTTD", value=0.0),
+            mttr=KpiValue(label="MTTR", value=0.0),
+            mttc=KpiValue(label="MTTC", value=0.0),
+            false_positive_rate=KpiValue(label="False Positive Rate", value=0.0),
+            alert_volume_24h=KpiValue(label="Alert Volume 24h", value=0.0),
+            active_rules=KpiValue(label="Active Rules", value=0.0),
+            open_cases=KpiValue(label="Open Cases", value=0.0),
+            assets_monitored=KpiValue(label="Assets Monitored", value=0.0),
+            log_sources=KpiValue(label="Log Sources", value=0.0),
+        )
+        assert hasattr(snap, "avg_latency_ms_per_model")
+        assert isinstance(snap.avg_latency_ms_per_model, dict)
+
+    def test_kpi_snapshot_has_total_llm_calls_field(self):
+        """KpiSnapshot must include total_llm_calls: int."""
+        from datetime import datetime, timezone
+        from backend.services.metrics_service import KpiSnapshot, KpiValue
+        snap = KpiSnapshot(
+            computed_at=datetime.now(tz=timezone.utc),
+            mttd=KpiValue(label="MTTD", value=0.0),
+            mttr=KpiValue(label="MTTR", value=0.0),
+            mttc=KpiValue(label="MTTC", value=0.0),
+            false_positive_rate=KpiValue(label="False Positive Rate", value=0.0),
+            alert_volume_24h=KpiValue(label="Alert Volume 24h", value=0.0),
+            active_rules=KpiValue(label="Active Rules", value=0.0),
+            open_cases=KpiValue(label="Open Cases", value=0.0),
+            assets_monitored=KpiValue(label="Assets Monitored", value=0.0),
+            log_sources=KpiValue(label="Log Sources", value=0.0),
+        )
+        assert hasattr(snap, "total_llm_calls")
+        assert isinstance(snap.total_llm_calls, int)
+
+    def test_kpi_snapshot_has_error_rate_field(self):
+        """KpiSnapshot must include error_rate: float."""
+        from datetime import datetime, timezone
+        from backend.services.metrics_service import KpiSnapshot, KpiValue
+        snap = KpiSnapshot(
+            computed_at=datetime.now(tz=timezone.utc),
+            mttd=KpiValue(label="MTTD", value=0.0),
+            mttr=KpiValue(label="MTTR", value=0.0),
+            mttc=KpiValue(label="MTTC", value=0.0),
+            false_positive_rate=KpiValue(label="False Positive Rate", value=0.0),
+            alert_volume_24h=KpiValue(label="Alert Volume 24h", value=0.0),
+            active_rules=KpiValue(label="Active Rules", value=0.0),
+            open_cases=KpiValue(label="Open Cases", value=0.0),
+            assets_monitored=KpiValue(label="Assets Monitored", value=0.0),
+            log_sources=KpiValue(label="Log Sources", value=0.0),
+        )
+        assert hasattr(snap, "error_rate")
+        assert isinstance(snap.error_rate, float)
+
+    def test_kpi_snapshot_llm_fields_default_to_zero(self):
+        """LLMOps fields default to empty/zero when not provided."""
+        from datetime import datetime, timezone
+        from backend.services.metrics_service import KpiSnapshot, KpiValue
+        snap = KpiSnapshot(
+            computed_at=datetime.now(tz=timezone.utc),
+            mttd=KpiValue(label="MTTD", value=0.0),
+            mttr=KpiValue(label="MTTR", value=0.0),
+            mttc=KpiValue(label="MTTC", value=0.0),
+            false_positive_rate=KpiValue(label="False Positive Rate", value=0.0),
+            alert_volume_24h=KpiValue(label="Alert Volume 24h", value=0.0),
+            active_rules=KpiValue(label="Active Rules", value=0.0),
+            open_cases=KpiValue(label="Open Cases", value=0.0),
+            assets_monitored=KpiValue(label="Assets Monitored", value=0.0),
+            log_sources=KpiValue(label="Log Sources", value=0.0),
+        )
+        assert snap.avg_latency_ms_per_model == {}
+        assert snap.total_llm_calls == 0
+        assert snap.error_rate == 0.0
+
+    async def test_compute_all_kpis_includes_llm_fields(self):
+        """compute_all_kpis() returns snapshot with avg_latency_ms_per_model, total_llm_calls, error_rate."""
+        from backend.services.metrics_service import MetricsService
+        stores = _make_stores()
+        svc = MetricsService(stores)
+        snap = await svc.compute_all_kpis()
+        assert hasattr(snap, "avg_latency_ms_per_model")
+        assert hasattr(snap, "total_llm_calls")
+        assert hasattr(snap, "error_rate")
+        assert isinstance(snap.avg_latency_ms_per_model, dict)
+        assert isinstance(snap.total_llm_calls, int)
+        assert isinstance(snap.error_rate, float)
+
+    async def test_compute_llm_kpis_returns_defaults_on_empty(self):
+        """_compute_llm_kpis() returns empty dict, 0, 0.0 when no rows."""
+        from backend.services.metrics_service import _compute_llm_kpis
+        mock_store = MagicMock()
+        mock_store.fetch_all = AsyncMock(return_value=[])
+        avg, total, err = await _compute_llm_kpis(mock_store)
+        assert avg == {}
+        assert total == 0
+        assert err == 0.0
+
+    async def test_compute_llm_kpis_aggregates_rows(self):
+        """_compute_llm_kpis() correctly aggregates model rows."""
+        from backend.services.metrics_service import _compute_llm_kpis
+        mock_store = MagicMock()
+        # rows: (model, avg_latency, total, errors)
+        mock_store.fetch_all = AsyncMock(return_value=[
+            ("qwen3:14b", 250.0, 10, 1),
+            ("foundation-sec:8b", 500.0, 5, 0),
+        ])
+        avg, total, err = await _compute_llm_kpis(mock_store)
+        assert "qwen3:14b" in avg
+        assert avg["qwen3:14b"] == 250.0
+        assert total == 15
+        assert round(err, 4) == round(1 / 15, 4)
