@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-03-28T11:51:09.911Z"
+last_updated: "2026-03-28T11:52:11.973Z"
 progress:
   total_phases: 14
   completed_phases: 11
   total_plans: 65
-  completed_plans: 66
+  completed_plans: 67
 ---
 
 ---
@@ -1058,4 +1058,25 @@ decisions:
   - "11-01: fetch_all returns list[tuple] not list[dict] — assertions use index access"
   - "11-01: IngestionLoader.ingest_file returns IngestionResult with errors list on missing file (no raise)"
   - "11-01: build_timeline signature is (case_id, duckdb_store, sqlite_store) — test mocks sqlite_store returning None"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 14 (in progress)
+current_plan: 14-02 complete — scripts/eval_models.py dual-prompt eval harness; EvalResult dataclass with prompt_type; score_response() keyword recall; direct httpx POST captures eval_count; --dry-run verified; all 8 tests green
+status: in_progress
+last_updated: "2026-03-28T11:51:30Z"
+progress:
+  [██████████] 100%
+  total_phases: 14
+  completed_phases: 13
+  total_plans: 65
+  completed_plans: 67
+  percent: 100
+decisions:
+  - "14-02: Direct httpx POST to /api/generate (not OllamaClient.generate()) captures eval_count token field which generate() discards"
+  - "14-02: Ground truth keywords: triage=[event_type, attack_technique]; summarise=[event_type, severity]; None/unknown filtered"
+  - "14-01: Foundation-Sec-8B (Cisco Foundation AI, Apache 2.0) selected as OLLAMA_CYBERSEC_MODEL"
 ---

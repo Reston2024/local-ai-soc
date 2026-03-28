@@ -338,7 +338,7 @@ Plans:
 
 | Deliverable | Files | Verification |
 |-------------|-------|-------------|
-| Causality engine package | `backend/causality/engine.py`, `entity_resolver.py`, `attack_chain_builder.py`, `mitre_mapper.py`, `scoring.py` | 14 test_phase6.py tests XPASS | 1/5 | In Progress|  | GET /graph/{alert_id}, GET /entity/{id}, GET /attack_chain/{alert_id}, POST /query return 200 |
+| Causality engine package | `backend/causality/engine.py`, `entity_resolver.py`, `attack_chain_builder.py`, `mitre_mapper.py`, `scoring.py` | 14 test_phase6.py tests XPASS | 2/5 | In Progress|  | GET /graph/{alert_id}, GET /entity/{id}, GET /attack_chain/{alert_id}, POST /query return 200 |
 | AI investigation summary | `prompts/investigation_summary.py` | POST /investigate/{alert_id}/summary returns summary string |
 | Attack chain dashboard | `frontend/src/components/graph/AttackChain.svelte`, `panels/InvestigationPanel.svelte` | npm run build exits 0 |
 | ThreatGraph bug fix | `frontend/src/components/graph/ThreatGraph.svelte` | Edges render (e.src/e.dst mapping fixed) |
@@ -646,7 +646,7 @@ Plans:
 - P14-T04: AI Copilot streaming chat — POST /api/investigations/{id}/chat accepts a user question + investigation context; streams foundation-sec:8b response via SSE; Svelte copilot panel renders streamed tokens in real time with stop button; chat history persisted in SQLite per investigation
 
 ### Plans
-**Plans:** 1/5 plans executed
+**Plans:** 2/5 plans executed
 
 Plans:
 - [ ] 14-01-PLAN.md — Wave 0: Test stubs for eval harness, timeline, and chat contracts
