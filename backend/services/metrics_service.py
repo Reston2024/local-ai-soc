@@ -45,6 +45,10 @@ class KpiSnapshot(BaseModel):
     open_cases: KpiValue          # count of cases with status='active'
     assets_monitored: KpiValue    # count of distinct non-null hostnames
     log_sources: KpiValue         # count of distinct non-null source_type values
+    # LLMOps monitoring fields (Plan 14-03)
+    avg_latency_ms_per_model: dict[str, float] = {}
+    total_llm_calls: int = 0
+    error_rate: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -55,6 +59,34 @@ class KpiSnapshot(BaseModel):
 def _zero(label: str, unit: str = "") -> KpiValue:
     """Return a zero KpiValue for graceful fallback."""
     return KpiValue(label=label, value=0.0, unit=unit, trend="flat")
+
+
+async def _compute_llm_kpis(duckdb_store) -> tuple[dict[str, float], int, float]:
+    """
+    Query llm_calls table and return (avg_latency_per_model, total_calls, error_rate).
+
+    Returns empty defaults if the table does not yet exist or has no rows.
+    """
+    try:
+        import duckdb as _duckdb
+        rows = await duckdb_store.fetch_all(
+            """SELECT model,
+                      AVG(latency_ms)                              AS avg_latency,
+                      COUNT(*)                                      AS total,
+                      SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) AS errors
+               FROM llm_calls
+               GROUP BY model"""
+        )
+    except Exception:
+        # Table may not exist yet on first startup before schema init completes
+        return {}, 0, 0.0
+    if not rows:
+        return {}, 0, 0.0
+    avg_per_model = {row[0]: round(float(row[1] or 0), 1) for row in rows}
+    total = sum(int(row[2]) for row in rows)
+    errors = sum(int(row[3]) for row in rows)
+    error_rate = round(errors / total, 4) if total > 0 else 0.0
+    return avg_per_model, total, error_rate
 
 
 def _sqlite_fetchone(conn, sql: str, params: tuple = ()) -> object:
@@ -384,7 +416,7 @@ class MetricsService:
         """
         Run all compute_* coroutines concurrently via asyncio.gather.
 
-        Returns a KpiSnapshot with all 9 KPI fields populated.
+        Returns a KpiSnapshot with all 9 SOC KPI fields plus 3 LLMOps fields.
         Never raises — all individual functions have their own exception guards.
         """
         (
@@ -409,6 +441,10 @@ class MetricsService:
             self.compute_log_sources(),
         )
 
+        avg_latency_per_model, total_llm_calls, error_rate = await _compute_llm_kpis(
+            self._stores.duckdb
+        )
+
         return KpiSnapshot(
             computed_at=datetime.now(tz=timezone.utc),
             mttd=mttd,
@@ -420,4 +456,7 @@ class MetricsService:
             open_cases=open_cases,
             assets_monitored=assets,
             log_sources=log_srcs,
+            avg_latency_ms_per_model=avg_latency_per_model,
+            total_llm_calls=total_llm_calls,
+            error_rate=error_rate,
         )
