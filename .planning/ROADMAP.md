@@ -632,3 +632,28 @@ Plans:
 - [ ] 13-05-PLAN.md — Svelte KPI dashboard + AssetsView live data (P13-T06, P13-T07)
 
 *Phase 13 added: 2026-03-27 (Mature SOC Metrics, KPIs & HF Model Upgrade)*
+
+---
+
+## Phase 14: LLMOps Evaluation & Investigation AI Copilot
+**Status:** TODO
+**Depends on:** Phase 13 complete
+**Goal:** Complete the LLMOps evaluation loop for Foundation-Sec-8B (benchmark quality against qwen3:14b, add model-performance monitoring) and close the most critical SOC analyst experience gap by delivering a unified investigation timeline, streaming AI Copilot chat, and entity enrichment panel — transforming InvestigationView from a placeholder into a production analyst workbench.
+
+### Requirements
+- P14-T01: Foundation-Sec-8B evaluation harness — scripts/eval_models.py that loads ≤100 rows from the seeded SIEM dataset, runs both qwen3:14b and foundation-sec:8b on triage + summarisation prompts, scores responses (latency, token count, keyword recall against ground-truth labels), writes results to data/eval_results.jsonl and prints a markdown report; automated; no GPU-heavy fine-tuning
+- P14-T02: LLMOps monitoring layer — extend OllamaClient to record every generate() call (model, prompt_tokens, completion_tokens, latency_ms, endpoint) to a new duckdb table `llm_calls`; expose aggregates via GET /api/metrics/kpis extension (avg_latency_ms per model, total calls, error rate)
+- P14-T03: Investigation unified timeline — GET /api/investigations/{id}/timeline returns events, detections, graph edges, and playbook runs sorted by timestamp for a given investigation; Svelte InvestigationView renders a vertical timeline with severity colour-coding, entity badges, and MITRE tactic tags
+- P14-T04: AI Copilot streaming chat — POST /api/investigations/{id}/chat accepts a user question + investigation context; streams foundation-sec:8b response via SSE; Svelte copilot panel renders streamed tokens in real time with stop button; chat history persisted in SQLite per investigation
+
+### Plans
+**Plans:** 5 plans
+
+Plans:
+- [ ] 14-01-PLAN.md — Wave 0: Test stubs for eval harness, timeline, and chat contracts
+- [ ] 14-02-PLAN.md — Eval harness: scripts/eval_models.py benchmarks qwen3:14b vs foundation-sec:8b
+- [ ] 14-03-PLAN.md — LLMOps telemetry: DuckDB llm_calls table, OllamaClient hook, KPI metrics extension
+- [ ] 14-04-PLAN.md — Timeline API: GET /api/investigations/{id}/timeline with DuckDB+SQLite merge
+- [ ] 14-05-PLAN.md — InvestigationView: two-panel workbench with timeline + AI Copilot SSE chat
+
+*Phase 14 added: 2026-03-27 (LLMOps Evaluation & Investigation AI Copilot)*
