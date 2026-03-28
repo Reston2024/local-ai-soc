@@ -131,6 +131,15 @@ CREATE TABLE IF NOT EXISTS saved_investigations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_saved_inv_detection ON saved_investigations (detection_id);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id               TEXT PRIMARY KEY,
+    investigation_id TEXT NOT NULL,
+    role             TEXT NOT NULL,
+    content          TEXT NOT NULL,
+    created_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_inv ON chat_messages (investigation_id);
 """
 
 
@@ -708,6 +717,39 @@ class SQLiteStore:
             "metadata": json.loads(row[3] or "{}"),
             "created_at": row[4],
         }
+
+    # ------------------------------------------------------------------
+    # Chat messages (Phase 14 Plan 05 — AI Copilot)
+    # ------------------------------------------------------------------
+
+    def insert_chat_message(
+        self,
+        investigation_id: str,
+        role: str,
+        content: str,
+    ) -> None:
+        """Persist one chat turn to chat_messages."""
+        from uuid import uuid4
+        msg_id = str(uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn.execute(
+            "INSERT INTO chat_messages (id, investigation_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)",
+            (msg_id, investigation_id, role, content, now),
+        )
+        self._conn.commit()
+
+    def get_chat_history(
+        self, investigation_id: str, limit: int = 50
+    ) -> list[dict]:
+        """Return chat messages for an investigation, oldest first."""
+        rows = self._conn.execute(
+            "SELECT id, investigation_id, role, content, created_at FROM chat_messages WHERE investigation_id = ? ORDER BY created_at ASC LIMIT ?",
+            (investigation_id, limit),
+        ).fetchall()
+        return [
+            {"id": r[0], "investigation_id": r[1], "role": r[2], "content": r[3], "created_at": r[4]}
+            for r in rows
+        ]
 
     # ------------------------------------------------------------------
     # Shutdown

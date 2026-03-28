@@ -341,6 +341,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("timeline router not available: %s", exc)
 
+    try:
+        from backend.api.chat import router as chat_router
+        app.include_router(chat_router, dependencies=[Depends(verify_token)])
+        log.info("chat router mounted at /api/investigations/{id}/chat")
+    except ImportError as exc:
+        log.warning("chat router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
