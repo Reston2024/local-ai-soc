@@ -3,9 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 14 (in progress)
-current_plan: 14-03 complete — llm_calls DDL in duckdb_store.py; OllamaClient duckdb_store param + _write_telemetry() hook in generate()/stream_generate(); stream_generate_iter use_cybersec_model param; KpiSnapshot avg_latency_ms_per_model/total_llm_calls/error_rate fields; 65 new tests all green
+current_plan: 14-05 tasks 1+2 complete — chat.py SSE endpoint (foundation-sec:8b), sqlite_store chat_messages DDL + insert/fetch, InvestigationView.svelte two-panel workbench, api.ts investigations namespace; awaiting checkpoint:human-verify Task 3
 status: in_progress
-last_updated: "2026-03-28T11:58:00Z"
+last_updated: "2026-03-28T11:56:10Z"
+stopped_at: "14-05 Task 3 checkpoint:human-verify — browser verification required"
 progress:
   [██████████] 100%
   total_phases: 14
@@ -17,6 +18,9 @@ decisions:
   - "14-03: duckdb_store=None default in OllamaClient.__init__ preserves backward compat — existing callers unaffected"
   - "14-03: TYPE_CHECKING guard for DuckDBStore import avoids circular import at runtime"
   - "14-03: INSERT OR IGNORE for llm_calls rows — idempotent on UUID PK; _compute_llm_kpis catches all exceptions for graceful KPI degradation"
+  - "14-05: asyncio.create_task for assistant response persistence keeps SSE stream non-blocking"
+  - "14-05: _build_investigation_context() calls merge_and_sort_timeline() directly — no internal HTTP round-trip"
+  - "14-05: App.svelte investigation slot switched from InvestigationPanel to InvestigationView (new workbench)"
 ---
 
 ---
