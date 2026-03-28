@@ -2,12 +2,49 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 14 (in progress)
+current_plan: 14-04 complete — GET /api/investigations/{id}/timeline (TimelineItem + merge_and_sort_timeline 4-source + router); all 3 Wave-0 stub tests green; edges table adapted from graph_edges; get_detections_by_case used
+status: in_progress
+last_updated: "2026-03-27T11:57:00Z"
+progress:
+  [██████████] 100%
+  total_phases: 14
+  completed_phases: 11
+  total_plans: 65
+  completed_plans: 69
+  percent: 100
+decisions:
+  - "14-04: get_detections_by_case(case_id) used — SQLiteStore actual method; no generic get_detections(limit) exists"
+  - "14-04: SQLite edges table (not graph_edges) queried for timeline edge items; source_id/target_id mapped to src/dst labels"
+  - "14-04: merge_and_sort_timeline() accepts None for all list params — safe for callers omitting optional edge/playbook sources"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-28T11:53:16.040Z"
+progress:
+  total_phases: 14
+  completed_phases: 11
+  total_plans: 65
+  completed_plans: 68
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
 last_updated: "2026-03-28T11:52:11.973Z"
 progress:
-  total_phases: 14
+  [██████████] 100%
   completed_phases: 11
   total_plans: 65
   completed_plans: 67
