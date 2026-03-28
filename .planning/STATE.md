@@ -3,6 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 14 (in progress)
+current_plan: 14-06 complete — eval_models.py --dry-run bypasses DuckDB via synthetic placeholder rows; 2 new dry-run unit tests; all 10 unit tests green
+status: in_progress
+last_updated: "2026-03-28T12:05:00Z"
+stopped_at: "Completed 14-06-PLAN.md"
+progress:
+  total_phases: 14
+  completed_phases: 12
+  total_plans: 66
+  completed_plans: 71
+  percent: 100
+decisions:
+  - "14-06: Synthetic placeholder rows instead of read_only DuckDB in dry-run — read_only also fails while backend holds write lock"
+  - "14-06: DRY_RUN_ROW tuple defined locally inside dry-run branch, not as module-level constant"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 14 (in progress)
 current_plan: 14-05 tasks 1+2 complete — chat.py SSE endpoint (foundation-sec:8b), sqlite_store chat_messages DDL + insert/fetch, InvestigationView.svelte two-panel workbench, api.ts investigations namespace; awaiting checkpoint:human-verify Task 3
 status: in_progress
 last_updated: "2026-03-28T11:56:10Z"
