@@ -92,6 +92,31 @@ export interface IngestJobStatus {
   completed_at: string | null
 }
 
+export interface TimelineItem {
+  item_id: string
+  item_type: 'event' | 'detection' | 'edge' | 'playbook'
+  timestamp: string
+  title: string
+  severity: string | null
+  attack_technique: string | null
+  attack_tactic: string | null
+  entity_labels: string[]
+  raw_id: string
+}
+
+export interface TimelineResponse {
+  items: TimelineItem[]
+  total: number
+}
+
+export interface ChatHistoryMessage {
+  id: string
+  investigation_id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -215,6 +240,48 @@ export const api = {
 
   metrics: {
     kpis: () => request<KpiSnapshot>('/api/metrics/kpis'),
+  },
+
+  investigations: {
+    timeline: (investigationId: string) =>
+      request<TimelineResponse>(`/api/investigations/${investigationId}/timeline`),
+
+    chatHistory: (investigationId: string) =>
+      request<{ messages: ChatHistoryMessage[] }>(`/api/investigations/${investigationId}/chat/history`),
+
+    chatStream: async (
+      investigationId: string,
+      question: string,
+      onToken: (token: string) => void,
+      onDone: () => void,
+      signal?: AbortSignal,
+    ): Promise<void> => {
+      const res = await fetch(`/api/investigations/${investigationId}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+        signal,
+      })
+      if (!res.ok) throw new Error(`Chat failed: ${res.status}`)
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response body')
+      const decoder = new TextDecoder()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value)
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('data: ')) {
+            try {
+              const msg = JSON.parse(line.slice(6))
+              if (msg.token) onToken(msg.token)
+              if (msg.done) { onDone(); return }
+            } catch { /* skip */ }
+          }
+        }
+      }
+      onDone()
+    },
   },
 }
 

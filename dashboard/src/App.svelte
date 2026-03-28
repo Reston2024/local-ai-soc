@@ -8,6 +8,7 @@
   import QueryView from './views/QueryView.svelte'
   import IngestView from './views/IngestView.svelte'
   import InvestigationPanel from './components/InvestigationPanel.svelte'
+  import InvestigationView from './views/InvestigationView.svelte'
   import ThreatIntelView from './views/ThreatIntelView.svelte'
   import HuntingView from './views/HuntingView.svelte'
   import PlaybooksView from './views/PlaybooksView.svelte'
@@ -213,7 +214,7 @@
     {#if currentView === 'detections'}
       <DetectionsView onInvestigate={handleInvestigate} onPostureUpdate={handlePostureUpdate} />
     {:else if currentView === 'investigation'}
-      <InvestigationPanel detectionId={investigatingId} />
+      <InvestigationView investigationId={investigatingId} />
     {:else if currentView === 'events'}
       <EventsView />
     {:else if currentView === 'graph'}
