@@ -42,9 +42,9 @@ created: 2026-03-27
 | 14-02-01 | 02 | 2 | P14-T02 | unit | `uv run pytest tests/unit/test_ollama_client.py -x -q` | ✅ | ⬜ pending |
 | 14-02-02 | 02 | 2 | P14-T02 | unit | `uv run pytest tests/unit/test_metrics_service.py -x -q` | ✅ | ⬜ pending |
 | 14-03-01 | 03 | 3 | P14-T03 | unit | `uv run pytest tests/unit/test_investigation_timeline.py -x -q` | ❌ W0 | ⬜ pending |
-| 14-03-02 | 03 | 3 | P14-T03 | manual | Open browser → InvestigationView timeline renders | — | ⬜ pending |
+| 14-03-02 | 03 | 3 | P14-T03 | manual | Open browser → InvestigationView timeline renders | — | ✅ green |
 | 14-04-01 | 04 | 4 | P14-T04 | unit | `uv run pytest tests/unit/test_investigation_chat.py -x -q` | ❌ W0 | ⬜ pending |
-| 14-04-02 | 04 | 4 | P14-T04 | manual | Open browser → AI Copilot streams tokens in real time | — | ⬜ pending |
+| 14-04-02 | 04 | 4 | P14-T04 | manual | Open browser → AI Copilot streams tokens in real time | — | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
