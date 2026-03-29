@@ -8,6 +8,14 @@
   cytoscape.use(fcose)
   cytoscape.use(dagre)
 
+  let {
+    focusEntityId = $bindable(''),
+    onNavigateInvestigation = undefined,
+  }: {
+    focusEntityId?: string
+    onNavigateInvestigation?: (investigationId: string) => void
+  } = $props()
+
   let container: HTMLDivElement
   let cy: cytoscape.Core | null = null
   let entities = $state<GraphEntity[]>([])
@@ -22,6 +30,13 @@
   let pathTarget = $state<string | null>(null)
   let attackPathActive = $state(false)
   let showPathOnly = $state(false)
+
+  // Focus effect: load subgraph when focusEntityId prop changes and cy is ready
+  $effect(() => {
+    if (focusEntityId && cy) {
+      loadSubgraph(focusEntityId)
+    }
+  })
 
   const entityTypes = ['host', 'user', 'process', 'file', 'ip', 'domain', 'network_connection', 'detection']
 
@@ -345,6 +360,14 @@
         <button class="btn btn-primary full" onclick={() => selectedEntity && loadSubgraph(selectedEntity.id ?? selectedEntity.entity_id ?? '')}>
           Expand {depth}-hop subgraph
         </button>
+        {#if onNavigateInvestigation && (selectedEntity?.attributes?.case_id ?? selectedEntity?.properties?.case_id)}
+          <button class="btn btn-primary full" onclick={() => {
+            const caseId = selectedEntity?.attributes?.case_id ?? selectedEntity?.properties?.case_id
+            if (caseId && onNavigateInvestigation) onNavigateInvestigation(String(caseId))
+          }}>
+            Investigate case
+          </button>
+        {/if}
       </div>
     {/if}
   </div>
