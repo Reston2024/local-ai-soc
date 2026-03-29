@@ -2,13 +2,50 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-29T12:50:14.327Z"
+progress:
+  total_phases: 18
+  completed_phases: 12
+  total_plans: 70
+  completed_plans: 74
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 15 (in progress)
+current_plan: 15-02 complete — GET /api/graph/global and GET /api/graph/{investigation_id} endpoints; 3 xfail stubs turned green; 28/28 graph API tests pass
+status: in_progress
+last_updated: "2026-03-29T12:49:01Z"
+stopped_at: "Completed 15-02-PLAN.md"
+progress:
+  [██████████] 100%
+  completed_phases: 12
+  total_plans: 70
+  completed_plans: 74
+decisions:
+  - "15-02: GET /graph/global inserted before path-param routes so 'global' is never caught by /{investigation_id}"
+  - "15-02: GET /graph/{investigation_id} declared last as catch-all alias for /graph/case/{case_id}"
+  - "15-01: strict=True on all xfail marks so XPASS signals Plan 02 succeeded and stubs need removal"
+  - "15-01: No @types packages for cytoscape plugins — existing codebase uses as any cast for layout options"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 15 (in progress)
 current_plan: 15-01 complete — xfail stubs for GET /api/graph/{investigation_id} and GET /api/graph/global; cytoscape-fcose@2.2.0 and cytoscape-dagre@2.5.0 installed
 status: in_progress
 last_updated: "2026-03-29T12:49:00Z"
 stopped_at: "Completed 15-01-PLAN.md"
 progress:
-  total_phases: 18
+  [██████████] 100%
   completed_phases: 12
   total_plans: 70
   completed_plans: 73
