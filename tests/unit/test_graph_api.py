@@ -256,3 +256,25 @@ class TestDeleteEntity:
         # After deletion, GET should return 404
         resp = client.get("/api/graph/entity/del-ent-002")
         assert resp.status_code == 404
+
+
+class TestPhase15NewEndpoints:
+    @pytest.mark.xfail(reason="P15-T01: GET /api/graph/{investigation_id} not yet implemented", strict=True)
+    def test_investigation_graph(self, tmp_path):
+        client, sqlite = _build_app(tmp_path)
+        resp = client.get("/api/graph/inv-001")
+        assert resp.status_code == 200
+        assert "entities" in resp.json()
+
+    @pytest.mark.xfail(reason="P15-T01: GET /api/graph/global not yet implemented", strict=True)
+    def test_global_graph(self, tmp_path):
+        client, sqlite = _build_app(tmp_path)
+        resp = client.get("/api/graph/global")
+        assert resp.status_code == 200
+        assert "entities" in resp.json()
+
+    @pytest.mark.xfail(reason="P15-T01: /global route precedence over /{investigation_id} not yet implemented", strict=True)
+    def test_global_route_precedence(self, tmp_path):
+        client, sqlite = _build_app(tmp_path)
+        resp = client.get("/api/graph/global")
+        assert resp.status_code == 200
