@@ -2,6 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-29T12:57:55.634Z"
+progress:
+  total_phases: 18
+  completed_phases: 13
+  total_plans: 70
+  completed_plans: 75
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 15 (in progress)
 current_plan: 15-04 complete — bidirectional Graph/InvestigationView navigation; focusEntityId prop + $effect in GraphView; handleOpenInGraph + handleNavigateInvestigation in App.svelte; Open in Graph button in InvestigationView
 status: in_progress
