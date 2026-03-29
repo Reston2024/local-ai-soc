@@ -1,7 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import cytoscape from 'cytoscape'
+  import fcose from 'cytoscape-fcose'
+  import dagre from 'cytoscape-dagre'
   import { api, type GraphEntity } from '../lib/api.ts'
+
+  cytoscape.use(fcose)
+  cytoscape.use(dagre)
 
   let container: HTMLDivElement
   let cy: cytoscape.Core | null = null
@@ -11,6 +16,12 @@
   let error = $state<string | null>(null)
   let typeFilter = $state('')
   let depth = $state(1)
+
+  // Attack path state
+  let pathSource = $state<string | null>(null)
+  let pathTarget = $state<string | null>(null)
+  let attackPathActive = $state(false)
+  let showPathOnly = $state(false)
 
   const entityTypes = ['host', 'user', 'process', 'file', 'ip', 'domain', 'network_connection', 'detection']
 
@@ -42,8 +53,14 @@
           'text-margin-y': '4px',
           'border-width': 1,
           'border-color': '#30363d',
-          'width': 28,
-          'height': 28,
+          'width': (ele: any) => {
+            const score = Number(ele.data('risk_score') ?? 0)
+            return Math.max(20, Math.min(50, 20 + score * 0.3))
+          },
+          'height': (ele: any) => {
+            const score = Number(ele.data('risk_score') ?? 0)
+            return Math.max(20, Math.min(50, 20 + score * 0.3))
+          },
         }
       },
       {
@@ -73,7 +90,30 @@
           'line-color': '#58a6ff',
           'target-arrow-color': '#58a6ff',
         }
-      }
+      },
+      {
+        selector: 'node.attack-path-node',
+        style: {
+          'border-width': 3,
+          'border-color': '#f85149',
+          'background-color': 'rgba(248, 81, 73, 0.25)',
+        }
+      },
+      {
+        selector: 'edge.attack-path-edge',
+        style: {
+          'width': 4,
+          'line-color': '#f85149',
+          'target-arrow-color': '#f85149',
+        }
+      },
+      {
+        selector: 'node.attack-technique',
+        style: {
+          'border-width': 2,
+          'border-color': '#ff6b6b',
+        }
+      },
     ]
   }
 
@@ -91,6 +131,36 @@
       first_seen: e.first_seen ?? '',
       last_seen: e.last_seen ?? '',
     }
+  }
+
+  function highlightAttackPath(sourceId: string, targetId: string) {
+    cy!.elements().removeClass('attack-path-node attack-path-edge')
+    const dijkstraResult = cy!.elements().dijkstra({
+      root: cy!.$(`#${sourceId}`),
+      directed: false,
+    })
+    const pathCollection = dijkstraResult.pathTo(cy!.$(`#${targetId}`))
+    if (pathCollection.length > 0) {
+      pathCollection.nodes().addClass('attack-path-node')
+      pathCollection.edges().addClass('attack-path-edge')
+      attackPathActive = true
+      if (showPathOnly) {
+        cy!.elements().not(pathCollection).hide()
+      }
+      pathCollection.nodes().animate(
+        { style: { 'border-width': 4, 'border-color': '#f85149' } },
+        { duration: 600 }
+      )
+    }
+  }
+
+  function clearAttackPath() {
+    cy!.elements().removeClass('attack-path-node attack-path-edge')
+    cy!.elements().show()
+    pathSource = null
+    pathTarget = null
+    attackPathActive = false
+    showPathOnly = false
   }
 
   async function loadEntities() {
@@ -137,14 +207,24 @@
     cy = cytoscape({
       container,
       style: buildCytoStyle() as any,
-      layout: { name: 'cose', padding: 40, animate: false } as any,
+      layout: { name: 'fcose', quality: 'default', animate: false, randomize: true,
+        nodeRepulsion: 4500, idealEdgeLength: 80, edgeElasticity: 0.45,
+        padding: 40, nodeSeparation: 75 } as any,
     })
     cy.on('tap', 'node', (evt) => {
       const data = evt.target.data()
+      // Update selectedEntity (existing behaviour)
       selectedEntity = entities.find(e => (e.id ?? e.entity_id) === data.id) ?? {
         id: data.id, entity_id: data.id, type: data.type, entity_type: data.type,
         label: data.label, entity_name: data.label,
         properties: {}, attributes: {}, first_seen: '', last_seen: ''
+      }
+      // Two-click attack path: first click sets source, second sets target and triggers highlight
+      if (!pathSource) {
+        pathSource = data.id
+      } else if (pathSource !== data.id) {
+        pathTarget = data.id
+        highlightAttackPath(pathSource, data.id)
       }
     })
     cy.on('tap', (evt) => {
@@ -161,8 +241,10 @@
         id: e.id ?? e.entity_id,
         label: (e.label ?? e.entity_name ?? '').slice(0, 24),
         type: e.type ?? e.entity_type,
+        risk_score: (e.attributes ?? e.properties ?? {} as any)?.risk_score ?? 0,
         ...(e.properties ?? e.attributes ?? {})
-      }
+      },
+      classes: (e.type ?? e.entity_type) === 'attack_technique' ? 'attack-technique' : undefined
     }))
 
     const edges = graph.edges.map(e => ({
@@ -175,7 +257,9 @@
     }))
 
     cy!.add([...nodes, ...edges])
-    cy!.layout({ name: 'cose', padding: 40, animate: false } as any).run()
+    cy!.layout({ name: 'fcose', quality: 'default', animate: false, randomize: true,
+      nodeRepulsion: 4500, idealEdgeLength: 80, edgeElasticity: 0.45,
+      padding: 40, nodeSeparation: 75 } as any).run()
   }
 
   onMount(() => {
@@ -204,12 +288,23 @@
           <option value={3}>3-hop</option>
         </select>
       </label>
-      <button class="btn" onclick={loadEntities}>↻ Reload</button>
+      <button class="btn" onclick={loadEntities}>&#8635; Reload</button>
+      {#if attackPathActive}
+        <button class="btn btn-danger" onclick={clearAttackPath}>Clear Path</button>
+        <label class="toggle">
+          <input type="checkbox" bind:checked={showPathOnly}
+            onchange={() => showPathOnly ? cy?.elements().not('.attack-path-node, .attack-path-edge').hide() : cy?.elements().show()} />
+          Path only
+        </label>
+      {/if}
+      {#if pathSource && !attackPathActive}
+        <span class="path-hint">Click target node to highlight path from {pathSource.slice(0,12)}…</span>
+      {/if}
     </div>
   </div>
 
   {#if error}
-    <div class="error-banner">⚠ {error}</div>
+    <div class="error-banner">&#9888; {error}</div>
   {/if}
 
   <div class="graph-body">
@@ -224,9 +319,14 @@
       <div class="entity-panel">
         <div class="panel-header">
           <span class="entity-type" style="color: {typeColors[selectedEntity.type ?? selectedEntity.entity_type ?? ''] ?? '#8b949e'}">{selectedEntity.type ?? selectedEntity.entity_type}</span>
-          <button class="btn-close" onclick={() => selectedEntity = null}>✕</button>
+          <button class="btn-close" onclick={() => selectedEntity = null}>&#10005;</button>
         </div>
         <div class="panel-label">{selectedEntity.label ?? selectedEntity.entity_name}</div>
+        {#if (selectedEntity.type ?? selectedEntity.entity_type) === 'attack_technique' && (selectedEntity.properties ?? selectedEntity.attributes ?? {} as any)?.tactic}
+          <div class="tactic-badge">
+            MITRE: {(selectedEntity.properties ?? selectedEntity.attributes ?? {} as any)?.tactic}
+          </div>
+        {/if}
         <div class="panel-section">
           <div class="panel-row"><span>First seen</span><span>{selectedEntity.first_seen ? new Date(selectedEntity.first_seen).toLocaleString() : '—'}</span></div>
           <div class="panel-row"><span>Last seen</span><span>{selectedEntity.last_seen ? new Date(selectedEntity.last_seen).toLocaleString() : '—'}</span></div>
@@ -268,7 +368,7 @@
     background: var(--bg-secondary); flex-shrink: 0;
   }
   h1 { font-size: 16px; font-weight: 600; }
-  .controls { display: flex; gap: 8px; align-items: center; }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .controls label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
 
   .graph-body { flex: 1; display: flex; overflow: hidden; position: relative; }
@@ -303,6 +403,13 @@
   .btn-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
   .panel-label { font-size: 14px; font-weight: 600; word-break: break-all; }
 
+  .tactic-badge {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    background: rgba(255, 107, 107, 0.15); color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.35); border-radius: 4px;
+    padding: 3px 8px; letter-spacing: 0.4px;
+  }
+
   .panel-section { border-top: 1px solid var(--border); padding-top: 10px; }
   .panel-sub { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.5px; }
   .panel-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; font-size: 12px; }
@@ -321,4 +428,8 @@
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
 
   .error-banner { padding: 12px 20px; background: rgba(248,81,73,0.1); color: var(--severity-critical); border-bottom: 1px solid rgba(248,81,73,0.3); font-size: 13px; }
+
+  .btn-danger { background: rgba(248,81,73,0.15); color: #f85149; border: 1px solid rgba(248,81,73,0.3); }
+  .path-hint { font-size: 12px; color: var(--text-secondary); font-style: italic; }
+  .toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 12px; }
 </style>
