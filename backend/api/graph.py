@@ -2,11 +2,13 @@
 Graph API — entity and relationship management for the investigation graph.
 
 Endpoints:
+  GET  /graph/global                     — global entity graph (most recent N entities)
   GET  /graph/entity/{entity_id}         — single entity + its edges
   POST /graph/entity                     — create/update an entity node
   POST /graph/edge                       — create a directed edge
   GET  /graph/traverse/{entity_id}       — multi-hop graph traversal
   GET  /graph/case/{case_id}             — full graph for a case
+  GET  /graph/{investigation_id}         — alias for /graph/case/{case_id}
   DELETE /graph/entity/{entity_id}       — remove entity and its edges
 """
 
@@ -130,6 +132,59 @@ async def list_entities(
 
     entities = await asyncio.to_thread(_list)
     return JSONResponse(content={"entities": entities, "total": len(entities)})
+
+
+# ---------------------------------------------------------------------------
+# GET /graph/global
+# ---------------------------------------------------------------------------
+
+
+@router.get("/global")
+async def get_global_graph(
+    request: Request,
+    limit: int = Query(100, ge=1, le=500, description="Maximum entities to return"),
+) -> JSONResponse:
+    """Return global entity graph — up to `limit` most recent entities and their edges."""
+    stores = request.app.state.stores
+    import json as _json
+
+    def _list_global(n: int) -> tuple[list[dict], list[dict]]:
+        cur = stores.sqlite._conn.execute(
+            "SELECT id, type, name, attributes, case_id, created_at "
+            "FROM entities ORDER BY created_at DESC LIMIT ?",
+            (n,),
+        )
+        cols = [d[0] for d in cur.description]
+        entities: list[dict] = []
+        for row in cur.fetchall():
+            d = dict(zip(cols, row))
+            if isinstance(d.get("attributes"), str):
+                try:
+                    d["attributes"] = _json.loads(d["attributes"])
+                except Exception:
+                    d["attributes"] = {}
+            entities.append(d)
+
+        entity_ids = {e["id"] for e in entities}
+        all_edges: list[dict] = []
+        seen: set[int] = set()
+        for eid in entity_ids:
+            for edge in stores.sqlite.get_edges_from(eid, depth=1):
+                if edge["target_id"] in entity_ids:
+                    key = hash((edge["source_id"], edge["edge_type"], edge["target_id"]))
+                    if key not in seen:
+                        seen.add(key)
+                        all_edges.append(edge)
+        return entities, all_edges
+
+    entities_raw, edges_raw = await asyncio.to_thread(_list_global, limit)
+    response = GraphResponse.from_stores(
+        entities=entities_raw,
+        edges=edges_raw,
+        root_entity_id=None,
+        depth=None,
+    )
+    return JSONResponse(content=response.model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -317,6 +372,59 @@ async def get_case_graph(case_id: str, request: Request) -> JSONResponse:
     )
 
     return JSONResponse(content={"case_id": case_id, **response.model_dump(mode="json")})
+
+
+# ---------------------------------------------------------------------------
+# GET /graph/{investigation_id}
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{investigation_id}")
+async def get_investigation_graph(
+    investigation_id: str,
+    request: Request,
+) -> JSONResponse:
+    """Return entity graph for an investigation (alias for /graph/case/{case_id})."""
+    stores = request.app.state.stores
+
+    entities_raw = await asyncio.to_thread(
+        stores.sqlite.get_entities_by_case, investigation_id
+    )
+    if not entities_raw:
+        return JSONResponse(
+            content={
+                "case_id": investigation_id,
+                "entities": [],
+                "edges": [],
+                "total_entities": 0,
+                "total_edges": 0,
+            }
+        )
+
+    entity_ids = {e["id"] for e in entities_raw}
+
+    def _fetch_edges(ids: set[str]) -> list[dict]:
+        all_edges: list[dict] = []
+        seen: set[int] = set()
+        for eid in ids:
+            for edge in stores.sqlite.get_edges_from(eid, depth=1):
+                if edge["target_id"] in ids:
+                    key = hash((edge["source_id"], edge["edge_type"], edge["target_id"]))
+                    if key not in seen:
+                        seen.add(key)
+                        all_edges.append(edge)
+        return all_edges
+
+    edges_raw = await asyncio.to_thread(_fetch_edges, entity_ids)
+    response = GraphResponse.from_stores(
+        entities=entities_raw,
+        edges=edges_raw,
+        root_entity_id=None,
+        depth=None,
+    )
+    return JSONResponse(
+        content={"case_id": investigation_id, **response.model_dump(mode="json")}
+    )
 
 
 # ---------------------------------------------------------------------------
