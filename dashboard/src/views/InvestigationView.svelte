@@ -2,7 +2,13 @@
   import { api } from '../lib/api.ts'
   import type { TimelineItem, ChatHistoryMessage } from '../lib/api.ts'
 
-  let { investigationId = '' } = $props()
+  let {
+    investigationId = '',
+    onOpenInGraph = undefined,
+  }: {
+    investigationId?: string
+    onOpenInGraph?: (entityId: string) => void
+  } = $props()
 
   // Timeline state
   let timelineItems = $state<TimelineItem[]>([])
@@ -88,7 +94,12 @@
   <div class="panel timeline-panel">
     <div class="panel-header">
       <h2>Evidence Timeline</h2>
-      <button class="btn-secondary" onclick={loadTimeline}>Refresh</button>
+      <div class="header-actions">
+        {#if onOpenInGraph && investigationId}
+          <button class="btn-secondary" onclick={() => onOpenInGraph?.(investigationId)}>Open in Graph</button>
+        {/if}
+        <button class="btn-secondary" onclick={loadTimeline}>Refresh</button>
+      </div>
     </div>
     {#if timelineLoading}
       <p class="muted">Loading timeline...</p>
@@ -187,6 +198,7 @@
   border-bottom: 1px solid var(--border, #2d3a52);
 }
 .panel-header h2 { margin: 0; font-size: 1rem; font-weight: 600; }
+.header-actions { display: flex; gap: 0.5rem; align-items: center; }
 .model-label { font-size: 0.75rem; color: var(--muted, #8899aa); }
 
 /* Timeline */

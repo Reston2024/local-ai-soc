@@ -22,10 +22,21 @@
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
   let investigatingId = $state<string>('')
+  let graphFocusEntityId = $state<string>('')
   let postureScore = $state(100) // 0–100; updated once detections load
 
   function handleInvestigate(detectionId: string) {
     investigatingId = detectionId
+    currentView = 'investigation'
+  }
+
+  function handleOpenInGraph(entityId: string) {
+    graphFocusEntityId = entityId
+    currentView = 'graph'
+  }
+
+  function handleNavigateInvestigation(investigationId: string) {
+    investigatingId = investigationId
     currentView = 'investigation'
   }
 
@@ -214,11 +225,17 @@
     {#if currentView === 'detections'}
       <DetectionsView onInvestigate={handleInvestigate} onPostureUpdate={handlePostureUpdate} />
     {:else if currentView === 'investigation'}
-      <InvestigationView investigationId={investigatingId} />
+      <InvestigationView
+        investigationId={investigatingId}
+        onOpenInGraph={handleOpenInGraph}
+      />
     {:else if currentView === 'events'}
       <EventsView />
     {:else if currentView === 'graph'}
-      <GraphView />
+      <GraphView
+        focusEntityId={graphFocusEntityId}
+        onNavigateInvestigation={handleNavigateInvestigation}
+      />
     {:else if currentView === 'query'}
       <QueryView />
     {:else if currentView === 'ingest'}
