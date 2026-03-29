@@ -173,6 +173,14 @@ export const api = {
     },
     traverse: (entityId: string, depth = 2) =>
       request<any>(`/api/graph/traverse/${encodeURIComponent(entityId)}?depth=${depth}`),
+    caseGraph: (caseId: string) =>
+      request<{ case_id: string; entities: GraphEntity[]; edges: any[]; total_entities: number; total_edges: number }>(
+        `/api/graph/${encodeURIComponent(caseId)}`
+      ),
+    global: (limit = 100) =>
+      request<{ entities: GraphEntity[]; edges: any[]; total_entities: number; total_edges: number }>(
+        `/api/graph/global?limit=${limit}`
+      ),
   },
 
   investigate: (detectionId: string) =>
