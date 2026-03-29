@@ -2,6 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 15 (in progress)
+current_plan: 15-03 complete — fCoSE layout, risk-scored node sizing, Dijkstra attack path highlighting, MITRE tactic badge in GraphView.svelte; api.graph.caseGraph() and api.graph.global() in api.ts
+status: in_progress
+last_updated: "2026-03-29T12:59:00Z"
+stopped_at: "Completed 15-03-PLAN.md"
+progress:
+  total_phases: 18
+  completed_phases: 12
+  total_plans: 70
+  completed_plans: 75
+decisions:
+  - "15-03: fCoSE layout options nodeRepulsion:4500/idealEdgeLength:80/edgeElasticity:0.45/nodeSeparation:75 per plan spec"
+  - "15-03: directed:false in Dijkstra for SOC exploration — lateral movement paths traverse undirected entity relationships"
+  - "15-03: Two-click pathSource mechanism for attack path — lower friction for analysts vs modal dialog"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
