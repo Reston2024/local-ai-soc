@@ -669,7 +669,12 @@ Plans:
 - P15-T04: Graph ↔ Investigation integration — clicking a node in GraphView navigates to InvestigationView for that entity's associated investigation; "Open in Graph" button in InvestigationView launches GraphView centred on the investigation's primary entity
 
 ### Plans
-**Plans:** 0/0 plans complete
+**Plans:** 0/4 plans complete
+
+- [ ] 15-01-PLAN.md — Wave 0: xfail test stubs + npm install cytoscape-fcose/dagre
+- [ ] 15-02-PLAN.md — Backend: GET /api/graph/global and GET /api/graph/{investigation_id} endpoints
+- [ ] 15-03-PLAN.md — Frontend: fCoSE layout, risk-scored nodes, attack path highlighting (P15-T02, P15-T03)
+- [ ] 15-04-PLAN.md — Navigation wiring: Graph ++ InvestigationView bidirectional navigation (P15-T04)
 
 *Phase 15 added: 2026-03-28 (Attack Graph UI)*
 
