@@ -2,15 +2,23 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 17 (in progress)
+current_plan: 17-01 complete — Playbook data models (PlaybookStep/Playbook/PlaybookRun/PlaybookCreate/PlaybookRunAdvance), SQLite DDL (playbooks + playbook_runs tables), 7 CRUD store methods, 5 NIST IR built-in playbooks, REST endpoints GET/POST /api/playbooks + GET /api/playbooks/{id}/runs, seed_builtin_playbooks() in lifespan; 36 unit tests pass
 status: in_progress
-last_updated: "2026-03-31T16:00:07.831Z"
+last_updated: "2026-03-31T17:08:04Z"
+stopped_at: "Completed 17-01-PLAN.md"
 progress:
+  [██████████] 100%
   total_phases: 18
   completed_phases: 14
-  total_plans: 75
-  completed_plans: 80
+  total_plans: 78
+  completed_plans: 81
+  percent: 100
+decisions:
+  - "17-01: Placed BUILTIN_PLAYBOOKS in backend/data/ package (new) rather than backend/api/ to separate data concerns from routing"
+  - "17-01: seed_builtin_playbooks() uses is_builtin=1 sentinel COUNT(*) check for idempotency — not playbook name matching"
+  - "17-01: PlaybookRunAdvance included in 17-01 models so Phase 17-02 execution engine can import without circular dependency"
+  - "17-01: Added !backend/data/ exception to .gitignore — data/ pattern was blocking source package tracking"
 ---
 
 ---
