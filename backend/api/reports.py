@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import json
+import zipfile
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 
 from backend.core.logging import get_logger
@@ -460,6 +462,214 @@ async def list_reports(request: Request) -> JSONResponse:
     # Strip large pdf_b64 field — callers use /pdf endpoint to download
     stripped = [_strip_pdf_b64(r) for r in reports]
     return JSONResponse(content={"reports": stripped})
+
+
+@router.get("/compliance")
+async def get_compliance_export(
+    request: Request,
+    framework: str = Query(..., description="nist-csf | thehive"),
+) -> Response:
+    """
+    GET /api/reports/compliance?framework=nist-csf|thehive
+
+    Returns a downloadable ZIP archive formatted for the specified compliance framework.
+
+    - nist-csf: Six JSON evidence files (one per NIST CSF 2.0 function) + summary.html
+    - thehive:  TheHive 5 Alert + Case JSON records for all investigations
+    - Unknown framework: 400 with descriptive error
+    """
+    stores = request.app.state.stores
+
+    # ------------------------------------------------------------------
+    # Shared SQLite helpers (run in asyncio.to_thread)
+    # ------------------------------------------------------------------
+
+    def _fetch_detections(conn: Any) -> list[dict]:
+        rows = conn.execute(
+            "SELECT id, rule_id, rule_name, severity, attack_technique, attack_tactic, created_at "
+            "FROM detections ORDER BY created_at DESC LIMIT 500"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def _fetch_investigations(conn: Any) -> list[dict]:
+        rows = conn.execute(
+            "SELECT case_id, title, case_status, created_at, updated_at, analyst_notes "
+            "FROM investigation_cases ORDER BY created_at DESC LIMIT 200"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def _fetch_playbook_runs(conn: Any) -> list[dict]:
+        rows = conn.execute(
+            "SELECT run_id, playbook_id, investigation_id, status, started_at, completed_at "
+            "FROM playbook_runs ORDER BY started_at DESC LIMIT 200"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def _fetch_reports_list(conn: Any) -> list[dict]:
+        rows = conn.execute(
+            "SELECT id, type, title, created_at FROM reports ORDER BY created_at DESC LIMIT 100"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
+    # NIST CSF 2.0 path
+    # ------------------------------------------------------------------
+
+    if framework == "nist-csf":
+        conn = stores.sqlite._conn
+        detections, investigations, playbook_runs, reports_list = await asyncio.gather(
+            asyncio.to_thread(_fetch_detections, conn),
+            asyncio.to_thread(_fetch_investigations, conn),
+            asyncio.to_thread(_fetch_playbook_runs, conn),
+            asyncio.to_thread(_fetch_reports_list, conn),
+        )
+
+        # KPI evidence from DuckDB (graceful fallback if table missing)
+        try:
+            kpi_rows = await stores.duckdb.fetch_all(
+                "SELECT * FROM daily_kpi_snapshots ORDER BY snapshot_date DESC LIMIT 90"
+            )
+        except Exception:
+            kpi_rows = []
+
+        evidence = {
+            "GOVERN": {"kpi_snapshots": [dict(r) for r in kpi_rows]},
+            "IDENTIFY": {
+                "detections": detections,
+                "technique_count": len(
+                    {d["attack_technique"] for d in detections if d.get("attack_technique")}
+                ),
+            },
+            "PROTECT": {
+                "playbook_runs_completed": [r for r in playbook_runs if r["status"] == "completed"],
+            },
+            "DETECT": {
+                "detections": detections,
+                "rules_fired": len({d["rule_id"] for d in detections}),
+            },
+            "RESPOND": {
+                "investigations": investigations,
+                "playbook_runs": playbook_runs,
+            },
+            "RECOVER": {
+                "investigations_resolved": [
+                    i for i in investigations if i["case_status"] in ("resolved", "closed")
+                ],
+                "playbook_runs_completed": [r for r in playbook_runs if r["status"] == "completed"],
+            },
+        }
+
+        rows_html = "".join(
+            f"<tr><td>{func}</td><td>{len(data if isinstance(data, list) else list(data.values()))} items</td></tr>"
+            for func, data in evidence.items()
+        )
+        # Build per-function summary rows using top-level item counts
+        func_summary_rows = {
+            "GOVERN": len(evidence["GOVERN"]["kpi_snapshots"]),
+            "IDENTIFY": len(evidence["IDENTIFY"]["detections"]),
+            "PROTECT": len(evidence["PROTECT"]["playbook_runs_completed"]),
+            "DETECT": len(evidence["DETECT"]["detections"]),
+            "RESPOND": len(evidence["RESPOND"]["investigations"]),
+            "RECOVER": len(evidence["RECOVER"]["investigations_resolved"]),
+        }
+        rows_html = "".join(
+            f"<tr><td>{func}</td><td>{count} items</td></tr>"
+            for func, count in func_summary_rows.items()
+        )
+        summary_html = (
+            "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+            "<title>NIST CSF 2.0 Evidence Package</title>"
+            "<style>body{font-family:sans-serif;max-width:900px;margin:40px auto}"
+            "table{border-collapse:collapse;width:100%}"
+            "td,th{border:1px solid #ccc;padding:8px;text-align:left}"
+            "th{background:#f0f0f0}</style>"
+            "</head><body>"
+            "<h1>NIST CSF 2.0 Evidence Package</h1>"
+            f"<p>Generated: {datetime.now(timezone.utc).isoformat()}</p>"
+            "<table><tr><th>CSF Function</th><th>Evidence Items</th></tr>"
+            f"{rows_html}"
+            "</table></body></html>"
+        )
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for func, data in evidence.items():
+                zf.writestr(f"nist-csf/{func.lower()}.json", json.dumps(data, indent=2, default=str))
+            zf.writestr("summary.html", summary_html)
+        buf.seek(0)
+        zip_bytes = buf.read()
+        filename = f"nist-csf-evidence-{datetime.now(timezone.utc).strftime('%Y%m%d')}.zip"
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # ------------------------------------------------------------------
+    # TheHive path
+    # ------------------------------------------------------------------
+
+    if framework == "thehive":
+        conn = stores.sqlite._conn
+        investigations = await asyncio.to_thread(_fetch_investigations, conn)
+
+        alerts = [
+            {
+                "title": inv["title"],
+                "description": inv.get("analyst_notes", "") or "",
+                "severity": 2,
+                "tags": ["ai-soc-brain", inv["case_status"]],
+                "source": "AI-SOC-Brain",
+                "sourceRef": inv["case_id"],
+                "type": "internal",
+                "date": inv["created_at"],
+            }
+            for inv in investigations
+        ]
+        cases = [
+            {
+                "title": inv["title"],
+                "description": inv.get("analyst_notes", "") or "",
+                "severity": 2,
+                "tags": ["ai-soc-brain"],
+                "status": "Resolved" if inv["case_status"] in ("resolved", "closed") else "Open",
+                "startDate": inv["created_at"],
+                "endDate": inv.get("updated_at"),
+            }
+            for inv in investigations
+        ]
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("thehive/alerts.json", json.dumps(alerts, indent=2, default=str))
+            zf.writestr("thehive/cases.json", json.dumps(cases, indent=2, default=str))
+        buf.seek(0)
+        filename = f"thehive-export-{datetime.now(timezone.utc).strftime('%Y%m%d')}.zip"
+        return Response(
+            content=buf.read(),
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # ------------------------------------------------------------------
+    # Unknown framework
+    # ------------------------------------------------------------------
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Unknown framework '{framework}'. Supported: nist-csf, thehive",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Helper: severity string → TheHive integer severity
+# ---------------------------------------------------------------------------
+
+
+def _severity_to_int(severity: str) -> int:
+    return {"low": 1, "medium": 2, "high": 3, "critical": 3}.get(
+        severity.lower() if severity else "", 2
+    )
 
 
 @router.get("/{report_id}/pdf")
