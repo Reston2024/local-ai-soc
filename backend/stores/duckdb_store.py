@@ -88,6 +88,20 @@ _CREATE_LLM_CALLS_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_llm_calls_at    ON llm_calls (called_at)",
 ]
 
+_CREATE_KPI_SNAPSHOTS_TABLE = """
+CREATE TABLE IF NOT EXISTS daily_kpi_snapshots (
+    snapshot_date        DATE PRIMARY KEY,
+    mttd_minutes         FLOAT,
+    mttr_minutes         FLOAT,
+    mttc_minutes         FLOAT,
+    alert_volume         INTEGER,
+    false_positive_count INTEGER,
+    investigation_count  INTEGER,
+    detection_count      INTEGER,
+    computed_at          TIMESTAMP NOT NULL
+)
+"""
+
 
 # ---------------------------------------------------------------------------
 # Write-queue item
@@ -141,6 +155,7 @@ class DuckDBStore:
         await self.execute_write(_CREATE_LLM_CALLS_TABLE)
         for idx_sql in _CREATE_LLM_CALLS_INDEXES:
             await self.execute_write(idx_sql)
+        await self.execute_write(_CREATE_KPI_SNAPSHOTS_TABLE)
         log.info("DuckDB schema initialised")
 
     # ------------------------------------------------------------------
@@ -278,6 +293,60 @@ class DuckDBStore:
                 conn.close()
 
         return await asyncio.to_thread(_run)
+
+    # ------------------------------------------------------------------
+    # KPI snapshot upsert
+    # ------------------------------------------------------------------
+
+    async def upsert_daily_kpi_snapshot(
+        self,
+        snapshot_date: str,
+        mttd_minutes: float,
+        mttr_minutes: float,
+        mttc_minutes: float,
+        alert_volume: int,
+        false_positive_count: int,
+        investigation_count: int,
+        detection_count: int,
+    ) -> None:
+        """Upsert the daily KPI snapshot row for snapshot_date.
+
+        Uses DuckDB's INSERT INTO ... ON CONFLICT (snapshot_date) DO UPDATE SET
+        syntax (not INSERT OR REPLACE, which DuckDB does not support).
+
+        Args:
+            snapshot_date:        ISO date string "YYYY-MM-DD".
+            mttd_minutes:         Mean Time to Detect (minutes).
+            mttr_minutes:         Mean Time to Respond (minutes).
+            mttc_minutes:         Mean Time to Contain (minutes).
+            alert_volume:         Number of detections in the snapshot period.
+            false_positive_count: Estimated false positive count.
+            investigation_count:  Total investigation cases.
+            detection_count:      Total detection records.
+        """
+        from datetime import datetime, timezone
+        computed_at = datetime.now(timezone.utc).isoformat()
+        await self.execute_write(
+            """
+            INSERT INTO daily_kpi_snapshots
+              (snapshot_date, mttd_minutes, mttr_minutes, mttc_minutes,
+               alert_volume, false_positive_count, investigation_count,
+               detection_count, computed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (snapshot_date) DO UPDATE SET
+                mttd_minutes         = EXCLUDED.mttd_minutes,
+                mttr_minutes         = EXCLUDED.mttr_minutes,
+                mttc_minutes         = EXCLUDED.mttc_minutes,
+                alert_volume         = EXCLUDED.alert_volume,
+                false_positive_count = EXCLUDED.false_positive_count,
+                investigation_count  = EXCLUDED.investigation_count,
+                detection_count      = EXCLUDED.detection_count,
+                computed_at          = EXCLUDED.computed_at
+            """,
+            [snapshot_date, mttd_minutes, mttr_minutes, mttc_minutes,
+             alert_volume, false_positive_count, investigation_count,
+             detection_count, computed_at],
+        )
 
     # ------------------------------------------------------------------
     # Shutdown
