@@ -167,6 +167,19 @@ CREATE TABLE IF NOT EXISTS playbook_runs (
 CREATE INDEX IF NOT EXISTS idx_playbook_runs_pb   ON playbook_runs (playbook_id);
 CREATE INDEX IF NOT EXISTS idx_playbook_runs_inv  ON playbook_runs (investigation_id);
 CREATE INDEX IF NOT EXISTS idx_playbooks_builtin  ON playbooks (is_builtin);
+
+CREATE TABLE IF NOT EXISTS reports (
+    id              TEXT PRIMARY KEY,
+    type            TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    subject_id      TEXT,
+    period_start    TEXT,
+    period_end      TEXT,
+    content_json    TEXT NOT NULL DEFAULT '{}',
+    created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reports_type       ON reports (type);
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports (created_at);
 """
 
 
@@ -907,6 +920,47 @@ class SQLiteStore:
             except (json.JSONDecodeError, TypeError):
                 d["steps_completed"] = []
         return d
+
+    # ------------------------------------------------------------------
+    # Report management (Phase 18)
+    # ------------------------------------------------------------------
+
+    def insert_report(self, data: dict) -> None:
+        """Insert or replace a report record."""
+        self._conn.execute(
+            """
+            INSERT OR REPLACE INTO reports
+                (id, type, title, subject_id, period_start, period_end,
+                 content_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                data["id"],
+                data["type"],
+                data["title"],
+                data.get("subject_id"),
+                data.get("period_start"),
+                data.get("period_end"),
+                data.get("content_json", "{}"),
+                data["created_at"],
+            ),
+        )
+        self._conn.commit()
+        log.debug("Report inserted", report_id=data["id"], report_type=data["type"])
+
+    def list_reports(self) -> list[dict]:
+        """Return all report records ordered by created_at DESC."""
+        rows = self._conn.execute(
+            "SELECT * FROM reports ORDER BY created_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_report(self, report_id: str) -> Optional[dict]:
+        """Return a single report by id, or None if not found."""
+        row = self._conn.execute(
+            "SELECT * FROM reports WHERE id = ?", (report_id,)
+        ).fetchone()
+        return dict(row) if row else None
 
     # ------------------------------------------------------------------
     # Shutdown
