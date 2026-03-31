@@ -150,11 +150,14 @@
 
   function highlightAttackPath(sourceId: string, targetId: string) {
     cy!.elements().removeClass('attack-path-node attack-path-edge')
+    const sourceNode = cy!.getElementById(sourceId)
+    const targetNode = cy!.getElementById(targetId)
+    if (sourceNode.length === 0 || targetNode.length === 0) return
     const dijkstraResult = cy!.elements().dijkstra({
-      root: cy!.$(`#${sourceId}`),
+      root: sourceNode,
       directed: false,
     })
-    const pathCollection = dijkstraResult.pathTo(cy!.$(`#${targetId}`))
+    const pathCollection = dijkstraResult.pathTo(targetNode)
     if (pathCollection.length > 0) {
       pathCollection.nodes().addClass('attack-path-node')
       pathCollection.edges().addClass('attack-path-edge')
@@ -182,16 +185,17 @@
     loading = true
     error = null
     try {
-      const res = await api.graph.entities({ type: typeFilter || undefined, limit: 100 })
+      const res = await api.graph.global(100)
       entities = (res.entities ?? []).map(normalizeEntity)
+      const normalized = { entities, edges: res.edges ?? [] }
       if (entities.length > 0) {
-        await loadSubgraph(entities[0].id ?? entities[0].entity_id ?? '')
+        renderGraph(normalized)
       } else {
         renderEmpty()
-        loading = false
       }
     } catch (e) {
       error = String(e)
+    } finally {
       loading = false
     }
   }
@@ -200,12 +204,23 @@
     loading = true
     error = null
     try {
-      const graph = await api.graph.entity(entityId, depth)
-      // Normalize entities in the subgraph response
-      if (graph.entities) {
-        graph.entities = graph.entities.map(normalizeEntity)
+      // Try to load the entity's investigation subgraph; fall back to global
+      let res: { entities: GraphEntity[]; edges: any[] }
+      try {
+        const caseRes = await api.graph.caseGraph(entityId)
+        res = { entities: caseRes.entities ?? [], edges: caseRes.edges ?? [] }
+      } catch {
+        const globalRes = await api.graph.global(100)
+        res = { entities: globalRes.entities ?? [], edges: globalRes.edges ?? [] }
       }
-      renderGraph(graph)
+      entities = res.entities.map(normalizeEntity)
+      renderGraph({ entities, edges: res.edges })
+      // Centre on the focused entity if present
+      const node = cy?.getElementById(entityId)
+      if (node && node.length > 0) {
+        cy?.fit(node, 100)
+        node.select()
+      }
     } catch (e) {
       error = String(e)
     } finally {
@@ -227,23 +242,28 @@
         padding: 40, nodeSeparation: 75 } as any,
     })
     cy.on('tap', 'node', (evt) => {
+      evt.stopPropagation()
       const data = evt.target.data()
-      // Update selectedEntity (existing behaviour)
-      selectedEntity = entities.find(e => (e.id ?? e.entity_id) === data.id) ?? {
+      const found = entities.find(e => (e.id ?? e.entity_id) === data.id) ?? {
         id: data.id, entity_id: data.id, type: data.type, entity_type: data.type,
         label: data.label, entity_name: data.label,
         properties: {}, attributes: {}, first_seen: '', last_seen: ''
       }
-      // Two-click attack path: first click sets source, second sets target and triggers highlight
-      if (!pathSource) {
-        pathSource = data.id
-      } else if (pathSource !== data.id) {
-        pathTarget = data.id
-        highlightAttackPath(pathSource, data.id)
+      const prevSource = pathSource
+      // Dispatch a custom DOM event so Svelte's native event system handles state updates
+      container.dispatchEvent(new CustomEvent('cynodetap', {
+        detail: { entity: found, nodeId: data.id, prevSource },
+        bubbles: false
+      }))
+      // Cytoscape path highlight runs after state is set
+      if (prevSource && prevSource !== data.id) {
+        highlightAttackPath(prevSource, data.id)
       }
     })
     cy.on('tap', (evt) => {
-      if (evt.target === cy) selectedEntity = null
+      if (evt.target === cy) {
+        container.dispatchEvent(new CustomEvent('cybgtap', { bubbles: false }))
+      }
     })
   }
 
@@ -264,10 +284,10 @@
 
     const edges = graph.edges.map(e => ({
       data: {
-        id: e.id,
-        source: e.source_id,
-        target: e.target_id,
-        edge_type: e.edge_type,
+        id: e.id || `${e.src ?? e.source_id}-${e.dst ?? e.target_id}`,
+        source: e.src ?? e.source_id,
+        target: e.dst ?? e.target_id,
+        edge_type: e.type ?? e.edge_type,
       }
     }))
 
@@ -323,7 +343,15 @@
   {/if}
 
   <div class="graph-body">
-    <div class="cy-container" bind:this={container}>
+    <div class="cy-container" bind:this={container}
+      oncynodetap={(e: any) => {
+        const { entity, nodeId, prevSource } = e.detail
+        selectedEntity = entity
+        if (!prevSource) { pathSource = nodeId }
+        else if (prevSource !== nodeId) { pathTarget = nodeId }
+      }}
+      oncybgtap={() => { selectedEntity = null }}
+    >
       {#if loading}<div class="overlay">Loading graph…</div>{/if}
       {#if !loading && entities.length === 0}
         <div class="overlay">No entities yet. Ingest events to populate the graph.</div>
@@ -398,6 +426,7 @@
 
   .cy-container {
     flex: 1;
+    min-width: 0;
     background: var(--bg-primary);
     position: relative;
   }
