@@ -40,6 +40,13 @@
     currentView = 'investigation'
   }
 
+  let playbookInvestigationId = $state<string>('')
+
+  function handleRunPlaybook(investigationId: string) {
+    playbookInvestigationId = investigationId
+    currentView = 'playbooks'
+  }
+
   function handlePostureUpdate(score: number) {
     postureScore = score
   }
@@ -228,6 +235,7 @@
       <InvestigationView
         investigationId={investigatingId}
         onOpenInGraph={handleOpenInGraph}
+        onRunPlaybook={handleRunPlaybook}
       />
     {:else if currentView === 'events'}
       <EventsView />
@@ -245,7 +253,7 @@
     {:else if currentView === 'hunting'}
       <HuntingView />
     {:else if currentView === 'playbooks'}
-      <PlaybooksView />
+      <PlaybooksView investigationId={playbookInvestigationId} />
     {:else if currentView === 'reports'}
       <ReportsView />
     {:else if currentView === 'assets'}
