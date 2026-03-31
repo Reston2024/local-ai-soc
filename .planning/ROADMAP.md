@@ -380,7 +380,7 @@ Plans:
 
 | Deliverable | Files | Verification |
 |-------------|-------|-------------|
-| Investigation package | `backend/investigation/` (6 modules) | 16 test_phase7.py tests XPASS | 5/5 | Complete   | 2026-03-31 | investigation_cases, case_artifacts, case_tags tables |
+| Investigation package | `backend/investigation/` (6 modules) | 16 test_phase7.py tests XPASS | 5/5 | Complete    | 2026-03-31 | investigation_cases, case_artifacts, case_tags tables |
 | Case management API | `POST /api/cases`, `GET /api/cases`, `GET /api/cases/{id}`, `PATCH /api/cases/{id}` | P7-T04/T05/T06/T07 XPASS |
 | Threat hunting API | `POST /api/hunt`, `GET /api/hunt/templates` | P7-T10/T11 XPASS |
 | Timeline API | `GET /api/cases/{id}/timeline` | P7-T13 XPASS |
