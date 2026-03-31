@@ -922,6 +922,28 @@ class SQLiteStore:
         return d
 
     # ------------------------------------------------------------------
+    # MITRE ATT&CK analytics helpers (Phase 18 Plan 02)
+    # ------------------------------------------------------------------
+
+    def get_detection_techniques(self) -> list[dict]:
+        """Return all detections with non-null attack_technique.
+
+        Each dict has keys: attack_technique, attack_tactic.
+        """
+        rows = self._conn.execute(
+            "SELECT attack_technique, attack_tactic FROM detections "
+            "WHERE attack_technique IS NOT NULL AND attack_technique != ''"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_playbook_trigger_conditions(self) -> list[str]:
+        """Return a flat list of all trigger_conditions JSON strings from all playbooks."""
+        rows = self._conn.execute(
+            "SELECT trigger_conditions FROM playbooks"
+        ).fetchall()
+        return [r["trigger_conditions"] for r in rows]
+
+    # ------------------------------------------------------------------
     # Report management (Phase 18)
     # ------------------------------------------------------------------
 
