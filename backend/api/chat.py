@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
+from backend.api.query import verify_citations
 from backend.core.logging import get_logger
 
 log = get_logger(__name__)
@@ -168,7 +170,16 @@ async def chat_stream(
                 "".join(full_tokens),
             )
         )
-        yield f"data: {json.dumps({'done': True})}\n\n"
+        # Extract event IDs from context for citation verification
+        # Context lines contain investigation_id and timeline entries
+        _id_pattern = re.compile(
+            r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+            re.IGNORECASE,
+        )
+        context_ids_found = _id_pattern.findall(context)
+        full_response = "".join(full_tokens)
+        citation_ok = verify_citations(full_response, context_ids_found)
+        yield f"data: {json.dumps({'done': True, 'citation_verified': citation_ok})}\n\n"
 
     return StreamingResponse(
         event_stream(),

@@ -56,3 +56,28 @@ def test_chat_message_model_fields():
     assert msg.investigation_id == "inv-001"
     assert msg.role == "user"
     assert msg.content == "What processes ran on this host?"
+
+
+# ---------------------------------------------------------------------------
+# P16-SEC-03c: LLM audit logger smoke test
+# ---------------------------------------------------------------------------
+
+
+def test_llm_audit_logger_has_handler(tmp_path):
+    """When setup_logging() is called, the llm_audit logger must have at least one configured file handler."""
+    import logging
+    import backend.core.logging as _logging_mod
+
+    # Reset the initialization flag so setup_logging() runs fully
+    original_initialized = _logging_mod._INITIALIZED
+    _logging_mod._INITIALIZED = False
+
+    try:
+        from backend.core.logging import setup_logging
+        setup_logging(log_level="INFO", log_dir=str(tmp_path / "test_logs_audit"))
+        audit_logger = logging.getLogger("llm_audit")
+        assert len(audit_logger.handlers) >= 1, "llm_audit logger must have file handler configured"
+        assert not audit_logger.propagate, "llm_audit must not propagate to root logger"
+    finally:
+        # Restore state so subsequent tests are unaffected
+        _logging_mod._INITIALIZED = original_initialized
