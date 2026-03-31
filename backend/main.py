@@ -364,6 +364,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("playbooks router not available: %s", exc)
 
+    try:
+        from backend.api.reports import router as reports_router
+        app.include_router(reports_router, dependencies=[Depends(verify_token)])
+        log.info("reports router mounted at /api/reports")
+    except ImportError as exc:
+        log.warning("reports router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
