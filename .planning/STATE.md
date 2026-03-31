@@ -5,12 +5,12 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-03-31T17:25:17.172Z"
+last_updated: "2026-03-31T18:49:01.768Z"
 progress:
   total_phases: 18
   completed_phases: 15
-  total_plans: 78
-  completed_plans: 83
+  total_plans: 83
+  completed_plans: 84
   percent: 100
 ---
 
@@ -1403,4 +1403,27 @@ decisions:
   - "16-02: httpx retained in main [dependencies] — runtime dep for OllamaClient (per locked Decision 5)"
   - "16-02: Used [dependency-groups] (PEP 735) not [project.optional-dependencies] — uv native syntax, uv sync --group dev"
   - "16-02: All three CI jobs use uv sync --group dev for consistency (lint, test, dependency-audit)"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 18 (in progress)
+current_plan: 18-01 complete — reports SQLite table DDL + insert_report/list_reports/get_report CRUD methods; backend/models/report.py Pydantic models; weasyprint installed; 4 REST endpoints (POST investigation, POST executive, GET list, GET /pdf); 3 unit tests pass
+status: in_progress
+last_updated: "2026-03-31T18:47:28Z"
+stopped_at: "Completed 18-01-PLAN.md"
+progress:
+  [██████████] 100%
+  total_phases: 18
+  completed_phases: 15
+  total_plans: 78
+  completed_plans: 84
+  percent: 100
+decisions:
+  - "18-01: WeasyPrint lazy-imported inside _render_pdf() — avoids GTK/Pango DLL load at server startup; only needed when PDF is generated"
+  - "18-01: pdf_b64 stored inside content_json TEXT blob, not a separate column — keeps reports schema minimal"
+  - "18-01: Executive report KPI fetch uses try/except around daily_kpi_snapshots DuckDB query (table created in plan 18-03), zeros used when absent"
+  - "18-01: SQLiteStore uses self._conn persistent connection (not _conn() factory method) — plan interfaces section had wrong pattern"
 ---
