@@ -1306,3 +1306,25 @@ decisions:
   - "14-02: Ground truth keywords: triage=[event_type, attack_technique]; summarise=[event_type, severity]; None/unknown filtered"
   - "14-01: Foundation-Sec-8B (Cisco Foundation AI, Apache 2.0) selected as OLLAMA_CYBERSEC_MODEL"
 ---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 16 (in progress)
+current_plan: 16-02 complete — dev deps moved to [dependency-groups] dev (pytest, pytest-asyncio, pytest-cov, ruff); httpx kept in main deps; .gitignore deduplicated; CI updated to uv sync --group dev in lint/test/dependency-audit jobs
+status: in_progress
+last_updated: "2026-03-31T13:12:04Z"
+stopped_at: "Completed 16-02-PLAN.md"
+progress:
+  [██████████] 100%
+  total_phases: 18
+  completed_phases: 13
+  total_plans: 70
+  completed_plans: 77
+  percent: 100
+decisions:
+  - "16-02: httpx retained in main [dependencies] — runtime dep for OllamaClient (per locked Decision 5)"
+  - "16-02: Used [dependency-groups] (PEP 735) not [project.optional-dependencies] — uv native syntax, uv sync --group dev"
+  - "16-02: All three CI jobs use uv sync --group dev for consistency (lint, test, dependency-audit)"
+---
