@@ -140,6 +140,33 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     created_at       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_chat_inv ON chat_messages (investigation_id);
+
+CREATE TABLE IF NOT EXISTS playbooks (
+    playbook_id         TEXT PRIMARY KEY,
+    name                TEXT NOT NULL,
+    description         TEXT DEFAULT '',
+    trigger_conditions  TEXT NOT NULL DEFAULT '[]',  -- JSON array of strings
+    steps               TEXT NOT NULL DEFAULT '[]',  -- JSON array of step dicts
+    version             TEXT NOT NULL DEFAULT '1.0',
+    is_builtin          INTEGER NOT NULL DEFAULT 0,
+    created_at          TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS playbook_runs (
+    run_id              TEXT PRIMARY KEY,
+    playbook_id         TEXT NOT NULL,
+    investigation_id    TEXT NOT NULL,
+    status              TEXT NOT NULL DEFAULT 'running',
+    started_at          TEXT NOT NULL,
+    completed_at        TEXT,
+    steps_completed     TEXT NOT NULL DEFAULT '[]',  -- JSON array of step result dicts
+    analyst_notes       TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (playbook_id) REFERENCES playbooks (playbook_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_playbook_runs_pb   ON playbook_runs (playbook_id);
+CREATE INDEX IF NOT EXISTS idx_playbook_runs_inv  ON playbook_runs (investigation_id);
+CREATE INDEX IF NOT EXISTS idx_playbooks_builtin  ON playbooks (is_builtin);
 """
 
 
@@ -750,6 +777,136 @@ class SQLiteStore:
             {"id": r[0], "investigation_id": r[1], "role": r[2], "content": r[3], "created_at": r[4]}
             for r in rows
         ]
+
+    # ------------------------------------------------------------------
+    # Playbook management (Phase 17)
+    # ------------------------------------------------------------------
+
+    def create_playbook(self, data: dict) -> dict:
+        """Insert a new playbook record and return it as a dict."""
+        playbook_id = str(uuid4())
+        now = _now_iso()
+        trigger_conditions = json.dumps(data.get("trigger_conditions", []))
+        steps = json.dumps(data.get("steps", []))
+        is_builtin = 1 if data.get("is_builtin") else 0
+        version = data.get("version", "1.0")
+        name = data["name"]
+        description = data.get("description", "")
+
+        self._conn.execute(
+            """
+            INSERT INTO playbooks
+                (playbook_id, name, description, trigger_conditions, steps,
+                 version, is_builtin, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (playbook_id, name, description, trigger_conditions, steps,
+             version, is_builtin, now),
+        )
+        self._conn.commit()
+        log.debug("Playbook created", playbook_id=playbook_id, name=name)
+        return self.get_playbook(playbook_id)  # type: ignore[return-value]
+
+    def get_playbooks(self) -> list[dict]:
+        """Return all playbooks with JSON fields deserialized."""
+        rows = self._conn.execute(
+            "SELECT * FROM playbooks ORDER BY created_at DESC"
+        ).fetchall()
+        return [self._parse_playbook(dict(r)) for r in rows]
+
+    def get_playbook(self, playbook_id: str) -> dict | None:
+        """Return a single playbook by primary key, or None if not found."""
+        row = self._conn.execute(
+            "SELECT * FROM playbooks WHERE playbook_id = ?", (playbook_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return self._parse_playbook(dict(row))
+
+    def create_playbook_run(self, data: dict) -> dict:
+        """Insert a new playbook run record and return it as a dict."""
+        run_id = str(uuid4())
+        now = _now_iso()
+        self._conn.execute(
+            """
+            INSERT INTO playbook_runs
+                (run_id, playbook_id, investigation_id, status,
+                 started_at, completed_at, steps_completed, analyst_notes)
+            VALUES (?, ?, ?, 'running', ?, NULL, '[]', '')
+            """,
+            (run_id, data["playbook_id"], data["investigation_id"], now),
+        )
+        self._conn.commit()
+        log.debug(
+            "Playbook run created",
+            run_id=run_id,
+            playbook_id=data["playbook_id"],
+        )
+        return self.get_playbook_run(run_id)  # type: ignore[return-value]
+
+    def get_playbook_run(self, run_id: str) -> dict | None:
+        """Return a single playbook run by primary key, or None if not found."""
+        row = self._conn.execute(
+            "SELECT * FROM playbook_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        if row is None:
+            return None
+        return self._parse_playbook_run(dict(row))
+
+    def get_playbook_runs(self, playbook_id: str) -> list[dict]:
+        """Return all runs for a given playbook, newest first."""
+        rows = self._conn.execute(
+            "SELECT * FROM playbook_runs WHERE playbook_id = ? ORDER BY started_at DESC",
+            (playbook_id,),
+        ).fetchall()
+        return [self._parse_playbook_run(dict(r)) for r in rows]
+
+    def update_playbook_run(self, run_id: str, updates: dict) -> dict:
+        """Update a playbook run's mutable fields and return the updated record."""
+        _ALLOWED = {"status", "completed_at", "steps_completed", "analyst_notes"}
+        set_parts: list[str] = []
+        values: list[Any] = []
+
+        for key, val in updates.items():
+            if key not in _ALLOWED:
+                continue
+            if key == "steps_completed" and isinstance(val, list):
+                set_parts.append(f"{key} = ?")
+                values.append(json.dumps(val))
+            else:
+                set_parts.append(f"{key} = ?")
+                values.append(val)
+
+        if set_parts:
+            values.append(run_id)
+            self._conn.execute(
+                f"UPDATE playbook_runs SET {', '.join(set_parts)} WHERE run_id = ?",
+                values,
+            )
+            self._conn.commit()
+
+        return self.get_playbook_run(run_id)  # type: ignore[return-value]
+
+    @staticmethod
+    def _parse_playbook(d: dict) -> dict:
+        """Deserialize JSON fields in a playbook row dict."""
+        for field in ("trigger_conditions", "steps"):
+            if field in d and isinstance(d[field], str):
+                try:
+                    d[field] = json.loads(d[field])
+                except (json.JSONDecodeError, TypeError):
+                    d[field] = []
+        return d
+
+    @staticmethod
+    def _parse_playbook_run(d: dict) -> dict:
+        """Deserialize JSON fields in a playbook_run row dict."""
+        if "steps_completed" in d and isinstance(d["steps_completed"], str):
+            try:
+                d["steps_completed"] = json.loads(d["steps_completed"])
+            except (json.JSONDecodeError, TypeError):
+                d["steps_completed"] = []
+        return d
 
     # ------------------------------------------------------------------
     # Shutdown
