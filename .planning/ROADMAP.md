@@ -730,7 +730,14 @@ Plans:
 - P17-T04: PlaybooksView Svelte component — lists available playbooks with trigger-condition summaries; "Run Playbook" button on InvestigationView launches PlaybooksView in context; running playbook shows step-by-step checklist with confirm/skip/note controls; completed runs show audit trail with timestamps
 
 ### Plans
-**Plans:** 0/0 plans complete
+**Plans:** 3 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — Playbook data model, SQLite schema, built-in library (P17-T01, P17-T02)
+- [ ] 17-02-PLAN.md — Execution engine: start/advance/cancel run + SSE stream (P17-T03)
+- [ ] 17-03-PLAN.md — PlaybooksView UI + InvestigationView Run Playbook button (P17-T04)
+
+
 
 *Phase 17 added: 2026-03-28 (SOAR & Playbook Engine)*
 
