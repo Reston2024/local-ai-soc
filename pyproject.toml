@@ -31,16 +31,15 @@ dependencies = [
     "datasets>=2.21.0",
     # Metrics scheduling
     "apscheduler>=3.10.0,<4.0",
-    # Dev / test
-    "pytest==9.0.2",
-    "pytest-asyncio==1.3.0",
-    "ruff==0.15.6",
     "slowapi==0.1.9",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
+    "pytest==9.0.2",
+    "pytest-asyncio==1.3.0",
     "pytest-cov>=6.0.0",
+    "ruff==0.15.6",
 ]
 
 [build-system]
