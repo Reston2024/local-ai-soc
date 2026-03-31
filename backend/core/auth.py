@@ -1,11 +1,14 @@
 """Bearer token authentication dependency for FastAPI routes.
 
-When AUTH_TOKEN is not configured (empty string), all requests pass through
-without authentication — this is intentional dev/localhost mode behavior that
-keeps existing tests passing without any changes.
+When AUTH_TOKEN is empty string, ALL requests are rejected (misconfiguration guard).
+To disable auth for local dev: set AUTH_TOKEN=dev-only-bypass in .env explicitly.
 
-To enable auth: set AUTH_TOKEN=<token> in .env or environment before starting.
-Generate a token: python -c "import secrets; print(secrets.token_hex(32))"
+The default AUTH_TOKEN is "changeme" — auth is ON in all environments unless
+the operator explicitly overrides AUTH_TOKEN in .env or the environment.
+
+To enable auth with a strong token:
+    python -c "import secrets; print(secrets.token_hex(32))"
+and set AUTH_TOKEN=<token> in .env.
 """
 from fastapi import HTTPException, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -20,10 +23,13 @@ async def verify_token(
 ) -> None:
     """FastAPI dependency: validate Authorization: Bearer <token>.
 
-    Open-mode bypass: if AUTH_TOKEN is not configured, all requests pass.
-    This preserves backward compatibility for existing tests and dev usage.
+    Rejects all requests when AUTH_TOKEN is empty or whitespace — this is
+    treated as misconfiguration to prevent accidental open-access deployment.
     """
-    if not settings.AUTH_TOKEN:
-        return  # AUTH_TOKEN not set → open mode (dev/localhost)
-    if credentials is None or credentials.credentials != settings.AUTH_TOKEN:
+    configured = settings.AUTH_TOKEN.strip()
+    if not configured:
+        # Empty string is misconfiguration — reject all requests to prevent
+        # accidental open-access deployment. Set AUTH_TOKEN in .env.
+        raise HTTPException(status_code=401, detail="Auth misconfigured: AUTH_TOKEN is empty")
+    if credentials is None or credentials.credentials != configured:
         raise HTTPException(status_code=401, detail="Unauthorized")

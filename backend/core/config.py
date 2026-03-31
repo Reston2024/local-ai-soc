@@ -46,8 +46,10 @@ class Settings(BaseSettings):
     OSQUERY_LOG_PATH: str = r"C:\Program Files\osquery\log\osqueryd.results.log"
     OSQUERY_POLL_INTERVAL: int = 5  # seconds between log checks
 
-    # Authentication (optional — empty string = open/dev mode)
-    AUTH_TOKEN: str = ""
+    # Authentication — default is non-empty so auth is ON by default.
+    # Set AUTH_TOKEN= in .env to override. An empty string is treated as
+    # misconfiguration and will cause ALL requests to be rejected.
+    AUTH_TOKEN: str = "changeme"
 
     # Server
     HOST: str = "127.0.0.1"

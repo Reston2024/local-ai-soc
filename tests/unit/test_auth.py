@@ -36,8 +36,33 @@ async def test_wrong_token_returns_401():
 
 
 @pytest.mark.asyncio
-async def test_open_mode_bypass():
+async def test_empty_token_raises_401():
+    """Empty AUTH_TOKEN is misconfiguration — must reject all requests, not bypass auth."""
     with patch("backend.core.auth.settings") as mock_settings:
         mock_settings.AUTH_TOKEN = ""
         from backend.core.auth import verify_token
-        await verify_token(credentials=None)  # must not raise in open mode
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token(credentials=None)
+        assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_changeme_default_enforces_auth():
+    """AUTH_TOKEN='changeme' (new default) must require a valid token — no bypass."""
+    with patch("backend.core.auth.settings") as mock_settings:
+        mock_settings.AUTH_TOKEN = "changeme"
+        from backend.core.auth import verify_token
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token(credentials=None)
+        assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_whitespace_only_token_raises_401():
+    """Whitespace-only AUTH_TOKEN is treated as empty (misconfiguration) — 401 for all."""
+    with patch("backend.core.auth.settings") as mock_settings:
+        mock_settings.AUTH_TOKEN = "   "
+        from backend.core.auth import verify_token
+        with pytest.raises(HTTPException) as exc_info:
+            await verify_token(credentials=None)
+        assert exc_info.value.status_code == 401
