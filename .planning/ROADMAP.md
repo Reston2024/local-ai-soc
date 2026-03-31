@@ -753,7 +753,7 @@ Plans:
 - P18-T04: Compliance evidence export — GET /api/reports/compliance?framework=nist-csf generates a structured evidence package mapping each NIST CSF 2.0 subcategory to artefacts in the system (detections, investigations, playbook runs, KPI snapshots); exported as a ZIP containing JSON evidence files and a human-readable HTML summary
 
 ### Plans
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [ ] 18-01-PLAN.md — Report generation API: SQLite reports table, WeasyPrint PDF, REST endpoints
