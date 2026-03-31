@@ -2,6 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-03-31T17:14:12.753Z"
+progress:
+  total_phases: 18
+  completed_phases: 14
+  total_plans: 78
+  completed_plans: 82
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 17 (in progress)
 current_plan: 17-01 complete — Playbook data models (PlaybookStep/Playbook/PlaybookRun/PlaybookCreate/PlaybookRunAdvance), SQLite DDL (playbooks + playbook_runs tables), 7 CRUD store methods, 5 NIST IR built-in playbooks, REST endpoints GET/POST /api/playbooks + GET /api/playbooks/{id}/runs, seed_builtin_playbooks() in lifespan; 36 unit tests pass
 status: in_progress
