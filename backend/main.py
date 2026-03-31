@@ -116,6 +116,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # 4. SQLite store
     sqlite_store = SQLiteStore(data_dir=settings.DATA_DIR)
 
+    # 4a. Seed built-in playbooks (idempotent — no-op if already seeded)
+    try:
+        from backend.api.playbooks import seed_builtin_playbooks
+        await seed_builtin_playbooks(sqlite_store)
+    except Exception as exc:  # pragma: no cover
+        log.warning("Built-in playbook seeding failed — continuing: %s", exc)
+
     # 5. Stores container
     stores = Stores(
         duckdb=duckdb_store,
@@ -347,6 +354,13 @@ def create_app() -> FastAPI:
         log.info("chat router mounted at /api/investigations/{id}/chat")
     except ImportError as exc:
         log.warning("chat router not available: %s", exc)
+
+    try:
+        from backend.api.playbooks import router as playbooks_router
+        app.include_router(playbooks_router, dependencies=[Depends(verify_token)])
+        log.info("playbooks router mounted at /api/playbooks")
+    except ImportError as exc:
+        log.warning("playbooks router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
