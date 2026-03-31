@@ -4,7 +4,7 @@
 
 A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
 
-**Status:** Phase 15 complete — Attack Graph UI with Cytoscape.js fCoSE layout, MITRE ATT&CK overlays, bidirectional graph/investigation navigation, and AI copilot.
+**Status:** Phase 17 complete — SOAR & Playbook Engine with 5 NIST IR starter playbooks, analyst-gated execution engine, SSE step-completion stream, and full PlaybooksView UI.
 
 ---
 
@@ -19,11 +19,14 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 | **AI Analyst Copilot** | ✅ | RAG over events; Ollama qwen3:14b; SSE streaming |
 | **Attack Graph UI** | ✅ | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths |
 | **Svelte 5 Dashboard** | ✅ | Detections, Events, Graph, Investigation, Query, Assets views |
+| **SOAR Playbooks** | ✅ | 5 NIST IR playbooks; analyst-gated step execution; SSE stream; audit trail |
 | **Threat Hunting** | Beta | Structured hunt queries, hypothesis tracking |
-| **SOAR Playbooks** | Beta | Playbook stubs wired to UI |
-| **Bearer Token Auth** | ✅ | All `/api/*` routes protected; token from env |
+| **Bearer Token Auth** | ✅ | All `/api/*` routes protected; secure-by-default (`AUTH_TOKEN=changeme`) |
+| **Citation Verification** | ✅ | LLM responses verified against retrieved context; `citation_verified` in payload |
+| **Prompt Injection Scrubbing** | ✅ | Free-text fields sanitized before embedding/LLM pass |
+| **LLM Audit Logging** | ✅ | All Ollama calls logged to `logs/llm_audit.jsonl` |
 | **osquery Telemetry** | Optional | Live host telemetry via `OSQUERY_ENABLED=True` |
-| **CI Pipeline** | ✅ | ruff lint + pytest (≥70% coverage) + pip-audit + gitleaks |
+| **CI Pipeline** | ✅ | ruff + pytest (≥70% coverage) + pip-audit + gitleaks + frontend build/svelte-check |
 
 ---
 
@@ -114,7 +117,7 @@ cd dashboard && npm run build
 uv run ruff check .
 ```
 
-**Current test baseline:** 589 passing, 16 xpassed, 1 skipped (606 collected)
+**Current test baseline:** 575 passing, 56 new playbook tests (631 collected); 56 playbook unit tests isolated-pass
 
 ---
 
@@ -134,6 +137,7 @@ uv run ruff check .
                          │  /api/detect  /api/graph  /api/query     │
                          │  /api/investigate  /api/investigations   │
                          │  /api/score  /api/metrics  /api/export   │
+                         │  /api/playbooks  /api/playbook-runs      │
                          └──┬──────────┬─────────────┬─────────────┘
                             │          │             │
                       HTTP REST    embed/SQL        SQL
@@ -152,10 +156,11 @@ uv run ruff check .
 
 **Dashboard (Svelte 5):** `dashboard/src/views/`
 - `DetectionsView` — Sigma alerts with ATT&CK tactic/technique
-- `InvestigationView` — timeline, attack chain, AI chat copilot
+- `InvestigationView` — timeline, attack chain, AI chat copilot, "Run Playbook" entry point
 - `GraphView` — Cytoscape.js fCoSE attack graph, Dijkstra path highlighting
+- `PlaybooksView` — SOAR playbook library browser + step-execution UI with audit trail
 - `EventsView`, `AssetsView`, `QueryView`, `IngestView`
-- `HuntingView`, `PlaybooksView`, `ReportsView`, `ThreatIntelView` (Beta)
+- `HuntingView`, `ReportsView`, `ThreatIntelView` (Beta)
 
 ---
 
@@ -187,8 +192,17 @@ uv run ruff check .
 | GET | `/api/correlate` | Event correlation clusters |
 | GET | `/api/causality` | Process causality graph |
 | GET | `/api/telemetry` | osquery live telemetry status |
+| GET | `/api/playbooks` | List all playbooks |
+| POST | `/api/playbooks` | Create a playbook |
+| GET | `/api/playbooks/{id}` | Get playbook by ID |
+| GET | `/api/playbooks/{id}/runs` | List run history for playbook |
+| POST | `/api/playbooks/{id}/run/{inv_id}` | Start a playbook run against an investigation |
+| PATCH | `/api/playbook-runs/{run_id}/step/{n}` | Analyst confirms step N (human-in-the-loop gate) |
+| PATCH | `/api/playbook-runs/{run_id}/cancel` | Cancel an in-progress run |
+| GET | `/api/playbook-runs/{run_id}` | Fetch run state |
+| GET | `/api/playbook-runs/{run_id}/stream` | SSE stream of step-completion events |
 
-**Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. Set `AUTH_TOKEN=<value>` in `.env`.
+**Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. Set `AUTH_TOKEN=<value>` in `.env` (default: `changeme` — always on).
 
 ---
 
@@ -196,13 +210,14 @@ uv run ruff check .
 
 ```
 backend/           FastAPI app (Python 3.12)
-  api/             Route handlers
+  api/             Route handlers (including playbooks.py)
   causality/       Process causality engine + ATT&CK mapping
   core/            Config, auth, logging, dependencies
+  data/            Built-in playbook definitions (builtin_playbooks.py)
   intelligence/    Risk scorer, anomaly rules, LLM explanation
   investigation/   Case manager, timeline, hunt engine
-  models/          Pydantic models (NormalizedEvent)
-  services/        Ollama HTTP client
+  models/          Pydantic models (NormalizedEvent, Playbook, PlaybookRun, …)
+  services/        Ollama HTTP client (with LLM audit logging)
   stores/          DuckDB, Chroma, SQLite store wrappers
 ingestion/         Event parsing + normalization pipeline
   parsers/         EVTX, JSON/NDJSON, CSV, osquery parsers
@@ -252,6 +267,8 @@ fixtures/          Test fixture data (NDJSON, EVTX samples)
 | 13 | SOC Metrics, KPIs, HuggingFace model upgrade | ✅ |
 | 14 | LLMOps Evaluation, Investigation AI Copilot | ✅ |
 | 15 | Attack Graph UI — Cytoscape.js fCoSE, attack paths, MITRE overlay | ✅ |
+| 16 | Security Hardening — end-to-end auth, citation verification, injection scrubbing, frontend CI | ✅ |
+| 17 | SOAR & Playbook Engine — 5 NIST IR playbooks, analyst-gated execution, SSE, UI | ✅ |
 
 ---
 

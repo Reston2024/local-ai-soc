@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 # AI-SOC-Brain — Local Windows Desktop AI Cybersecurity Brain
 
-**Version:** 1.15 | **Date:** 2026-03-31 | **Status:** Current (Phase 15)
+**Version:** 1.17 | **Date:** 2026-03-31 | **Status:** Current (Phase 17)
 
 ---
 
@@ -261,28 +261,29 @@ Analyst types question →
 
 ---
 
-## Dashboard Views (Phase 15)
+## Dashboard Views (Phase 17)
 
 | View | File | Description |
 |------|------|-------------|
 | Detections | `DetectionsView.svelte` | Sigma alert feed, ATT&CK tactic/technique, "Investigate →" navigation |
-| Investigation | `InvestigationView.svelte` | Timeline, attack chain, AI chat copilot, "Open in Graph" |
+| Investigation | `InvestigationView.svelte` | Timeline, attack chain, AI chat copilot, "Open in Graph", "Run Playbook" |
 | Attack Graph | `GraphView.svelte` | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths, MITRE tactic badges |
+| Playbooks | `PlaybooksView.svelte` | SOAR playbook library browser (MODE A) + step-execution checklist with audit trail (MODE B) |
 | Events | `EventsView.svelte` | Normalized event table, filters |
 | Assets | `AssetsView.svelte` | Entity inventory |
 | Query | `QueryView.svelte` | Semantic + DuckDB hybrid search |
 | Ingest | `IngestView.svelte` | File upload ingestion |
 | Threat Intel | `ThreatIntelView.svelte` | IOC lookup (Beta) |
 | Hunting | `HuntingView.svelte` | Structured threat hunt queries (Beta) |
-| Playbooks | `PlaybooksView.svelte` | SOAR playbook stubs (Beta) |
 | Reports | `ReportsView.svelte` | Compliance report stubs (Beta) |
 
 **State management:** Svelte 5 runes only — `$state()`, `$derived()`, `$effect()`. No writable stores.
 
-**Navigation state** for Graph↔Investigation bidirectional flow is lifted to `App.svelte`:
+**Navigation state** lifted to `App.svelte`:
 - `graphFocusEntityId` — entity to centre when switching to Graph view
 - `handleOpenInGraph(entityId)` — InvestigationView → Graph
 - `handleNavigateInvestigation(caseId)` — Graph → InvestigationView
+- `handleRunPlaybook(investigationId)` — InvestigationView → PlaybooksView (pre-selects investigation)
 
 ---
 
@@ -317,3 +318,80 @@ log_exists, lines_processed, error. Always HTTP 200.
 
 **Pitfall:** If osquery runs as Windows SYSTEM service, grant log dir read access:
 `icacls "C:\Program Files\osquery\log" /grant Users:R`
+
+---
+
+## Phase 16: Security Hardening
+
+### Auth (secure-by-default)
+
+`AUTH_TOKEN` defaults to `"changeme"` — auth is ON in every environment unless explicitly overridden. `backend/core/auth.py` rejects empty/whitespace tokens with HTTP 401 (misconfiguration guard). Frontend reads token from `localStorage.getItem('api_token')` with fallback to `VITE_API_TOKEN` env var; `authHeaders()` in `api.ts` injects `Authorization: Bearer` on every fetch and SSE call.
+
+### Citation Verification
+
+`verify_citations(response_text, context_ids)` in `backend/api/query.py` extracts `[id]` patterns from LLM output and checks each against the retrieved Chroma context IDs. `citation_verified: bool` is added to the `/api/query` and `/api/investigations/{id}/chat` response payloads.
+
+### Prompt Injection Scrubbing
+
+`ingestion/normalizer.py` strips known injection patterns (`ignore previous instructions`, `<INST>`, `<|system|>`, `###`, etc.) from user-controlled free-text fields (`command_line`, `domain`, `url`) before embedding or LLM pass.
+
+### LLM Audit Logging
+
+Every Ollama call logs timestamp, endpoint, model, prompt length, response length, and first 500 chars of prompt/response to `logs/llm_audit.jsonl` via a dedicated file handler (DEBUG level — not stdout).
+
+### Frontend CI
+
+`.github/workflows/ci.yml` has a parallel `frontend` job: Node 20, `npm ci`, `npm run build`, `npm run check` (svelte-check). Fails the PR on any type error or build failure.
+
+---
+
+## Phase 17: SOAR & Playbook Engine
+
+### Data Model
+
+Two new SQLite tables in `graph.sqlite3` (managed by `backend/stores/sqlite_store.py`):
+
+```sql
+playbooks(playbook_id, name, description, trigger_conditions JSON,
+          steps JSON, version, created_at)
+playbook_runs(run_id, playbook_id, investigation_id, status,
+              started_at, completed_at, steps_completed JSON, analyst_notes)
+```
+
+Pydantic models: `PlaybookStep`, `Playbook`, `PlaybookRun`, `PlaybookCreate`, `PlaybookRunAdvance` in `backend/models/playbook.py`.
+
+### Built-in Playbook Library
+
+`backend/data/builtin_playbooks.py` seeds 5 NIST SP 800-61r3-aligned starter playbooks on startup (idempotent):
+
+| Playbook | Steps | Trigger |
+|----------|-------|---------|
+| Phishing Initial Triage | 6 | `phishing`, `suspicious_email` |
+| Lateral Movement Investigation | 5 | `lateral_movement`, `T1021` |
+| Privilege Escalation Response | 5 | `privilege_escalation`, `T1068` |
+| Data Exfiltration Containment | 6 | `data_exfiltration`, `T1041` |
+| Malware Isolation | 6 | `malware`, `ransomware` |
+
+### Execution Engine (Human-in-the-Loop)
+
+9 endpoints across two routers in `backend/api/playbooks.py`:
+
+- `GET/POST /api/playbooks` — list / create
+- `GET /api/playbooks/{id}` — fetch by ID
+- `GET /api/playbooks/{id}/runs` — run history
+- `POST /api/playbooks/{id}/run/{investigation_id}` — start run (status: `running`)
+- `PATCH /api/playbook-runs/{run_id}/step/{n}` — analyst confirms step N; auto-completes on final step; 409 if terminal
+- `PATCH /api/playbook-runs/{run_id}/cancel` — cancel run; 409 if terminal
+- `GET /api/playbook-runs/{run_id}` — fetch run state
+- `GET /api/playbook-runs/{run_id}/stream` — SSE snapshot (`run_state` event then `done`)
+
+**No step advances without an explicit analyst PATCH.** No cron, no auto-triggers.
+
+### PlaybooksView UI
+
+`PlaybooksView.svelte` operates in two modes managed by `$state`:
+
+- **MODE A (library browser):** Lists all playbooks with trigger-condition chips and step count. "Run Playbook" button visible when an investigation is in context.
+- **MODE B (execution):** Step-by-step checklist — each step shows title, description, and evidence-collection prompt. Analyst can Confirm (green), Skip (yellow), or add a note. Color-coded step circles track progress. Completed runs render a read-only audit trail with timestamps.
+
+Entry point: `InvestigationView.svelte` "Run Playbook" button → `App.svelte` `handleRunPlaybook(investigationId)` → PlaybooksView with investigation pre-selected.

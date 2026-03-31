@@ -1,16 +1,16 @@
 # AI-SOC-Brain — Live Project State
 
 **Last updated:** 2026-03-31
-**Current phase:** Phase 15 — COMPLETE
+**Current phase:** Phase 17 — COMPLETE
 **Overall status:** SOC BRAIN OPERATIONAL
 
 ---
 
 ## Active Work
 
-No active phases. Phase 15 complete as of 2026-03-29.
+No active phases. Phase 17 complete as of 2026-03-31.
 
-Next: Phase 16 (Threat Hunting), Phase 17 (SOAR), Phase 18 (Reporting) — planned but not started.
+Next: Phase 18 (Reporting & Compliance) — planned but not started.
 
 ---
 
@@ -34,6 +34,8 @@ Next: Phase 16 (Threat Hunting), Phase 17 (SOAR), Phase 18 (Reporting) — plann
 | Phase 13: SOC Metrics + KPIs | Metrics API, dashboard KPI widgets, HF model upgrade | ✅ DONE | 2026-03-28 |
 | Phase 14: LLMOps + AI Copilot | Evaluation harness, investigation chat copilot | ✅ DONE | 2026-03-28 |
 | Phase 15: Attack Graph UI | Cytoscape.js fCoSE, risk scoring, attack paths, MITRE overlay | ✅ DONE | 2026-03-29 |
+| Phase 16: Security Hardening | End-to-end auth, citation verification, injection scrubbing, frontend CI | ✅ DONE | 2026-03-31 |
+| Phase 17: SOAR & Playbook Engine | 5 NIST IR playbooks, analyst-gated execution, SSE, PlaybooksView UI | ✅ DONE | 2026-03-31 |
 
 ---
 
@@ -51,11 +53,20 @@ Next: Phase 16 (Threat Hunting), Phase 17 (SOAR), Phase 18 (Reporting) — plann
 | Entity risk scoring | ✅ | risk_scorer.py; /api/score; /api/top-threats |
 | Causality engine (process parent/child) | ✅ | causality_routes, entity_resolver |
 | SOC metrics + KPIs dashboard | ✅ | /api/metrics; MetricsView |
-| Attack Graph UI (Cytoscape.js fCoSE) | ✅ | GraphView.svelte 458 lines; 12/12 truths verified |
+| Attack Graph UI (Cytoscape.js fCoSE) | ✅ | GraphView.svelte; 12/12 truths verified |
 | Two-click Dijkstra attack path highlighting | ✅ | Browser UAT confirmed (phase 15) |
 | Graph ↔ Investigation bidirectional navigation | ✅ | App.svelte state lifting; confirmed in UAT |
-| Unit tests passing | ✅ | 589 passed, 16 xpassed, 1 skipped (606 collected) |
-| CI pipeline | ✅ | .github/workflows/ci.yml: lint + test + audit + scan |
+| Auth secure-by-default (AUTH_TOKEN=changeme) | ✅ | Empty token → 401; frontend Bearer header on all calls |
+| Citation verification (LLM responses) | ✅ | verify_citations(); citation_verified in /query + /chat |
+| Prompt injection scrubbing | ✅ | normalizer.py strips injection patterns pre-embed |
+| LLM audit logging | ✅ | logs/llm_audit.jsonl; all Ollama calls logged |
+| Frontend CI (svelte-check + build) | ✅ | Parallel frontend job in ci.yml |
+| SOAR playbook library (5 NIST IR playbooks) | ✅ | builtin_playbooks.py seeded on startup |
+| Playbook execution engine (human-in-the-loop) | ✅ | PATCH /step requires analyst confirmation; no auto-advance |
+| PlaybooksView UI (browser + step execution) | ✅ | MODE A library, MODE B checklist + audit trail |
+| InvestigationView → PlaybooksView navigation | ✅ | handleRunPlaybook() in App.svelte |
+| Unit tests passing | ✅ | 575 passed + 56 playbook tests isolated (631 collected) |
+| CI pipeline | ✅ | .github/workflows/ci.yml: lint + test + audit + scan + frontend |
 | osquery live telemetry (optional) | ✅ | OSQUERY_ENABLED=True activates collector |
 
 ---
@@ -124,4 +135,8 @@ uv run pytest tests/unit/ -q --tb=short
 - 2026-03-29: Phase 15 — Attack Graph UI: Cytoscape.js fCoSE, risk scoring, Dijkstra attack paths,
                MITRE ATT&CK tactic overlay, bidirectional Graph↔Investigation navigation
 - 2026-03-30: Phase 15 UAT complete (5/5 tests pass); entity panel CSS bug fixed; all bugs committed
-- 2026-03-31: Repo docs updated to reflect full Phase 1-15 progress
+- 2026-03-31: Phase 16 — Security hardening: end-to-end auth, citation verification, injection scrubbing,
+               LLM audit logging, upload route unification, frontend CI, pyproject.toml dev/runtime split
+- 2026-03-31: Phase 17 — SOAR & Playbook Engine: 5 NIST IR playbooks, analyst-gated execution engine,
+               SSE step-completion stream, PlaybooksView full UI, InvestigationView "Run Playbook" button
+- 2026-03-31: Docs updated (README, ARCHITECTURE, STATE) to reflect Phases 16-17
