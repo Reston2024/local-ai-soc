@@ -164,6 +164,37 @@ export interface PlaybookRunsListResponse {
   total: number
 }
 
+export interface Report {
+  id: string
+  type: 'investigation' | 'executive'
+  title: string
+  subject_id: string | null
+  period_start: string | null
+  period_end: string | null
+  created_at: string
+}
+
+export interface ReportsListResponse {
+  reports: Report[]
+}
+
+export interface MitreTechniqueEntry {
+  sources: string[]   // e.g. ["detected", "playbook_covered"]
+  status: string      // "detected" | "hunted" | "playbook_covered" | "not_covered"
+}
+
+export interface MitreCoverageResponse {
+  tactics: string[]
+  coverage: Record<string, Record<string, MitreTechniqueEntry>>
+}
+
+export interface TrendDataPoint {
+  date: string   // "YYYY-MM-DD"
+  value: number
+}
+
+export type TrendsResponse = Record<string, TrendDataPoint[]>
+
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
 /** Returns the current API token from localStorage or Vite env fallback. */
@@ -178,6 +209,15 @@ function getApiToken(): string {
 /** Returns auth headers for every request. */
 function authHeaders(): Record<string, string> {
   return { 'Authorization': `Bearer ${getApiToken()}` }
+}
+
+/** Build a download URL that includes the Bearer token as a query param.
+ *  Used for binary endpoints (PDF, ZIP) that the browser opens directly
+ *  rather than being fetched via the request() helper. */
+export function getDownloadUrl(path: string): string {
+  const token = getApiToken()
+  const sep = path.includes('?') ? '&' : '?'
+  return `${BASE}${path}${sep}token=${encodeURIComponent(token)}`
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -328,6 +368,42 @@ export const api = {
       }),
     cancel: (runId: string) =>
       request<PlaybookRun>(`/api/playbook-runs/${runId}/cancel`, { method: 'PATCH' }),
+  },
+
+  reports: {
+    list: () =>
+      request<ReportsListResponse>('/api/reports'),
+
+    generateInvestigation: (investigationId: string, opts?: { include_chat?: boolean; include_playbook_runs?: boolean }) =>
+      request<Report>(`/api/reports/investigation/${encodeURIComponent(investigationId)}`, {
+        method: 'POST',
+        body: JSON.stringify({ include_chat: opts?.include_chat ?? true, include_playbook_runs: opts?.include_playbook_runs ?? true }),
+      }),
+
+    generateExecutive: (opts: { period_start: string; period_end: string; title?: string }) =>
+      request<Report>('/api/reports/executive', {
+        method: 'POST',
+        body: JSON.stringify({ period_start: opts.period_start, period_end: opts.period_end, title: opts.title ?? 'Executive Security Summary' }),
+      }),
+
+    /** Returns a URL to open directly in a browser tab — uses getDownloadUrl for auth token injection. */
+    pdfUrl: (reportId: string) => getDownloadUrl(`/api/reports/${encodeURIComponent(reportId)}/pdf`),
+
+    /** Returns a URL for ZIP download — uses getDownloadUrl for auth token injection. */
+    complianceDownloadUrl: (framework: 'nist-csf' | 'thehive') =>
+      getDownloadUrl(`/api/reports/compliance?framework=${framework}`),
+  },
+
+  analytics: {
+    mitreCoverage: () =>
+      request<MitreCoverageResponse>('/api/analytics/mitre-coverage'),
+
+    trends: (params: { metric: string; days?: number }) => {
+      const q = new URLSearchParams()
+      q.set('metric', params.metric)
+      if (params.days !== undefined) q.set('days', String(params.days))
+      return request<TrendsResponse>(`/api/analytics/trends?${q}`)
+    },
   },
 
   investigations: {
