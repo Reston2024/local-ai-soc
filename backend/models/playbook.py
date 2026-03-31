@@ -71,11 +71,12 @@ class PlaybookRun(BaseModel):
 
 
 class PlaybookRunAdvance(BaseModel):
-    """Request body for PATCH /api/playbooks/{id}/runs/{run_id}/advance (Plan 02)."""
+    """Request body for PATCH /api/playbook-runs/{run_id}/step/{step_n} (Plan 02).
+
+    Every step advance is analyst-initiated — no autonomous execution.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
-    step_number: int
-    notes: str = ""
-    evidence_collected: str = ""
-    approved: bool = True
+    analyst_note: str = ""
+    outcome: Literal["confirmed", "skipped"] = "confirmed"

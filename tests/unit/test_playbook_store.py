@@ -127,14 +127,22 @@ class TestPlaybookModels:
         assert run.completed_at is None
 
     def test_playbook_run_advance_model(self):
+        # Plan 02 shape: analyst_note + outcome
         advance = PlaybookRunAdvance(
-            step_number=1,
-            notes="Completed step 1",
-            evidence_collected="Found suspicious login",
-            approved=True,
+            analyst_note="Completed step 1",
+            outcome="confirmed",
         )
-        assert advance.step_number == 1
-        assert advance.approved is True
+        assert advance.analyst_note == "Completed step 1"
+        assert advance.outcome == "confirmed"
+
+    def test_playbook_run_advance_defaults(self):
+        advance = PlaybookRunAdvance()
+        assert advance.analyst_note == ""
+        assert advance.outcome == "confirmed"
+
+    def test_playbook_run_advance_skipped_outcome(self):
+        advance = PlaybookRunAdvance(outcome="skipped")
+        assert advance.outcome == "skipped"
 
 
 # ---------------------------------------------------------------------------

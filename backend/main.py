@@ -357,8 +357,10 @@ def create_app() -> FastAPI:
 
     try:
         from backend.api.playbooks import router as playbooks_router
+        from backend.api.playbooks import runs_router as playbook_runs_router
         app.include_router(playbooks_router, dependencies=[Depends(verify_token)])
-        log.info("playbooks router mounted at /api/playbooks")
+        app.include_router(playbook_runs_router, dependencies=[Depends(verify_token)])
+        log.info("playbooks router mounted at /api/playbooks and /api/playbook-runs")
     except ImportError as exc:
         log.warning("playbooks router not available: %s", exc)
 
