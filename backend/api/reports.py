@@ -368,7 +368,7 @@ async def generate_executive_report(
         kpi_rows = await stores.duckdb.fetch_all(
             """
             SELECT
-                SUM(alert_count)    AS alert_volume,
+                SUM(alert_volume)   AS alert_volume,
                 AVG(mttd_minutes)   AS mttd_avg,
                 AVG(mttr_minutes)   AS mttr_avg
             FROM daily_kpi_snapshots
