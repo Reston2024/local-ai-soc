@@ -753,6 +753,13 @@ Plans:
 - P18-T04: Compliance evidence export — GET /api/reports/compliance?framework=nist-csf generates a structured evidence package mapping each NIST CSF 2.0 subcategory to artefacts in the system (detections, investigations, playbook runs, KPI snapshots); exported as a ZIP containing JSON evidence files and a human-readable HTML summary
 
 ### Plans
-**Plans:** 0/0 plans complete
+**Plans:** 5 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — Report generation API: SQLite reports table, WeasyPrint PDF, REST endpoints
+- [ ] 18-02-PLAN.md — MITRE ATT&CK coverage analytics API
+- [ ] 18-03-PLAN.md — KPI trend history: DuckDB daily_kpi_snapshots, APScheduler job, trends endpoint
+- [ ] 18-04-PLAN.md — Compliance evidence export: nist-csf and thehive ZIP packages
+- [ ] 18-05-PLAN.md — ReportingView: four-tab frontend with D3 trend charts and ATT&CK heatmap
 
 *Phase 18 added: 2026-03-28 (Reporting & Compliance)*
