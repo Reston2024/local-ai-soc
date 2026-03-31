@@ -367,3 +367,72 @@ import path regressions during the compliance hardening window.
 - **Delete in Phase 10:** Rejected — increases blast radius of compliance-only phase
 - **Keep indefinitely:** Rejected — causes ongoing audit confusion
 
+
+---
+
+## ADR-020: Cybersecurity-Specialised LLM (Foundation-Sec-8B)
+
+**Date:** 2026-03-27
+**Status:** ACCEPTED
+
+**Summary:** Selected `Foundation-Sec-8B` (Cisco Foundation AI, Apache 2.0) as the cybersecurity-domain LLM alongside `qwen3:14b`. Configured via `OLLAMA_CYBERSEC_MODEL=foundation-sec:8b`. Fits within remaining VRAM headroom (~4.8 GB at Q4_K_M) when qwen3:14b is loaded.
+
+**Rejected:** `Seneca-Cybersecurity-LLM` — unclear licence, undocumented training data, individual publisher, no first-party GGUF.
+
+**Full ADR:** `docs/ADR-020-hf-model.md`
+
+---
+
+## ADR-021: Cytoscape.js + fCoSE for Attack Graph Visualization
+
+**Date:** 2026-03-29
+**Status:** ACCEPTED
+
+**Context:**
+Phase 15 required a production-quality interactive attack graph for the Svelte 5 dashboard. Requirements: force-directed layout, risk-scored node sizing, two-click Dijkstra attack path highlighting, MITRE ATT&CK tactic overlay, and bidirectional navigation to/from InvestigationView.
+
+**Alternatives Considered:**
+
+| Option | VRAM | Assessment |
+|--------|------|------------|
+| Cytoscape.js + fCoSE | npm bundle | First-class Svelte integration; mature ecosystem; fCoSE is force-directed with compound graph support |
+| D3.js force simulation | npm bundle | Already a dep (timeline); would require building graph primitives from scratch |
+| Sigma.js | npm bundle | WebGL-first; overkill for single-analyst desktop; smaller ecosystem |
+| vis-network | npm bundle | Less maintained; no Svelte 5 bindings; larger bundle |
+
+**Decision:** Cytoscape.js with `cytoscape-fcose@^2.2.0` (force-directed fCoSE layout) and `cytoscape-dagre@^2.5.0` (hierarchical fallback).
+
+**Implementation notes:**
+- `cytoscape.use(fcose)` / `cytoscape.use(dagre)` registered at module scope (not in `onMount`) — safe because Svelte modules execute once
+- Node sizing via `data()` functions: `Math.max(20, Math.min(50, 20 + risk_score * 0.3))`
+- Entity IDs contain colons (e.g., `user:jsmith`) — use `cy.getElementById(id)` not `cy.$('#id')` to avoid CSS selector parsing errors
+- Cytoscape tap callbacks run outside Svelte's reactive context — state updates bridged via `container.dispatchEvent(new CustomEvent('cynodetap', ...))` handled by `oncynodetap` on the container div
+- Flex layout: `.cy-container` requires `min-width: 0` to shrink when entity panel appears as a flex sibling
+
+**Consequences:**
+- `dashboard/package.json`: cytoscape-fcose and cytoscape-dagre added as dependencies
+- `GraphView.svelte`: 457-line production component
+- Attack graph feature verified: 12/12 automated truths + 5/5 browser UAT tests pass
+
+---
+
+## ADR-022: Svelte 5 Runes-Only State Management
+
+**Date:** 2026-03-29
+**Status:** ACCEPTED
+
+**Context:**
+The dashboard started with Svelte 5 runes (`$state`, `$derived`, `$effect`) but could have used legacy writable stores. As cross-view state lifting became necessary (Graph ↔ Investigation navigation), the pattern needed to be standardised.
+
+**Decision:** Use Svelte 5 runes exclusively throughout the dashboard. No `writable()` stores, no `svelte:store` subscriptions.
+
+**Implementation:**
+- Cross-view state lifted to `App.svelte` as `$state` variables
+- `graphFocusEntityId` and `currentView` live in App.svelte
+- Props passed down; callbacks (`onOpenInGraph`, `onNavigateInvestigation`) propagate events up
+- `$effect` in GraphView watches `focusEntityId` prop changes to trigger `loadSubgraph()`
+
+**Consequences:**
+- Consistent reactive pattern across all 11 views
+- Documented in `CLAUDE.md` conventions: "Svelte 5 runes: $state(), $derived(), $effect() — NOT stores"
+- No `svelte:store` or `writable()` usage anywhere in the codebase

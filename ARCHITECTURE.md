@@ -1,7 +1,7 @@
 # ARCHITECTURE.md
 # AI-SOC-Brain — Local Windows Desktop AI Cybersecurity Brain
 
-**Version:** 1.0 | **Date:** 2026-03-15 | **Status:** LOCKED
+**Version:** 1.15 | **Date:** 2026-03-31 | **Status:** Current (Phase 15)
 
 ---
 
@@ -20,7 +20,8 @@ A single-analyst, local-first cybersecurity investigation workstation. No cloud.
                     │          FastAPI Backend                    │  native Python 3.12
                     │                                            │
                     │  /health  /query  /ingest  /detect         │
-                    │  /graph   /events /export                  │
+                    │  /graph   /events /export  /metrics        │
+                    │  /investigations  /investigate             │
                     └──┬─────────┬──────────┬──────────┬────────┘
                        │         │          │          │
                HTTP REST      embed       SQL        SQL
@@ -48,7 +49,7 @@ A single-analyst, local-first cybersecurity investigation workstation. No cloud.
 | **Vector Storage** | Chroma (PersistentClient) | Embedded in-process | Hybrid BM25+semantic search. No external server. Pinned version. Native client only (no LangChain wrapper). |
 | **Graph/State Storage** | SQLite WAL | Embedded in-process | Graph edge tables, detection state, case metadata. Battle-tested, zero-config, WAL concurrent reads. |
 | **HTTPS Proxy** | Caddy 2.9 | Docker (~40MB) | Auto-TLS for localhost. Only container needed. |
-| **Dashboard** | Svelte 5 SPA | Static files | 39% faster than React 19, 2.5x smaller bundles. Cytoscape.js (graph), D3.js (timeline). |
+| **Dashboard** | Svelte 5 SPA | Static files | 39% faster than React 19, 2.5x smaller bundles. Cytoscape.js + fCoSE (attack graph), D3.js (timeline). Runes-based reactivity ($state/$derived/$effect). |
 | **Detection** | pySigma + custom DuckDB backend | Embedded in-process | Sigma YAML → DuckDB SQL. Field mapping pipeline. |
 | **Telemetry** | osquery (Phase 6) | Native Windows | SQL-powered host instrumentation. |
 
@@ -181,11 +182,25 @@ On ingestion (or POST /detect/run):
 ### Graph Query
 ```
 Analyst clicks entity →
-    → GET /graph/entity/{id}?depth=2
+    → GET /api/graph/entity/{id}?depth=2        (subgraph)
+    → GET /api/graph/global                      (full graph)
+    → GET /api/graph/{investigation_id}          (investigation subgraph)
     → SQLite: traverse edges from entity
     → DuckDB: fetch entity attributes
     → Build subgraph (nodes + edges + attributes)
-    → Cytoscape.js renders in dashboard
+    → GraphView.svelte: Cytoscape.js fCoSE layout renders
+    → Node tap → entity panel → "Investigate case" navigation
+    → Two-click Dijkstra → attack path highlighted (thick red edges)
+```
+
+### Investigation Chat (AI Copilot)
+```
+Analyst types question →
+    → POST /api/investigations/{id}/chat (SSE stream)
+    → Chroma: similarity search (top-10 relevant events)
+    → DuckDB: timeline + structured context
+    → Ollama /api/generate (qwen3:14b, stream=true)
+    → SSE token stream → InvestigationView chat bubble
 ```
 
 ---
@@ -199,7 +214,8 @@ Analyst clicks entity →
 | langchain-ai/langgraph | **USE NOW** | 3 | RAG orchestration, human-in-the-loop |
 | SigmaHQ/sigma + pySigma + sigma-cli | **USE NOW** | 3 | Detection rule ecosystem |
 | osquery/osquery | **USE NOW** | 6 | Endpoint telemetry |
-| open-webui/open-webui | **DEFER** | 6+ | Optional companion chat UI |
+| cytoscape-fcose | **USE NOW** | 15 | Force-directed fCoSE layout for attack graph (see ADR-021) |
+| open-webui/open-webui | **DEFER** | — | Optional companion chat UI |
 | Velocidex/velociraptor | **DEFER** | if multi-host | Fleet tool, overkill single desktop |
 | wazuh/wazuh | **REJECT** | — | 8+ vCPU Java fleet SIEM, zero unique value |
 
@@ -242,6 +258,31 @@ Analyst clicks entity →
 | Monolithic prompt templates | Each use-case (triage, hunt, summary) has different context and output needs. |
 | Docker for Ollama | WSL2 GPU passthrough adds complexity; native gets direct CUDA. |
 | PostgreSQL/Neo4j/Kafka/Elastic | None justified for single-desktop single-analyst scope. |
+
+---
+
+## Dashboard Views (Phase 15)
+
+| View | File | Description |
+|------|------|-------------|
+| Detections | `DetectionsView.svelte` | Sigma alert feed, ATT&CK tactic/technique, "Investigate →" navigation |
+| Investigation | `InvestigationView.svelte` | Timeline, attack chain, AI chat copilot, "Open in Graph" |
+| Attack Graph | `GraphView.svelte` | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths, MITRE tactic badges |
+| Events | `EventsView.svelte` | Normalized event table, filters |
+| Assets | `AssetsView.svelte` | Entity inventory |
+| Query | `QueryView.svelte` | Semantic + DuckDB hybrid search |
+| Ingest | `IngestView.svelte` | File upload ingestion |
+| Threat Intel | `ThreatIntelView.svelte` | IOC lookup (Beta) |
+| Hunting | `HuntingView.svelte` | Structured threat hunt queries (Beta) |
+| Playbooks | `PlaybooksView.svelte` | SOAR playbook stubs (Beta) |
+| Reports | `ReportsView.svelte` | Compliance report stubs (Beta) |
+
+**State management:** Svelte 5 runes only — `$state()`, `$derived()`, `$effect()`. No writable stores.
+
+**Navigation state** for Graph↔Investigation bidirectional flow is lifted to `App.svelte`:
+- `graphFocusEntityId` — entity to centre when switching to Graph view
+- `handleOpenInGraph(entityId)` — InvestigationView → Graph
+- `handleNavigateInvestigation(caseId)` — Graph → InvestigationView
 
 ---
 

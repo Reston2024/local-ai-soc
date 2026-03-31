@@ -1,11 +1,31 @@
 # AI-SOC-Brain
 
-Local Windows desktop AI cybersecurity investigation platform.
+**Local Windows AI Cybersecurity Investigation Platform**
 
-Phase 10 complete — ingestion, detection, graph correlation, causality engine,
-threat hunting, case management, Svelte 5 dashboard, compliance hardening (auth,
-audit logging, CI pipeline, dep pinning, ACL/firewall scripts). Phase 11 cleanup
-complete: backend/src/ deleted, test coverage ≥70%, CI threshold enforced.
+A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
+
+**Status:** Phase 15 complete — Attack Graph UI with Cytoscape.js fCoSE layout, MITRE ATT&CK overlays, bidirectional graph/investigation navigation, and AI copilot.
+
+---
+
+## Features
+
+| Capability | Status | Details |
+|-----------|--------|---------|
+| **Event Ingestion** | ✅ | EVTX, JSON/NDJSON, CSV, osquery log parsers |
+| **Sigma Detection** | ✅ | pySigma + custom DuckDB backend; MITRE ATT&CK tagging |
+| **Graph Correlation** | ✅ | Entity extraction → SQLite graph; Union-Find clustering |
+| **Investigation Engine** | ✅ | Timeline, attack chain, causality, case management |
+| **AI Analyst Copilot** | ✅ | RAG over events; Ollama qwen3:14b; SSE streaming |
+| **Attack Graph UI** | ✅ | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths |
+| **Svelte 5 Dashboard** | ✅ | Detections, Events, Graph, Investigation, Query, Assets views |
+| **Threat Hunting** | Beta | Structured hunt queries, hypothesis tracking |
+| **SOAR Playbooks** | Beta | Playbook stubs wired to UI |
+| **Bearer Token Auth** | ✅ | All `/api/*` routes protected; token from env |
+| **osquery Telemetry** | Optional | Live host telemetry via `OSQUERY_ENABLED=True` |
+| **CI Pipeline** | ✅ | ruff lint + pytest (≥70% coverage) + pip-audit + gitleaks |
+
+---
 
 ## Prerequisites
 
@@ -14,25 +34,192 @@ complete: backend/src/ deleted, test coverage ≥70%, CI threshold enforced.
 | Python | 3.12 | `uv python install 3.12` |
 | uv | 0.10+ | `winget install astral-sh.uv` |
 | Node.js | 18+ LTS | `winget install OpenJS.NodeJS.LTS` |
-| Docker Desktop | Latest | https://docs.docker.com/desktop/install/windows-install/ |
-| **PowerShell 7** | **7.0+** | **`winget install Microsoft.PowerShell`** |
+| Docker Desktop | Latest | [docs.docker.com/desktop](https://docs.docker.com/desktop/install/windows-install/) |
+| PowerShell 7 | 7.0+ | `winget install Microsoft.PowerShell` |
 | Ollama | 0.13+ | `winget install Ollama.Ollama` |
 
-> PowerShell 7 (pwsh) is required to run the management scripts.
-> Windows ships with PS 5.1 by default — install PS7 separately.
+> PowerShell 7 (`pwsh`) is required for the management scripts. Windows ships with PS 5.1 by default.
+
+---
 
 ## Quick Start
 
 ```powershell
-git clone <repo-url> AI-SOC-Brain
+# Clone and set up Python environment
+git clone https://github.com/Reston2024/local-ai-soc.git AI-SOC-Brain
 cd AI-SOC-Brain
 uv venv --python 3.12
 .venv\Scripts\activate
-uv pip install -r requirements.lock
-scripts\start.cmd        # starts FastAPI + Caddy
+uv sync
+
+# Pull required Ollama models
+ollama pull qwen3:14b
+ollama pull mxbai-embed-large
+
+# Configure auth token
+echo AUTH_TOKEN=changeme > .env
+
+# Start backend (FastAPI on :8000)
+uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+
+# In a second terminal — start frontend dev server
+cd dashboard
+npm install
+npm run dev
 ```
 
-Open https://localhost in your browser.
+Open **http://localhost:5173/app/** in your browser.
+
+For HTTPS via Caddy:
+
+```powershell
+scripts\start.cmd        # starts FastAPI + Caddy Docker container
+```
+
+Then open **https://localhost**.
+
+---
+
+## Ingesting Events
+
+```powershell
+# Ingest sample NDJSON events
+curl -X POST http://localhost:8000/api/ingest/file `
+  -H "Authorization: Bearer changeme" `
+  -F "file=@fixtures/ndjson/sample_events.ndjson"
+
+# Run Sigma detection
+curl -X POST http://localhost:8000/api/detect/run `
+  -H "Authorization: Bearer changeme"
+```
+
+---
+
+## Development
+
+```powershell
+# Run all unit tests
+uv run pytest tests/unit/ -q
+
+# Run with coverage report
+uv run pytest tests/unit/ --cov=backend --cov=ingestion --cov-report=term-missing
+
+# Frontend dev server (hot reload)
+cd dashboard && npm run dev
+
+# Frontend production build
+cd dashboard && npm run build
+
+# Lint Python
+uv run ruff check .
+```
+
+**Current test baseline:** 589 passing, 16 xpassed, 1 skipped (606 collected)
+
+---
+
+## Architecture
+
+```
+                      Browser (http://localhost:5173 dev | https://localhost prod)
+                                        │
+                         ┌──────────────▼──────────────┐
+                         │    Caddy (Docker) — prod      │  TLS termination
+                         └──────────────┬──────────────┘
+                                        │ :8000
+                         ┌──────────────▼──────────────────────────┐
+                         │           FastAPI Backend                 │
+                         │                                          │
+                         │  /health  /api/events  /api/ingest       │
+                         │  /api/detect  /api/graph  /api/query     │
+                         │  /api/investigate  /api/investigations   │
+                         │  /api/score  /api/metrics  /api/export   │
+                         └──┬──────────┬─────────────┬─────────────┘
+                            │          │             │
+                      HTTP REST    embed/SQL        SQL
+                            │          │             │
+               ┌────────────▼┐  ┌─────▼────┐  ┌────▼──────────┐
+               │  Ollama      │  │  Chroma  │  │  DuckDB  │SQLite│
+               │  :11434      │  │  embed   │  │  events  │graph │
+               │  qwen3:14b   │  │  persist │  │  columnar│edges │
+               └─────────────┘  └──────────┘  └────────────────┘
+```
+
+**Storage:**
+- `data/events.duckdb` — normalized events (columnar analytics)
+- `data/chroma/` — vector embeddings (BM25 + semantic search)
+- `data/graph.sqlite3` — entity nodes, edges, detections, cases (WAL mode)
+
+**Dashboard (Svelte 5):** `dashboard/src/views/`
+- `DetectionsView` — Sigma alerts with ATT&CK tactic/technique
+- `InvestigationView` — timeline, attack chain, AI chat copilot
+- `GraphView` — Cytoscape.js fCoSE attack graph, Dijkstra path highlighting
+- `EventsView`, `AssetsView`, `QueryView`, `IngestView`
+- `HuntingView`, `PlaybooksView`, `ReportsView`, `ThreatIntelView` (Beta)
+
+---
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Status check (unauthenticated) |
+| GET/POST | `/api/events` | List / ingest single event |
+| POST | `/api/ingest` | Batch ingest with source label |
+| POST | `/api/ingest/file` | Ingest from uploaded file |
+| GET | `/api/ingest/{job_id}` | Ingest job status |
+| POST | `/api/query` | Semantic + DuckDB hybrid search |
+| POST | `/api/detect/run` | Run Sigma rules against stored events |
+| GET | `/api/detect` | List detection results |
+| GET | `/api/graph/global` | Global entity graph (all entities + edges) |
+| GET | `/api/graph/{investigation_id}` | Subgraph for investigation |
+| GET | `/api/graph/entity/{entity_id}` | Entity neighbours |
+| GET | `/api/graph/traverse/{entity_id}` | BFS traversal from entity |
+| GET | `/api/export` | Export events as NDJSON |
+| POST | `/api/investigate` | Unified investigation pipeline |
+| GET/POST | `/api/investigations` | List / create investigations |
+| GET | `/api/investigations/{id}/timeline` | Investigation timeline |
+| POST | `/api/investigations/{id}/chat` | AI copilot chat (SSE) |
+| POST | `/api/score` | Entity risk scoring |
+| GET | `/api/top-threats` | Top-scored threat entities |
+| POST | `/api/explain` | LLM explanation for detection/event |
+| GET | `/api/metrics` | SOC metrics and KPIs |
+| GET | `/api/correlate` | Event correlation clusters |
+| GET | `/api/causality` | Process causality graph |
+| GET | `/api/telemetry` | osquery live telemetry status |
+
+**Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. Set `AUTH_TOKEN=<value>` in `.env`.
+
+---
+
+## Project Structure
+
+```
+backend/           FastAPI app (Python 3.12)
+  api/             Route handlers
+  causality/       Process causality engine + ATT&CK mapping
+  core/            Config, auth, logging, dependencies
+  intelligence/    Risk scorer, anomaly rules, LLM explanation
+  investigation/   Case manager, timeline, hunt engine
+  models/          Pydantic models (NormalizedEvent)
+  services/        Ollama HTTP client
+  stores/          DuckDB, Chroma, SQLite store wrappers
+ingestion/         Event parsing + normalization pipeline
+  parsers/         EVTX, JSON/NDJSON, CSV, osquery parsers
+detections/        Sigma rule matching (pySigma + DuckDB backend)
+correlation/       Event clustering (Union-Find + temporal window)
+graph/             Graph schema constants and BFS traversal
+prompts/           LLM prompt templates
+dashboard/         Svelte 5 SPA (npm)
+  src/views/       DetectionsView, InvestigationView, GraphView, ...
+  src/lib/api.ts   Typed API client
+tests/             pytest suite (unit/, integration/, security/, sigma_smoke/)
+config/caddy/      Caddyfile
+scripts/           PowerShell management scripts
+fixtures/          Test fixture data (NDJSON, EVTX samples)
+```
+
+---
 
 ## Management Scripts
 
@@ -41,16 +228,45 @@ Open https://localhost in your browser.
 | `scripts\start.cmd` | Start FastAPI backend + Caddy Docker container |
 | `scripts\stop.cmd` | Stop all services |
 | `scripts\status.cmd` | Show service health |
+| `scripts\configure-acls.ps1` | Harden `data/` directory permissions |
+| `scripts\configure-firewall.ps1` | Block Ollama port 11434 from non-localhost |
 
-Run `scripts\start.cmd` (works from cmd.exe or PS 5.1 — auto-invokes pwsh).
-Run `pwsh -File scripts\start.ps1` directly if you already have PS7.
+---
 
-## Development
+## Phase History
 
-```powershell
-uv run pytest          # Python test suite
-cd frontend && npm run dev   # Svelte dev server (http://localhost:5173)
-```
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Foundation — FastAPI, DuckDB, SQLite, Chroma | ✅ |
+| 2 | Ingestion — EVTX/JSON/CSV/osquery parsers, entity extraction | ✅ |
+| 3 | Detection + RAG — Sigma/pySigma, DuckDB backend, Chroma search | ✅ |
+| 4 | Graph + Correlation — SQLite graph, Union-Find clustering | ✅ |
+| 5 | Dashboard — Svelte 5 SPA, Cytoscape.js | ✅ |
+| 6 | Hardening — Caddy HTTPS, type safety, test coverage | ✅ |
+| 7 | Investigation Engine — RAG, timeline, attack chain | ✅ |
+| 8 | SOC Brain — Full investigation platform, APT fixture, osquery | ✅ |
+| 9 | Intelligence — Risk scorer, anomaly rules, LLM explanations | ✅ |
+| 10 | Compliance Hardening — Auth, audit logging, CI, ACLs | ✅ |
+| 11 | Cleanup — backend/src/ deleted, coverage ≥70% | ✅ |
+| 12 | API Hardening + Parser Coverage | ✅ |
+| 13 | SOC Metrics, KPIs, HuggingFace model upgrade | ✅ |
+| 14 | LLMOps Evaluation, Investigation AI Copilot | ✅ |
+| 15 | Attack Graph UI — Cytoscape.js fCoSE, attack paths, MITRE overlay | ✅ |
 
-See [REPRODUCIBILITY_RECEIPT.md](REPRODUCIBILITY_RECEIPT.md) for full setup steps.
-See [ARCHITECTURE.md](ARCHITECTURE.md) for system design.
+---
+
+## Documentation
+
+| File | Description |
+|------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, data architecture, decision rationale |
+| [DECISION_LOG.md](DECISION_LOG.md) | Architecture Decision Records (ADR-001 – ADR-021) |
+| [THREAT_MODEL.md](THREAT_MODEL.md) | Threat model for local desktop deployment |
+| [REPRODUCIBILITY_RECEIPT.md](REPRODUCIBILITY_RECEIPT.md) | Pinned dependency versions |
+| [docs/manifest.md](docs/manifest.md) | Full file tree and API reference |
+
+---
+
+## License
+
+Private — single-analyst internal tooling.
