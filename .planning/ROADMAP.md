@@ -677,6 +677,31 @@ Plans:
 - [ ] 15-04-PLAN.md — Navigation wiring: Graph ++ InvestigationView bidirectional navigation (P15-T04)
 
 *Phase 15 added: 2026-03-28 (Attack Graph UI)*
+## Phase 16: Security Hardening
+**Status:** IN PROGRESS
+**Depends on:** Phase 15 complete
+**Goal:** Close the 5 highest-priority security and operational gaps identified in the external security critique (B/83 grade). Deliver: (1) auth coherent end-to-end with frontend Bearer token propagation and secure-by-default posture, (2) upload route unified and Caddy limits aligned, (3) security claims converted to demonstrable code controls (injection scrubbing, citation verification, LLM I/O audit logging), (4) frontend validation added to CI pipeline, (5) pyproject.toml dev/runtime deps separated.
+
+### Requirements
+- P16-SEC-01: Auth E2E — AUTH_TOKEN defaults to "changeme"; empty string rejected as 401; api.ts attaches Bearer header on all fetch calls
+- P16-SEC-02: Upload unification — api.ts ingestFile() posts to /api/ingest/file; Caddy 100MB limit confirmed on /api/ingest/file
+- P16-SEC-03a: Injection scrubbing — normalizer.py scrubs known injection patterns from command_line, domain, url, file_path, raw_event; tested
+- P16-SEC-03b: Citation verification — verify_citations() added to /query/ask and /investigations/{id}/chat; citation_verified field in responses
+- P16-SEC-03c: LLM audit logging — ollama_client.py _audit_log writes to logs/llm_audit.jsonl; file handler confirmed via test
+- P16-CI-04: Frontend CI — .github/workflows/ci.yml has parallel frontend job (npm ci + build + check)
+- P16-DEP-05: Pyproject dev deps — pytest, pytest-asyncio, ruff in [dependency-groups] dev; CI uses uv sync --group dev
+
+### Plans
+**Plans:** 5 plans
+
+- [ ] 16-01-PLAN.md — Auth backend: AUTH_TOKEN default + empty-string rejection (P16-SEC-01)
+- [ ] 16-02-PLAN.md — Dep hygiene: pyproject.toml dev group + CI update (P16-DEP-05)
+- [ ] 16-03-PLAN.md — Auth frontend: Bearer token in api.ts + upload route fix (P16-SEC-01, P16-SEC-02)
+- [ ] 16-04-PLAN.md — Frontend CI: add parallel frontend job (P16-CI-04)
+- [ ] 16-05-PLAN.md — Security controls: citation verification + injection/audit tests (P16-SEC-03a/b/c)
+
+*Phase 16 added: 2026-03-31 (Security Hardening — expedited via PRD Express Path)*
+
 
 ## Phase 16: Threat Hunting Workspace
 **Status:** TODO
