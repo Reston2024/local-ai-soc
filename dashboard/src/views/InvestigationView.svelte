@@ -5,9 +5,11 @@
   let {
     investigationId = '',
     onOpenInGraph = undefined,
+    onRunPlaybook = undefined,
   }: {
     investigationId?: string
     onOpenInGraph?: (entityId: string) => void
+    onRunPlaybook?: (investigationId: string) => void
   } = $props()
 
   // Timeline state
@@ -98,6 +100,12 @@
         {#if onOpenInGraph && investigationId}
           <button class="btn-secondary" onclick={() => onOpenInGraph?.(investigationId)}>Open in Graph</button>
         {/if}
+        <button
+          class="btn-secondary btn-run-playbook"
+          disabled={!investigationId}
+          title={investigationId ? 'Run a playbook against this investigation' : 'No investigation selected'}
+          onclick={() => { if (onRunPlaybook && investigationId) onRunPlaybook(investigationId) }}
+        >&#10003; Run Playbook</button>
         <button class="btn-secondary" onclick={loadTimeline}>Refresh</button>
       </div>
     </div>
@@ -242,6 +250,8 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .btn-primary:disabled { opacity: 0.5; cursor: default; }
 .btn-secondary { background: transparent; color: var(--muted, #8899aa); border: 1px solid var(--border, #2d3a52); padding: 0.3rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
 .btn-danger { background: #3d1a1a; color: #f87171; border: 1px solid #dc2626; padding: 0.4rem 1rem; border-radius: 5px; cursor: pointer; }
+.btn-run-playbook { color: #4ade80; border-color: rgba(74,222,128,0.35); }
+.btn-run-playbook:disabled { opacity: 0.4; cursor: not-allowed; }
 .muted { color: var(--muted, #8899aa); font-size: 0.85rem; padding: 1rem; }
 .error { color: #f87171; font-size: 0.85rem; padding: 1rem; }
 </style>
