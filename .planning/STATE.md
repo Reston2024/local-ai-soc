@@ -2,13 +2,29 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 16 (in progress)
-current_plan: 16-03 complete — Bearer token injected into all fetch() calls in api.ts via getApiToken()/authHeaders(); upload route corrected to /api/ingest/file; dashboard/.env.example created; vite-env.d.ts added for TypeScript typing
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-03-31T13:20:00Z"
-stopped_at: "Completed 16-03-PLAN.md"
+last_updated: "2026-03-31T13:25:13.457Z"
 progress:
   total_phases: 18
+  completed_phases: 14
+  total_plans: 75
+  completed_plans: 80
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 16 (in progress)
+current_plan: 16-05 complete — verify_citations() in query.py; citation_verified in /query/ask response and chat SSE done event; 4 citation tests; 4 NormalizedEvent-path injection scrubbing tests (P16-SEC-03a); llm_audit logger handler smoke test (P16-SEC-03c)
+status: in_progress
+last_updated: "2026-03-31T13:25:00Z"
+stopped_at: "Completed 16-05-PLAN.md"
+progress:
+  [██████████] 100%
   completed_phases: 13
   total_plans: 75
   completed_plans: 79

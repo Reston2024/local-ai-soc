@@ -380,7 +380,7 @@ Plans:
 
 | Deliverable | Files | Verification |
 |-------------|-------|-------------|
-| Investigation package | `backend/investigation/` (6 modules) | 16 test_phase7.py tests XPASS | 4/5 | In Progress|  | investigation_cases, case_artifacts, case_tags tables |
+| Investigation package | `backend/investigation/` (6 modules) | 16 test_phase7.py tests XPASS | 5/5 | Complete   | 2026-03-31 | investigation_cases, case_artifacts, case_tags tables |
 | Case management API | `POST /api/cases`, `GET /api/cases`, `GET /api/cases/{id}`, `PATCH /api/cases/{id}` | P7-T04/T05/T06/T07 XPASS |
 | Threat hunting API | `POST /api/hunt`, `GET /api/hunt/templates` | P7-T10/T11 XPASS |
 | Timeline API | `GET /api/cases/{id}/timeline` | P7-T13 XPASS |
@@ -691,7 +691,7 @@ Plans:
 - P16-DEP-05: Pyproject dev deps — pytest, pytest-asyncio, ruff in [dependency-groups] dev; CI uses uv sync --group dev
 
 ### Plans
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 - [ ] 16-01-PLAN.md — Auth backend: AUTH_TOKEN default + empty-string rejection (P16-SEC-01)
 - [ ] 16-02-PLAN.md — Dep hygiene: pyproject.toml dev group + CI update (P16-DEP-05)
