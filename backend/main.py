@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -45,6 +45,7 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Import stores + services (after logging is set up)
 # ---------------------------------------------------------------------------
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # noqa: E402
 from backend.api.detect import router as detect_router  # noqa: E402
 from backend.api.events import router as events_router  # noqa: E402
 from backend.api.export import router as export_router  # noqa: E402
@@ -57,9 +58,49 @@ from backend.api.health import router as health_router  # noqa: E402
 from backend.api.ingest import router as ingest_router  # noqa: E402
 from backend.api.query import router as query_router  # noqa: E402
 from backend.services.ollama_client import OllamaClient  # noqa: E402
+from backend.services.metrics_service import MetricsService  # noqa: E402
 from backend.stores.chroma_store import ChromaStore  # noqa: E402
 from backend.stores.duckdb_store import DuckDBStore  # noqa: E402
 from backend.stores.sqlite_store import SQLiteStore  # noqa: E402
+
+# ---------------------------------------------------------------------------
+# Daily KPI snapshot — APScheduler midnight job
+# ---------------------------------------------------------------------------
+
+_daily_snapshot_scheduler: Optional[AsyncIOScheduler] = None
+
+
+async def _take_daily_kpi_snapshot(stores) -> None:
+    """Compute and upsert today's KPI snapshot. Called by APScheduler at midnight."""
+    from datetime import date
+    try:
+        svc = MetricsService(stores)
+        snap = await svc.compute_all_kpis()
+        today = date.today().isoformat()
+
+        # investigation_count and detection_count are NOT on KpiSnapshot —
+        # query SQLite directly (asyncio.to_thread because SQLiteStore is synchronous).
+        inv_rows = await asyncio.to_thread(stores.sqlite.list_investigations)
+        det_rows = await asyncio.to_thread(stores.sqlite.list_detections)
+        inv_count = len(inv_rows) if inv_rows else 0
+        det_count = len(det_rows) if det_rows else 0
+
+        await stores.duckdb.upsert_daily_kpi_snapshot(
+            snapshot_date=today,
+            mttd_minutes=snap.mttd.value,
+            mttr_minutes=snap.mttr.value,
+            mttc_minutes=snap.mttc.value,
+            alert_volume=int(snap.alert_volume_24h.value),
+            false_positive_count=int(
+                snap.false_positive_rate.value * max(snap.alert_volume_24h.value, 1)
+            ),
+            investigation_count=inv_count,
+            detection_count=det_count,
+        )
+        log.info("Daily KPI snapshot upserted", date=today)
+    except Exception as exc:
+        log.warning("Daily KPI snapshot failed: %s", exc)
+
 
 # ---------------------------------------------------------------------------
 # Lifespan context manager
@@ -169,6 +210,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.info("osquery collection disabled (OSQUERY_ENABLED=False)")
         app.state.osquery_collector = None
 
+    # 8a. Daily KPI snapshot scheduler (midnight cron job)
+    global _daily_snapshot_scheduler
+    _daily_snapshot_scheduler = AsyncIOScheduler()
+    _daily_snapshot_scheduler.add_job(
+        _take_daily_kpi_snapshot,
+        "cron",
+        hour=0,
+        minute=0,
+        args=[stores],
+        id="daily_kpi_snapshot",
+        replace_existing=True,
+    )
+    _daily_snapshot_scheduler.start()
+    log.info("Daily KPI snapshot scheduler started")
+
     log.info("All stores and services initialised — ready to serve requests")
 
     # Yield control to the running application
@@ -178,6 +234,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Shutdown
     # ---------------------
     log.info("AI-SOC-Brain shutting down...")
+
+    # Stop daily KPI snapshot scheduler
+    if _daily_snapshot_scheduler is not None:
+        _daily_snapshot_scheduler.shutdown(wait=False)
 
     # Cancel osquery collector task if running
     if osquery_task is not None and not osquery_task.done():

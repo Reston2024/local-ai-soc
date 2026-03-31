@@ -944,6 +944,24 @@ class SQLiteStore:
         return [r["trigger_conditions"] for r in rows]
 
     # ------------------------------------------------------------------
+    # KPI snapshot helpers (Phase 18 Plan 03)
+    # ------------------------------------------------------------------
+
+    def list_investigations(self) -> list[dict]:
+        """Return minimal investigation_cases rows for count purposes."""
+        rows = self._conn.execute(
+            "SELECT case_id FROM investigation_cases"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def list_detections(self) -> list[dict]:
+        """Return minimal detections rows for count purposes."""
+        rows = self._conn.execute(
+            "SELECT id FROM detections"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ------------------------------------------------------------------
     # Report management (Phase 18)
     # ------------------------------------------------------------------
 

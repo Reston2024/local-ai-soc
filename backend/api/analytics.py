@@ -1,9 +1,10 @@
 """
-Analytics API — MITRE ATT&CK coverage reporting.
+Analytics API — MITRE ATT&CK coverage reporting and KPI trend history.
 
 Endpoints:
   GET /api/analytics/mitre-coverage  — cross-reference detections and playbooks
                                         against the MITRE ATT&CK tactic list
+  GET /api/analytics/trends          — time-series KPI data from daily_kpi_snapshots
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import json
 import re
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
 from backend.core.logging import get_logger
@@ -156,3 +157,89 @@ async def mitre_coverage(request: Request) -> JSONResponse:
             "coverage": coverage,
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# KPI Trends
+# ---------------------------------------------------------------------------
+
+METRIC_COLUMNS: dict[str, str] = {
+    "mttd":            "mttd_minutes",
+    "mttr":            "mttr_minutes",
+    "mttc":            "mttc_minutes",
+    "alert_volume":    "alert_volume",
+    "false_positives": "false_positive_count",
+    "investigations":  "investigation_count",
+    "detections":      "detection_count",
+}
+
+
+@router.get("/trends")
+async def get_kpi_trends(
+    request: Request,
+    metric: str = Query(default="mttd", description="Comma-separated metric names"),
+    days: int = Query(default=30, ge=1, description="Number of days to look back (max 365)"),
+) -> JSONResponse:
+    """Return time-series KPI data from daily_kpi_snapshots.
+
+    Response shapes::
+
+        # Single metric
+        {"metric": "mttd", "data": [{"date": "2026-01-01", "value": 12.5}, ...]}
+
+        # Multiple metrics (comma-separated ?metric=mttd,mttr)
+        {"mttd": [{"date": "2026-01-01", "value": 12.5}, ...], "mttr": [...]}
+    """
+    stores = request.app.state.stores
+
+    # Cap days at 365
+    days = min(days, 365)
+
+    # Parse and validate metric names
+    metric_names = [m.strip() for m in metric.split(",") if m.strip()]
+    if not metric_names:
+        metric_names = ["mttd"]
+
+    invalid = [m for m in metric_names if m not in METRIC_COLUMNS]
+    if invalid:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": f"Unknown metric(s): {invalid}. Valid metrics: {list(METRIC_COLUMNS.keys())}"
+            },
+        )
+
+    # Build column list
+    col_exprs = ", ".join(METRIC_COLUMNS[m] for m in metric_names)
+    sql = (
+        f"SELECT snapshot_date, {col_exprs} "
+        f"FROM daily_kpi_snapshots "
+        f"WHERE snapshot_date >= CURRENT_DATE - INTERVAL '{days}' DAY "
+        f"ORDER BY snapshot_date ASC"
+    )
+
+    try:
+        rows = await stores.duckdb.fetch_all(sql)
+    except Exception as exc:
+        # Table may not exist yet (first startup before any snapshot is taken)
+        log.warning("KPI trends query failed (table may not exist yet): %s", exc)
+        if len(metric_names) == 1:
+            return JSONResponse(content={"metric": metric_names[0], "data": []})
+        return JSONResponse(content={m: [] for m in metric_names})
+
+    # Build response
+    if len(metric_names) == 1:
+        col_name = metric_names[0]
+        data = [
+            {"date": str(row[0]), "value": row[1]}
+            for row in rows
+        ]
+        return JSONResponse(content={"metric": col_name, "data": data})
+
+    # Multiple metrics — keyed dict
+    result: dict[str, list[dict]] = {m: [] for m in metric_names}
+    for row in rows:
+        date_str = str(row[0])
+        for i, metric_name in enumerate(metric_names):
+            result[metric_name].append({"date": date_str, "value": row[i + 1]})
+    return JSONResponse(content=result)
