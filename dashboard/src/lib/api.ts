@@ -117,6 +117,53 @@ export interface ChatHistoryMessage {
   created_at: string
 }
 
+export interface PlaybookStep {
+  step_number: number
+  title: string
+  description: string
+  requires_approval: boolean
+  evidence_prompt: string | null
+}
+
+export interface Playbook {
+  playbook_id: string
+  name: string
+  description: string
+  trigger_conditions: string[]
+  steps: PlaybookStep[]
+  version: string
+  is_builtin: boolean
+  created_at: string
+}
+
+export interface PlaybookStepResult {
+  step_number: number
+  outcome: 'confirmed' | 'skipped'
+  analyst_note: string
+  completed_at: string
+}
+
+export interface PlaybookRun {
+  run_id: string
+  playbook_id: string
+  investigation_id: string
+  status: 'running' | 'completed' | 'cancelled'
+  started_at: string
+  completed_at: string | null
+  steps_completed: PlaybookStepResult[]
+  analyst_notes: string
+}
+
+export interface PlaybooksListResponse {
+  playbooks: Playbook[]
+  total: number
+}
+
+export interface PlaybookRunsListResponse {
+  runs: PlaybookRun[]
+  total: number
+}
+
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
 /** Returns the current API token from localStorage or Vite env fallback. */
@@ -262,6 +309,25 @@ export const api = {
 
   metrics: {
     kpis: () => request<KpiSnapshot>('/api/metrics/kpis'),
+  },
+
+  playbooks: {
+    list: () => request<PlaybooksListResponse>('/api/playbooks'),
+    get: (id: string) => request<Playbook>(`/api/playbooks/${id}`),
+    runs: (id: string) => request<PlaybookRunsListResponse>(`/api/playbooks/${id}/runs`),
+    startRun: (playbookId: string, investigationId: string) =>
+      request<PlaybookRun>(`/api/playbooks/${playbookId}/run/${investigationId}`, { method: 'POST' }),
+  },
+
+  playbookRuns: {
+    get: (runId: string) => request<PlaybookRun>(`/api/playbook-runs/${runId}`),
+    advanceStep: (runId: string, stepN: number, body: { analyst_note: string; outcome: 'confirmed' | 'skipped' }) =>
+      request<PlaybookRun>(`/api/playbook-runs/${runId}/step/${stepN}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    cancel: (runId: string) =>
+      request<PlaybookRun>(`/api/playbook-runs/${runId}/cancel`, { method: 'PATCH' }),
   },
 
   investigations: {
