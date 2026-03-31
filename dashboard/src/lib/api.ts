@@ -119,9 +119,23 @@ export interface ChatHistoryMessage {
 
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
+/** Returns the current API token from localStorage or Vite env fallback. */
+function getApiToken(): string {
+  if (typeof localStorage !== 'undefined') {
+    const stored = localStorage.getItem('api_token')
+    if (stored) return stored
+  }
+  return import.meta.env.VITE_API_TOKEN ?? 'changeme'
+}
+
+/** Returns auth headers for every request. */
+function authHeaders(): Record<string, string> {
+  return { 'Authorization': `Bearer ${getApiToken()}` }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options?.headers },
     ...options,
   })
   if (!res.ok) {
@@ -207,7 +221,7 @@ export const api = {
     ask: async (question: string, context_events?: string[]): Promise<string> => {
       const res = await fetch('/api/query/ask', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ question, context_events }),
       })
       if (!res.ok) throw new Error(`Query failed: ${res.status}`)
@@ -239,7 +253,7 @@ export const api = {
     upload: async (file: File): Promise<IngestJobStatus> => {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch('/api/ingest/upload', { method: 'POST', body: form })
+      const res = await fetch('/api/ingest/file', { method: 'POST', headers: { ...authHeaders() }, body: form })
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
       return res.json()
     },
@@ -266,7 +280,7 @@ export const api = {
     ): Promise<void> => {
       const res = await fetch(`/api/investigations/${investigationId}/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ question }),
         signal,
       })
@@ -295,12 +309,12 @@ export const api = {
 
 // Phase 4: direct graph helpers (bypass /api prefix — backend graph routes at /graph)
 export async function getGraph(): Promise<Phase4GraphResponse> {
-  const r = await fetch(`${BASE}/graph`)
+  const r = await fetch(`${BASE}/graph`, { headers: authHeaders() })
   return r.json()
 }
 
 export async function getGraphCorrelate(eventId: string): Promise<any> {
-  const r = await fetch(`${BASE}/graph/correlate?event_id=${encodeURIComponent(eventId)}`)
+  const r = await fetch(`${BASE}/graph/correlate?event_id=${encodeURIComponent(eventId)}`, { headers: authHeaders() })
   return r.json()
 }
 
@@ -375,7 +389,7 @@ export interface KpiSnapshot {
 export async function score(request: ScoreRequest): Promise<ScoreResponse> {
   const resp = await fetch('/api/score', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(request),
   });
   if (!resp.ok) throw new Error(`score: HTTP ${resp.status}`);
@@ -383,7 +397,7 @@ export async function score(request: ScoreRequest): Promise<ScoreResponse> {
 }
 
 export async function topThreats(limit = 10): Promise<TopThreatsResponse> {
-  const resp = await fetch(`/api/top-threats?limit=${limit}`);
+  const resp = await fetch(`/api/top-threats?limit=${limit}`, { headers: authHeaders() });
   if (!resp.ok) throw new Error(`topThreats: HTTP ${resp.status}`);
   return resp.json();
 }
@@ -391,7 +405,7 @@ export async function topThreats(limit = 10): Promise<TopThreatsResponse> {
 export async function explain(request: ExplainRequest): Promise<ExplainResponse> {
   const resp = await fetch('/api/explain', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(request),
   });
   if (!resp.ok) throw new Error(`explain: HTTP ${resp.status}`);
@@ -405,7 +419,7 @@ export async function saveInvestigation(
 ): Promise<SavedInvestigation> {
   const resp = await fetch('/api/investigations/saved', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({
       detection_id: detectionId,
       graph_snapshot: graphSnapshot,
