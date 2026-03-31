@@ -10,6 +10,7 @@ Endpoints:
 from __future__ import annotations
 
 import json
+import re as _re
 from typing import Any, AsyncIterator, Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -22,6 +23,27 @@ from backend.stores.chroma_store import DEFAULT_COLLECTION
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/query", tags=["query"])
+
+# ---------------------------------------------------------------------------
+# Citation verification
+# ---------------------------------------------------------------------------
+
+# Regex matching event ID citations: [anything] style (3-64 chars)
+_CITATION_RE = _re.compile(r"\[([^\]]{3,64})\]")
+
+
+def verify_citations(response_text: str, context_ids: list[str]) -> bool:
+    """Return True if every event ID cited in response_text exists in context_ids.
+
+    Extracts [id] patterns from the response and checks each against the
+    context_ids list. Returns True vacuously when no citations are present.
+    If any cited ID is not in context_ids, returns False.
+    """
+    cited = _CITATION_RE.findall(response_text)
+    if not cited:
+        return True
+    context_set = set(context_ids)
+    return all(c in context_set for c in cited)
 
 
 # ---------------------------------------------------------------------------
@@ -194,6 +216,14 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
             detail=f"LLM generation failed: {exc}",
         ) from exc
 
+    citation_ok = verify_citations(answer, ids)
+    if not citation_ok:
+        log.warning(
+            "Unverified citations in LLM response",
+            question_preview=body.question[:80],
+            context_ids=ids,
+        )
+
     log.info(
         "Ask answered",
         question_len=len(body.question),
@@ -207,6 +237,7 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
             "answer": answer,
             "context_event_ids": ids,
             "context_count": len(docs),
+            "citation_verified": citation_ok,
         }
     )
 

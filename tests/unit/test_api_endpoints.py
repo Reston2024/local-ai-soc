@@ -329,3 +329,27 @@ class TestChromaStore:
         from backend.stores.chroma_store import DEFAULT_COLLECTION
         assert isinstance(DEFAULT_COLLECTION, str)
         assert len(DEFAULT_COLLECTION) > 0
+
+
+# ---------------------------------------------------------------------------
+# Citation verification unit tests (P16-SEC-03b)
+# ---------------------------------------------------------------------------
+
+
+from backend.api.query import verify_citations
+
+
+def test_citation_verified_all_present():
+    assert verify_citations("See [evt-abc123] for details", ["evt-abc123"]) is True
+
+
+def test_citation_verified_fake_id():
+    assert verify_citations("See [evt-fake999]", ["evt-abc123"]) is False
+
+
+def test_citation_verified_no_citations():
+    assert verify_citations("No event IDs cited here.", ["evt-abc123"]) is True
+
+
+def test_citation_verified_mixed():
+    assert verify_citations("See [evt-abc123] and [evt-fake]", ["evt-abc123"]) is False
