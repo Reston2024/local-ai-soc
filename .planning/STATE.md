@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 20 (in_progress)
-current_plan: 20-03 complete — db_meta table + schema_version='20' upsert + 6 ECS ALTER TABLE statements in initialise_schema(). try/except idempotency pattern. 5/5 TDD tests GREEN.
+current_plan: 20-05 complete — entity_extractor.py propagates user_domain, process_executable, network_protocol, network_direction into entity attributes; graph/schema.py ECS comments; 4/4 test_entity_extractor_ecs.py GREEN (P20-T05 satisfied).
 status: in_progress
-last_updated: "2026-04-01T14:17:08Z"
-stopped_at: "Completed 20-03-PLAN.md — DuckDB ECS schema migration"
+last_updated: "2026-04-01T14:20:00Z"
+stopped_at: "Completed 20-05-PLAN.md — ECS field propagation into entity graph nodes and schema comments"
 progress:
   [██████████] 100%
   total_phases: 20
