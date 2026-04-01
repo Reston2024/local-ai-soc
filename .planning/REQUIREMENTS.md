@@ -567,3 +567,14 @@ All backend components must log to JSON format at `logs/` with fields: `timestam
 ---
 
 *Phases 15–18 added: 2026-03-28 (SOC maturity gap closure — Attack Graph, Hunting, SOAR, Reporting)*
+
+## Phase 19: Identity & RBAC
+**Goal:** NIST CSF 2.0 Govern function baseline — named-operator identity, role-based access control, per-operator audit attribution, and optional TOTP MFA replacing the single shared bearer token.
+
+- P19-T01: Operator data model — SQLite operators table, bcrypt-hashed API keys, admin bootstrap from env
+- P19-T02: Multi-operator auth — verify_token looks up operator by bearer token; injects operator_id + role into request.state; stamps all audit log entries with operator attribution
+- P19-T03: RBAC middleware — require_role() FastAPI dependency; admin/analyst role boundaries enforced; 403 on violation
+- P19-T04: Optional TOTP MFA — pyotp TOTP per operator; X-TOTP-Code header verification; QR code provisioning endpoint
+- P19-T05: Operator management API + SettingsView tab — CRUD for operators (admin only); key rotation; Svelte Operators tab
+
+*Phase 19 added: 2026-04-01 (Identity & RBAC — NIST CSF Govern baseline)*
