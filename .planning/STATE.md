@@ -2,6 +2,42 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 19 (in_progress)
+current_plan: 19-00 complete — Wave 0 TDD stubs for identity/RBAC. Five test files created (test_operator_store.py, test_auth.py extended, test_rbac.py, test_totp.py, test_operators_api.py). passlib[bcrypt], pyotp, qrcode[pil] installed. 26 stubs FAILED, 6 existing tests pass.
+status: in_progress
+last_updated: "2026-04-01T04:22:00Z"
+stopped_at: "Completed 19-00-PLAN.md — Phase 19 Wave 0 TDD stubs complete"
+progress:
+  [██████████] 100%
+  total_phases: 19
+  completed_phases: 18
+  total_plans: 88
+  completed_plans: 89
+  percent: 100
+decisions:
+  - "19-00: Stub async test methods decorated with @pytest.mark.asyncio at method level; all five test files use pytest.fail('NOT IMPLEMENTED') to ensure FAILED not ERROR"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: completed
+last_updated: "2026-04-01T04:21:06.616Z"
+progress:
+  total_phases: 19
+  completed_phases: 16
+  total_plans: 88
+  completed_plans: 89
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 18 (complete)
 current_plan: 18-05 complete — ReportingView four-tab frontend (Reports, ATT&CK Coverage, Trends, Compliance Export). api.ts api.reports + api.analytics namespaces. D3 SVG trend charts, MITRE ATT&CK heatmap, compliance ZIP download. auth.py query-param fallback for binary downloads. 21 Phase 18 unit tests pass. Phase 18 FULLY COMPLETE.
 status: complete

@@ -776,7 +776,7 @@ Plans:
 - P19-T04: Optional TOTP MFA — pyotp TOTP second-factor per operator; verify_token checks X-TOTP-Code header when operator has totp_secret set; POST /api/operators/{id}/totp/enable generates secret + QR (qrcode lib); graceful pass-through for operators without TOTP configured
 - P19-T05: Operator management API + SettingsView tab — GET /api/operators (admin), POST /api/operators (admin, creates operator + returns one-time API key), DELETE /api/operators/{id} (admin, soft-delete sets active=False), POST /api/operators/{id}/rotate-key (admin); Svelte SettingsView "Operators" tab showing operator list with role badges and key-rotation button
 
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
 - [ ] 19-00-PLAN.md — Wave 0 test stubs + dependency install (P19-T01–T05 RED phase)
