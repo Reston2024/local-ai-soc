@@ -12,13 +12,13 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 
 ENTITY_TYPES: list[str] = [
-    "host",               # Workstation, server, or network device
-    "user",               # Windows / Linux user account
-    "process",            # Running process instance
+    "host",               # Workstation, server, or network device (ECS: host.hostname)
+    "user",               # Windows / Linux user account (ECS: user.name, user.domain)
+    "process",            # Running process instance (ECS: process.name, process.pid, process.executable)
     "file",               # File on disk (PE, script, document, …)
-    "network_connection", # A specific connection tuple (src:port → dst:port)
-    "domain",             # Fully-qualified domain name
-    "ip",                 # IP address (v4 or v6)
+    "network_connection", # A specific connection tuple (src:port → dst:port) (ECS: network.protocol, source/destination.ip)
+    "domain",             # Fully-qualified domain name (ECS: dns.question.name)
+    "ip",                 # IP address (v4 or v6) (ECS: destination.ip)
     "detection",          # A detection/alert produced by a rule
     "artifact",           # Generic forensic artifact (registry key, service, …)
     "incident",           # A grouped investigation case
