@@ -66,3 +66,32 @@ async def test_whitespace_only_token_raises_401():
         with pytest.raises(HTTPException) as exc_info:
             await verify_token(credentials=None)
         assert exc_info.value.status_code == 401
+
+
+class TestOperatorLookup:
+    @pytest.mark.asyncio
+    async def test_operator_lookup_valid(self):
+        """verify_token returns OperatorContext for a valid named operator key."""
+        pytest.fail("NOT IMPLEMENTED")
+
+    @pytest.mark.asyncio
+    async def test_legacy_token_fallback(self):
+        """verify_token falls back to AUTH_TOKEN when operators table is empty."""
+        pytest.fail("NOT IMPLEMENTED")
+
+    @pytest.mark.asyncio
+    async def test_state_injection(self):
+        """request.state.operator is set after successful verify_token."""
+        pytest.fail("NOT IMPLEMENTED")
+
+    @pytest.mark.asyncio
+    async def test_no_token_401(self):
+        """No bearer token and no ?token= → 401 (not 403)."""
+        pytest.fail("NOT IMPLEMENTED")
+
+
+class TestAuditAttribution:
+    @pytest.mark.asyncio
+    async def test_operator_id_in_audit(self):
+        """OllamaClient.generate() emits operator_id in llm_audit log extra."""
+        pytest.fail("NOT IMPLEMENTED")

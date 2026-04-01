@@ -33,6 +33,9 @@ dependencies = [
     "apscheduler>=3.10.0,<4.0",
     "slowapi==0.1.9",
     "weasyprint>=68.1",
+    "passlib[bcrypt]>=1.7.4",
+    "pyotp>=2.9",
+    "qrcode[pil]>=7.4",
 ]
 
 [dependency-groups]
