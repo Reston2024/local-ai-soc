@@ -19,16 +19,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 19 (in_progress)
-current_plan: 19-02 complete — require_role() RBAC dependency factory. Closure-based factory with deferred verify_token import to avoid circular import. Raises 403 for insufficient role (401 handled by verify_token). 3 TestRequireRole tests pass.
+current_plan: 19-03 complete — TOTP MFA utilities and enforcement. totp_utils.py with generate/verify/replay-prevention/QR functions. verify_token enforces X-TOTP-Code header when operator has totp_secret. 6 TOTP + 11 auth tests pass (17 total).
 status: in_progress
-last_updated: "2026-04-01T04:34:03Z"
-stopped_at: "Completed 19-02-PLAN.md — require_role() RBAC factory implemented, 3 tests pass"
+last_updated: "2026-04-01T04:34:38Z"
+stopped_at: "Completed 19-03-PLAN.md — TOTP MFA utilities and enforcement"
 progress:
   [██████████] 100%
   total_phases: 19
   completed_phases: 18
   total_plans: 88
-  completed_plans: 91
+  completed_plans: 92
   percent: 100
 decisions:
   - "19-00: Stub async test methods decorated with @pytest.mark.asyncio at method level; all five test files use pytest.fail('NOT IMPLEMENTED') to ensure FAILED not ERROR"
@@ -36,6 +36,8 @@ decisions:
   - "19-01: SQLiteStore.__init__ handles ':memory:' special case (skip mkdir) for unit test isolation"
   - "19-01: token param guarded with isinstance(token, str) to handle FastAPI Query sentinel in direct test calls"
   - "19-02: require_role uses deferred import of verify_token inside closure to avoid circular import (auth.py imports OperatorContext from rbac.py)"
+  - "19-03: Inline import of verify_totp inside verify_token TOTP branch avoids circular import at module level"
+  - "19-03: totp_secret never stored on OperatorContext — only totp_enabled bool propagates to request state"
 ---
 
 ---
