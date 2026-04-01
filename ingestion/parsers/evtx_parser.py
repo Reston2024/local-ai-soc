@@ -17,7 +17,10 @@ import evtx  # pyevtx-rs
 
 from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
+from ingestion.field_mapper import FieldMapper
 from ingestion.parsers.base import BaseParser
+
+_field_mapper = FieldMapper()
 
 log = get_logger(__name__)
 
@@ -201,6 +204,7 @@ class EvtxParser(BaseParser):
         # Flatten EventData — pyevtx-rs may nest it as {"Data": [...]} or
         # {"Data": {"#attributes": ..., "#text": ...}} or a flat dict.
         flat_data = self._flatten_event_data(event_data)
+        flat_data = _field_mapper.map(flat_data)
 
         # System fields
         ts_str = (

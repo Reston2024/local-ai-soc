@@ -19,7 +19,10 @@ from uuid import uuid4
 
 from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
+from ingestion.field_mapper import FieldMapper
 from ingestion.parsers.base import BaseParser
+
+_field_mapper = FieldMapper()
 
 log = get_logger(__name__)
 
@@ -119,6 +122,7 @@ def _record_to_event(
 ) -> NormalizedEvent:
     """Map a raw dict to a NormalizedEvent, preserving unmapped fields in raw_event."""
     raw_str = json.dumps(record, default=str)[:_MAX_RAW]
+    record = _field_mapper.map(record)
 
     ts_raw = _first(record, _TIMESTAMP_KEYS)
     timestamp = _parse_timestamp(ts_raw) or ingested_at

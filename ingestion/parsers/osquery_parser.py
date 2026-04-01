@@ -26,7 +26,10 @@ from uuid import uuid4
 
 from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
+from ingestion.field_mapper import FieldMapper
 from ingestion.parsers.base import BaseParser
+
+_field_mapper = FieldMapper()
 
 log = get_logger(__name__)
 
@@ -66,6 +69,7 @@ def _columns_to_event(
         {"query_name": query_name, "columns": columns},
         default=str,
     )[:_MAX_RAW]
+    columns = _field_mapper.map(columns)
 
     if unix_time:
         try:
