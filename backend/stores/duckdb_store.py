@@ -58,7 +58,13 @@ CREATE TABLE IF NOT EXISTS normalized_events (
     attack_tactic       TEXT,
     raw_event           TEXT,
     tags                TEXT,
-    case_id             TEXT
+    case_id             TEXT,
+    ocsf_class_uid      INTEGER,
+    event_outcome       TEXT,
+    user_domain         TEXT,
+    process_executable  TEXT,
+    network_protocol    TEXT,
+    network_direction   TEXT
 )
 """
 

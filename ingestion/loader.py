@@ -52,7 +52,9 @@ INSERT OR IGNORE INTO normalized_events (
     src_ip, src_port, dst_ip, dst_port, domain, url,
     event_type, severity, confidence, detection_source,
     attack_technique, attack_tactic,
-    raw_event, tags, case_id
+    raw_event, tags, case_id,
+    ocsf_class_uid, event_outcome, user_domain,
+    process_executable, network_protocol, network_direction
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -61,6 +63,8 @@ INSERT OR IGNORE INTO normalized_events (
     ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?,
+    ?, ?, ?,
+    ?, ?, ?,
     ?, ?, ?
 )
 """
@@ -355,11 +359,8 @@ class IngestionLoader:
 
         for i in range(0, len(events), _DUCKDB_BATCH):
             batch = events[i : i + _DUCKDB_BATCH]
-            # Slice to first 29 columns — _INSERT_SQL covers the legacy schema.
-            # The 6 new ECS/OCSF columns (positions 29-34) are appended to the
-            # tuple by to_duckdb_row() but are not yet in the DuckDB schema;
-            # they will be added in plan 20-02 together with an ALTER TABLE.
-            rows = [list(e.to_duckdb_row()[:29]) for e in batch]
+            # All 35 columns — _INSERT_SQL now includes the 6 new ECS/OCSF columns.
+            rows = [list(e.to_duckdb_row()) for e in batch]
 
             try:
                 # DuckDB executemany goes through the write queue
