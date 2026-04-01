@@ -11,6 +11,51 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 
+# ---------------------------------------------------------------------------
+# OCSF class_uid lookup — maps event_type strings to OCSF integer class UIDs.
+# Reference: Open Cybersecurity Schema Framework v1.1
+# ---------------------------------------------------------------------------
+OCSF_CLASS_UID_MAP: dict[str, int] = {
+    # Process Activity (1007)
+    "process_create": 1007,
+    "process_terminate": 1007,
+    "process_access": 1007,
+    # File System Activity (1001)
+    "file_create": 1001,
+    "file_delete": 1001,
+    "file_create_stream_hash": 1001,
+    "file_creation_time_changed": 1001,
+    "file_delete_detected": 1001,
+    # Registry Activity (1001 — mapped to File System Activity per OCSF v1)
+    "registry_event": 1001,
+    "registry_value_set": 1001,
+    # Network Activity (4001)
+    "network_connect": 4001,
+    # DNS Activity (4003)
+    "dns_query": 4003,
+    # Authentication (3002)
+    "logon_success": 3002,
+    "logon_failure": 3002,
+    "logoff": 3002,
+    "logon_event": 3002,
+    "explicit_credential_logon": 3002,
+    "kerberos_tgs_request": 3002,
+    "kerberos_service_ticket": 3002,
+    "ntlm_auth": 3002,
+    # Module Activity (1005)
+    "driver_load": 1005,
+    "image_load": 1005,
+    # Scheduled Job Activity (1006)
+    "scheduled_task_created": 1006,
+    # Account Change (3001)
+    "user_account_created": 3001,
+    "user_account_deleted": 3001,
+    # WMI Activity (1009)
+    "wmi_event": 1009,
+    "wmi_consumer": 1009,
+    "wmi_subscription": 1009,
+}
+
 
 class NormalizedEvent(BaseModel):
     """A normalized security event matching the DuckDB normalized_events schema."""
@@ -44,19 +89,60 @@ class NormalizedEvent(BaseModel):
     raw_event: Optional[str] = None
     tags: Optional[str] = None
     case_id: Optional[str] = None
+    # ECS-aligned fields added in Phase 20 (plan 20-01).
+    # These are appended at the END of to_duckdb_row() (positions 29-34)
+    # so that the existing 29-column INSERT in loader.py is unaffected
+    # until plan 20-02 migrates the DuckDB schema.
+    ocsf_class_uid: Optional[int] = None
+    event_outcome: Optional[str] = None
+    user_domain: Optional[str] = None
+    process_executable: Optional[str] = None
+    network_protocol: Optional[str] = None
+    network_direction: Optional[str] = None
 
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
 
-        Column order:
-            event_id, timestamp, ingested_at, source_type, source_file,
-            hostname, username, process_name, process_id,
-            parent_process_name, parent_process_id,
-            file_path, file_hash_sha256, command_line,
-            src_ip, src_port, dst_ip, dst_port, domain, url,
-            event_type, severity, confidence, detection_source,
-            attack_technique, attack_tactic,
-            raw_event, tags, case_id
+        Column order (35 elements total):
+            [0]  event_id
+            [1]  timestamp
+            [2]  ingested_at
+            [3]  source_type
+            [4]  source_file
+            [5]  hostname
+            [6]  username
+            [7]  process_name
+            [8]  process_id
+            [9]  parent_process_name
+            [10] parent_process_id
+            [11] file_path
+            [12] file_hash_sha256
+            [13] command_line
+            [14] src_ip
+            [15] src_port
+            [16] dst_ip
+            [17] dst_port
+            [18] domain
+            [19] url
+            [20] event_type
+            [21] severity
+            [22] confidence
+            [23] detection_source
+            [24] attack_technique
+            [25] attack_tactic
+            [26] raw_event
+            [27] tags
+            [28] case_id
+            --- ECS / OCSF fields added in plan 20-01 ---
+            [29] ocsf_class_uid
+            [30] event_outcome
+            [31] user_domain
+            [32] process_executable
+            [33] network_protocol
+            [34] network_direction
+
+        NOTE: loader.py _INSERT_SQL uses positions 0-28 only until plan 20-02
+        migrates the DuckDB schema to include the six new columns.
         """
         def _ts(v: Union[datetime, str, None]) -> Optional[str]:
             if v is None:
@@ -95,6 +181,12 @@ class NormalizedEvent(BaseModel):
             self.raw_event,
             self.tags,
             self.case_id,
+            self.ocsf_class_uid,
+            self.event_outcome,
+            self.user_domain,
+            self.process_executable,
+            self.network_protocol,
+            self.network_direction,
         )
 
     def to_embedding_text(self) -> str:
@@ -217,6 +309,7 @@ class GraphResponse(BaseModel):
 
 __all__ = [
     "NormalizedEvent",
+    "OCSF_CLASS_UID_MAP",
     "DetectionRecord",
     "EventListResponse",
     "GraphEntity",

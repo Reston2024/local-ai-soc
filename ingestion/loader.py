@@ -355,7 +355,11 @@ class IngestionLoader:
 
         for i in range(0, len(events), _DUCKDB_BATCH):
             batch = events[i : i + _DUCKDB_BATCH]
-            rows = [list(e.to_duckdb_row()) for e in batch]
+            # Slice to first 29 columns — _INSERT_SQL covers the legacy schema.
+            # The 6 new ECS/OCSF columns (positions 29-34) are appended to the
+            # tuple by to_duckdb_row() but are not yet in the DuckDB schema;
+            # they will be added in plan 20-02 together with an ALTER TABLE.
+            rows = [list(e.to_duckdb_row()[:29]) for e in batch]
 
             try:
                 # DuckDB executemany goes through the write queue
