@@ -2,23 +2,40 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 19 (in_progress)
-current_plan: 19-01 complete — Operator data model + multi-operator auth refactor. operators table in SQLite, bcrypt utils (direct bcrypt, not passlib), OperatorContext dataclass, Pydantic models, verify_token returns OperatorContext with named-op lookup + legacy fallback. 20 tests pass (9 operator_store + 11 auth).
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-01T04:28:30Z"
-stopped_at: "Completed 19-01-PLAN.md — operator identity foundation complete"
+last_updated: "2026-04-01T04:34:13.934Z"
+progress:
+  total_phases: 19
+  completed_phases: 16
+  total_plans: 88
+  completed_plans: 92
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 19 (in_progress)
+current_plan: 19-02 complete — require_role() RBAC dependency factory. Closure-based factory with deferred verify_token import to avoid circular import. Raises 403 for insufficient role (401 handled by verify_token). 3 TestRequireRole tests pass.
+status: in_progress
+last_updated: "2026-04-01T04:34:03Z"
+stopped_at: "Completed 19-02-PLAN.md — require_role() RBAC factory implemented, 3 tests pass"
 progress:
   [██████████] 100%
   total_phases: 19
   completed_phases: 18
   total_plans: 88
-  completed_plans: 90
+  completed_plans: 91
   percent: 100
 decisions:
   - "19-00: Stub async test methods decorated with @pytest.mark.asyncio at method level; all five test files use pytest.fail('NOT IMPLEMENTED') to ensure FAILED not ERROR"
   - "19-01: Used bcrypt directly (not passlib) — passlib 1.7.4 incompatible with bcrypt >= 4.0 (ValueError on module import)"
   - "19-01: SQLiteStore.__init__ handles ':memory:' special case (skip mkdir) for unit test isolation"
   - "19-01: token param guarded with isinstance(token, str) to handle FastAPI Query sentinel in direct test calls"
+  - "19-02: require_role uses deferred import of verify_token inside closure to avoid circular import (auth.py imports OperatorContext from rbac.py)"
 ---
 
 ---
