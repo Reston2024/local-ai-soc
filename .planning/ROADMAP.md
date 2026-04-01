@@ -798,7 +798,7 @@ Plans:
 - P20-T04: Sigma field map update — update detections/field_map.py to map Sigma field names to the new ECS-aligned DuckDB column names; all existing Sigma smoke tests still pass; add smoke tests for the new ECS field mappings; detection correctness validated end-to-end with sample events
 - P20-T05: Enrichment and AI Copilot alignment — update entity_extractor.py to extract entities from ECS fields; update AI Copilot prompt templates (prompts/) to reference canonical field names; update graph schema constants to use ECS host/user/process/network node types; integration test: ingest sample EVTX, confirm entity graph uses ECS fields
 
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 
 Plans:
 - [ ] 20-00-PLAN.md — Wave 0: RED test stubs for P20-T01, T02, T03 (19 failing tests)
