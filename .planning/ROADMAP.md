@@ -763,3 +763,25 @@ Plans:
 - [ ] 18-05-PLAN.md — ReportingView: four-tab frontend with D3 trend charts and ATT&CK heatmap
 
 *Phase 18 added: 2026-03-28 (Reporting & Compliance)*
+
+## Phase 19: Identity & RBAC
+**Status:** TODO
+**Depends on:** Phase 18 complete
+**Goal:** Upgrade from single shared bearer token to named-operator identity with role-based access control and per-operator audit attribution — the NIST CSF 2.0 Govern baseline for a defensible AI-SOC platform. Each analyst gets a named account with a hashed API key, role assignment, and optional TOTP MFA. All API actions are attributed to a specific operator in audit logs. An admin operator manages accounts via API and Svelte settings UI.
+
+### Requirements
+- P19-T01: Operator data model — SQLite `operators` table (operator_id UUID, name, hashed_api_key, role ENUM admin|analyst, totp_secret nullable, created_at, last_seen, active BOOL); bcrypt-hash all API keys at rest; bootstrap first `admin` operator from ADMIN_API_KEY env var on first run if table empty
+- P19-T02: Multi-operator auth — refactor verify_token to look up incoming Bearer token against operators table (bcrypt verify); extract and inject operator_id + role into request.state; stamp operator_id on all llm_audit.jsonl entries and existing SQLite audit events
+- P19-T03: RBAC middleware — FastAPI dependency `require_role("admin")` guards user-management and config routes; `require_role("analyst")` guards investigation/detection/playbook routes; return 403 with structured error for role violations; unit tests for each role boundary
+- P19-T04: Optional TOTP MFA — pyotp TOTP second-factor per operator; verify_token checks X-TOTP-Code header when operator has totp_secret set; POST /api/operators/{id}/totp/enable generates secret + QR (qrcode lib); graceful pass-through for operators without TOTP configured
+- P19-T05: Operator management API + SettingsView tab — GET /api/operators (admin), POST /api/operators (admin, creates operator + returns one-time API key), DELETE /api/operators/{id} (admin, soft-delete sets active=False), POST /api/operators/{id}/rotate-key (admin); Svelte SettingsView "Operators" tab showing operator list with role badges and key-rotation button
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 19-00-PLAN.md — Wave 0 test stubs + dependency install (P19-T01–T05 RED phase)
+- [ ] 19-01-PLAN.md — Operator data model, bcrypt utils, OperatorContext, verify_token refactor (P19-T01, P19-T02)
+- [ ] 19-02-PLAN.md — RBAC require_role() dependency factory (P19-T03)
+- [ ] 19-03-PLAN.md — TOTP MFA utilities + verify_token enforcement (P19-T04)
+- [ ] 19-04-PLAN.md — Operators management API + SettingsView Operators tab (P19-T05)
+*Phase 19 added: 2026-04-01 (Identity & RBAC)*
