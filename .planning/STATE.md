@@ -5,9 +5,25 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-01T14:12:29.587Z"
+last_updated: "2026-04-01T14:16:16.911Z"
 progress:
   total_phases: 20
+  completed_phases: 17
+  total_plans: 94
+  completed_plans: 97
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-01T14:12:29.587Z"
+progress:
+  [██████████] 100%
   completed_phases: 17
   total_plans: 94
   completed_plans: 96
@@ -19,16 +35,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 20 (in_progress)
-current_plan: 20-02 complete — FieldMapper utility (26 ECS dotted-path mappings), loader.py _INSERT_SQL extended to 35 columns, all four parsers wired with FieldMapper. 6/6 field_mapper tests GREEN, 11/11 loader tests GREEN.
+current_plan: 20-04 complete — SIGMA_FIELD_MAP extended with 22 ECS dotted-path and Windows domain entries, 7 new smoke tests GREEN, 29/29 sigma_smoke tests pass.
 status: in_progress
-last_updated: "2026-04-01T14:30:00Z"
-stopped_at: "Completed 20-02-PLAN.md — FieldMapper utility + loader SQL extension + parser wiring"
+last_updated: "2026-04-01T14:16:00Z"
+stopped_at: "Completed 20-04-PLAN.md — SIGMA_FIELD_MAP ECS extension + smoke tests"
 progress:
   [██████████] 100%
   total_phases: 20
   completed_phases: 17
   total_plans: 94
-  completed_plans: 95
+  completed_plans: 97
   percent: 100
 decisions:
   - "20-01: Appended 6 new ECS fields at end of to_duckdb_row() tuple (positions 29-34) — loader.py slices [:29] for backward-compat with existing 29-column INSERT SQL until plan 20-02 DB migration"
@@ -36,6 +52,8 @@ decisions:
   - "20-01: OCSF_CLASS_UID_MAP placed at module level before NormalizedEvent so it can be imported independently"
   - "20-02: Added 6 new ECS columns to _CREATE_EVENTS_TABLE alongside _INSERT_SQL update — fresh schema matches INSERT; ALTER TABLE for existing DBs deferred to plan 20-03"
   - "20-02: FieldMapper augments (not replaces) parser field-extraction logic — runs first on raw dict; existing frozenset logic remains as safety net"
+  - "20-04: 22 new SIGMA_FIELD_MAP entries added purely additively — ECS dotted-path keys coexist with PascalCase Windows keys, no existing entry modified"
+  - "20-04: INTEGER_COLUMNS deliberately unchanged — network_protocol, event_outcome, user_domain, process_executable, network_direction are TEXT columns"
 ---
 
 ---
