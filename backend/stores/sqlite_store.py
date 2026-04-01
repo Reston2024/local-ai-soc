@@ -180,6 +180,20 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS idx_reports_type       ON reports (type);
 CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports (created_at);
+
+CREATE TABLE IF NOT EXISTS operators (
+    operator_id     TEXT PRIMARY KEY,
+    username        TEXT NOT NULL UNIQUE,
+    hashed_key      TEXT NOT NULL,
+    key_prefix      TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'analyst',
+    totp_secret     TEXT,
+    is_active       INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL,
+    last_seen_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_operators_username  ON operators (username);
+CREATE INDEX IF NOT EXISTS idx_operators_key_prefix ON operators (key_prefix);
 """
 
 
@@ -196,9 +210,13 @@ class SQLiteStore:
     """
 
     def __init__(self, data_dir: str) -> None:
-        db_dir = Path(data_dir)
-        db_dir.mkdir(parents=True, exist_ok=True)
-        self._db_path = str(db_dir / "graph.db")
+        # Support ":memory:" for unit tests — skip directory creation.
+        if data_dir == ":memory:":
+            self._db_path = ":memory:"
+        else:
+            db_dir = Path(data_dir)
+            db_dir.mkdir(parents=True, exist_ok=True)
+            self._db_path = str(db_dir / "graph.db")
 
         # check_same_thread=False is required when sharing the connection
         # across threads (asyncio.to_thread creates a thread-pool thread).
@@ -1001,6 +1019,98 @@ class SQLiteStore:
             "SELECT * FROM reports WHERE id = ?", (report_id,)
         ).fetchone()
         return dict(row) if row else None
+
+    # ------------------------------------------------------------------
+    # Operator management (Phase 19)
+    # ------------------------------------------------------------------
+
+    def get_operator_by_prefix(self, prefix: str) -> Optional[dict]:
+        """Return active operator whose key_prefix matches, or None."""
+        row = self._conn.execute(
+            "SELECT * FROM operators WHERE key_prefix = ? AND is_active = 1",
+            (prefix,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def create_operator(
+        self,
+        operator_id: str,
+        username: str,
+        hashed_key: str,
+        key_prefix: str,
+        role: str = "analyst",
+    ) -> None:
+        """Insert a new operator record."""
+        self._conn.execute(
+            """
+            INSERT INTO operators
+                (operator_id, username, hashed_key, key_prefix, role, is_active, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+            """,
+            (operator_id, username, hashed_key, key_prefix, role, _now_iso()),
+        )
+        self._conn.commit()
+
+    def list_operators(self) -> list[dict]:
+        """Return all operators (safe fields only — no hashed_key)."""
+        rows = self._conn.execute(
+            "SELECT operator_id, username, role, is_active, created_at, last_seen_at FROM operators"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def update_operator_key(
+        self, operator_id: str, hashed_key: str, key_prefix: str
+    ) -> None:
+        """Replace the hashed key and prefix for a given operator."""
+        self._conn.execute(
+            "UPDATE operators SET hashed_key = ?, key_prefix = ? WHERE operator_id = ?",
+            (hashed_key, key_prefix, operator_id),
+        )
+        self._conn.commit()
+
+    def deactivate_operator(self, operator_id: str) -> None:
+        """Set is_active = 0 for the given operator."""
+        self._conn.execute(
+            "UPDATE operators SET is_active = 0 WHERE operator_id = ?",
+            (operator_id,),
+        )
+        self._conn.commit()
+
+    def update_last_seen(self, operator_id: str) -> None:
+        """Stamp last_seen_at with the current UTC timestamp."""
+        self._conn.execute(
+            "UPDATE operators SET last_seen_at = ? WHERE operator_id = ?",
+            (_now_iso(), operator_id),
+        )
+        self._conn.commit()
+
+    def bootstrap_admin_if_empty(self, auth_token: str) -> None:
+        """Seed a legacy 'admin' operator if the operators table is empty.
+
+        Called once at startup.  Idempotent — no-op when operators already exist.
+        The hashed_key is derived from auth_token so existing tokens continue to
+        work transparently.
+        """
+        from backend.core.operator_utils import hash_api_key, key_prefix as _key_prefix
+
+        count = self._conn.execute("SELECT COUNT(*) FROM operators").fetchone()[0]
+        if count > 0:
+            return
+
+        import uuid
+        oid = str(uuid.uuid4())
+        hashed = hash_api_key(auth_token)
+        prefix = _key_prefix(auth_token)
+        self._conn.execute(
+            """
+            INSERT INTO operators
+                (operator_id, username, hashed_key, key_prefix, role, is_active, created_at)
+            VALUES (?, 'admin', ?, ?, 'admin', 1, ?)
+            """,
+            (oid, hashed, prefix, _now_iso()),
+        )
+        self._conn.commit()
+        log.info("Bootstrapped legacy admin operator", operator_id=oid)
 
     # ------------------------------------------------------------------
     # Shutdown
