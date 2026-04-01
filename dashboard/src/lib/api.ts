@@ -195,6 +195,32 @@ export interface TrendDataPoint {
 
 export type TrendsResponse = Record<string, TrendDataPoint[]>
 
+// ---------------------------------------------------------------------------
+// Operator management interfaces (Phase 19-04)
+// ---------------------------------------------------------------------------
+
+export interface Operator {
+  operator_id: string
+  username: string
+  role: 'admin' | 'analyst'
+  is_active: boolean
+  created_at: string
+  last_seen_at: string | null
+}
+
+export interface OperatorCreateResponse {
+  operator_id: string
+  username: string
+  role: string
+  api_key: string   // one-time display
+  created_at: string
+}
+
+export interface OperatorRotateResponse {
+  operator_id: string
+  api_key: string   // one-time display
+}
+
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
 /** Returns the current API token from localStorage or Vite env fallback. */
@@ -445,6 +471,42 @@ export const api = {
         }
       }
       onDone()
+    },
+  },
+
+  settings: {
+    operators: {
+      list: () =>
+        request<{ operators: Operator[] }>('/api/operators'),
+
+      create: (body: { username: string; role: string }) =>
+        request<OperatorCreateResponse>('/api/operators', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+
+      deactivate: (operatorId: string) =>
+        request<void>(`/api/operators/${encodeURIComponent(operatorId)}`, {
+          method: 'DELETE',
+        }),
+
+      rotateKey: (operatorId: string) =>
+        request<OperatorRotateResponse>(
+          `/api/operators/${encodeURIComponent(operatorId)}/rotate-key`,
+          { method: 'POST' },
+        ),
+
+      enableTotp: (operatorId: string) =>
+        request<{ qr_code: string; provisioning_uri: string }>(
+          `/api/operators/${encodeURIComponent(operatorId)}/totp/enable`,
+          { method: 'POST' },
+        ),
+
+      disableTotp: (operatorId: string) =>
+        request<void>(
+          `/api/operators/${encodeURIComponent(operatorId)}/totp`,
+          { method: 'DELETE' },
+        ),
     },
   },
 }
