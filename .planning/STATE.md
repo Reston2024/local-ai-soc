@@ -2,12 +2,50 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 20 (in_progress)
+current_plan: 20-03 complete — db_meta table + schema_version='20' upsert + 6 ECS ALTER TABLE statements in initialise_schema(). try/except idempotency pattern. 5/5 TDD tests GREEN.
+status: in_progress
+last_updated: "2026-04-01T14:17:08Z"
+stopped_at: "Completed 20-03-PLAN.md — DuckDB ECS schema migration"
+progress:
+  [██████████] 100%
+  total_phases: 20
+  completed_phases: 17
+  total_plans: 94
+  completed_plans: 99
+  percent: 100
+decisions:
+  - "20-03: try/except per ALTER TABLE column is the correct DuckDB idempotency pattern — DuckDB does not support ADD COLUMN IF NOT EXISTS syntax"
+  - "20-03: db_meta table uses TEXT PRIMARY KEY + TEXT NOT NULL value — simple key-value store for schema metadata"
+  - "20-03: schema_version stored as string '20' (not integer) for forward-compatibility with multi-part version strings"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-01T14:18:28.707Z"
+progress:
+  total_phases: 20
+  completed_phases: 18
+  total_plans: 94
+  completed_plans: 99
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
 last_updated: "2026-04-01T14:16:16.911Z"
 progress:
-  total_phases: 20
+  [██████████] 100%
   completed_phases: 17
   total_plans: 94
   completed_plans: 97
