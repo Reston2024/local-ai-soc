@@ -785,3 +785,26 @@ Plans:
 - [ ] 19-03-PLAN.md — TOTP MFA utilities + verify_token enforcement (P19-T04)
 - [ ] 19-04-PLAN.md — Operators management API + SettingsView Operators tab (P19-T05)
 *Phase 19 added: 2026-04-01 (Identity & RBAC)*
+
+## Phase 20: Schema Standardisation (ECS/OCSF)
+**Status:** TODO
+**Depends on:** Phase 19 complete
+**Goal:** Replace the project-local event schema with an ECS (Elastic Common Schema) and OCSF (Open Cybersecurity Schema Framework) aligned normalised event model — the prerequisite for detection fidelity, AI grounding accuracy, and future interoperability with external tools. Every ingested event is mapped to a canonical normalised model; field names, types, and semantics are consistent regardless of source parser. Sigma field mappings, enrichment, and the AI Copilot all operate on the canonical model.
+
+### Requirements
+- P20-T01: Canonical NormalizedEvent model — extend/replace the existing Pydantic NormalizedEvent with ECS-aligned core fields (event.kind, event.category, event.type, event.action, host.name, host.ip, user.name, process.name, process.pid, network.protocol, source/destination.ip/port, file.path, url.full); OCSF class_uid mapping for event classification; backward-compatible: all existing parsers still produce valid NormalizedEvent instances
+- P20-T02: Parser field mapping layer — update EVTX, JSON/NDJSON, CSV, and osquery parsers to emit ECS-aligned field names via a centralised FieldMapper utility; FieldMapper is a pure function (input: raw dict + source_type → output: NormalizedEvent); no parser touches DuckDB directly; unit tests for each parser's field mapping
+- P20-T03: DuckDB schema migration — add ECS columns to the events table (event_kind, event_category, event_type, host_name, host_ip, user_name, process_name, network_protocol, src_ip, src_port, dst_ip, dst_port, file_path); migration is additive (ALTER TABLE ADD COLUMN IF NOT EXISTS); existing rows gain NULL values in new columns; schema version tracked in a db_meta table
+- P20-T04: Sigma field map update — update detections/field_map.py to map Sigma field names to the new ECS-aligned DuckDB column names; all existing Sigma smoke tests still pass; add smoke tests for the new ECS field mappings; detection correctness validated end-to-end with sample events
+- P20-T05: Enrichment and AI Copilot alignment — update entity_extractor.py to extract entities from ECS fields; update AI Copilot prompt templates (prompts/) to reference canonical field names; update graph schema constants to use ECS host/user/process/network node types; integration test: ingest sample EVTX, confirm entity graph uses ECS fields
+
+**Plans:** 6 plans
+
+Plans:
+- [ ] 20-00-PLAN.md — Wave 0: RED test stubs for P20-T01, T02, T03 (19 failing tests)
+- [ ] 20-01-PLAN.md — Canonical NormalizedEvent: 6 ECS fields + OCSF_CLASS_UID_MAP (P20-T01)
+- [ ] 20-02-PLAN.md — FieldMapper utility + loader.py _INSERT_SQL extension (P20-T02)
+- [ ] 20-03-PLAN.md — DuckDB additive migration: db_meta + 6 ECS columns (P20-T03)
+- [ ] 20-04-PLAN.md — Sigma SIGMA_FIELD_MAP ECS additions + smoke tests (P20-T04)
+- [ ] 20-05-PLAN.md — entity_extractor, graph/schema.py, prompt ECS alignment (P20-T05)
+*Phase 20 added: 2026-04-01 (Schema Standardisation ECS/OCSF)*
