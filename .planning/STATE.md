@@ -3,19 +3,22 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 19 (in_progress)
-current_plan: 19-00 complete — Wave 0 TDD stubs for identity/RBAC. Five test files created (test_operator_store.py, test_auth.py extended, test_rbac.py, test_totp.py, test_operators_api.py). passlib[bcrypt], pyotp, qrcode[pil] installed. 26 stubs FAILED, 6 existing tests pass.
+current_plan: 19-01 complete — Operator data model + multi-operator auth refactor. operators table in SQLite, bcrypt utils (direct bcrypt, not passlib), OperatorContext dataclass, Pydantic models, verify_token returns OperatorContext with named-op lookup + legacy fallback. 20 tests pass (9 operator_store + 11 auth).
 status: in_progress
-last_updated: "2026-04-01T04:22:00Z"
-stopped_at: "Completed 19-00-PLAN.md — Phase 19 Wave 0 TDD stubs complete"
+last_updated: "2026-04-01T04:28:30Z"
+stopped_at: "Completed 19-01-PLAN.md — operator identity foundation complete"
 progress:
   [██████████] 100%
   total_phases: 19
   completed_phases: 18
   total_plans: 88
-  completed_plans: 89
+  completed_plans: 90
   percent: 100
 decisions:
   - "19-00: Stub async test methods decorated with @pytest.mark.asyncio at method level; all five test files use pytest.fail('NOT IMPLEMENTED') to ensure FAILED not ERROR"
+  - "19-01: Used bcrypt directly (not passlib) — passlib 1.7.4 incompatible with bcrypt >= 4.0 (ValueError on module import)"
+  - "19-01: SQLiteStore.__init__ handles ':memory:' special case (skip mkdir) for unit test isolation"
+  - "19-01: token param guarded with isinstance(token, str) to handle FastAPI Query sentinel in direct test calls"
 ---
 
 ---
