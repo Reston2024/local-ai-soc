@@ -108,6 +108,30 @@ CREATE TABLE IF NOT EXISTS daily_kpi_snapshots (
 )
 """
 
+_CREATE_DB_META_TABLE = """
+CREATE TABLE IF NOT EXISTS db_meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+)
+"""
+
+_INSERT_SCHEMA_VERSION = """
+INSERT INTO db_meta (key, value)
+VALUES ('schema_version', '20')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+"""
+
+# One entry per ALTER TABLE statement — DuckDB allows only one column per statement.
+# DuckDB does NOT support ADD COLUMN IF NOT EXISTS; idempotency is via try/except.
+_ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
+    ("ocsf_class_uid",     "INTEGER"),
+    ("event_outcome",      "TEXT"),
+    ("user_domain",        "TEXT"),
+    ("process_executable", "TEXT"),
+    ("network_protocol",   "TEXT"),
+    ("network_direction",  "TEXT"),
+]
+
 
 # ---------------------------------------------------------------------------
 # Write-queue item
@@ -162,6 +186,17 @@ class DuckDBStore:
         for idx_sql in _CREATE_LLM_CALLS_INDEXES:
             await self.execute_write(idx_sql)
         await self.execute_write(_CREATE_KPI_SNAPSHOTS_TABLE)
+        # ECS schema migration (Phase 20) — additive, idempotent
+        await self.execute_write(_CREATE_DB_META_TABLE)
+        await self.execute_write(_INSERT_SCHEMA_VERSION)
+        for col_name, col_type in _ECS_MIGRATION_COLUMNS:
+            try:
+                await self.execute_write(
+                    f"ALTER TABLE normalized_events ADD COLUMN {col_name} {col_type}"
+                )
+            except Exception:
+                # DuckDB raises if column already exists (no IF NOT EXISTS support)
+                log.debug("ECS column already exists — skipping", column=col_name)
         log.info("DuckDB schema initialised")
 
     # ------------------------------------------------------------------
