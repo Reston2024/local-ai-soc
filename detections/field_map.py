@@ -78,6 +78,34 @@ SIGMA_FIELD_MAP: dict[str, str] = {
     "Tags":                 "tags",
     "AttackTechnique":      "attack_technique",
     "Technique":            "attack_technique",
+    # ------------------------------------------------------------------
+    # ECS dotted-field names — pySigma ECS pipeline compatibility
+    # ------------------------------------------------------------------
+    "process.name":           "process_name",
+    "process.pid":            "process_id",
+    "process.command_line":   "command_line",
+    "process.executable":     "process_executable",
+    "process.parent.name":    "parent_process_name",
+    "process.parent.pid":     "parent_process_id",
+    "user.name":              "username",
+    "user.domain":            "user_domain",
+    "host.hostname":          "hostname",
+    "source.ip":              "src_ip",
+    "source.port":            "src_port",
+    "destination.ip":         "dst_ip",
+    "destination.port":       "dst_port",
+    "destination.domain":     "domain",
+    "file.path":              "file_path",
+    "file.hash.sha256":       "file_hash_sha256",
+    "network.protocol":       "network_protocol",
+    "dns.question.name":      "domain",
+    # ------------------------------------------------------------------
+    # New ECS column mappings (Windows Sigma field names)
+    # ------------------------------------------------------------------
+    "EventOutcome":           "event_outcome",
+    "SubjectDomainName":      "user_domain",
+    "TargetDomainName":       "user_domain",
+    "DomainName":             "user_domain",
 }
 
 # Columns that hold integer values — used to decide whether to quote
