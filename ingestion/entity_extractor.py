@@ -82,6 +82,7 @@ def extract_entities_and_edges(
             "attributes": {
                 "username": event.username,
                 "source_type": event.source_type,
+                **({"user_domain": event.user_domain} if event.user_domain else {}),
             },
             "case_id": event.case_id,
         })
@@ -98,6 +99,8 @@ def extract_entities_and_edges(
         }
         if event.command_line:
             proc_attrs["command_line"] = event.command_line[:256]
+        if event.process_executable:
+            proc_attrs["process_executable"] = event.process_executable
         if event.parent_process_id is not None:
             proc_attrs["parent_process_id"] = event.parent_process_id
         if event.parent_process_name:
@@ -128,6 +131,10 @@ def extract_entities_and_edges(
         ip_attrs: dict[str, Any] = {"ip_address": event.dst_ip}
         if event.dst_port:
             ip_attrs["dst_port"] = event.dst_port
+        if event.network_protocol:
+            ip_attrs["network_protocol"] = event.network_protocol
+        if event.network_direction:
+            ip_attrs["network_direction"] = event.network_direction
         entities.append({
             "id": ip_id,
             "type": "ip",
@@ -196,6 +203,8 @@ def extract_entities_and_edges(
             "dst_port": event.dst_port,
             "src_ip": event.src_ip,
             "src_port": event.src_port,
+            **({"network_protocol": event.network_protocol} if event.network_protocol else {}),
+            **({"event_outcome": event.event_outcome} if event.event_outcome else {}),
         }
         edges.append({
             "source_type": "process",
