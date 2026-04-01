@@ -85,13 +85,33 @@ async def verify_token(
 
     if row is not None:
         if verify_api_key(raw, row["hashed_key"]):
-            ctx = OperatorContext(
-                operator_id=row["operator_id"],
-                username=row["username"],
-                role=row["role"],
-                totp_verified=True,   # Phase 19-03 will add TOTP enforcement
-                totp_enabled=bool(row.get("totp_secret")),
-            )
+            # TOTP enforcement (only when operator has totp_secret configured)
+            if row.get("totp_secret"):
+                ctx = OperatorContext(
+                    operator_id=row["operator_id"],
+                    username=row["username"],
+                    role=row["role"],
+                    totp_enabled=True,
+                    totp_verified=False,  # set True only after code verifies
+                )
+                totp_code = request.headers.get("X-TOTP-Code")
+                if not totp_code:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="TOTP code required (X-TOTP-Code header)",
+                    )
+                from backend.core.totp_utils import verify_totp
+                if not verify_totp(row["totp_secret"], totp_code, row["operator_id"]):
+                    raise HTTPException(status_code=401, detail="Invalid or replayed TOTP code")
+                ctx.totp_verified = True
+            else:
+                ctx = OperatorContext(
+                    operator_id=row["operator_id"],
+                    username=row["username"],
+                    role=row["role"],
+                    totp_enabled=False,
+                    totp_verified=True,
+                )
             # Async-safe fire-and-forget last_seen update
             try:
                 await asyncio.to_thread(_touch_last_seen_sync, sqlite_store, row["operator_id"])
