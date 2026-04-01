@@ -19,10 +19,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 19 (in_progress)
-current_plan: 19-03 complete — TOTP MFA utilities and enforcement. totp_utils.py with generate/verify/replay-prevention/QR functions. verify_token enforces X-TOTP-Code header when operator has totp_secret. 6 TOTP + 11 auth tests pass (17 total).
+current_plan: 19-04 at checkpoint:human-verify — operators API + SettingsView built. Tasks 1+2 committed (156e32e, 6bc6ba4). Awaiting human verification before Task 3 (final commit).
 status: in_progress
-last_updated: "2026-04-01T04:34:38Z"
-stopped_at: "Completed 19-03-PLAN.md — TOTP MFA utilities and enforcement"
+last_updated: "2026-03-31T18:00:00Z"
+stopped_at: "19-04-PLAN.md — checkpoint:human-verify after Tasks 1+2"
 progress:
   [██████████] 100%
   total_phases: 19
@@ -38,6 +38,7 @@ decisions:
   - "19-02: require_role uses deferred import of verify_token inside closure to avoid circular import (auth.py imports OperatorContext from rbac.py)"
   - "19-03: Inline import of verify_totp inside verify_token TOTP branch avoids circular import at module level"
   - "19-03: totp_secret never stored on OperatorContext — only totp_enabled bool propagates to request state"
+  - "19-04: deactivate_operator reads ctx from require_role() dep param (not request.state.operator) for TestClient dependency-override compatibility"
 ---
 
 ---
