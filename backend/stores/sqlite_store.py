@@ -1084,6 +1084,17 @@ class SQLiteStore:
         )
         self._conn.commit()
 
+    def set_totp_secret(self, operator_id: str, secret: str | None) -> None:
+        """Set or clear the TOTP secret for the given operator.
+
+        Pass secret=None to disable TOTP (clears the column).
+        """
+        self._conn.execute(
+            "UPDATE operators SET totp_secret = ? WHERE operator_id = ?",
+            (secret, operator_id),
+        )
+        self._conn.commit()
+
     def bootstrap_admin_if_empty(self, auth_token: str) -> None:
         """Seed a legacy 'admin' operator if the operators table is empty.
 

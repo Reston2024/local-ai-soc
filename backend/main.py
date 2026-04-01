@@ -444,6 +444,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("analytics router not available: %s", exc)
 
+    try:
+        from backend.api.operators import router as operators_router
+        app.include_router(operators_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("operators router mounted at /api/operators")
+    except ImportError as exc:
+        log.warning("operators router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
