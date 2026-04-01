@@ -185,7 +185,7 @@ class OllamaClient:
     # Embeddings
     # ------------------------------------------------------------------
 
-    async def embed(self, text: str) -> list[float]:
+    async def embed(self, text: str, operator_id: str = "system") -> list[float]:
         """
         Generate a single embedding vector for the given text.
 
@@ -205,6 +205,7 @@ class OllamaClient:
             "model": self.embed_model,
             "prompt_length": len(text),
             "prompt_hash": _sha256_short(text),
+            "operator_id": operator_id,
             "status": "start",
         })
         try:
@@ -301,6 +302,7 @@ class OllamaClient:
         temperature: float = 0.1,
         model: Optional[str] = None,
         use_cybersec_model: bool = False,
+        operator_id: str = "system",
     ) -> str:
         """
         Generate a complete text response (non-streaming).
@@ -334,6 +336,7 @@ class OllamaClient:
             "model": _effective_model,
             "prompt_length": len(prompt),
             "prompt_hash": _sha256_short(prompt),
+            "operator_id": operator_id,
             "status": "start",
         })
         t0 = time.monotonic_ns()

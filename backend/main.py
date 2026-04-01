@@ -157,6 +157,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # 4. SQLite store
     sqlite_store = SQLiteStore(data_dir=settings.DATA_DIR)
 
+    # 4b. Bootstrap legacy admin operator if operators table is empty
+    sqlite_store.bootstrap_admin_if_empty(auth_token=settings.AUTH_TOKEN)
+    log.info("Operator bootstrap complete")
+
     # 4a. Seed built-in playbooks (idempotent — no-op if already seeded)
     try:
         from backend.api.playbooks import seed_builtin_playbooks
