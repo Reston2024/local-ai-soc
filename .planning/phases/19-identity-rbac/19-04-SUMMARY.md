@@ -39,7 +39,7 @@ decisions:
 metrics:
   duration: "~6 minutes"
   completed_date: "2026-03-31"
-  tasks_completed: 2
+  tasks_completed: 3
   tasks_total: 3
   files_created: 2
   files_modified: 4

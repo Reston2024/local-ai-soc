@@ -765,7 +765,7 @@ Plans:
 *Phase 18 added: 2026-03-28 (Reporting & Compliance)*
 
 ## Phase 19: Identity & RBAC
-**Status:** TODO
+**Status:** COMPLETE — 2026-04-01
 **Depends on:** Phase 18 complete
 **Goal:** Upgrade from single shared bearer token to named-operator identity with role-based access control and per-operator audit attribution — the NIST CSF 2.0 Govern baseline for a defensible AI-SOC platform. Each analyst gets a named account with a hashed API key, role assignment, and optional TOTP MFA. All API actions are attributed to a specific operator in audit logs. An admin operator manages accounts via API and Svelte settings UI.
 
