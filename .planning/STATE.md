@@ -2,11 +2,27 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 20 (in_progress)
-current_plan: 20-01 complete — NormalizedEvent extended with 6 ECS/OCSF fields and OCSF_CLASS_UID_MAP (28 entries); to_duckdb_row() returns 35-element tuple; loader.py slices [:29] for backward-compat until 20-02 DB migration. 8/8 tests GREEN.
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-01T14:15:00Z"
-stopped_at: "Completed 20-01-PLAN.md — ECS-aligned NormalizedEvent extension"
+last_updated: "2026-04-01T14:12:29.587Z"
+progress:
+  total_phases: 20
+  completed_phases: 17
+  total_plans: 94
+  completed_plans: 96
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 20 (in_progress)
+current_plan: 20-02 complete — FieldMapper utility (26 ECS dotted-path mappings), loader.py _INSERT_SQL extended to 35 columns, all four parsers wired with FieldMapper. 6/6 field_mapper tests GREEN, 11/11 loader tests GREEN.
+status: in_progress
+last_updated: "2026-04-01T14:30:00Z"
+stopped_at: "Completed 20-02-PLAN.md — FieldMapper utility + loader SQL extension + parser wiring"
 progress:
   [██████████] 100%
   total_phases: 20
@@ -18,6 +34,8 @@ decisions:
   - "20-01: Appended 6 new ECS fields at end of to_duckdb_row() tuple (positions 29-34) — loader.py slices [:29] for backward-compat with existing 29-column INSERT SQL until plan 20-02 DB migration"
   - "20-01: OCSF registry events map to class 1001 (File System Activity) per OCSF v1 — no dedicated registry class exists"
   - "20-01: OCSF_CLASS_UID_MAP placed at module level before NormalizedEvent so it can be imported independently"
+  - "20-02: Added 6 new ECS columns to _CREATE_EVENTS_TABLE alongside _INSERT_SQL update — fresh schema matches INSERT; ALTER TABLE for existing DBs deferred to plan 20-03"
+  - "20-02: FieldMapper augments (not replaces) parser field-extraction logic — runs first on raw dict; existing frozenset logic remains as safety net"
 ---
 
 ---
