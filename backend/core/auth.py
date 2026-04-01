@@ -10,7 +10,7 @@ To enable auth with a strong token:
     python -c "import secrets; print(secrets.token_hex(32))"
 and set AUTH_TOKEN=<token> in .env.
 """
-from fastapi import HTTPException, Security
+from fastapi import HTTPException, Query, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.core.config import settings
@@ -20,16 +20,21 @@ _bearer = HTTPBearer(auto_error=False)
 
 async def verify_token(
     credentials: HTTPAuthorizationCredentials | None = Security(_bearer),
+    token: str | None = Query(default=None),
 ) -> None:
-    """FastAPI dependency: validate Authorization: Bearer <token>.
+    """FastAPI dependency: validate Authorization: Bearer <token> or ?token= query param.
+
+    The query param fallback is required for browser-initiated binary downloads
+    (PDF, ZIP) where the browser opens a URL directly and cannot set headers.
 
     Rejects all requests when AUTH_TOKEN is empty or whitespace — this is
     treated as misconfiguration to prevent accidental open-access deployment.
     """
     configured = settings.AUTH_TOKEN.strip()
     if not configured:
-        # Empty string is misconfiguration — reject all requests to prevent
-        # accidental open-access deployment. Set AUTH_TOKEN in .env.
         raise HTTPException(status_code=401, detail="Auth misconfigured: AUTH_TOKEN is empty")
-    if credentials is None or credentials.credentials != configured:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    # Accept token from Bearer header OR ?token= query param
+    bearer_token = credentials.credentials if credentials is not None else None
+    if bearer_token == configured or token == configured:
+        return
+    raise HTTPException(status_code=401, detail="Unauthorized")
