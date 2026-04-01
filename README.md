@@ -4,7 +4,7 @@
 
 A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
 
-**Status:** Phase 17 complete — SOAR & Playbook Engine with 5 NIST IR starter playbooks, analyst-gated execution engine, SSE step-completion stream, and full PlaybooksView UI.
+**Status:** Phase 18 complete — Reporting & Compliance with WeasyPrint PDF reports, MITRE ATT&CK coverage heatmap, D3 KPI trend charts, NIST CSF 2.0 + TheHive compliance export ZIPs, and full four-tab ReportingView UI.
 
 ---
 
@@ -20,6 +20,7 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 | **Attack Graph UI** | ✅ | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths |
 | **Svelte 5 Dashboard** | ✅ | Detections, Events, Graph, Investigation, Query, Assets views |
 | **SOAR Playbooks** | ✅ | 5 NIST IR playbooks; analyst-gated step execution; SSE stream; audit trail |
+| **Reporting & Compliance** | ✅ | WeasyPrint PDF reports, MITRE ATT&CK heatmap, D3 KPI trends, NIST CSF 2.0 + TheHive ZIP export |
 | **Threat Hunting** | Beta | Structured hunt queries, hypothesis tracking |
 | **Bearer Token Auth** | ✅ | All `/api/*` routes protected; secure-by-default (`AUTH_TOKEN=changeme`) |
 | **Citation Verification** | ✅ | LLM responses verified against retrieved context; `citation_verified` in payload |
@@ -269,6 +270,7 @@ fixtures/          Test fixture data (NDJSON, EVTX samples)
 | 15 | Attack Graph UI — Cytoscape.js fCoSE, attack paths, MITRE overlay | ✅ |
 | 16 | Security Hardening — end-to-end auth, citation verification, injection scrubbing, frontend CI | ✅ |
 | 17 | SOAR & Playbook Engine — 5 NIST IR playbooks, analyst-gated execution, SSE, UI | ✅ |
+| 18 | Reporting & Compliance — PDF reports, MITRE ATT&CK heatmap, KPI trends, NIST CSF 2.0 + TheHive export | ✅ |
 
 ---
 

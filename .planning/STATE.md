@@ -2,16 +2,24 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
-status: in_progress
-last_updated: "2026-03-31T19:07:22.090Z"
+current_phase: Phase 18 (complete)
+current_plan: 18-05 complete — ReportingView four-tab frontend (Reports, ATT&CK Coverage, Trends, Compliance Export). api.ts api.reports + api.analytics namespaces. D3 SVG trend charts, MITRE ATT&CK heatmap, compliance ZIP download. auth.py query-param fallback for binary downloads. 21 Phase 18 unit tests pass. Phase 18 FULLY COMPLETE.
+status: complete
+last_updated: "2026-04-01T00:35:00Z"
+stopped_at: "Completed 18-05-PLAN.md — Phase 18 Reporting & Compliance fully complete"
 progress:
+  [██████████] 100%
   total_phases: 18
-  completed_phases: 15
+  completed_phases: 18
   total_plans: 83
-  completed_plans: 87
+  completed_plans: 92
   percent: 100
+decisions:
+  - "18-02: get_detection_techniques() / get_playbook_trigger_conditions() added to SQLiteStore using existing self._conn pattern (not factory)"
+  - "18-03: DuckDB upsert uses INSERT ... ON CONFLICT (snapshot_date) DO UPDATE SET EXCLUDED.* (not INSERT OR REPLACE which is SQLite-only)"
+  - "18-04: TheHive export uses analyst_notes field (investigation_cases has no description column)"
+  - "18-05: getDownloadUrl appends ?token= for binary browser-initiated downloads (PDF, ZIP) that cannot set Authorization header"
+  - "18-fix: verify_token now accepts ?token= query param fallback — required for browser-tab PDF/ZIP open without headers"
 ---
 
 ---
@@ -1425,21 +1433,30 @@ decisions:
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 18 (in progress)
-current_plan: 18-01 complete — reports SQLite table DDL + insert_report/list_reports/get_report CRUD methods; backend/models/report.py Pydantic models; weasyprint installed; 4 REST endpoints (POST investigation, POST executive, GET list, GET /pdf); 3 unit tests pass
-status: in_progress
-last_updated: "2026-03-31T18:47:28Z"
-stopped_at: "Completed 18-01-PLAN.md"
+current_phase: Phase 18 (complete)
+current_plan: 18-05 complete — ReportingView four-tab frontend. Phase 18 FULLY COMPLETE.
+status: complete
+last_updated: "2026-04-01T00:35:00Z"
+stopped_at: "Completed 18-05-PLAN.md"
 progress:
   [██████████] 100%
   total_phases: 18
-  completed_phases: 15
-  total_plans: 78
-  completed_plans: 84
+  completed_phases: 18
+  total_plans: 83
+  completed_plans: 92
   percent: 100
 decisions:
   - "18-01: WeasyPrint lazy-imported inside _render_pdf() — avoids GTK/Pango DLL load at server startup; only needed when PDF is generated"
   - "18-01: pdf_b64 stored inside content_json TEXT blob, not a separate column — keeps reports schema minimal"
-  - "18-01: Executive report KPI fetch uses try/except around daily_kpi_snapshots DuckDB query (table created in plan 18-03), zeros used when absent"
   - "18-01: SQLiteStore uses self._conn persistent connection (not _conn() factory method) — plan interfaces section had wrong pattern"
+  - "18-02: get_detection_techniques() + get_playbook_trigger_conditions() added to SQLiteStore; MITRE coverage cross-referenced from detections + playbook trigger_conditions"
+  - "18-03: DuckDB ON CONFLICT DO UPDATE (not INSERT OR REPLACE which is SQLite-only); APScheduler midnight cron for daily_kpi_snapshots"
+  - "18-04: TheHive export uses analyst_notes (investigation_cases has no description column); NIST CSF 2.0 6-function evidence mapping"
+  - "18-05: getDownloadUrl appends ?token= for binary browser downloads; verify_token accepts query param fallback"
 ---
+
+- 2026-04-01: Phase 18 plan 01 complete. Reports API + WeasyPrint PDF. SQLite reports table DDL, insert_report/list_reports/get_report CRUD. backend/models/report.py Pydantic models. 4 endpoints: POST /api/reports/investigation/{id}, POST /api/reports/executive, GET /api/reports, GET /api/reports/{id}/pdf. WeasyPrint lazy-import pattern. 3 unit tests pass.
+- 2026-04-01: Phase 18 plan 02 complete. MITRE ATT&CK coverage analytics. get_detection_techniques() + get_playbook_trigger_conditions() on SQLiteStore. GET /api/analytics/mitre-coverage endpoint with tactic/technique cross-reference. 3 unit tests pass.
+- 2026-04-01: Phase 18 plan 03 complete. KPI snapshots + APScheduler. daily_kpi_snapshots DuckDB table, upsert_daily_kpi_snapshot() with ON CONFLICT DO UPDATE. AsyncIOScheduler midnight cron in main.py lifespan. GET /api/analytics/trends endpoint. 3 unit tests pass.
+- 2026-04-01: Phase 18 plan 04 complete. Compliance export. GET /api/reports/compliance?framework=nist-csf|thehive. ZIP archives with NIST CSF 2.0 6-function evidence JSON + summary.html; TheHive 5 alerts.json + cases.json. 6 unit tests pass.
+- 2026-04-01: Phase 18 plan 05 complete. ReportingView four-tab frontend. api.ts api.reports + api.analytics namespaces, getDownloadUrl helper. ReportsView.svelte: Reports tab (list + generate + PDF), ATT&CK heatmap (14 tactic columns), D3 SVG trend charts (MTTD/MTTR/alert_volume), Compliance ZIP download. verify_token auth.py query-param fallback hotfix for browser-initiated downloads. Human verified all four tabs end-to-end. 21 Phase 18 unit tests all pass. Phase 18 FULLY COMPLETE.
