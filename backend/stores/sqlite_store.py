@@ -212,6 +212,19 @@ CREATE TABLE IF NOT EXISTS ingest_provenance_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ingest_prov_event ON ingest_provenance_events (event_id);
+
+CREATE TABLE IF NOT EXISTS detection_provenance (
+    prov_id             TEXT PRIMARY KEY,
+    detection_id        TEXT NOT NULL,
+    rule_id             TEXT,
+    rule_title          TEXT,
+    rule_sha256         TEXT NOT NULL,
+    pysigma_version     TEXT NOT NULL,
+    field_map_version   TEXT NOT NULL,
+    operator_id         TEXT,
+    detected_at         TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_det_prov_detection ON detection_provenance (detection_id);
 """
 
 
@@ -1207,6 +1220,57 @@ class SQLiteStore:
             LIMIT 1
             """,
             (event_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    # ------------------------------------------------------------------
+    # Detection provenance
+    # ------------------------------------------------------------------
+
+    def record_detection_provenance(
+        self,
+        prov_id: str,
+        detection_id: str,
+        rule_id: Optional[str],
+        rule_title: Optional[str],
+        rule_sha256: str,
+        pysigma_version: str,
+        field_map_version: str,
+        operator_id: Optional[str] = None,
+    ) -> None:
+        """
+        Insert a detection provenance row.
+
+        Uses INSERT OR IGNORE so re-running is idempotent.
+        Callers must wrap in try/except — this method does NOT suppress exceptions.
+        """
+        self._conn.execute(
+            """
+            INSERT OR IGNORE INTO detection_provenance
+                (prov_id, detection_id, rule_id, rule_title,
+                 rule_sha256, pysigma_version, field_map_version,
+                 operator_id, detected_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                prov_id,
+                detection_id,
+                rule_id,
+                rule_title,
+                rule_sha256,
+                pysigma_version,
+                field_map_version,
+                operator_id,
+                _now_iso(),
+            ),
+        )
+        self._conn.commit()
+
+    def get_detection_provenance(self, detection_id: str) -> Optional[dict[str, Any]]:
+        """Return the detection_provenance record for the given detection_id, or None."""
+        row = self._conn.execute(
+            "SELECT * FROM detection_provenance WHERE detection_id = ?",
+            (detection_id,),
         ).fetchone()
         return dict(row) if row else None
 
