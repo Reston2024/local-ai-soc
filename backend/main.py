@@ -451,6 +451,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("operators router not available: %s", exc)
 
+    try:
+        from backend.api.provenance import router as provenance_router
+        app.include_router(provenance_router, dependencies=[Depends(verify_token)])
+        log.info("provenance router mounted at /api/provenance")
+    except ImportError as exc:
+        log.warning("provenance router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
