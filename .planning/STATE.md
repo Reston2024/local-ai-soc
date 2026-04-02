@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (in_progress)
-current_plan: 22-01 complete — out_context param in generate()/stream_generate(); audit_id/grounding_event_ids/is_grounded in /ask and /ask/stream; ask_stream migrated to stream_generate(); 3 eval tests passing
+current_plan: 22-02 complete — heuristic confidence_score (0.0-1.0) in llm_audit_provenance; update_confidence_score() on SQLiteStore; confidence_score in /ask and /ask/stream responses; InvestigationView confidence badge; 4 eval tests passing
 status: in_progress
-last_updated: "2026-04-02T16:20:00Z"
-stopped_at: "Completed 22-01-PLAN.md — grounding thread-through to /ask and /ask/stream API responses"
+last_updated: "2026-04-02T16:24:50Z"
+stopped_at: "Completed 22-02-PLAN.md — heuristic confidence scoring for LLM audit provenance"
 progress:
   [██████████] 99%
   total_phases: 22
   completed_phases: 19
   total_plans: 107
-  completed_plans: 107
+  completed_plans: 108
 decisions:
   - "22-00: NDJSON fixture event_ids (evt-001, evt-002) match MOCK_RESPONSE_TEXT so citation checks pass when stubs are activated"
   - "22-00: mock_ollama attaches _mock_post to OllamaClient instance — follows existing unit test pattern"
@@ -20,6 +20,9 @@ decisions:
   - "22-01: out_context dict pattern preserves str return type of generate()/stream_generate() while threading audit metadata to callers"
   - "22-01: operator_id resolved via getattr(request.state, 'operator_id', 'system') one-liner fallback per plan"
   - "22-01: ask_stream() migrated to stream_generate()+on_token; tokens buffered then yielded — works correctly since stream_generate() returns after completion"
+  - "22-02: Heuristic weights: 0.5 grounding + 0.3 citation_ok + 0.1 rich-context (>=5 ids); prompt_template_sha256 bonus omitted (SHA not in ask() scope)"
+  - "22-02: Score write non-fatal: wrapped in try/except with log.warning to never block LLM response on DB failure"
+  - "22-02: Both DDL and ALTER TABLE migration present: DDL for fresh :memory: test DBs, ALTER TABLE for existing production data/graph.db"
 ---
 
 ---
