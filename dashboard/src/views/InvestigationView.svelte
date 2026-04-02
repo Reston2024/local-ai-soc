@@ -173,6 +173,20 @@
               </span>
             </div>
             <p class="ai-content">{msg.content}</p>
+            {#if msg.is_grounded === false || (msg.grounding_event_ids !== undefined && msg.grounding_event_ids.length === 0)}
+              <div class="ungrounded-warning" aria-label="Ungrounded response warning">
+                <span class="warning-icon">&#9888;</span>
+                <span>Response not grounded in retrieved evidence</span>
+              </div>
+            {/if}
+            {#if msg.grounding_event_ids && msg.grounding_event_ids.length > 0}
+              <div class="citation-list" aria-label="Grounding sources">
+                <span class="citation-label">Sources:</span>
+                {#each msg.grounding_event_ids as evtId}
+                  <span class="citation-tag">{evtId}</span>
+                {/each}
+              </div>
+            {/if}
           {:else}
             <span class="role-label">You</span>
             <p>{msg.content}</p>
@@ -295,6 +309,43 @@
   color: var(--text-muted, #6b7280);
   margin: 0;
   line-height: 1.6;
+}
+
+.ungrounded-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #b45309;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  margin-top: 0.25rem;
+}
+.warning-icon {
+  font-size: 0.9rem;
+}
+.citation-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+}
+.citation-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+.citation-tag {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  font-family: monospace;
+  font-size: 0.7rem;
 }
 
 /* Copilot */

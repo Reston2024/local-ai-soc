@@ -118,6 +118,7 @@ export interface ChatHistoryMessage {
   confidence?: number        // P22-T02: heuristic confidence score 0.0–1.0
   audit_id?: string          // P22-T01: LLM audit provenance ID
   grounding_event_ids?: string[]  // P22-T01: event IDs used as grounding context
+  is_grounded?: boolean           // P22-T01: whether response is grounded in retrieved evidence
 }
 
 export interface PlaybookStep {
