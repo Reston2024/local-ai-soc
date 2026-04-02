@@ -3,20 +3,23 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (in_progress)
-current_plan: 22-00 complete — tests/eval/ eval scaffold with 18 pre-skipped stubs (grounding, confidence, prompt-eval, model-drift, advisory) and 5 NDJSON fixtures; uv run pytest tests/eval/ -x -q exits 0
+current_plan: 22-01 complete — out_context param in generate()/stream_generate(); audit_id/grounding_event_ids/is_grounded in /ask and /ask/stream; ask_stream migrated to stream_generate(); 3 eval tests passing
 status: in_progress
-last_updated: "2026-04-02T16:17:00Z"
-stopped_at: "Completed 22-00-PLAN.md — tests/eval/ eval scaffold with 18 pre-skipped stubs and 5 NDJSON fixtures"
+last_updated: "2026-04-02T16:20:00Z"
+stopped_at: "Completed 22-01-PLAN.md — grounding thread-through to /ask and /ask/stream API responses"
 progress:
   [██████████] 99%
   total_phases: 22
   completed_phases: 19
   total_plans: 107
-  completed_plans: 106
+  completed_plans: 107
 decisions:
   - "22-00: NDJSON fixture event_ids (evt-001, evt-002) match MOCK_RESPONSE_TEXT so citation checks pass when stubs are activated"
   - "22-00: mock_ollama attaches _mock_post to OllamaClient instance — follows existing unit test pattern"
   - "22-00: All test files import target module at module level for fail-fast import error detection on stub activation"
+  - "22-01: out_context dict pattern preserves str return type of generate()/stream_generate() while threading audit metadata to callers"
+  - "22-01: operator_id resolved via getattr(request.state, 'operator_id', 'system') one-liner fallback per plan"
+  - "22-01: ask_stream() migrated to stream_generate()+on_token; tokens buffered then yielded — works correctly since stream_generate() returns after completion"
 ---
 
 ---
