@@ -3,18 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (complete)
-current_plan: 22-06 complete — full test suite green (803 tests), frontend build clean, Phase 22 AI lifecycle hardening FULLY COMPLETE
+current_plan: 22-07 complete — grounding_event_ids citation tags + is_grounded ungrounded-warning badge in AI Copilot InvestigationView; P22-T01 UI gap closed
 status: in_progress
-last_updated: "2026-04-02T16:55:00Z"
-stopped_at: "Completed 22-06-PLAN.md — full suite green (803 tests), frontend build clean, Phase 22 complete"
+last_updated: "2026-04-02T17:43:00Z"
+stopped_at: "Completed 22-07-PLAN.md — inline citation rendering and ungrounded warning in AI Copilot panel"
 progress:
   [██████████] 100%
   total_phases: 22
   completed_phases: 20
   total_plans: 107
-  completed_plans: 112
+  completed_plans: 113
   percent: 100
 decisions:
+  - "22-07: is_grounded field added to ChatHistoryMessage interface (was absent despite 22-02 planning it)"
+  - "22-07: Ungrounded warning triggers on both is_grounded===false AND empty grounding_event_ids array to cover both API states"
   - "22-06: dependency_overrides[verify_token] pattern used in all TestClient apps — avoids real token dependency while preserving auth enforcement in production"
   - "22-06: Integration test_backend_health uses AUTH_HEADERS=Bearer changeme (default token) for live-backend tests"
   - "22-06: checkpoint:human-verify auto-approved per auto_advance=true config"
