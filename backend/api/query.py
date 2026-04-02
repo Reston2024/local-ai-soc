@@ -207,14 +207,27 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
     prompt = _build_rag_prompt(body.question, docs)
     system = body.system_prompt or _DEFAULT_SYSTEM
 
-    # Generate answer
+    # Resolve operator_id from request state if available (ADR-020 fallback)
+    operator_id = getattr(request.state, "operator_id", "system")
+
+    # Generate answer — collect audit metadata via out_context
+    out_ctx: dict = {}
     try:
-        answer = await ollama.generate(prompt, system=system)
+        answer = await ollama.generate(
+            prompt,
+            system=system,
+            grounding_event_ids=ids,
+            out_context=out_ctx,
+            operator_id=operator_id,
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail=f"LLM generation failed: {exc}",
         ) from exc
+
+    audit_id = out_ctx.get("audit_id")
+    is_grounded = len(ids) > 0
 
     citation_ok = verify_citations(answer, ids)
     if not citation_ok:
@@ -238,6 +251,9 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
             "context_event_ids": ids,
             "context_count": len(docs),
             "citation_verified": citation_ok,
+            "audit_id": audit_id,
+            "grounding_event_ids": ids,
+            "is_grounded": is_grounded,
         }
     )
 
@@ -289,9 +305,25 @@ async def ask_stream(body: AskRequest, request: Request) -> StreamingResponse:
 
     async def event_stream() -> AsyncIterator[str]:
         try:
-            async for token in ollama.stream_generate_iter(prompt, system=system):
-                yield f"data: {json.dumps({'token': token})}\n\n"
-            yield f"data: {json.dumps({'done': True, 'context_event_ids': ids})}\n\n"
+            tokens_yielded: list[str] = []
+            out_ctx: dict = {}
+
+            def _on_token(t: str) -> None:
+                tokens_yielded.append(t)
+
+            await ollama.stream_generate(
+                prompt,
+                system=system,
+                on_token=_on_token,
+                grounding_event_ids=ids,
+                out_context=out_ctx,
+            )
+            for t in tokens_yielded:
+                yield f"data: {json.dumps({'token': t})}\n\n"
+
+            audit_id = out_ctx.get("audit_id")
+            is_grounded = len(ids) > 0
+            yield f"data: {json.dumps({'done': True, 'context_event_ids': ids, 'audit_id': audit_id, 'is_grounded': is_grounded})}\n\n"
         except Exception as exc:
             yield f"data: {json.dumps({'error': str(exc)})}\n\n"
 
