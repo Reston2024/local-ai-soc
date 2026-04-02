@@ -84,6 +84,8 @@ def test_detection_provenance_api():
     )
 
     from backend.api.provenance import router as provenance_router
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
     from fastapi import FastAPI
 
     app = FastAPI()
@@ -96,6 +98,9 @@ def test_detection_provenance_api():
     mock_stores.sqlite = mock_store
 
     app.dependency_overrides[get_stores] = lambda: mock_stores
+    app.dependency_overrides[verify_token] = lambda: OperatorContext(
+        operator_id="test-op", username="analyst", role="analyst", totp_verified=True
+    )
 
     client = TestClient(app)
     resp = client.get(f"/api/provenance/detection/{detection_id}")

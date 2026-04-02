@@ -113,10 +113,16 @@ def test_playbook_provenance_api():
         operator_id_who_approved="op-bob",
     )
 
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
+
     # Inject stores dependency
     stores_mock = MagicMock()
     stores_mock.sqlite = store
     app.dependency_overrides[get_stores] = lambda: stores_mock
+    app.dependency_overrides[verify_token] = lambda: OperatorContext(
+        operator_id="test-op", username="analyst", role="analyst", totp_verified=True
+    )
 
     try:
         client = TestClient(app)

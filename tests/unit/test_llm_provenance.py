@@ -145,12 +145,18 @@ def test_llm_provenance_api() -> None:
         operator_id="op-api-test",
     )
 
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
+
     app = FastAPI()
     app.include_router(provenance_router)
 
     mock_stores = MagicMock()
     mock_stores.sqlite = sqlite_store
     app.dependency_overrides[get_stores] = lambda: mock_stores
+    app.dependency_overrides[verify_token] = lambda: OperatorContext(
+        operator_id="test-op", username="analyst", role="analyst", totp_verified=True
+    )
 
     client = TestClient(app)
     resp = client.get(f"/api/provenance/llm/{audit_id}")
