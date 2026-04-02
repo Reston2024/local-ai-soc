@@ -3,18 +3,20 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (complete)
-current_plan: 22-07 complete — grounding_event_ids citation tags + is_grounded ungrounded-warning badge in AI Copilot InvestigationView; P22-T01 UI gap closed
+current_plan: 22-08 complete — GET /api/provenance/copilot/response/{audit_id} + CopilotResponseRecord model; 18 eval tests passing; P22-T01 gap closed
 status: in_progress
-last_updated: "2026-04-02T17:43:00Z"
-stopped_at: "Completed 22-07-PLAN.md — inline citation rendering and ungrounded warning in AI Copilot panel"
+last_updated: "2026-04-02T17:39:13Z"
+stopped_at: "Completed 22-08-PLAN.md — copilot response trust endpoint fully wired"
 progress:
   [██████████] 100%
   total_phases: 22
   completed_phases: 20
   total_plans: 107
-  completed_plans: 113
+  completed_plans: 114
   percent: 100
 decisions:
+  - "22-08: CopilotResponseRecord surfaces trust signals only (grounding_event_ids, confidence_score, is_grounded); is_grounded derived from non-empty grounding_event_ids at response time"
+  - "22-08: Reuses get_llm_provenance store method for new caller-facing endpoint — avoids duplicate DB query logic"
   - "22-07: is_grounded field added to ChatHistoryMessage interface (was absent despite 22-02 planning it)"
   - "22-07: Ungrounded warning triggers on both is_grounded===false AND empty grounding_event_ids array to cover both API states"
   - "22-06: dependency_overrides[verify_token] pattern used in all TestClient apps — avoids real token dependency while preserving auth enforcement in production"
