@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 21 (in_progress)
-current_plan: 21-01 complete — ingest_provenance + ingest_provenance_events SQLite tables, record_ingest_provenance()/get_ingest_provenance() methods, _sha256_file() helper, operator_id param on ingest_file(); 5/5 tests GREEN (P21-T01 satisfied).
+current_plan: 21-02 complete — detection_provenance SQLite table, record/get methods on SQLiteStore, PYSIGMA_VERSION/FIELD_MAP_VERSION constants in matcher.py, YAML cache in SigmaMatcher, provenance writes in save_detections(), GET /api/provenance/detection/{id} endpoint; 3/3 tests GREEN (P21-T02 satisfied).
 status: in_progress
-last_updated: "2026-04-02T12:40:42Z"
-stopped_at: "Completed 21-01-PLAN.md — ingest provenance SHA-256 fingerprint + parser identity tracking"
+last_updated: "2026-04-02T12:48:00Z"
+stopped_at: "Completed 21-02-PLAN.md — detection provenance SHA-256 + pySigma/field-map version per detection"
 progress:
   [██████████] 100%
   total_phases: 21
@@ -21,6 +21,10 @@ decisions:
   - "21-01: event_ids list passed to record_ingest_provenance contains all normalized event IDs (parser generates UUIDs, raw input IDs not preserved)"
   - "21-01: provenance write failure is non-fatal — try/except wraps asyncio.to_thread call, log.warning on exc"
   - "21-01: parser_version is None pending addition of __version__ attributes to parser classes"
+  - "21-02: Cache YAML text in _rule_yaml dict during load_rules_dir/load_rule_yaml — not re-read at save time"
+  - "21-02: Provenance write in save_detections() is non-fatal — detection pipeline never blocked by provenance failure"
+  - "21-02: operator_id stored as NULL in detection_provenance — not yet threaded through DetectionRecord"
+  - "21-02: rule_sha256 falls back to string 'unknown' when YAML not cached (pre-existing rules)"
 ---
 
 ---
