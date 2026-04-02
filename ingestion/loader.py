@@ -22,11 +22,14 @@ Usage::
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path as _Path
 from typing import Any
+from uuid import uuid4 as _uuid4
 
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
@@ -38,6 +41,15 @@ from ingestion.normalizer import normalize_event
 from ingestion.registry import get_parser
 
 log = get_logger(__name__)
+
+def _sha256_file(path: str) -> str:
+    """Return SHA-256 hex digest of file contents.  Runs in asyncio.to_thread."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
 
 # Batch sizes
 _DUCKDB_BATCH  = 1_000   # events per DuckDB executemany batch
@@ -149,19 +161,23 @@ class IngestionLoader:
         file_path: str,
         case_id: str | None = None,
         job_id: str | None = None,
+        operator_id: str | None = None,
     ) -> IngestionResult:
         """
         Full ingestion pipeline for a single file.
 
-        1. Detect parser via registry
-        2. Stream-parse → normalize → deduplicate → DuckDB INSERT
-        3. Embed new events → Chroma
-        4. Extract entities + edges → SQLite
+        1. Compute SHA-256 of raw file bytes
+        2. Detect parser via registry
+        3. Stream-parse → normalize → deduplicate → DuckDB INSERT
+        4. Embed new events → Chroma
+        5. Extract entities + edges → SQLite
+        6. Record ingest provenance (non-fatal on failure)
 
         Args:
-            file_path: Path to the file on disk.
-            case_id:   Optional investigation case.
-            job_id:    Optional job ID for status tracking.
+            file_path:   Path to the file on disk.
+            case_id:     Optional investigation case.
+            job_id:      Optional job ID for status tracking.
+            operator_id: Optional operator performing the ingest.
 
         Returns:
             IngestionResult with counts and any errors.
@@ -181,6 +197,9 @@ class IngestionLoader:
             result.duration_seconds = time.monotonic() - t0
             return result
 
+        # Compute SHA-256 of raw file bytes before any parsing occurs
+        raw_sha256 = await asyncio.to_thread(_sha256_file, file_path)
+
         parser = get_parser(file_path)
         if parser is None:
             msg = f"No parser found for file: {file_path}"
@@ -191,10 +210,12 @@ class IngestionLoader:
             result.duration_seconds = time.monotonic() - t0
             return result
 
+        parser_name = type(parser).__name__
+
         log.info(
             "Ingestion started",
             file_path=file_path,
-            parser=type(parser).__name__,
+            parser=parser_name,
             case_id=case_id,
             job_id=job_id,
         )
@@ -229,6 +250,26 @@ class IngestionLoader:
         result.embedded = sub_result.embedded
         result.edges_created = sub_result.edges_created
         result.errors.extend(sub_result.errors)
+
+        # Record ingest provenance (non-fatal — failure must not abort pipeline)
+        if result.loaded > 0:
+            try:
+                prov_id = str(_uuid4())
+                new_event_ids = [e.event_id for e in normalized]
+                await asyncio.to_thread(
+                    self._stores.sqlite.record_ingest_provenance,
+                    prov_id,
+                    raw_sha256,
+                    file_path,
+                    parser_name,
+                    new_event_ids,
+                    None,        # parser_version — no __version__ on parsers yet
+                    operator_id,
+                )
+            except Exception as exc:
+                log.warning(
+                    "Ingest provenance write failed (non-fatal)", error=str(exc)
+                )
 
         result.duration_seconds = time.monotonic() - t0
         log.info("Ingestion complete", **{

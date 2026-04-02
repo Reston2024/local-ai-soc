@@ -135,7 +135,6 @@ def test_ingest_provenance_written():
         f.write(
             _json.dumps(
                 {
-                    "event_id": "test-evt-prov-001",
                     "timestamp": "2024-01-01T00:00:00Z",
                     "source_type": "json",
                     "event_type": "process",
@@ -153,11 +152,32 @@ def test_ingest_provenance_written():
         )
         assert result.loaded > 0, f"Expected events loaded, got {result.loaded}"
 
-        # Provenance row must exist for the loaded event
-        row = sqlite_store.get_ingest_provenance("test-evt-prov-001")
-        assert row is not None, "Provenance row not written"
-        assert len(row["raw_sha256"]) == 64
-        assert row["source_file"] == tmp_path
+        # Provenance row must exist — look up the actual event_id assigned by the parser
+        prov_rows = sqlite_store._conn.execute(
+            "SELECT * FROM ingest_provenance"
+        ).fetchall()
+        assert len(prov_rows) == 1, (
+            f"Expected 1 ingest_provenance row, got {len(prov_rows)}"
+        )
+        prov = dict(prov_rows[0])
+        assert len(prov["raw_sha256"]) == 64, "raw_sha256 must be 64-char hex"
+        assert prov["source_file"] == tmp_path
+        assert prov["parser_name"] != "", "parser_name must be set"
+
+        # Junction table must have at least 1 row linking prov → event
+        evt_rows = sqlite_store._conn.execute(
+            "SELECT * FROM ingest_provenance_events WHERE prov_id = ?",
+            (prov["prov_id"],),
+        ).fetchall()
+        assert len(evt_rows) >= 1, "No event rows in ingest_provenance_events"
+
+        # get_ingest_provenance lookup via actual event_id must work
+        actual_event_id = dict(evt_rows[0])["event_id"]
+        row = sqlite_store.get_ingest_provenance(actual_event_id)
+        assert row is not None, (
+            f"get_ingest_provenance returned None for event_id={actual_event_id}"
+        )
+        assert row["prov_id"] == prov["prov_id"]
     finally:
         os.unlink(tmp_path)
 
