@@ -5,9 +5,25 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-02T16:28:37.827Z"
+last_updated: "2026-04-02T16:38:38.621Z"
 progress:
   total_phases: 22
+  completed_phases: 19
+  total_plans: 107
+  completed_plans: 111
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-02T16:28:37.827Z"
+progress:
+  [██████████] 100%
   completed_phases: 19
   total_plans: 107
   completed_plans: 109
@@ -19,16 +35,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (in_progress)
-current_plan: 22-04 complete — model drift detection: system_kv + model_change_events tables, GET /api/settings/model-status, SettingsView AI Model Status card, 3 eval tests passing
+current_plan: 22-05 complete — AI Advisory prefix in analyst_qa+triage SYSTEM prompts; non-dismissable advisory banner + confidence badge in InvestigationView; 2/2 eval tests passing
 status: in_progress
-last_updated: "2026-04-02T16:45:00Z"
-stopped_at: "Completed 22-04-PLAN.md — model drift detection fully wired end-to-end"
+last_updated: "2026-04-02T16:38:00Z"
+stopped_at: "Completed 22-05-PLAN.md — advisory framing fully wired end-to-end"
 progress:
   [██████████] 100%
   total_phases: 22
   completed_phases: 19
   total_plans: 107
-  completed_plans: 109
+  completed_plans: 110
 decisions:
   - "22-00: NDJSON fixture event_ids (evt-001, evt-002) match MOCK_RESPONSE_TEXT so citation checks pass when stubs are activated"
   - "22-00: mock_ollama attaches _mock_post to OllamaClient instance — follows existing unit test pattern"
@@ -44,6 +60,8 @@ decisions:
   - "22-04: Ollama unreachability is non-fatal — endpoint returns null active_model rather than error"
   - "22-04: system_kv table reusable for future lightweight config persistence beyond model tracking"
   - "22-04: test_status_endpoint checks route registration not full HTTP roundtrip (module-level app lacks lifespan state in unit context)"
+  - "22-05: Advisory prefix placed at top of SYSTEM string so every LLM call inherits the framing without API changes"
+  - "22-05: Streaming block shows confidence-unknown badge with 'Generating...' label until response completes"
 ---
 
 ---
