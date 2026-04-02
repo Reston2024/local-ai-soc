@@ -19,16 +19,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (in_progress)
-current_plan: 22-03 complete — 6 eval tests passing across analyst_qa, triage, threat_hunt prompt templates; mock HTTP layer, no live Ollama required
+current_plan: 22-04 complete — model drift detection: system_kv + model_change_events tables, GET /api/settings/model-status, SettingsView AI Model Status card, 3 eval tests passing
 status: in_progress
-last_updated: "2026-04-02T16:34:00Z"
-stopped_at: "Completed 22-03-PLAN.md — prompt template eval harness fully functional"
+last_updated: "2026-04-02T16:45:00Z"
+stopped_at: "Completed 22-04-PLAN.md — model drift detection fully wired end-to-end"
 progress:
   [██████████] 100%
   total_phases: 22
   completed_phases: 19
   total_plans: 107
-  completed_plans: 108
+  completed_plans: 109
 decisions:
   - "22-00: NDJSON fixture event_ids (evt-001, evt-002) match MOCK_RESPONSE_TEXT so citation checks pass when stubs are activated"
   - "22-00: mock_ollama attaches _mock_post to OllamaClient instance — follows existing unit test pattern"
@@ -41,6 +41,9 @@ decisions:
   - "22-02: Both DDL and ALTER TABLE migration present: DDL for fresh :memory: test DBs, ALTER TABLE for existing production data/graph.db"
   - "22-03: Eval tests use vacuous-truth citation pass for triage/threat_hunt — MOCK_RESPONSE_TEXT IDs not in those fixture sets"
   - "22-03: load_event_fixtures() imported as plain function from conftest rather than using it as a pytest fixture parameter"
+  - "22-04: Ollama unreachability is non-fatal — endpoint returns null active_model rather than error"
+  - "22-04: system_kv table reusable for future lightweight config persistence beyond model tracking"
+  - "22-04: test_status_endpoint checks route registration not full HTTP roundtrip (module-level app lacks lifespan state in unit context)"
 ---
 
 ---
