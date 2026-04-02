@@ -453,6 +453,13 @@ def create_app() -> FastAPI:
         log.warning("operators router not available: %s", exc)
 
     try:
+        from backend.api.settings import router as settings_router  # noqa: E402
+        app.include_router(settings_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("settings router mounted at /api/settings")
+    except ImportError as exc:
+        log.warning("settings router not available: %s", exc)
+
+    try:
         from backend.api.provenance import router as provenance_router
         app.include_router(provenance_router, dependencies=[Depends(verify_token)])
         log.info("provenance router mounted at /api/provenance")

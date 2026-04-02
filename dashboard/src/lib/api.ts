@@ -247,6 +247,23 @@ export interface PlaybookProvenanceRecord {
 }
 
 // ---------------------------------------------------------------------------
+// Model drift status interface (Phase 22-04)
+// ---------------------------------------------------------------------------
+
+export interface ModelStatus {
+  active_model: string | null
+  last_known_model: string | null
+  drift_detected: boolean
+  last_change: {
+    event_id: string
+    detected_at: string
+    previous_model: string | null
+    active_model: string
+    change_source: string
+  } | null
+}
+
+// ---------------------------------------------------------------------------
 // Operator management interfaces (Phase 19-04)
 // ---------------------------------------------------------------------------
 
@@ -570,6 +587,9 @@ export const api = {
           { method: 'DELETE' },
         ),
     },
+
+    modelStatus: (): Promise<ModelStatus> =>
+      request<ModelStatus>('/api/settings/model-status'),
   },
 }
 
