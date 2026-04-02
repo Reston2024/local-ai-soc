@@ -17,6 +17,11 @@ Note on EventID:
 
 from __future__ import annotations
 
+# Version identifier for this field map — updated whenever the mapping changes.
+# Used by detection provenance records so analysts can reconstruct which
+# field translations were active when a Sigma rule fired.
+FIELD_MAP_VERSION: str = "20"
+
 # Sigma field name → normalized_events DuckDB column
 SIGMA_FIELD_MAP: dict[str, str] = {
     # ------------------------------------------------------------------ #
