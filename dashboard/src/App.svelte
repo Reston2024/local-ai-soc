@@ -14,10 +14,11 @@
   import PlaybooksView from './views/PlaybooksView.svelte'
   import ReportsView from './views/ReportsView.svelte'
   import AssetsView from './views/AssetsView.svelte'
+  import ProvenanceView from './views/ProvenanceView.svelte'
 
   type View =
     | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
-    | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets'
+    | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
 
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -102,6 +103,7 @@
       items: [
         { id: 'investigation', label: 'Investigation', color: '#3b82f6' },
         { id: 'graph',         label: 'Attack Graph',  color: '#22c55e' },
+        { id: 'provenance',    label: 'Provenance',    color: '#f59e0b' },
       ],
     },
     {
@@ -258,6 +260,8 @@
       <ReportsView />
     {:else if currentView === 'assets'}
       <AssetsView />
+    {:else if currentView === 'provenance'}
+      <ProvenanceView />
     {/if}
   </main>
 </div>

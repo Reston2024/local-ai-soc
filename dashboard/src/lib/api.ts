@@ -196,6 +196,54 @@ export interface TrendDataPoint {
 export type TrendsResponse = Record<string, TrendDataPoint[]>
 
 // ---------------------------------------------------------------------------
+// Provenance interfaces (Phase 21-05)
+// ---------------------------------------------------------------------------
+
+export interface IngestProvenanceRecord {
+  prov_id: string
+  raw_sha256: string
+  source_file: string
+  parser_name: string
+  parser_version?: string
+  operator_id?: string
+  ingested_at: string
+}
+
+export interface DetectionProvenanceRecord {
+  prov_id: string
+  detection_id: string
+  rule_id?: string
+  rule_title?: string
+  rule_sha256: string
+  pysigma_version: string
+  field_map_version: string
+  operator_id?: string
+  detected_at: string
+}
+
+export interface LlmProvenanceRecord {
+  audit_id: string
+  model_id: string
+  prompt_template_name?: string
+  prompt_template_sha256?: string
+  response_sha256?: string
+  operator_id?: string
+  grounding_event_ids: string[]
+  created_at: string
+}
+
+export interface PlaybookProvenanceRecord {
+  prov_id: string
+  run_id: string
+  playbook_id?: string
+  playbook_file_sha256: string
+  playbook_version?: string
+  trigger_event_ids: string[]
+  operator_id_who_approved?: string
+  created_at: string
+}
+
+// ---------------------------------------------------------------------------
 // Operator management interfaces (Phase 19-04)
 // ---------------------------------------------------------------------------
 
@@ -472,6 +520,17 @@ export const api = {
       }
       onDone()
     },
+  },
+
+  provenance: {
+    ingest: (eventId: string) =>
+      request<IngestProvenanceRecord>(`/api/provenance/ingest/${encodeURIComponent(eventId)}`),
+    detection: (detectionId: string) =>
+      request<DetectionProvenanceRecord>(`/api/provenance/detection/${encodeURIComponent(detectionId)}`),
+    llm: (auditId: string) =>
+      request<LlmProvenanceRecord>(`/api/provenance/llm/${encodeURIComponent(auditId)}`),
+    playbook: (runId: string) =>
+      request<PlaybookProvenanceRecord>(`/api/provenance/playbook/${encodeURIComponent(runId)}`),
   },
 
   settings: {
