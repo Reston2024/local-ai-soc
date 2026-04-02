@@ -124,3 +124,12 @@ None - no external service configuration required.
 ---
 *Phase: 18-reporting-compliance*
 *Completed: 2026-03-31*
+
+## Self-Check: PASSED
+
+- FOUND: tests/unit/test_kpi_snapshots.py
+- FOUND: backend/stores/duckdb_store.py
+- FOUND: backend/api/analytics.py
+- FOUND: backend/main.py
+- FOUND: .planning/phases/18-reporting-compliance/18-03-SUMMARY.md
+- Commits 7817564, c964280, 9352dcd, 24cbeb8 verified in git log

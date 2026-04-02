@@ -109,3 +109,13 @@ None - no external service configuration required.
 ---
 *Phase: 22-ai-lifecycle-hardening*
 *Completed: 2026-04-02*
+
+## Self-Check: PASSED
+
+- prompts/analyst_qa.py — FOUND
+- prompts/triage.py — FOUND
+- dashboard/src/views/InvestigationView.svelte — FOUND
+- tests/eval/test_advisory.py — FOUND
+- .planning/phases/22-ai-lifecycle-hardening/22-05-SUMMARY.md — FOUND
+- Commit 444e715 — FOUND
+- Commit 0f3984e — FOUND
