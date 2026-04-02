@@ -2,13 +2,29 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 22 (in_progress)
-current_plan: 22-02 complete — heuristic confidence_score (0.0-1.0) in llm_audit_provenance; update_confidence_score() on SQLiteStore; confidence_score in /ask and /ask/stream responses; InvestigationView confidence badge; 4 eval tests passing
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-02T16:24:50Z"
-stopped_at: "Completed 22-02-PLAN.md — heuristic confidence scoring for LLM audit provenance"
+last_updated: "2026-04-02T16:28:37.827Z"
 progress:
-  [██████████] 99%
+  total_phases: 22
+  completed_phases: 19
+  total_plans: 107
+  completed_plans: 109
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 22 (in_progress)
+current_plan: 22-03 complete — 6 eval tests passing across analyst_qa, triage, threat_hunt prompt templates; mock HTTP layer, no live Ollama required
+status: in_progress
+last_updated: "2026-04-02T16:34:00Z"
+stopped_at: "Completed 22-03-PLAN.md — prompt template eval harness fully functional"
+progress:
+  [██████████] 100%
   total_phases: 22
   completed_phases: 19
   total_plans: 107
@@ -23,6 +39,8 @@ decisions:
   - "22-02: Heuristic weights: 0.5 grounding + 0.3 citation_ok + 0.1 rich-context (>=5 ids); prompt_template_sha256 bonus omitted (SHA not in ask() scope)"
   - "22-02: Score write non-fatal: wrapped in try/except with log.warning to never block LLM response on DB failure"
   - "22-02: Both DDL and ALTER TABLE migration present: DDL for fresh :memory: test DBs, ALTER TABLE for existing production data/graph.db"
+  - "22-03: Eval tests use vacuous-truth citation pass for triage/threat_hunt — MOCK_RESPONSE_TEXT IDs not in those fixture sets"
+  - "22-03: load_event_fixtures() imported as plain function from conftest rather than using it as a pytest fixture parameter"
 ---
 
 ---
