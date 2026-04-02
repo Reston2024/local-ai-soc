@@ -2,6 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-02T19:42:36.097Z"
+progress:
+  total_phases: 22
+  completed_phases: 20
+  total_plans: 110
+  completed_plans: 115
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 22 (complete)
 current_plan: 22-09 complete — _check_model_drift() wired into generate() and stream_generate(); 803 tests pass; P22-T04 hot-path gap closed
 status: in_progress
