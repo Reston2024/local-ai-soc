@@ -194,6 +194,24 @@ CREATE TABLE IF NOT EXISTS operators (
 );
 CREATE INDEX IF NOT EXISTS idx_operators_username  ON operators (username);
 CREATE INDEX IF NOT EXISTS idx_operators_key_prefix ON operators (key_prefix);
+
+CREATE TABLE IF NOT EXISTS ingest_provenance (
+    prov_id         TEXT PRIMARY KEY,
+    raw_sha256      TEXT NOT NULL,
+    source_file     TEXT NOT NULL,
+    parser_name     TEXT NOT NULL,
+    parser_version  TEXT,
+    operator_id     TEXT,
+    ingested_at     TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ingest_provenance_events (
+    prov_id     TEXT NOT NULL,
+    event_id    TEXT NOT NULL,
+    PRIMARY KEY (prov_id, event_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ingest_prov_event ON ingest_provenance_events (event_id);
 """
 
 
@@ -1122,6 +1140,75 @@ class SQLiteStore:
         )
         self._conn.commit()
         log.info("Bootstrapped legacy admin operator", operator_id=oid)
+
+    # ------------------------------------------------------------------
+    # Ingest provenance
+    # ------------------------------------------------------------------
+
+    def record_ingest_provenance(
+        self,
+        prov_id: str,
+        raw_sha256: str,
+        source_file: str,
+        parser_name: str,
+        event_ids: list[str],
+        parser_version: Optional[str] = None,
+        operator_id: Optional[str] = None,
+    ) -> None:
+        """
+        Write an ingest provenance record and its associated event-junction rows.
+
+        Inserts into ingest_provenance and ingest_provenance_events in a single
+        transaction.  Uses INSERT OR IGNORE so re-running is safe.
+
+        Callers must wrap this in try/except — this method does NOT suppress
+        exceptions itself.
+        """
+        self._conn.execute(
+            """
+            INSERT OR IGNORE INTO ingest_provenance
+                (prov_id, raw_sha256, source_file, parser_name,
+                 parser_version, operator_id, ingested_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                prov_id,
+                raw_sha256,
+                source_file,
+                parser_name,
+                parser_version,
+                operator_id,
+                _now_iso(),
+            ),
+        )
+        for event_id in event_ids:
+            self._conn.execute(
+                """
+                INSERT OR IGNORE INTO ingest_provenance_events (prov_id, event_id)
+                VALUES (?, ?)
+                """,
+                (prov_id, event_id),
+            )
+        self._conn.commit()
+
+    def get_ingest_provenance(self, event_id: str) -> Optional[dict[str, Any]]:
+        """
+        Return the ingest_provenance record for the given event_id, or None.
+
+        Joins ingest_provenance_events to ingest_provenance on prov_id.
+        """
+        row = self._conn.execute(
+            """
+            SELECT ip.prov_id, ip.raw_sha256, ip.source_file, ip.parser_name,
+                   ip.parser_version, ip.operator_id, ip.ingested_at
+            FROM ingest_provenance_events ipe
+            JOIN ingest_provenance ip ON ipe.prov_id = ip.prov_id
+            WHERE ipe.event_id = ?
+            LIMIT 1
+            """,
+            (event_id,),
+        ).fetchone()
+        return dict(row) if row else None
 
     # ------------------------------------------------------------------
     # Shutdown
