@@ -32,6 +32,8 @@ raw rule text.
 
 from __future__ import annotations
 
+import hashlib
+import importlib.metadata
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,9 +52,20 @@ from sigma.rule import SigmaRule
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
 from backend.models.event import DetectionRecord
-from detections.field_map import INTEGER_COLUMNS, SIGMA_FIELD_MAP
+from detections.field_map import FIELD_MAP_VERSION, INTEGER_COLUMNS, SIGMA_FIELD_MAP
 
 log = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Provenance constants
+# ---------------------------------------------------------------------------
+
+PYSIGMA_VERSION: str = importlib.metadata.version("pySigma")
+
+
+def _rule_sha256(yaml_text: str) -> str:
+    """Return the 64-char hex SHA-256 digest of the rule YAML text."""
+    return hashlib.sha256(yaml_text.encode()).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +213,7 @@ class SigmaMatcher:
         self.stores = stores
         self._rules: list[SigmaRule] = []
         self._rule_sql_cache: dict[str, str | None] = {}  # rule id → WHERE clause
+        self._rule_yaml: dict[str, str] = {}  # str(rule.id) → original YAML text
 
     # ------------------------------------------------------------------
     # Rule loading
@@ -223,8 +237,10 @@ class SigmaMatcher:
 
         for yml_path in sorted(rules_path.rglob("*.yml")):
             try:
-                rule = SigmaRule.from_yaml(yml_path.read_text(encoding="utf-8"))
+                yaml_text = yml_path.read_text(encoding="utf-8")
+                rule = SigmaRule.from_yaml(yaml_text)
                 self._rules.append(rule)
+                self._rule_yaml[str(rule.id)] = yaml_text
                 loaded += 1
                 log.debug("Sigma rule loaded", rule=str(rule.title), path=str(yml_path))
             except Exception as exc:
@@ -236,8 +252,10 @@ class SigmaMatcher:
 
         for yaml_path in sorted(rules_path.rglob("*.yaml")):
             try:
-                rule = SigmaRule.from_yaml(yaml_path.read_text(encoding="utf-8"))
+                yaml_text = yaml_path.read_text(encoding="utf-8")
+                rule = SigmaRule.from_yaml(yaml_text)
                 self._rules.append(rule)
+                self._rule_yaml[str(rule.id)] = yaml_text
                 loaded += 1
             except Exception as exc:
                 log.warning(
@@ -258,6 +276,7 @@ class SigmaMatcher:
         try:
             rule = SigmaRule.from_yaml(yaml_text)
             self._rules.append(rule)
+            self._rule_yaml[str(rule.id)] = yaml_text
             return rule
         except Exception as exc:
             log.warning("Failed to parse Sigma rule YAML", error=str(exc))
@@ -698,6 +717,9 @@ class SigmaMatcher:
         """
         Persist DetectionRecord objects to the SQLite detections table.
 
+        Also writes a detection_provenance row for each detection so analysts
+        can reproduce any detection from its original rule YAML bytes.
+
         Args:
             detections: List of DetectionRecord objects.
 
@@ -730,7 +752,32 @@ class SigmaMatcher:
                     )
             return saved
 
-        return await asyncio.to_thread(_sync_save)
+        count = await asyncio.to_thread(_sync_save)
+
+        # Write provenance record for each detection (non-fatal on failure)
+        for det in detections:
+            try:
+                yaml_text = self._rule_yaml.get(det.rule_id or "", "")
+                sha256 = _rule_sha256(yaml_text) if yaml_text else "unknown"
+                await asyncio.to_thread(
+                    self.stores.sqlite.record_detection_provenance,
+                    str(uuid4()),
+                    det.id,
+                    det.rule_id,
+                    det.rule_name,
+                    sha256,
+                    PYSIGMA_VERSION,
+                    FIELD_MAP_VERSION,
+                    None,   # operator_id not threaded through DetectionRecord
+                )
+            except Exception as exc:
+                log.warning(
+                    "Detection provenance write failed (non-fatal)",
+                    detection_id=det.id,
+                    error=str(exc),
+                )
+
+        return count
 
     @property
     def rule_count(self) -> int:
