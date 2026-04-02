@@ -88,6 +88,13 @@
     try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }
     catch { return ts.slice(0, 19) }
   }
+
+  function confidenceLevel(score: number | undefined): string {
+    if (score === undefined) return 'unknown'
+    if (score >= 0.8) return 'high'
+    if (score >= 0.5) return 'medium'
+    return 'low'
+  }
 </script>
 
 <div class="investigation-view">
@@ -151,6 +158,15 @@
       {#each chatMessages as msg (msg.id)}
         <div class="message {msg.role}">
           <span class="role-label">{msg.role === 'user' ? 'You' : 'Copilot'}</span>
+          {#if msg.role === 'assistant'}
+            <div class="ai-advisory-inline" aria-label="AI Advisory">
+              <span class="confidence-badge confidence-{confidenceLevel(msg.confidence)}"
+                    title="AI confidence: {msg.confidence !== undefined ? (msg.confidence * 100).toFixed(0) + '%' : 'unknown'}">
+                {confidenceLevel(msg.confidence) === 'high' ? 'High confidence' :
+                 confidenceLevel(msg.confidence) === 'medium' ? 'Medium confidence' : 'Low confidence'}
+              </span>
+            </div>
+          {/if}
           <p>{msg.content}</p>
         </div>
       {/each}
@@ -230,6 +246,21 @@
 .entity-badge { font-size: 0.7rem; padding: 1px 5px; border-radius: 3px;
                 background: var(--surface2, #253048); color: var(--fg, #c9d1e0);
                 margin-right: 0.2rem; }
+
+/* Confidence badge */
+.confidence-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.confidence-high    { background: #16a34a; color: #fff; }
+.confidence-medium  { background: #d97706; color: #fff; }
+.confidence-low     { background: #dc2626; color: #fff; }
+.confidence-unknown { background: #6b7280; color: #fff; }
+.ai-advisory-inline { margin-bottom: 4px; }
 
 /* Copilot */
 .copilot-panel { display: flex; flex-direction: column; }
