@@ -3,21 +3,24 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 21 (in_progress)
-current_plan: 21-00 complete — 4 Pydantic provenance models + FIELD_MAP_VERSION='20' + 16 RED pytest stubs (5 files, 0 errors). Wave 0 interface contracts ready for Wave 1 executors.
+current_plan: 21-01 complete — ingest_provenance + ingest_provenance_events SQLite tables, record_ingest_provenance()/get_ingest_provenance() methods, _sha256_file() helper, operator_id param on ingest_file(); 5/5 tests GREEN (P21-T01 satisfied).
 status: in_progress
-last_updated: "2026-04-02T12:33:29Z"
-stopped_at: "Completed 21-00-PLAN.md — provenance Pydantic models, FIELD_MAP_VERSION, and 16 RED test stubs"
+last_updated: "2026-04-02T12:40:42Z"
+stopped_at: "Completed 21-01-PLAN.md — ingest provenance SHA-256 fingerprint + parser identity tracking"
 progress:
   [██████████] 100%
   total_phases: 21
   completed_phases: 20
-  total_plans: 100
-  completed_plans: 100
+  total_plans: 101
+  completed_plans: 101
   percent: 100
 decisions:
   - "21-00: FIELD_MAP_VERSION = '20' — value matches Phase 20 (last phase to modify SIGMA_FIELD_MAP)"
   - "21-00: Pydantic provenance models use str/Optional[str]/list[str] only — no datetime — for trivial SQLite serialization"
   - "21-00: test_provenance_api.py imports all 4 models so import regressions surface as collection errors not false FAILs"
+  - "21-01: event_ids list passed to record_ingest_provenance contains all normalized event IDs (parser generates UUIDs, raw input IDs not preserved)"
+  - "21-01: provenance write failure is non-fatal — try/except wraps asyncio.to_thread call, log.warning on exc"
+  - "21-01: parser_version is None pending addition of __version__ attributes to parser classes"
 ---
 
 ---
