@@ -2,15 +2,31 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 21 (in_progress)
-current_plan: 21-02 complete — detection_provenance SQLite table, record/get methods on SQLiteStore, PYSIGMA_VERSION/FIELD_MAP_VERSION constants in matcher.py, YAML cache in SigmaMatcher, provenance writes in save_detections(), GET /api/provenance/detection/{id} endpoint; 3/3 tests GREEN (P21-T02 satisfied).
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-02T12:48:00Z"
-stopped_at: "Completed 21-02-PLAN.md — detection provenance SHA-256 + pySigma/field-map version per detection"
+last_updated: "2026-04-02T12:55:41.533Z"
+progress:
+  total_phases: 21
+  completed_phases: 18
+  total_plans: 100
+  completed_plans: 103
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 21 (complete)
+current_plan: 21-04 complete — playbook_run_provenance SQLite table, record/get methods on SQLiteStore, provenance write in start_playbook_run(), GET /api/provenance/playbook/{run_id}; 3/3 tests GREEN (P21-T04 satisfied). Phase 21 evidence-provenance FULLY COMPLETE.
+status: in_progress
+last_updated: "2026-04-02T13:05:00Z"
+stopped_at: "Completed 21-04-PLAN.md — playbook run provenance SHA-256 + operator + trigger event IDs per playbook execution"
 progress:
   [██████████] 100%
   total_phases: 21
-  completed_phases: 20
+  completed_phases: 21
   total_plans: 101
   completed_plans: 101
   percent: 100
@@ -25,6 +41,8 @@ decisions:
   - "21-02: Provenance write in save_detections() is non-fatal — detection pipeline never blocked by provenance failure"
   - "21-02: operator_id stored as NULL in detection_provenance — not yet threaded through DetectionRecord"
   - "21-02: rule_sha256 falls back to string 'unknown' when YAML not cached (pre-existing rules)"
+  - "21-04: operator_id_who_approved stored as NULL — not yet threaded through unauthenticated start_playbook_run route"
+  - "21-04: trigger_event_ids defaults to [] in start_playbook_run — additive only, no breaking change to request model"
 ---
 
 ---
