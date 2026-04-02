@@ -310,6 +310,7 @@ class OllamaClient:
         prompt_template_name: Optional[str] = None,
         prompt_template_sha256: Optional[str] = None,
         grounding_event_ids: Optional[list[str]] = None,
+        out_context: Optional[dict] = None,
     ) -> str:
         """
         Generate a complete text response (non-streaming).
@@ -321,6 +322,9 @@ class OllamaClient:
             model:               Override the default model for this call.
             use_cybersec_model:  If True, route to self.cybersec_model instead of
                                  self.model (ADR-020).
+            out_context:         Optional dict; if provided, populated with
+                                 ``audit_id`` and ``grounding_event_ids`` after the
+                                 provenance write.
 
         Returns:
             The model's text response as a string.
@@ -401,6 +405,9 @@ class OllamaClient:
                     )
             except Exception as exc:
                 log.warning("LLM provenance write failed (non-fatal)", error=str(exc))
+            if out_context is not None:
+                out_context["audit_id"] = audit_id
+                out_context["grounding_event_ids"] = grounding_event_ids or []
             return response_text
         except OllamaError:
             raise
@@ -459,6 +466,7 @@ class OllamaClient:
         prompt_template_name: Optional[str] = None,
         prompt_template_sha256: Optional[str] = None,
         grounding_event_ids: Optional[list[str]] = None,
+        out_context: Optional[dict] = None,
     ) -> str:
         """
         Generate a streaming text response token by token.
@@ -472,6 +480,9 @@ class OllamaClient:
             model:               Override the default model for this call.
             use_cybersec_model:  If True, route to self.cybersec_model instead of
                                  self.model (ADR-020).
+            out_context:         Optional dict; if provided, populated with
+                                 ``audit_id`` and ``grounding_event_ids`` after the
+                                 provenance write.
 
         Returns:
             The complete response text assembled from all tokens.
@@ -584,6 +595,9 @@ class OllamaClient:
                     )
             except Exception as exc:
                 log.warning("LLM provenance write failed (non-fatal)", error=str(exc))
+            if out_context is not None:
+                out_context["audit_id"] = stream_audit_id
+                out_context["grounding_event_ids"] = grounding_event_ids or []
         return result
 
     # ------------------------------------------------------------------
