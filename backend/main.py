@@ -182,6 +182,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         embed_model=settings.OLLAMA_EMBED_MODEL,
         cybersec_model=settings.OLLAMA_CYBERSEC_MODEL,
         duckdb_store=duckdb_store,
+        sqlite_store=sqlite_store,
     )
 
     # 7. Attach to app.state

@@ -80,7 +80,7 @@ def test_llm_provenance_written(store: SQLiteStore) -> None:
         ids = json.loads(row["grounding_event_ids"])
         assert ids == ["evt-001", "evt-002"]
 
-    asyncio.get_event_loop().run_until_complete(_run())
+    asyncio.run(_run())
 
 
 def test_llm_provenance_no_duplicate_rows(store: SQLiteStore) -> None:
@@ -122,21 +122,18 @@ def test_llm_provenance_no_duplicate_rows(store: SQLiteStore) -> None:
             f"Expected exactly 1 provenance row from stream_generate, got {len(rows)}"
         )
 
-    asyncio.get_event_loop().run_until_complete(_run())
+    asyncio.run(_run())
 
 
 def test_llm_provenance_api() -> None:
     """GET /api/provenance/llm/{audit_id} returns 200 with model_id and response_sha256."""
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
-    from backend.main import create_app
-    from backend.core.deps import get_stores, Stores
-    from backend.stores.duckdb_store import DuckDBStore
-    from backend.stores.chroma_store import ChromaStore
+    from backend.api.provenance import router as provenance_router
+    from backend.core.deps import get_stores
 
     sqlite_store = SQLiteStore(":memory:")
 
-    # Pre-insert a known provenance row
-    import json as _json
     audit_id = "test-audit-001"
     sqlite_store.record_llm_provenance(
         audit_id=audit_id,
@@ -148,20 +145,18 @@ def test_llm_provenance_api() -> None:
         operator_id="op-api-test",
     )
 
-    app = create_app()
+    app = FastAPI()
+    app.include_router(provenance_router)
 
-    # Override get_stores dependency
-    mock_duckdb = MagicMock(spec=DuckDBStore)
-    mock_chroma = MagicMock(spec=ChromaStore)
-    stores_override = Stores(duckdb=mock_duckdb, chroma=mock_chroma, sqlite=sqlite_store)
+    mock_stores = MagicMock()
+    mock_stores.sqlite = sqlite_store
+    app.dependency_overrides[get_stores] = lambda: mock_stores
 
-    app.dependency_overrides[get_stores] = lambda: stores_override
-
-    with TestClient(app) as client:
-        resp = client.get(f"/api/provenance/llm/{audit_id}")
-        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
-        data = resp.json()
-        assert data["audit_id"] == audit_id
-        assert data["model_id"] == "qwen3:14b"
-        assert data["response_sha256"] == "d" * 64
-        assert data["grounding_event_ids"] == ["evt-100"]
+    client = TestClient(app)
+    resp = client.get(f"/api/provenance/llm/{audit_id}")
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    data = resp.json()
+    assert data["audit_id"] == audit_id
+    assert data["model_id"] == "qwen3:14b"
+    assert data["response_sha256"] == "d" * 64
+    assert data["grounding_event_ids"] == ["evt-100"]
