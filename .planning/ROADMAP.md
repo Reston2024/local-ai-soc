@@ -812,7 +812,7 @@ Plans:
 ## Phase 21: Evidence Provenance
 **Status:** TODO
 **Depends on:** Phase 20 complete
-**Plans:** 6 plans
+**Plans:** 1/6 plans executed
 **Goal:** Establish a defensible chain-of-custody for every artefact in the system — ingested events, detections, AI Copilot responses, and playbook runs. Each artefact carries a cryptographic hash, a source fingerprint, and a transformation lineage record (parser version, rule version, model version, prompt template version). Analysts and compliance reviewers can trace any finding back to the raw source with full provenance metadata. This is the prerequisite for DFIR validity and NIST AI RMF trustworthiness requirements.
 
 ### Requirements
