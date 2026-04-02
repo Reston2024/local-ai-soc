@@ -19,10 +19,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 21 (complete)
-current_plan: 21-04 complete — playbook_run_provenance SQLite table, record/get methods on SQLiteStore, provenance write in start_playbook_run(), GET /api/provenance/playbook/{run_id}; 3/3 tests GREEN (P21-T04 satisfied). Phase 21 evidence-provenance FULLY COMPLETE.
+current_plan: 21-05 complete — 4 authenticated GET endpoints at /api/provenance/{ingest,detection,llm,playbook}/{id} with require_role("analyst","admin"); ProvenanceView.svelte tab-based chain-of-custody lookup; 16/16 provenance tests GREEN (P21-T05 satisfied). Phase 21 evidence-provenance FULLY COMPLETE.
 status: in_progress
-last_updated: "2026-04-02T13:05:00Z"
-stopped_at: "Completed 21-04-PLAN.md — playbook run provenance SHA-256 + operator + trigger event IDs per playbook execution"
+last_updated: "2026-04-02T06:20:00Z"
+stopped_at: "Completed 21-05-PLAN.md — provenance API endpoints + ProvenanceView.svelte dashboard UI"
 progress:
   [██████████] 100%
   total_phases: 21
@@ -47,6 +47,8 @@ decisions:
   - "21-03: sqlite_store is optional on OllamaClient (default None) to avoid breaking existing callers and tests"
   - "21-03: provenance write in generate/stream_generate is non-fatal — LLM calls never blocked by SQLite failure"
   - "21-03: stream_generate() writes provenance only at stream completion (not per chunk) — avoids duplicate rows"
+  - "21-05: require_role added directly in provenance.py endpoints (not only main.py router-level) — makes router self-contained and testable in isolation"
+  - "21-05: existing test_*_provenance_api tests updated to override verify_token with analyst OperatorContext — required after adding auth to endpoints"
 ---
 
 ---
