@@ -11,7 +11,12 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.core.deps import Stores, get_stores
-from backend.models.provenance import DetectionProvenanceRecord, IngestProvenanceRecord
+from backend.models.provenance import (
+    DetectionProvenanceRecord,
+    IngestProvenanceRecord,
+    LlmProvenanceRecord,
+    PlaybookProvenanceRecord,
+)
 
 router = APIRouter(prefix="/api/provenance", tags=["provenance"])
 
@@ -58,3 +63,45 @@ async def get_ingest_provenance(
     # get_ingest_provenance returns keys from ingest_provenance; we need event_id too
     row["event_id"] = event_id
     return IngestProvenanceRecord(**row)
+
+
+@router.get(
+    "/llm/{audit_id}",
+    response_model=LlmProvenanceRecord,
+    summary="Get LLM call provenance",
+    description=(
+        "Return the provenance record for a given LLM call: the model ID, "
+        "prompt template name and SHA-256, response SHA-256, and grounding event IDs."
+    ),
+)
+async def get_llm_provenance(
+    audit_id: str,
+    stores: Stores = Depends(get_stores),
+) -> LlmProvenanceRecord:
+    row = await asyncio.to_thread(
+        stores.sqlite.get_llm_provenance, audit_id
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Provenance record not found")
+    return LlmProvenanceRecord(**row)
+
+
+@router.get(
+    "/playbook/{run_id}",
+    response_model=PlaybookProvenanceRecord,
+    summary="Get playbook run provenance",
+    description=(
+        "Return the provenance record for a given playbook run: the playbook steps SHA-256, "
+        "playbook version, trigger event IDs, and approving operator."
+    ),
+)
+async def get_playbook_provenance(
+    run_id: str,
+    stores: Stores = Depends(get_stores),
+) -> PlaybookProvenanceRecord:
+    row = await asyncio.to_thread(
+        stores.sqlite.get_playbook_provenance, run_id
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Provenance record not found")
+    return PlaybookProvenanceRecord(**row)

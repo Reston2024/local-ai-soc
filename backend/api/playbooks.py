@@ -22,6 +22,7 @@ Seeding:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Any
@@ -206,6 +207,27 @@ async def start_playbook_run(
         playbook_id=playbook_id,
         investigation_id=investigation_id,
     )
+
+    # Record playbook run provenance (non-fatal)
+    try:
+        steps_json = playbook.get("steps", "[]")
+        if not isinstance(steps_json, str):
+            steps_json = json.dumps(steps_json)
+        pb_sha256 = hashlib.sha256(steps_json.encode()).hexdigest()
+        pb_version = playbook.get("version", "1.0") or "1.0"
+        await asyncio.to_thread(
+            stores.sqlite.record_playbook_provenance,
+            str(uuid4()),
+            run_dict["run_id"],
+            playbook_id,
+            pb_sha256,
+            pb_version,
+            [],  # trigger_event_ids: none in this unauthenticated path
+            None,  # operator_id_who_approved: not yet threaded through
+        )
+    except Exception as exc:
+        log.warning("Playbook provenance write failed (non-fatal)", error=str(exc))
+
     return JSONResponse(content=created, status_code=201)
 
 
