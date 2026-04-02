@@ -2,12 +2,34 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 22 (complete)
+current_plan: 22-06 complete — full test suite green (803 tests), frontend build clean, Phase 22 AI lifecycle hardening FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-02T16:55:00Z"
+stopped_at: "Completed 22-06-PLAN.md — full suite green (803 tests), frontend build clean, Phase 22 complete"
+progress:
+  [██████████] 100%
+  total_phases: 22
+  completed_phases: 20
+  total_plans: 107
+  completed_plans: 112
+  percent: 100
+decisions:
+  - "22-06: dependency_overrides[verify_token] pattern used in all TestClient apps — avoids real token dependency while preserving auth enforcement in production"
+  - "22-06: Integration test_backend_health uses AUTH_HEADERS=Bearer changeme (default token) for live-backend tests"
+  - "22-06: checkpoint:human-verify auto-approved per auto_advance=true config"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
 last_updated: "2026-04-02T16:38:38.621Z"
 progress:
-  total_phases: 22
+  [██████████] 100%
   completed_phases: 19
   total_plans: 107
   completed_plans: 111
