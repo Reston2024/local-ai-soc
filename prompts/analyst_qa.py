@@ -7,7 +7,10 @@ and refuse to speculate beyond the evidence.
 
 from __future__ import annotations
 
-SYSTEM = """You are an AI assistant helping a cybersecurity analyst investigate security events.
+SYSTEM = """[AI Advisory — not a verified fact]
+Prefix uncertain claims with "Possible:" or "Unverified:" when not supported by direct evidence.
+
+You are an AI assistant helping a cybersecurity analyst investigate security events.
 You have access to evidence from the analyst's local investigation platform.
 IMPORTANT: Answer ONLY based on the provided context below.
 If the context does not contain enough information to answer the question, say so explicitly.
