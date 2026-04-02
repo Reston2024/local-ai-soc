@@ -2,15 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 22 (in_progress)
+current_plan: 22-00 complete — tests/eval/ eval scaffold with 18 pre-skipped stubs (grounding, confidence, prompt-eval, model-drift, advisory) and 5 NDJSON fixtures; uv run pytest tests/eval/ -x -q exits 0
 status: in_progress
-last_updated: "2026-04-02T13:11:17.081Z"
+last_updated: "2026-04-02T16:17:00Z"
+stopped_at: "Completed 22-00-PLAN.md — tests/eval/ eval scaffold with 18 pre-skipped stubs and 5 NDJSON fixtures"
 progress:
-  total_phases: 21
+  [██████████] 99%
+  total_phases: 22
   completed_phases: 19
-  total_plans: 100
-  completed_plans: 105
+  total_plans: 107
+  completed_plans: 106
+decisions:
+  - "22-00: NDJSON fixture event_ids (evt-001, evt-002) match MOCK_RESPONSE_TEXT so citation checks pass when stubs are activated"
+  - "22-00: mock_ollama attaches _mock_post to OllamaClient instance — follows existing unit test pattern"
+  - "22-00: All test files import target module at module level for fail-fast import error detection on stub activation"
 ---
 
 ---
