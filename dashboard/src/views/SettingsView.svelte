@@ -1,6 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api.ts'
-  import type { Operator, OperatorCreateResponse, OperatorRotateResponse } from '../lib/api.ts'
+  import type { Operator, OperatorCreateResponse, OperatorRotateResponse, ModelStatus } from '../lib/api.ts'
 
   // ---------------------------------------------------------------------------
   // Tab state
@@ -125,6 +125,30 @@
     totpProvisioningUri = ''
     totpUsername = ''
   }
+
+  // ---------------------------------------------------------------------------
+  // System tab state — model status
+  // ---------------------------------------------------------------------------
+  let modelStatus = $state<ModelStatus | null>(null)
+  let modelStatusLoading = $state(false)
+  let modelStatusError = $state('')
+
+  $effect(() => {
+    if (activeTab === 'system' && modelStatus === null && !modelStatusLoading)
+      loadModelStatus()
+  })
+
+  async function loadModelStatus() {
+    modelStatusLoading = true
+    modelStatusError = ''
+    try {
+      modelStatus = await api.settings.modelStatus()
+    } catch (e: any) {
+      modelStatusError = e.message
+    } finally {
+      modelStatusLoading = false
+    }
+  }
 </script>
 
 <div class="view">
@@ -242,12 +266,45 @@
     {/if}
 
     <!-- ------------------------------------------------------------------ -->
-    <!-- System tab (placeholder)                                            -->
+    <!-- System tab — AI model status                                        -->
     <!-- ------------------------------------------------------------------ -->
     {#if activeTab === 'system'}
       <div class="card">
-        <h2>System Configuration</h2>
-        <p class="muted">System configuration options will be available in a future update.</p>
+        <h2>AI Model Status</h2>
+        {#if modelStatusLoading}
+          <p class="muted">Loading model status...</p>
+        {:else if modelStatusError}
+          <p class="error">{modelStatusError}</p>
+        {:else if modelStatus}
+          <div class="model-status-grid">
+            <div class="status-row">
+              <span class="status-label">Active model</span>
+              <span class="status-value">{modelStatus.active_model ?? 'Unknown (Ollama unreachable)'}</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Last known model</span>
+              <span class="status-value">{modelStatus.last_known_model ?? 'Not yet recorded'}</span>
+            </div>
+            {#if modelStatus.drift_detected}
+              <div class="drift-alert" role="alert" aria-live="polite">
+                <strong>Model drift detected</strong> — active model differs from last-known model.
+                Review the change and confirm it is expected.
+              </div>
+            {/if}
+            {#if modelStatus.last_change}
+              <div class="status-row">
+                <span class="status-label">Last change detected</span>
+                <span class="status-value">{modelStatus.last_change.detected_at}</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Previous model</span>
+                <span class="status-value">{modelStatus.last_change.previous_model ?? '—'}</span>
+              </div>
+            {/if}
+          </div>
+        {:else}
+          <p class="muted">No model status available.</p>
+        {/if}
       </div>
     {/if}
 
@@ -378,4 +435,11 @@
   .qr-container { display: flex; justify-content: center; padding: 8px; }
   .qr-image { max-width: 240px; border-radius: 4px; }
   .provisioning-uri { font-family: monospace; font-size: 10px; word-break: break-all; }
+
+  /* Model status card */
+  .model-status-grid { display: grid; gap: 8px; }
+  .status-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border, #e5e7eb); }
+  .status-label { font-weight: 500; color: var(--text-muted, #6b7280); }
+  .status-value { font-family: monospace; }
+  .drift-alert { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 10px 14px; color: #92400e; margin: 8px 0; }
 </style>
