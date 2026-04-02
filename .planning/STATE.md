@@ -43,6 +43,10 @@ decisions:
   - "21-02: rule_sha256 falls back to string 'unknown' when YAML not cached (pre-existing rules)"
   - "21-04: operator_id_who_approved stored as NULL — not yet threaded through unauthenticated start_playbook_run route"
   - "21-04: trigger_event_ids defaults to [] in start_playbook_run — additive only, no breaking change to request model"
+  - "21-03: record_llm_provenance uses INSERT OR IGNORE to prevent duplicate rows when called multiple times with the same audit_id"
+  - "21-03: sqlite_store is optional on OllamaClient (default None) to avoid breaking existing callers and tests"
+  - "21-03: provenance write in generate/stream_generate is non-fatal — LLM calls never blocked by SQLite failure"
+  - "21-03: stream_generate() writes provenance only at stream completion (not per chunk) — avoids duplicate rows"
 ---
 
 ---
