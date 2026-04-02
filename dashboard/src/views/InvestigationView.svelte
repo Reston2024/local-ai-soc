@@ -157,23 +157,35 @@
     <div class="chat-history">
       {#each chatMessages as msg (msg.id)}
         <div class="message {msg.role}">
-          <span class="role-label">{msg.role === 'user' ? 'You' : 'Copilot'}</span>
           {#if msg.role === 'assistant'}
-            <div class="ai-advisory-inline" aria-label="AI Advisory">
-              <span class="confidence-badge confidence-{confidenceLevel(msg.confidence)}"
-                    title="AI confidence: {msg.confidence !== undefined ? (msg.confidence * 100).toFixed(0) + '%' : 'unknown'}">
-                {confidenceLevel(msg.confidence) === 'high' ? 'High confidence' :
-                 confidenceLevel(msg.confidence) === 'medium' ? 'Medium confidence' : 'Low confidence'}
+            <div class="ai-advisory-banner" aria-label="AI Advisory — not a verified fact">
+              <span class="advisory-label">AI Advisory</span>
+              <span
+                class="confidence-badge confidence-{confidenceLevel(msg.confidence)}"
+                title="AI confidence: {msg.confidence !== undefined ? (msg.confidence * 100).toFixed(0) + '%' : 'unknown'}"
+              >
+                {#if msg.confidence !== undefined}
+                  {confidenceLevel(msg.confidence) === 'high' ? 'High' :
+                   confidenceLevel(msg.confidence) === 'medium' ? 'Medium' : 'Low'} confidence
+                {:else}
+                  Confidence unknown
+                {/if}
               </span>
             </div>
+            <p class="ai-content">{msg.content}</p>
+          {:else}
+            <span class="role-label">You</span>
+            <p>{msg.content}</p>
           {/if}
-          <p>{msg.content}</p>
         </div>
       {/each}
       {#if isStreaming && streamingContent}
         <div class="message assistant streaming">
-          <span class="role-label">Copilot</span>
-          <p>{streamingContent}<span class="cursor">&#x258C;</span></p>
+          <div class="ai-advisory-banner" aria-label="AI Advisory — not a verified fact">
+            <span class="advisory-label">AI Advisory</span>
+            <span class="confidence-badge confidence-unknown">Generating...</span>
+          </div>
+          <p class="ai-content">{streamingContent}<span class="cursor">&#x258C;</span></p>
         </div>
       {/if}
     </div>
@@ -247,6 +259,24 @@
                 background: var(--surface2, #253048); color: var(--fg, #c9d1e0);
                 margin-right: 0.2rem; }
 
+/* AI Advisory banner (P22-T05) — non-dismissable */
+.ai-advisory-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  padding: 4px 8px;
+  border-radius: 2px 4px 4px 2px;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+}
+.advisory-label {
+  font-weight: 700;
+  color: #92400e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 /* Confidence badge */
 .confidence-badge {
   display: inline-block;
@@ -254,13 +284,18 @@
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
-  margin-bottom: 4px;
 }
 .confidence-high    { background: #16a34a; color: #fff; }
 .confidence-medium  { background: #d97706; color: #fff; }
 .confidence-low     { background: #dc2626; color: #fff; }
 .confidence-unknown { background: #6b7280; color: #fff; }
-.ai-advisory-inline { margin-bottom: 4px; }
+/* AI response text styling — distinct from human messages */
+.ai-content {
+  font-style: italic;
+  color: var(--text-muted, #6b7280);
+  margin: 0;
+  line-height: 1.6;
+}
 
 /* Copilot */
 .copilot-panel { display: flex; flex-direction: column; }
