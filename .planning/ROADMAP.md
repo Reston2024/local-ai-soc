@@ -808,3 +808,18 @@ Plans:
 - [ ] 20-04-PLAN.md — Sigma SIGMA_FIELD_MAP ECS additions + smoke tests (P20-T04)
 - [ ] 20-05-PLAN.md — entity_extractor, graph/schema.py, prompt ECS alignment (P20-T05)
 *Phase 20 added: 2026-04-01 (Schema Standardisation ECS/OCSF)*
+
+## Phase 21: Evidence Provenance
+**Status:** TODO
+**Depends on:** Phase 20 complete
+**Plans:** 6 plans
+**Goal:** Establish a defensible chain-of-custody for every artefact in the system — ingested events, detections, AI Copilot responses, and playbook runs. Each artefact carries a cryptographic hash, a source fingerprint, and a transformation lineage record (parser version, rule version, model version, prompt template version). Analysts and compliance reviewers can trace any finding back to the raw source with full provenance metadata. This is the prerequisite for DFIR validity and NIST AI RMF trustworthiness requirements.
+
+### Requirements
+- P21-T01: Ingest provenance — every batch ingested via loader.py receives a provenance record: SHA-256 hash of raw bytes, source file path, parser name + version, ingest timestamp, operator_id; stored in a new SQLite `ingest_provenance` table; GET /api/provenance/ingest/{event_id} returns full chain-of-custody for any event
+- P21-T02: Detection provenance — every detection match written to SQLite carries the Sigma rule file SHA-256, rule title, pySigma backend version, and field_map version at match time; GET /api/provenance/detection/{id} returns rule + backend version that produced the finding
+- P21-T03: AI response provenance — every LLM response in llm_audit.jsonl gains: model_id, prompt_template_name, prompt_template_sha256, response_sha256, operator_id, grounding_event_ids (list of event IDs the response was grounded on); GET /api/provenance/llm/{audit_id} returns full AI lineage record
+- P21-T04: Playbook run provenance — every playbook run record gains: playbook_file_sha256, playbook_version, trigger_event_ids, operator_id_who_approved; GET /api/provenance/playbook/{run_id} returns playbook version + approver chain
+- P21-T05: Provenance API + ProvenanceView tab — all four GET endpoints exposed under /api/provenance/; Svelte ProvenanceView tab in the existing UI (4th nav item) with per-artefact provenance panels; hash values displayed with copy-to-clipboard; timeline of transformation steps from raw ingest → detection → AI response → playbook action
+
+*Phase 21 added: 2026-04-01 (Evidence Provenance)*
