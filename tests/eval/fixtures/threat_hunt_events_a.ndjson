@@ -1,0 +1,2 @@
+{"event_id": "hunt-a-001", "timestamp": "2026-04-01T03:00:00Z", "source": "sysmon", "event_type": "process_create", "host": "srv-db", "user": "sa", "process": "xp_cmdshell", "severity": "critical", "message": "SQL Server xp_cmdshell execution on srv-db — possible SQL injection"}
+{"event_id": "hunt-a-002", "timestamp": "2026-04-01T03:01:00Z", "source": "sysmon", "event_type": "network_connect", "host": "srv-db", "user": "sa", "dest_ip": "10.10.0.99", "dest_port": 4444, "severity": "critical", "message": "Reverse shell connection from srv-db to 10.10.0.99:4444"}
