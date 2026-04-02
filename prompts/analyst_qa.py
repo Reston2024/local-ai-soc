@@ -50,3 +50,23 @@ def build_prompt(
         context = context + "\n\n" + notes_section
 
     return f"{context}\n\nQuestion: {question}"
+
+
+# ---------------------------------------------------------------------------
+# Provenance fingerprinting — must stay at module bottom so the hash
+# captures the full template source (SYSTEM, build_prompt, etc.)
+# ---------------------------------------------------------------------------
+
+import hashlib as _hashlib
+import inspect as _inspect
+import pathlib as _pathlib
+
+
+def _compute_template_sha256() -> str:
+    """Compute SHA-256 of this module's source file for provenance tracking."""
+    src = _pathlib.Path(_inspect.getfile(_compute_template_sha256)).read_bytes()
+    return _hashlib.sha256(src).hexdigest()
+
+
+TEMPLATE_SHA256: str = _compute_template_sha256()
+TEMPLATE_NAME: str = "analyst_qa"

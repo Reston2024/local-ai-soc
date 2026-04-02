@@ -225,6 +225,18 @@ CREATE TABLE IF NOT EXISTS detection_provenance (
     detected_at         TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_det_prov_detection ON detection_provenance (detection_id);
+
+CREATE TABLE IF NOT EXISTS llm_audit_provenance (
+    audit_id                TEXT PRIMARY KEY,
+    model_id                TEXT NOT NULL,
+    prompt_template_name    TEXT,
+    prompt_template_sha256  TEXT,
+    response_sha256         TEXT,
+    operator_id             TEXT,
+    grounding_event_ids     TEXT NOT NULL DEFAULT '[]',
+    created_at              TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_llm_prov_created ON llm_audit_provenance (created_at);
 """
 
 
@@ -1273,6 +1285,59 @@ class SQLiteStore:
             (detection_id,),
         ).fetchone()
         return dict(row) if row else None
+
+    # ------------------------------------------------------------------
+    # LLM audit provenance
+    # ------------------------------------------------------------------
+
+    def record_llm_provenance(
+        self,
+        audit_id: str,
+        model_id: str,
+        prompt_template_name: Optional[str],
+        prompt_template_sha256: Optional[str],
+        response_sha256: Optional[str],
+        grounding_event_ids: list[str],
+        operator_id: Optional[str] = None,
+    ) -> None:
+        """Insert one LLM audit provenance row.
+
+        Uses INSERT OR IGNORE so duplicate audit_ids are silently discarded,
+        preventing duplicate rows when called more than once for the same call.
+        """
+        grounding_json = json.dumps(grounding_event_ids)
+        self._conn.execute(
+            """INSERT OR IGNORE INTO llm_audit_provenance
+               (audit_id, model_id, prompt_template_name, prompt_template_sha256,
+                response_sha256, operator_id, grounding_event_ids, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                audit_id,
+                model_id,
+                prompt_template_name,
+                prompt_template_sha256,
+                response_sha256,
+                operator_id,
+                grounding_json,
+                _now_iso(),
+            ),
+        )
+        self._conn.commit()
+
+    def get_llm_provenance(self, audit_id: str) -> Optional[dict[str, Any]]:
+        """Return the llm_audit_provenance record for the given audit_id, or None.
+
+        The grounding_event_ids field is returned as a parsed list[str].
+        """
+        row = self._conn.execute(
+            "SELECT * FROM llm_audit_provenance WHERE audit_id = ?",
+            (audit_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["grounding_event_ids"] = json.loads(result["grounding_event_ids"])
+        return result
 
     # ------------------------------------------------------------------
     # Shutdown
