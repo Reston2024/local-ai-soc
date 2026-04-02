@@ -62,3 +62,22 @@ class PlaybookProvenanceRecord(BaseModel):
     trigger_event_ids: list[str]
     operator_id_who_approved: Optional[str] = None
     created_at: str               # ISO-8601 UTC timestamp
+
+
+class CopilotResponseRecord(BaseModel):
+    """Caller-facing trust record for a single AI Copilot response.
+
+    Returned by GET /api/copilot/response/{audit_id}.
+    Note: response_text is not stored (privacy/storage); this record
+    surfaces the trust signals: grounding provenance, confidence score,
+    and grounding flag.
+    """
+
+    audit_id: str
+    model_id: str
+    grounding_event_ids: list[str]
+    confidence_score: Optional[float] = None
+    is_grounded: bool
+    prompt_template_name: Optional[str] = None
+    operator_id: Optional[str] = None
+    created_at: str
