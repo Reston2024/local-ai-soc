@@ -237,11 +237,35 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
             context_ids=ids,
         )
 
+    # Heuristic confidence score (P22-T02)
+    _score = 0.0
+    if ids:
+        _score += 0.5
+    if citation_ok:
+        _score += 0.3
+    if len(ids) >= 5:
+        _score += 0.1
+    _score = min(_score, 1.0)
+    confidence_score = round(_score, 4)
+
+    # Persist score to provenance record (non-fatal)
+    if audit_id and stores.sqlite is not None:
+        import asyncio as _asyncio
+        try:
+            await _asyncio.to_thread(
+                stores.sqlite.update_confidence_score,
+                audit_id,
+                confidence_score,
+            )
+        except Exception as exc:
+            log.warning("Confidence score write failed (non-fatal)", error=str(exc))
+
     log.info(
         "Ask answered",
         question_len=len(body.question),
         context_docs=len(docs),
         answer_len=len(answer),
+        confidence_score=confidence_score,
     )
 
     return JSONResponse(
@@ -254,6 +278,7 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
             "audit_id": audit_id,
             "grounding_event_ids": ids,
             "is_grounded": is_grounded,
+            "confidence_score": confidence_score,
         }
     )
 
@@ -323,7 +348,32 @@ async def ask_stream(body: AskRequest, request: Request) -> StreamingResponse:
 
             audit_id = out_ctx.get("audit_id")
             is_grounded = len(ids) > 0
-            yield f"data: {json.dumps({'done': True, 'context_event_ids': ids, 'audit_id': audit_id, 'is_grounded': is_grounded})}\n\n"
+
+            # Heuristic confidence score (P22-T02)
+            full_answer = "".join(tokens_yielded)
+            stream_citation_ok = verify_citations(full_answer, ids)
+            _stream_score = 0.0
+            if ids:
+                _stream_score += 0.5
+            if stream_citation_ok:
+                _stream_score += 0.3
+            if len(ids) >= 5:
+                _stream_score += 0.1
+            stream_confidence_score = round(min(_stream_score, 1.0), 4)
+
+            # Persist score to provenance record (non-fatal)
+            if audit_id and stores.sqlite is not None:
+                import asyncio as _asyncio
+                try:
+                    await _asyncio.to_thread(
+                        stores.sqlite.update_confidence_score,
+                        audit_id,
+                        stream_confidence_score,
+                    )
+                except Exception as exc:
+                    log.warning("Confidence score write failed (non-fatal)", error=str(exc))
+
+            yield f"data: {json.dumps({'done': True, 'context_event_ids': ids, 'audit_id': audit_id, 'is_grounded': is_grounded, 'confidence_score': stream_confidence_score})}\n\n"
         except Exception as exc:
             yield f"data: {json.dumps({'error': str(exc)})}\n\n"
 
