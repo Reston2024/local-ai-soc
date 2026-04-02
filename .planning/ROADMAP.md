@@ -823,3 +823,27 @@ Plans:
 - P21-T05: Provenance API + ProvenanceView tab — all four GET endpoints exposed under /api/provenance/; Svelte ProvenanceView tab in the existing UI (4th nav item) with per-artefact provenance panels; hash values displayed with copy-to-clipboard; timeline of transformation steps from raw ingest → detection → AI response → playbook action
 
 *Phase 21 added: 2026-04-01 (Evidence Provenance)*
+
+## Phase 22: AI Lifecycle Hardening
+**Status:** TODO
+**Depends on:** Phase 21 complete
+**Goal:** Harden the AI Copilot from a useful but ungoverned assistant into a trustworthy, evaluable, NIST AI RMF-aligned system component. Every LLM response is grounded against retrieved evidence, confidence-scored, and clearly marked as advisory. An offline evaluation harness enables regression testing of prompt templates. Response drift and model substitution are detectable. This closes the gap between "responsible prompt engineering" and "trustworthy AI system management" identified in the SOC maturity assessment.
+
+### Requirements
+- P22-T01: Response grounding enforcement — every AI Copilot response must cite the specific event IDs, detection IDs, or investigation IDs it was grounded on; the grounding_event_ids field from Phase 21 provenance is propagated to the API response; GET /api/copilot/response/{audit_id} returns response + cited sources; UI displays citations inline with response text; responses with zero grounding are flagged as "ungrounded" with a visual warning
+- P22-T02: Confidence scoring — a lightweight heuristic confidence score (0.0–1.0) is computed for each LLM response based on: grounding coverage (how many cited events match query terms), response length vs. context size, and presence of hedging language patterns; score stored in llm_audit_provenance; displayed as a confidence badge in the UI (green ≥0.8, amber 0.5–0.8, red <0.5)
+- P22-T03: Evaluation harness — an offline pytest-based eval harness at tests/eval/ that loads fixture prompt+context pairs, runs them through a mock LLM (no real Ollama call), and asserts response properties (contains expected entities, cites correct sources, does not hallucinate missing event IDs); at least 5 eval fixtures covering analyst_qa, triage, and threat_hunt prompt templates; harness runnable with uv run pytest tests/eval/ -v
+- P22-T04: Model drift detection — on each LLM call, compare the active model_id (from Ollama /api/tags) against the last-known model_id stored in SQLite settings; if changed, emit a structured WARNING log entry and store a model_change_event in SQLite; GET /api/settings/model-status returns current model, last-known model, and drift status; SettingsView displays model drift alert if detected
+- P22-T05: Advisory separation — all AI Copilot responses in the UI carry a persistent "AI Advisory — not verified fact" banner; confidence badge is non-dismissable; response text uses a visually distinct style (italic, muted colour) to distinguish AI content from human-confirmed investigation notes; prompt templates updated to instruct the model to prefix uncertain claims with "Possible:" or "Unverified:"
+
+*Phase 22 added: 2026-04-02 (AI Lifecycle Hardening)*
+**Plans:** 7 plans
+
+Plans:
+- [ ] 22-00-PLAN.md — Wave 0 test stubs: tests/eval/ package, conftest.py, 5 NDJSON fixtures, all test files pre-skipped
+- [ ] 22-01-PLAN.md — Response grounding: thread audit_id/grounding_event_ids/is_grounded to /ask and /ask/stream (P22-T01)
+- [ ] 22-02-PLAN.md — Confidence scoring: confidence_score DDL + heuristic + badge in InvestigationView (P22-T02)
+- [ ] 22-03-PLAN.md — Eval harness: fill in analyst_qa, triage, threat_hunt eval tests with real assertions (P22-T03)
+- [ ] 22-04-PLAN.md — Model drift: system_kv + model_change_events + GET /api/settings/model-status + SettingsView card (P22-T04)
+- [ ] 22-05-PLAN.md — Advisory separation: prompt prefix + non-dismissable banner + confidence badge in InvestigationView (P22-T05)
+- [ ] 22-06-PLAN.md — Checkpoint: full suite green + human visual verification
