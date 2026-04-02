@@ -296,6 +296,46 @@ class OllamaClient:
         return embeddings
 
     # ------------------------------------------------------------------
+    # Model drift detection (P22-T04 hot-path check)
+    # ------------------------------------------------------------------
+
+    async def _check_model_drift(self, effective_model: str) -> None:
+        """Check for model drift on each LLM call (P22-T04 hot-path check).
+
+        Reads last_known_model from SQLite and compares to effective_model.
+        Logs a WARNING if they differ. Writes the new model as last_known when
+        no prior record exists. Always non-fatal — exceptions are swallowed.
+
+        Args:
+            effective_model: The model name being used for this call (after
+                             model/use_cybersec_model resolution).
+        """
+        if self._sqlite is None:
+            return
+        try:
+            import asyncio as _asyncio
+            last_known: str | None = await _asyncio.to_thread(
+                self._sqlite.get_kv, "last_known_model"
+            )
+            if last_known is None:
+                # First call — seed last_known_model (non-fatal)
+                await _asyncio.to_thread(
+                    self._sqlite.set_kv, "last_known_model", effective_model
+                )
+                log.debug(
+                    "Model drift: seeding last_known_model",
+                    model=effective_model,
+                )
+            elif last_known != effective_model:
+                log.warning(
+                    "Model drift detected on LLM call",
+                    last_known_model=last_known,
+                    active_model=effective_model,
+                )
+        except Exception as exc:
+            log.debug("Model drift check failed (non-fatal)", error=str(exc))
+
+    # ------------------------------------------------------------------
     # Text generation (non-streaming)
     # ------------------------------------------------------------------
 
@@ -334,6 +374,7 @@ class OllamaClient:
         """
         audit_id = str(uuid4())
         _effective_model = model or (self.cybersec_model if use_cybersec_model else self.model)
+        await self._check_model_drift(_effective_model)
         payload: dict = {
             "model": _effective_model,
             "prompt": prompt,
@@ -492,6 +533,7 @@ class OllamaClient:
         """
         stream_audit_id = str(uuid4())
         _stream_model = model or (self.cybersec_model if use_cybersec_model else self.model)
+        await self._check_model_drift(_stream_model)
         payload: dict = {
             "model": _stream_model,
             "prompt": prompt,
