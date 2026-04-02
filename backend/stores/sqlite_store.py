@@ -250,6 +250,21 @@ CREATE TABLE IF NOT EXISTS playbook_run_provenance (
     created_at              TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pb_prov_run ON playbook_run_provenance (run_id);
+
+CREATE TABLE IF NOT EXISTS system_kv (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS model_change_events (
+    event_id        TEXT PRIMARY KEY,
+    detected_at     TEXT NOT NULL,
+    previous_model  TEXT,
+    active_model    TEXT NOT NULL,
+    change_source   TEXT NOT NULL DEFAULT 'startup_check'
+);
+CREATE INDEX IF NOT EXISTS idx_mce_detected_at ON model_change_events (detected_at);
 """
 
 
@@ -1432,6 +1447,52 @@ class SQLiteStore:
         return d
 
     # ------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # System KV store (P22-T04)
+    # ---------------------------------------------------------------------------
+
+    def get_kv(self, key: str) -> Optional[str]:
+        """Return value for key from system_kv, or None if not found."""
+        row = self._conn.execute(
+            "SELECT value FROM system_kv WHERE key = ?", (key,)
+        ).fetchone()
+        return row["value"] if row else None
+
+    def set_kv(self, key: str, value: str) -> None:
+        """Upsert a key-value pair in system_kv."""
+        self._conn.execute(
+            """
+            INSERT INTO system_kv (key, value, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            """,
+            (key, value, _now_iso()),
+        )
+        self._conn.commit()
+
+    def record_model_change(self, previous_model: Optional[str], active_model: str) -> None:
+        """Record a model change event in model_change_events."""
+        self._conn.execute(
+            """
+            INSERT INTO model_change_events (event_id, detected_at, previous_model, active_model, change_source)
+            VALUES (?, ?, ?, ?, 'startup_check')
+            """,
+            (str(uuid4()), _now_iso(), previous_model, active_model),
+        )
+        self._conn.commit()
+
+    def get_model_status(self) -> dict:
+        """Return current model status: last_known_model, recent_changes count."""
+        last_known = self.get_kv("last_known_model")
+        row = self._conn.execute(
+            "SELECT * FROM model_change_events ORDER BY detected_at DESC LIMIT 1"
+        ).fetchone()
+        last_change = dict(row) if row else None
+        return {
+            "last_known_model": last_known,
+            "last_change": last_change,
+        }
+
     # Shutdown
     # ------------------------------------------------------------------
 
