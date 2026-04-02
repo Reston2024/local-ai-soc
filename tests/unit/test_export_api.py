@@ -13,7 +13,9 @@ def _build_app(tmp_path, duckdb_rows=None, sqlite_store=None):
     """Build a TestClient with mocked stores."""
     from fastapi.testclient import TestClient
 
+    from backend.core.auth import verify_token
     from backend.core.deps import Stores
+    from backend.core.rbac import OperatorContext
     from backend.main import create_app
 
     duckdb = MagicMock()
@@ -37,6 +39,10 @@ def _build_app(tmp_path, duckdb_rows=None, sqlite_store=None):
     app.state.ollama = MagicMock()
     app.state.ollama.embed = AsyncMock(return_value=[0.1] * 128)
     app.state.settings = MagicMock()
+
+    # Bypass auth for unit tests
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    app.dependency_overrides[verify_token] = lambda: _ctx
 
     client = TestClient(app, raise_server_exceptions=False)
     return client, stores, sqlite_store

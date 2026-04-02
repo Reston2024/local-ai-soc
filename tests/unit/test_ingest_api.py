@@ -14,7 +14,9 @@ def _build_app(tmp_path):
     """Build a TestClient with stores needed for ingest endpoints."""
     from fastapi.testclient import TestClient
 
+    from backend.core.auth import verify_token
     from backend.core.deps import Stores
+    from backend.core.rbac import OperatorContext
     from backend.main import create_app
     from backend.stores.sqlite_store import SQLiteStore
 
@@ -42,6 +44,10 @@ def _build_app(tmp_path):
     # Settings mock — ingest/file needs DATA_DIR
     app.state.settings = MagicMock()
     app.state.settings.DATA_DIR = str(tmp_path)
+
+    # Bypass auth for unit tests
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    app.dependency_overrides[verify_token] = lambda: _ctx
 
     client = TestClient(app, raise_server_exceptions=False)
     return client, stores

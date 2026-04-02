@@ -9,10 +9,19 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 
+_AUTH_HEADERS = {"Authorization": "Bearer changeme"}
+
+
 @pytest.fixture
 def app():
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
     from backend.main import create_app
-    return create_app()
+
+    _app = create_app()
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    _app.dependency_overrides[verify_token] = lambda: _ctx
+    return _app
 
 
 @pytest.mark.asyncio

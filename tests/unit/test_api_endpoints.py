@@ -50,6 +50,8 @@ def _build_app(tmp_path=None, stores=None):
     """Build a TestClient app with override state."""
     from fastapi.testclient import TestClient
 
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
     from backend.main import create_app
 
     app = create_app()
@@ -61,6 +63,10 @@ def _build_app(tmp_path=None, stores=None):
     app.state.stores = stores
     app.state.ollama = MagicMock()
     app.state.settings = MagicMock()
+
+    # Bypass auth for unit tests — all routes require verify_token
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    app.dependency_overrides[verify_token] = lambda: _ctx
 
     return TestClient(app, raise_server_exceptions=True)
 
@@ -106,6 +112,8 @@ class TestDetectEndpoint:
 
         from fastapi.testclient import TestClient
 
+        from backend.core.auth import verify_token
+        from backend.core.rbac import OperatorContext
         from backend.main import create_app
         from backend.stores.sqlite_store import SQLiteStore
 
@@ -118,6 +126,11 @@ class TestDetectEndpoint:
         app.state.stores = stores
         app.state.ollama = MagicMock()
         app.state.settings = MagicMock()
+
+        # Bypass auth for unit tests
+        _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+        app.dependency_overrides[verify_token] = lambda: _ctx
+
         return TestClient(app, raise_server_exceptions=False), sqlite
 
     def test_list_detections_returns_200(self):
@@ -199,7 +212,9 @@ class TestEventsEndpoint:
     def _make_client_with_duckdb(self, tmp_path):
         from fastapi.testclient import TestClient
 
+        from backend.core.auth import verify_token
         from backend.core.deps import Stores
+        from backend.core.rbac import OperatorContext
         from backend.main import create_app
         from backend.stores.duckdb_store import DuckDBStore
 
@@ -222,6 +237,10 @@ class TestEventsEndpoint:
         app.state.stores = stores
         app.state.ollama = MagicMock()
         app.state.settings = MagicMock()
+
+        # Bypass auth for unit tests
+        _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+        app.dependency_overrides[verify_token] = lambda: _ctx
 
         client = TestClient(app, raise_server_exceptions=False)
         return client, duckdb, loop

@@ -17,6 +17,16 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
+def _patch_auth(app):
+    """Override verify_token on the app so unit tests pass without a real token."""
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
+
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    app.dependency_overrides[verify_token] = lambda: _ctx
+    return app
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -55,6 +65,7 @@ def _build_client():
     from backend.core.config import Settings
     app.state.settings = Settings()
 
+    _patch_auth(app)
     return TestClient(app, raise_server_exceptions=True)
 
 
@@ -72,6 +83,7 @@ class TestGetKpisEndpoint:
         app = create_app()
         app.state.stores = MagicMock()
         app.state.settings = __import__("backend.core.config", fromlist=["Settings"]).Settings()
+        _patch_auth(app)
 
         snapshot = _make_fake_snapshot()
 
@@ -89,10 +101,7 @@ class TestGetKpisEndpoint:
             MockSvc.return_value = mock_instance
 
             client = TestClient(app)
-            resp = client.get(
-                "/api/metrics/kpis",
-                headers={"Authorization": "Bearer test"},
-            )
+            resp = client.get("/api/metrics/kpis")
 
         assert resp.status_code == 200
 
@@ -105,6 +114,7 @@ class TestGetKpisEndpoint:
         app = create_app()
         app.state.stores = MagicMock()
         app.state.settings = __import__("backend.core.config", fromlist=["Settings"]).Settings()
+        _patch_auth(app)
 
         snapshot = _make_fake_snapshot()
 
@@ -116,10 +126,7 @@ class TestGetKpisEndpoint:
             MockSvc.return_value = mock_instance
 
             client = TestClient(app)
-            resp = client.get(
-                "/api/metrics/kpis",
-                headers={"Authorization": "Bearer test"},
-            )
+            resp = client.get("/api/metrics/kpis")
 
         assert resp.status_code == 200
         body = resp.json()
@@ -140,6 +147,7 @@ class TestGetKpisEndpoint:
         app = create_app()
         app.state.stores = MagicMock()
         app.state.settings = __import__("backend.core.config", fromlist=["Settings"]).Settings()
+        _patch_auth(app)
 
         snapshot = _make_fake_snapshot()
 
@@ -151,10 +159,7 @@ class TestGetKpisEndpoint:
             MockSvc.return_value = mock_instance
 
             client = TestClient(app)
-            resp = client.get(
-                "/api/metrics/kpis",
-                headers={"Authorization": "Bearer test"},
-            )
+            resp = client.get("/api/metrics/kpis")
 
         body = resp.json()
         # Should not raise
@@ -170,6 +175,7 @@ class TestGetKpisEndpoint:
         app = create_app()
         app.state.stores = MagicMock()
         app.state.settings = __import__("backend.core.config", fromlist=["Settings"]).Settings()
+        _patch_auth(app)
 
         snapshot = _make_fake_snapshot()
 
@@ -182,14 +188,8 @@ class TestGetKpisEndpoint:
 
             client = TestClient(app)
             # The /api prefix is added by main.py's router mount
-            resp_correct = client.get(
-                "/api/metrics/kpis",
-                headers={"Authorization": "Bearer test"},
-            )
-            resp_wrong = client.get(
-                "/metrics/kpis",
-                headers={"Authorization": "Bearer test"},
-            )
+            resp_correct = client.get("/api/metrics/kpis")
+            resp_wrong = client.get("/metrics/kpis")
 
         assert resp_correct.status_code == 200
         assert resp_wrong.status_code == 404
@@ -206,6 +206,7 @@ class TestGetKpisEndpoint:
         app = create_app()
         app.state.stores = MagicMock()
         app.state.settings = __import__("backend.core.config", fromlist=["Settings"]).Settings()
+        _patch_auth(app)
 
         snapshot = _make_fake_snapshot()
 
@@ -220,10 +221,7 @@ class TestGetKpisEndpoint:
             MockSvc.return_value = mock_instance
 
             client = TestClient(app)
-            resp = client.get(
-                "/api/metrics/kpis",
-                headers={"Authorization": "Bearer test"},
-            )
+            resp = client.get("/api/metrics/kpis")
 
         assert resp.status_code == 200
         # compute_all_kpis should NOT have been called because cache was warm
