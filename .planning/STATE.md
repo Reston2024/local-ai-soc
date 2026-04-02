@@ -3,6 +3,26 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 22 (complete)
+current_plan: 22-09 complete — _check_model_drift() wired into generate() and stream_generate(); 803 tests pass; P22-T04 hot-path gap closed
+status: in_progress
+last_updated: "2026-04-02T17:43:00Z"
+stopped_at: "Completed 22-09-PLAN.md — _check_model_drift() wired into generate() and stream_generate(); 803 tests pass"
+progress:
+  total_phases: 22
+  completed_phases: 20
+  total_plans: 110
+  completed_plans: 116
+  percent: 100
+decisions:
+  - "22-09: _check_model_drift() uses cheap SQLite get_kv read on hot path — avoids list_models() HTTP round-trip per LLM call"
+  - "22-09: Non-fatal contract matches existing record_llm_provenance pattern — all exceptions swallowed at DEBUG level"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 22 (complete)
 current_plan: 22-08 complete — GET /api/provenance/copilot/response/{audit_id} + CopilotResponseRecord model; 18 eval tests passing; P22-T01 gap closed
 status: in_progress
 last_updated: "2026-04-02T17:39:13Z"

@@ -837,7 +837,7 @@ Plans:
 - P22-T05: Advisory separation — all AI Copilot responses in the UI carry a persistent "AI Advisory — not verified fact" banner; confidence badge is non-dismissable; response text uses a visually distinct style (italic, muted colour) to distinguish AI content from human-confirmed investigation notes; prompt templates updated to instruct the model to prefix uncertain claims with "Possible:" or "Unverified:"
 
 *Phase 22 added: 2026-04-02 (AI Lifecycle Hardening)*
-**Plans:** 9/10 plans executed
+**Plans:** 10/10 plans complete
 
 Plans:
 - [ ] 22-00-PLAN.md — Wave 0 test stubs: tests/eval/ package, conftest.py, 5 NDJSON fixtures, all test files pre-skipped
