@@ -237,6 +237,18 @@ CREATE TABLE IF NOT EXISTS llm_audit_provenance (
     created_at              TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_llm_prov_created ON llm_audit_provenance (created_at);
+
+CREATE TABLE IF NOT EXISTS playbook_run_provenance (
+    prov_id                 TEXT PRIMARY KEY,
+    run_id                  TEXT NOT NULL,
+    playbook_id             TEXT,
+    playbook_file_sha256    TEXT NOT NULL,
+    playbook_version        TEXT,
+    trigger_event_ids       TEXT NOT NULL DEFAULT '[]',
+    operator_id_who_approved TEXT,
+    created_at              TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pb_prov_run ON playbook_run_provenance (run_id);
 """
 
 
@@ -1338,6 +1350,68 @@ class SQLiteStore:
         result = dict(row)
         result["grounding_event_ids"] = json.loads(result["grounding_event_ids"])
         return result
+
+    # ------------------------------------------------------------------
+    # Playbook run provenance
+    # ------------------------------------------------------------------
+
+    def record_playbook_provenance(
+        self,
+        prov_id: str,
+        run_id: str,
+        playbook_id: Optional[str],
+        playbook_file_sha256: str,
+        playbook_version: Optional[str],
+        trigger_event_ids: list[str],
+        operator_id_who_approved: Optional[str] = None,
+    ) -> None:
+        """
+        Insert a playbook run provenance row.
+
+        trigger_event_ids is stored as a JSON array string.
+        Uses INSERT OR IGNORE so re-running is idempotent.
+        Callers must wrap in try/except — this method does NOT suppress exceptions.
+        """
+        trigger_json = json.dumps(trigger_event_ids)
+        self._conn.execute(
+            """
+            INSERT OR IGNORE INTO playbook_run_provenance
+                (prov_id, run_id, playbook_id, playbook_file_sha256,
+                 playbook_version, trigger_event_ids, operator_id_who_approved,
+                 created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                prov_id,
+                run_id,
+                playbook_id,
+                playbook_file_sha256,
+                playbook_version,
+                trigger_json,
+                operator_id_who_approved,
+                _now_iso(),
+            ),
+        )
+        self._conn.commit()
+
+    def get_playbook_provenance(self, run_id: str) -> Optional[dict[str, Any]]:
+        """
+        Return the playbook_run_provenance record for the given run_id, or None.
+
+        trigger_event_ids is deserialized from JSON to list[str].
+        """
+        row = self._conn.execute(
+            "SELECT * FROM playbook_run_provenance WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        d = dict(row)
+        try:
+            d["trigger_event_ids"] = json.loads(d.get("trigger_event_ids") or "[]")
+        except (json.JSONDecodeError, TypeError):
+            d["trigger_event_ids"] = []
+        return d
 
     # ------------------------------------------------------------------
     # Shutdown
