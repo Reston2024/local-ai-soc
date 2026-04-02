@@ -234,6 +234,7 @@ CREATE TABLE IF NOT EXISTS llm_audit_provenance (
     response_sha256         TEXT,
     operator_id             TEXT,
     grounding_event_ids     TEXT NOT NULL DEFAULT '[]',
+    confidence_score        REAL,
     created_at              TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_llm_prov_created ON llm_audit_provenance (created_at);
@@ -291,6 +292,15 @@ class SQLiteStore:
         try:
             self._conn.execute(
                 "ALTER TABLE detections ADD COLUMN risk_score INTEGER DEFAULT 0"
+            )
+            self._conn.commit()
+        except Exception:
+            pass  # column already exists — idempotent
+
+        # Backward-compatible migration: add confidence_score to llm_audit_provenance if absent
+        try:
+            self._conn.execute(
+                "ALTER TABLE llm_audit_provenance ADD COLUMN confidence_score REAL"
             )
             self._conn.commit()
         except Exception:
@@ -1350,6 +1360,14 @@ class SQLiteStore:
         result = dict(row)
         result["grounding_event_ids"] = json.loads(result["grounding_event_ids"])
         return result
+
+    def update_confidence_score(self, audit_id: str, score: float) -> None:
+        """Update the confidence_score for an existing llm_audit_provenance row."""
+        self._conn.execute(
+            "UPDATE llm_audit_provenance SET confidence_score = ? WHERE audit_id = ?",
+            (score, audit_id),
+        )
+        self._conn.commit()
 
     # ------------------------------------------------------------------
     # Playbook run provenance
