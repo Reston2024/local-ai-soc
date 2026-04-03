@@ -776,3 +776,68 @@ Target something close to this unless inspection shows a better layout:
 
 └─ fixtures/
 
+
+
+---
+
+
+
+## 12. Integration Scope Addendum (2026-04-03)
+
+The system scope now includes a **controlled integration with a connected IPFire firewall
+appliance** running Malcolm/OpenSearch + Suricata. This is an extension of the analysis
+plane — the SOC remains the analysis/reasoning/recommendation plane; the firewall remains
+the sensor/enforcement/execution plane.
+
+### Two bounded systems — explicit trust boundaries
+
+**SOC (this repo) — analysis plane:**
+- Receives telemetry from firewall (syslog, Suricata EVE JSON, config-change events, heartbeat)
+- Performs correlation, grounding, AI-assisted triage
+- Produces AI-assisted **recommendation artifacts** (governed by ADR-030)
+- Requires analyst approval before any artifact crosses the trust boundary
+- Stores execution receipts; propagates case-state updates from receipt failure taxonomy
+
+**Firewall repo — enforcement plane:**
+- Executes bounded, signed, time-limited recommendation artifacts
+- Returns execution receipts with `failure_taxonomy` enum
+- Produces telemetry (IPFire syslog, Suricata EVE, heartbeat)
+- NEVER receives raw LLM output — only approved, schema-validated artifacts
+
+### Gate requirements (must complete before Phase 1 integration code)
+
+The following must exist before any integration feature code is written:
+
+- [x] `docs/ADR-030-ai-recommendation-governance.md` — recommendation artifact governance
+- [x] `contracts/recommendation.schema.json` — versioned JSON Schema
+- [x] `docs/ADR-031-transport-contract-reference.md` — SOC consumer obligations
+- [x] `docs/ADR-032-executor-failure-reference.md` — receipt interpretation
+- [ ] `firewall/docs/ADR-T01-transport-contract.md` — canonical in firewall repo
+- [ ] `firewall/docs/ADR-E01-executor-failure-taxonomy.md` — canonical in firewall repo
+- [ ] `firewall/contracts/execution-receipt.schema.json` — canonical in firewall repo
+
+### New repo layout additions
+
+```text
+contracts/
+  recommendation.schema.json    Versioned artifact schema (canonical here)
+ingestion/
+  parsers/
+    ipfire_syslog_parser.py     IPFire syslog → NormalizedEvent
+    suricata_eve_parser.py      Suricata EVE JSON → NormalizedEvent
+  jobs/
+    firewall_collector.py       Polling / streaming collector for firewall telemetry
+docs/
+  ADR-030-*.md                  AI recommendation governance
+  ADR-031-*.md                  Transport contract reference (canonical: firewall)
+  ADR-032-*.md                  Executor failure reference (canonical: firewall)
+```
+
+### What does NOT change
+
+- The analysis-plane-only constraint holds: no autonomous blocking without analyst approval
+- `NormalizedEvent` schema remains the internal canonical event type
+- DuckDB write-queue and Chroma patterns are unchanged
+- All Phase 22 AI lifecycle hardening (confidence, drift, grounding) remains in place and
+  applies to recommendation artifacts via `model_run_id` linkage
+

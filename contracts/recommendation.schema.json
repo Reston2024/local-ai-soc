@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Reston2024/local-ai-soc/contracts/recommendation.schema.json",
+  "title": "AI-SOC Recommendation Artifact",
+  "description": "Versioned, immutable artifact representing an AI-assisted analyst recommendation for a network control change. Governed by ADR-030. Canonical owner: local-ai-soc.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "recommendation_id",
+    "case_id",
+    "type",
+    "proposed_action",
+    "target",
+    "scope",
+    "rationale",
+    "evidence_event_ids",
+    "retrieval_sources",
+    "inference_confidence",
+    "model_id",
+    "model_run_id",
+    "prompt_inspection",
+    "generated_at",
+    "analyst_approved",
+    "approved_by",
+    "expires_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Schema version; must match the version field of this document."
+    },
+    "recommendation_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4. Primary key for audit trail. Immutable once set."
+    },
+    "case_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4. Links this recommendation to an investigation case."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["network_control_change", "alert_suppression", "asset_isolation", "no_action"],
+      "description": "Action class. Determines which executor path the firewall uses."
+    },
+    "proposed_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Specific control operation (e.g. 'block_ip', 'block_port', 'isolate_host')."
+    },
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The resource to act on (IP address, CIDR, hostname, port/protocol pair)."
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Network scope of the action in IPFire zone notation (e.g. 'RED->GREEN', 'RED', 'ALL')."
+    },
+    "rationale": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Human-readable reasoning chain. Each item is a discrete justification point."
+    },
+    "evidence_event_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Event IDs (from NormalizedEvent store) that ground the recommendation."
+    },
+    "retrieval_sources": {
+      "type": "object",
+      "required": ["count", "ids"],
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of RAG chunks retrieved."
+        },
+        "ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Chroma document IDs of the retrieved chunks."
+        }
+      },
+      "description": "RAG retrieval audit. count=0 and ids=[] means no retrieval was performed."
+    },
+    "inference_confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low", "none"],
+      "description": "Model self-assessed confidence. Computed by confidence scoring (Phase 22-02). 'none' means the model could not produce a confidence estimate."
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Ollama model identifier (e.g. 'qwen3:14b', 'foundation-sec:8b'). Must match the active model at generation time."
+    },
+    "model_run_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4. Links to the llm_audit_provenance row for this generation run."
+    },
+    "prompt_inspection": {
+      "type": "object",
+      "required": ["method", "passed", "flagged_patterns", "audit_log_id"],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Inspection algorithm version string (e.g. 'pattern_scrub_v2'). Use 'unavailable' if method could not run."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "True if inspection ran and found no issues. Must be false if method='unavailable'."
+        },
+        "flagged_patterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Patterns matched during inspection. Empty array when passed=true."
+        },
+        "audit_log_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "UUID v4 linking to the prompt inspection audit log row."
+        }
+      },
+      "description": "Structured prompt injection inspection record. Boolean alone is insufficient for audit evidence (ADR-030 §3)."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of artifact generation."
+    },
+    "analyst_approved": {
+      "type": "boolean",
+      "description": "Must be true before the artifact is dispatched to the firewall. Set by the approval gate, never by the AI."
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Operator identifier. Required when analyst_approved=true. Must be non-empty at dispatch time."
+    },
+    "override_log": {
+      "type": "object",
+      "required": ["approved_at", "approval_basis", "modified_fields", "operator_note"],
+      "additionalProperties": false,
+      "properties": {
+        "approved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO-8601 UTC timestamp of analyst approval decision."
+        },
+        "approval_basis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Free-text: why the analyst approved despite low confidence or failed inspection."
+        },
+        "modified_fields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Recommendation fields the analyst modified before approval. Empty means AI output accepted as-is."
+        },
+        "operator_note": {
+          "type": "string",
+          "description": "Optional operator note for audit log."
+        }
+      },
+      "description": "Required when inference_confidence is 'low' or 'none', or prompt_inspection.passed is false (ADR-030 §4)."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC. Firewall executor MUST reject artifacts presented after this timestamp. Typically 7 days from generated_at."
+    }
+  },
+  "if": {
+    "properties": {
+      "analyst_approved": { "const": true }
+    },
+    "required": ["analyst_approved"]
+  },
+  "then": {
+    "properties": {
+      "approved_by": { "minLength": 1 }
+    }
+  }
+}
