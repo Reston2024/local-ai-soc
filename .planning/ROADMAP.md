@@ -847,3 +847,58 @@ Plans:
 - [ ] 22-04-PLAN.md — Model drift: system_kv + model_change_events + GET /api/settings/model-status + SettingsView card (P22-T04)
 - [ ] 22-05-PLAN.md — Advisory separation: prompt prefix + non-dismissable banner + confidence badge in InvestigationView (P22-T05)
 - [ ] 22-06-PLAN.md — Checkpoint: full suite green + human visual verification
+
+## Phase 23: Firewall Telemetry Ingestion
+**Status:** TODO
+**Depends on:** Phase 22 complete
+**Goal:** The SOC can receive, parse, and normalise telemetry from a connected IPFire firewall appliance (syslog) and its Suricata IDS (EVE JSON). All inbound firewall telemetry is stored as NormalizedEvent records, enabling correlation and graph enrichment with perimeter visibility. A polling/streaming collector job manages connectivity and heartbeat monitoring.
+
+### Requirements
+- P23-T01: IPFire syslog parser — `ingestion/parsers/ipfire_syslog_parser.py` parses RFC 3164/5424 syslog lines from IPFire; maps firewall log fields (src_ip, dst_ip, proto, action, zone, interface) to NormalizedEvent schema; handles ALLOW/DROP/REJECT action variants; preserves raw line in provenance field; unit tests with fixture syslog lines
+- P23-T02: Suricata EVE JSON parser — `ingestion/parsers/suricata_eve_parser.py` parses Suricata EVE JSON records (alert, flow, dns, http event types); maps to NormalizedEvent; preserves MITRE ATT&CK tactic/technique from alert.metadata if present; severity mapped from alert.severity (1=critical,2=high,3=medium,4=low); unit tests with fixture EVE JSON records
+- P23-T03: Firewall collector job — `ingestion/jobs/firewall_collector.py` polls or streams telemetry from the firewall; configurable via settings (FIREWALL_SYSLOG_HOST, FIREWALL_SYSLOG_PORT, FIREWALL_EVE_PATH); handles connectivity loss gracefully (exponential backoff, alert on consecutive failures); missed heartbeat detection (configurable threshold); all events written through existing batch ingest + Chroma embed coordinator
+- P23-T04: Heartbeat normalisation — firewall heartbeat events normalised to NormalizedEvent with event_type="heartbeat"; last_seen timestamp stored in system_kv; GET /api/firewall/status returns connectivity state (connected/degraded/offline) based on heartbeat recency; threshold configurable in settings
+
+*Phase 23 added: 2026-04-03 (Firewall Telemetry Ingestion)*
+
+## Phase 24: Recommendation Artifact Store and Approval API
+**Status:** TODO
+**Depends on:** Phase 23 complete
+**Goal:** The SOC can create, store, and approve AI-assisted recommendation artifacts conforming to contracts/recommendation.schema.json. A human-in-the-loop approval gate is enforced programmatically — no artifact crosses the trust boundary without analyst_approved=true and schema validation. The recommendation lifecycle (draft > approved > dispatched) is fully tracked with audit trail.
+
+### Requirements
+- P24-T01: DB schema — DuckDB tables: `recommendations` (all artifact fields, status enum), `recommendation_dispatch_log` (dispatch attempts, response codes, timestamps); schema migration via existing store migration pattern
+- P24-T02: Pydantic model — `RecommendationArtifact` model in `backend/models/` mirroring `contracts/recommendation.schema.json` v1.0.0; all required fields typed; `prompt_inspection` as nested Pydantic model; full JSON Schema validation on instantiation using jsonschema library against the pinned contracts/ file
+- P24-T03: API routes — POST /api/recommendations (create draft); GET /api/recommendations/{id}; PATCH /api/recommendations/{id}/approve (set analyst_approved=true, approved_by, override_log if required); GET /api/recommendations (list with filters)
+- P24-T04: Human-in-the-loop gate — PATCH /approve enforces: schema valid, analyst_approved only via this endpoint, approved_by non-empty, expires_at in future, override_log required when inference_confidence in [low, none] or prompt_inspection.passed=false; gate failures return 422 with structured error
+- P24-T05: Tests — unit tests for RecommendationArtifact model validation; integration tests for all four API routes; gate enforcement tests; at least 10 test cases
+
+*Phase 24 added: 2026-04-03 (Recommendation Artifact Store and Approval API)*
+
+## Phase 25: Receipt Ingestion and Case-State Propagation
+**Status:** TODO
+**Depends on:** Phase 24 complete
+**Goal:** The SOC ingests execution receipts from the firewall executor and propagates case-state updates automatically. Every receipt is stored with full audit linkage to its recommendation_id and case_id. The five failure_taxonomy paths each produce a deterministic case-state transition per ADR-032. Analyst notification is triggered for conditions requiring human review.
+
+### Requirements
+- P25-T01: Receipt ingestion route — POST /api/receipts accepts an execution receipt JSON; validates against a pinned local copy of contracts/execution-receipt.schema.json (stub acceptable if firewall canonical not yet available); stores receipt in `execution_receipts` DuckDB table linked to recommendation_id and case_id; returns 202 Accepted
+- P25-T02: Case-state propagation — on receipt ingest, apply case-state transition per ADR-032: applied/noop_already_present to containment_confirmed, validation_failed/expired_rejected to containment_failed, rolled_back to containment_rolled_back; update case record atomically
+- P25-T03: Analyst notification trigger — for validation_failed and rolled_back, emit a structured notification event; GET /api/notifications returns pending notifications with required_action enum (re_approve_required / manual_review_required)
+- P25-T04: Receipt schema stub — `contracts/execution-receipt.schema.json` stub (SOC local copy) with required fields; note canonical version lives in firewall repo; version pinned to "1.0.0-stub"
+- P25-T05: Tests — unit tests for all 5 failure_taxonomy transitions; integration tests for POST /api/receipts with each value; notification trigger tests; idempotency test (same receipt_id twice returns 409)
+
+*Phase 25 added: 2026-04-03 (Receipt Ingestion and Case-State Propagation)*
+
+## Phase 26: Graph Schema Versioning and Perimeter Entities
+**Status:** TODO
+**Depends on:** Phase 25 complete
+**Goal:** The graph store gains explicit schema versioning and two new perimeter entity types (firewall_zone, network_segment) with associated edge types (blocks, permits, traverses). All changes are strictly additive. Malcolm/OpenSearch schema compatibility maintained. Dashboard graph view renders perimeter nodes.
+
+### Requirements
+- P26-T01: Graph schema versioning — `graph_schema_version` field in graph metadata (SQLite); current version "2.0.0"; migration defaults pre-existing installs to "1.0.0"; GET /api/graph/schema-version returns current version
+- P26-T02: Perimeter node types — `firewall_zone` node (zone_name, zone_color [RED/GREEN/ORANGE/BLUE], interface) and `network_segment` node (cidr, zone, description) added to graph schema constants; existing node types unchanged
+- P26-T03: Perimeter edge types — `blocks`, `permits`, `traverses` edge types added; edges created by IPFire syslog parser on ingest; existing edge types unchanged
+- P26-T04: Additive-only constraint — migration uses ALTER TABLE ADD COLUMN only (never DROP/MODIFY); migration test asserts no existing columns/tables removed; Malcolm/OpenSearch parser test asserts existing field preservation
+- P26-T05: Dashboard graph rendering — firewall_zone nodes rendered with zone-color coding; network_segment nodes as subnet bubbles; new edge types with distinct styles; no visual regression on existing types; human visual verification checkpoint required
+
+*Phase 26 added: 2026-04-03 (Graph Schema Versioning and Perimeter Entities)*
