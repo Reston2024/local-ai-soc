@@ -860,6 +860,14 @@ Plans:
 - P23-T04: Heartbeat normalisation — firewall heartbeat events normalised to NormalizedEvent with event_type="heartbeat"; last_seen timestamp stored in system_kv; GET /api/firewall/status returns connectivity state (connected/degraded/offline) based on heartbeat recency; threshold configurable in settings
 
 *Phase 23 added: 2026-04-03 (Firewall Telemetry Ingestion)*
+**Plans:** 5 plans
+
+Plans:
+- [ ] 23-00-PLAN.md — Wave 0: test stubs (3 files), ingestion/jobs/__init__.py, fixtures/syslog/ipfire_sample.log
+- [ ] 23-01-PLAN.md — Wave 1: IPFireSyslogParser implementation (P23-T01)
+- [ ] 23-02-PLAN.md — Wave 1: SuricataEveParser implementation (P23-T02) [parallel with 23-01]
+- [ ] 23-03-PLAN.md — Wave 2: FirewallCollector + GET /api/firewall/status + settings + main.py wiring (P23-T03, P23-T04)
+- [ ] 23-04-PLAN.md — Wave 3: Final verification checkpoint
 
 ## Phase 24: Recommendation Artifact Store and Approval API
 **Status:** TODO
