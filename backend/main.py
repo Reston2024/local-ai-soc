@@ -215,6 +215,35 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.info("osquery collection disabled (OSQUERY_ENABLED=False)")
         app.state.osquery_collector = None
 
+    # 8b. Conditional firewall telemetry collector (IPFire syslog + Suricata EVE JSON)
+    firewall_task: asyncio.Task | None = None
+    if settings.FIREWALL_ENABLED:
+        try:
+            from pathlib import Path as _FWPath
+            from ingestion.jobs.firewall_collector import FirewallCollector as _FWCollector
+            from ingestion.loader import IngestionLoader as _FWLoader
+            _fw_loader = _FWLoader(stores=stores, ollama_client=ollama)
+            _fw_collector = _FWCollector(
+                syslog_path=_FWPath(settings.FIREWALL_SYSLOG_PATH),
+                eve_path=_FWPath(settings.FIREWALL_EVE_PATH),
+                loader=_fw_loader,
+                sqlite_store=sqlite_store,
+                interval_sec=settings.FIREWALL_POLL_INTERVAL,
+            )
+            firewall_task = asyncio.ensure_future(_fw_collector.run())
+            app.state.firewall_collector = _fw_collector
+            log.info(
+                "FirewallCollector started",
+                syslog_path=settings.FIREWALL_SYSLOG_PATH,
+                eve_path=settings.FIREWALL_EVE_PATH,
+            )
+        except ImportError as exc:
+            log.warning("FirewallCollector not available — skipping: %s", exc)
+            app.state.firewall_collector = None
+    else:
+        log.info("Firewall collection disabled (FIREWALL_ENABLED=False)")
+        app.state.firewall_collector = None
+
     # 8a. Daily KPI snapshot scheduler (midnight cron job)
     global _daily_snapshot_scheduler
     _daily_snapshot_scheduler = AsyncIOScheduler()
@@ -249,6 +278,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         osquery_task.cancel()
         try:
             await osquery_task
+        except asyncio.CancelledError:
+            pass
+
+    # Cancel firewall collector task if running
+    if firewall_task is not None and not firewall_task.done():
+        firewall_task.cancel()
+        try:
+            await firewall_task
         except asyncio.CancelledError:
             pass
 
@@ -465,6 +502,13 @@ def create_app() -> FastAPI:
         log.info("provenance router mounted at /api/provenance")
     except ImportError as exc:
         log.warning("provenance router not available: %s", exc)
+
+    try:
+        from backend.api.firewall import router as firewall_router
+        app.include_router(firewall_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Firewall router mounted at /api/firewall")
+    except ImportError as exc:
+        log.warning("Firewall router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
