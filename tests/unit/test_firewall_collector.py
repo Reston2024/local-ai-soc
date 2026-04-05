@@ -18,7 +18,6 @@ pytestmark = pytest.mark.skipif(not _IMPORT_OK, reason="FirewallCollector not im
 class TestFirewallCollectorIngestsLines:
     """P23-T03: Collector reads new lines from syslog/EVE files and ingests them."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 2")
     @pytest.mark.asyncio
     async def test_ingests_new_syslog_lines(self):
         import tempfile
@@ -51,7 +50,6 @@ class TestFirewallCollectorIngestsLines:
 class TestFirewallCollectorMissingFile:
     """P23-T03: Collector does not crash when syslog/EVE files are absent."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 2")
     @pytest.mark.asyncio
     async def test_absent_files_no_crash(self):
         from pathlib import Path
@@ -76,7 +74,6 @@ class TestFirewallCollectorMissingFile:
 class TestFirewallCollectorBackoff:
     """P23-T03: Consecutive failures increase the backoff interval."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 2")
     def test_backoff_increases(self):
         from pathlib import Path
         from unittest.mock import MagicMock
@@ -101,7 +98,6 @@ class TestFirewallCollectorBackoff:
 class TestHeartbeatNormalisation:
     """P23-T04: Heartbeat events have event_type='heartbeat' and update system_kv."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 2")
     @pytest.mark.asyncio
     async def test_heartbeat_event_type(self):
         from pathlib import Path
@@ -134,7 +130,6 @@ class TestHeartbeatNormalisation:
 class TestFirewallStatusEndpoint:
     """P23-T04: GET /api/firewall/status returns connected/degraded/offline."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 2")
     def test_status_route_registered(self):
         from backend.main import create_app
         app = create_app()
