@@ -2,6 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 23 (in_progress)
+current_plan: 23-00 complete — ingestion/jobs package, ipfire_sample.log fixture (6 lines), 3 pre-skipped test stub files; 803 tests pass; Wave 0 TDD scaffold complete
+status: in_progress
+last_updated: "2026-04-05T07:56:45Z"
+stopped_at: "Completed 23-00-PLAN.md — Wave 0 scaffold: ingestion/jobs package + IPFire fixture + 14 pre-skipped test stubs"
+progress:
+  total_phases: 26
+  completed_phases: 22
+  total_plans: 115
+  completed_plans: 117
+  percent: 100
+decisions:
+  - "23-00: Used pytestmark.skipif(not _IMPORT_OK) + per-test @pytest.mark.skip for double protection against import failures"
+  - "23-00: fixtures/syslog/ subdirectory matches existing ndjson/ and evtx/ fixture organization pattern"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete â€” smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
