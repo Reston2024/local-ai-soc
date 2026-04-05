@@ -3,12 +3,34 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 23 (in_progress)
-current_plan: 23-00 complete � ingestion/jobs package, ipfire_sample.log fixture (6 lines), 3 pre-skipped test stub files; 803 tests pass; Wave 0 TDD scaffold complete
+current_plan: 23-01 complete — IPFireSyslogParser implemented; 5 tests pass; 812 full suite pass; Wave 1 IPFire parser complete
 status: in_progress
-last_updated: "2026-04-05T07:56:45Z"
-stopped_at: "Completed 23-00-PLAN.md � Wave 0 scaffold: ingestion/jobs package + IPFire fixture + 14 pre-skipped test stubs"
+last_updated: "2026-04-05T08:02:25Z"
+stopped_at: "Completed 23-01-PLAN.md — IPFireSyslogParser with parse()/parse_line(); 5 unit tests activated and passing; 812 suite pass"
 progress:
   total_phases: 26
+  completed_phases: 22
+  total_plans: 115
+  completed_plans: 118
+  percent: 100
+decisions:
+  - "23-01: IPFireSyslogParser.supported_extensions=[] (programmatic use, not extension-based) — matches OsqueryParser pattern"
+  - "23-01: Year inference subtracts 1 year if date >30 days future — handles Dec->Jan log rollover without state"
+  - "23-01: Severity 'medium' for DROP_*/REJECT_* vs 'info' for FORWARDFW/INPUTFW — security-relevant drops warrant elevated severity"
+  - "23-01: tags encodes both in:/out: interface names and zone: labels for downstream filtering"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 23 (in_progress)
+current_plan: 23-02 complete — SuricataEveParser implemented; 4 unit tests passing; 809 total tests pass
+status: in_progress
+last_updated: "2026-04-05T08:01:00Z"
+stopped_at: "Completed 23-02-PLAN.md — SuricataEveParser: parse()/parse_record(), severity inversion, MITRE extraction, dest_ip→dst_ip"
+progress:
+  [██████████] 100%
   completed_phases: 22
   total_plans: 115
   completed_plans: 117
@@ -16,6 +38,8 @@ progress:
 decisions:
   - "23-00: Used pytestmark.skipif(not _IMPORT_OK) + per-test @pytest.mark.skip for double protection against import failures"
   - "23-00: fixtures/syslog/ subdirectory matches existing ndjson/ and evtx/ fixture organization pattern"
+  - "23-02: SuricataEveParser uses supported_extensions=[] (programmatic use only, not extension-based registry)"
+  - "23-02: Non-alert EVE events default severity to 'info'; MITRE metadata lists use [0]-or-None pattern"
 ---
 
 ---
