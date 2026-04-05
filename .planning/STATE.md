@@ -2,13 +2,29 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 23 (in_progress)
-current_plan: 23-01 complete — IPFireSyslogParser implemented; 5 tests pass; 812 full suite pass; Wave 1 IPFire parser complete
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-05T08:02:25Z"
-stopped_at: "Completed 23-01-PLAN.md — IPFireSyslogParser with parse()/parse_line(); 5 unit tests activated and passing; 812 suite pass"
+last_updated: "2026-04-05T08:08:54.267Z"
 progress:
   total_phases: 26
+  completed_phases: 20
+  total_plans: 115
+  completed_plans: 119
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 23 (in_progress)
+current_plan: 23-03 complete — FirewallCollector + GET /api/firewall/status; 5 tests pass; 817 full suite pass; Wave 2 collector + API complete
+status: in_progress
+last_updated: "2026-04-05T08:08:05Z"
+stopped_at: "Completed 23-03-PLAN.md — FirewallCollector with file-tail loop, heartbeat, GET /api/firewall/status; 5 unit tests activated and passing; 817 suite pass"
+progress:
+  [██████████] 100%
   completed_phases: 22
   total_plans: 115
   completed_plans: 118
@@ -18,6 +34,10 @@ decisions:
   - "23-01: Year inference subtracts 1 year if date >30 days future — handles Dec->Jan log rollover without state"
   - "23-01: Severity 'medium' for DROP_*/REJECT_* vs 'info' for FORWARDFW/INPUTFW — security-relevant drops warrant elevated severity"
   - "23-01: tags encodes both in:/out: interface names and zone: labels for downstream filtering"
+  - "23-03: IngestionLoader constructed fresh in lifespan for FirewallCollector — not shared with request handlers to avoid store lifecycle conflicts"
+  - "23-03: _ingest_new_data() returns True even when files are empty (heartbeat still emitted) — False only on unexpected exception"
+  - "23-03: FIREWALL_ENABLED=False default — app starts without firewall present, no file path validation at startup"
+  - "23-03: Firewall router always mounted via deferred try/except; collector only started when FIREWALL_ENABLED=True"
 ---
 
 ---
