@@ -46,6 +46,17 @@ class Settings(BaseSettings):
     OSQUERY_LOG_PATH: str = r"C:\Program Files\osquery\log\osqueryd.results.log"
     OSQUERY_POLL_INTERVAL: int = 5  # seconds between log checks
 
+    # Firewall telemetry collector (IPFire syslog + Suricata EVE JSON)
+    FIREWALL_ENABLED: bool = False          # Default OFF — set True in .env when IPFire is connected
+    FIREWALL_SYSLOG_PATH: str = "/var/log/remote/ipfire/messages"
+    FIREWALL_EVE_PATH: str = "/var/log/remote/ipfire/suricata/eve.json"
+    FIREWALL_SYSLOG_HOST: str = "0.0.0.0"  # Reserved for future UDP listener
+    FIREWALL_SYSLOG_PORT: int = 514         # Reserved for future UDP listener
+    FIREWALL_HEARTBEAT_THRESHOLD_SECONDS: int = 120   # connected → degraded threshold
+    FIREWALL_OFFLINE_THRESHOLD_SECONDS: int = 300     # degraded → offline threshold
+    FIREWALL_POLL_INTERVAL: int = 5                   # seconds between file checks
+    FIREWALL_CONSECUTIVE_FAILURE_LIMIT: int = 5       # failures before alert
+
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
