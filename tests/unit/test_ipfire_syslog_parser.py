@@ -20,7 +20,6 @@ FIXTURE_LOG = "fixtures/syslog/ipfire_sample.log"
 class TestIPFireParserForwardFW:
     """P23-T01: FORWARDFW line parsed to NormalizedEvent with correct fields."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_forwardfw_fields(self):
         parser = IPFireSyslogParser()
         events = list(parser.parse(FIXTURE_LOG))
@@ -38,14 +37,12 @@ class TestIPFireParserForwardFW:
 class TestIPFireParserDropReject:
     """P23-T01: DROP and REJECT lines map to event_outcome='failure'."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_drop_ctinvalid(self):
         parser = IPFireSyslogParser()
         events = list(parser.parse(FIXTURE_LOG))
         drop_events = [e for e in events if e.event_outcome == "failure"]
         assert len(drop_events) >= 2
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_raw_event_preserved(self):
         parser = IPFireSyslogParser()
         events = list(parser.parse(FIXTURE_LOG))
@@ -55,7 +52,6 @@ class TestIPFireParserDropReject:
 class TestIPFireParserICMP:
     """P23-T01: ICMP lines (no SPT/DPT) parsed without crashing."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_icmp_no_ports(self):
         parser = IPFireSyslogParser()
         events = list(parser.parse(FIXTURE_LOG))
@@ -69,7 +65,6 @@ class TestIPFireParserICMP:
 class TestIPFireParserSingleLine:
     """P23-T01: parse_line() convenience method works on a single string."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_parse_line_returns_event(self):
         parser = IPFireSyslogParser()
         line = (
