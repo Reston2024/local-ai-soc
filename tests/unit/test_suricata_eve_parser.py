@@ -20,7 +20,6 @@ FIXTURE_EVE = "fixtures/suricata_eve_sample.ndjson"
 class TestSuricataSeverityMapping:
     """P23-T02: alert.severity 1=critical, 2=high, 3=medium, 4=low."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_severity_mapping(self):
         parser = SuricataEveParser()
         events = list(parser.parse(FIXTURE_EVE))
@@ -35,7 +34,6 @@ class TestSuricataSeverityMapping:
 class TestSuricataMITREExtraction:
     """P23-T02: MITRE ATT&CK tactic/technique extracted from alert.metadata."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_mitre_metadata_extracted(self):
         import json
         # Build a synthetic alert record with MITRE metadata
@@ -67,7 +65,6 @@ class TestSuricataMITREExtraction:
 class TestSuricataDnsHttpFlow:
     """P23-T02: dns, http, and flow event types parse without crashing."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_dns_flow_http_parsed(self):
         parser = SuricataEveParser()
         events = list(parser.parse(FIXTURE_EVE))
@@ -79,7 +76,6 @@ class TestSuricataDnsHttpFlow:
 class TestSuricataDestIpMapping:
     """P23-T02: EVE dest_ip maps to NormalizedEvent.dst_ip."""
 
-    @pytest.mark.skip(reason="not implemented — Wave 1")
     def test_dest_ip_mapped(self):
         record = {
             "timestamp": "2024-01-15T10:00:00.000000+0000",
