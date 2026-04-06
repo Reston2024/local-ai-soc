@@ -3,19 +3,21 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 24 (in_progress)
-current_plan: 24-01 complete — recommendations + recommendation_dispatch_log tables in DuckDB; 29 tests pass; next: 24-02 (RecommendationArtifact Pydantic model)
+current_plan: 24-02 complete — RecommendationArtifact Pydantic models with jsonschema allOf enforcement; 16 unit tests green; next: 24-03 (API routes)
 status: in_progress
-last_updated: "2026-04-06T13:17:00Z"
-stopped_at: "Completed 24-01-PLAN.md — _CREATE_RECOMMENDATIONS_TABLE + _CREATE_DISPATCH_LOG_TABLE DDL + indexes; TDD: 5 new tests GREEN; 29/29 targeted tests pass"
+last_updated: "2026-04-06T13:15:34Z"
+stopped_at: "Completed 24-02-PLAN.md — RecommendationArtifact + PromptInspection + RetrievalSources + OverrideLog + RecommendationCreate + ApproveRequest; TDD: 16 tests RED then GREEN; 783 suite pass, 0 failures"
 progress:
   total_phases: 27
   completed_phases: 21
   total_plans: 128
-  completed_plans: 126
-  percent: 98
+  completed_plans: 127
+  percent: 99
 decisions:
   - "24-01: FK omitted on dispatch_log.recommendation_id — DuckDB 1.3 does not enforce FOREIGN KEY constraints; integrity enforced at application layer"
   - "24-01: Two indexes created: idx_recommendations_case_id and idx_recommendations_status for primary API query patterns"
+  - "24-02: model_dump(exclude_none=True) used before jsonschema.validate() to prevent allOf false positives on null-valued optional fields (Research pitfall 3)"
+  - "24-02: TDD — RED commit (5d3ebf8) before GREEN implementation (9f7171e); 16 unit tests all pass"
 ---
 
 ---
