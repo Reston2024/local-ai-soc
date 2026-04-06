@@ -4,7 +4,7 @@
 
 A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
 
-**Status:** Phase 18 complete — Reporting & Compliance with WeasyPrint PDF reports, MITRE ATT&CK coverage heatmap, D3 KPI trend charts, NIST CSF 2.0 + TheHive compliance export ZIPs, and full four-tab ReportingView UI.
+**Status:** Phase 23.5 complete — Security Hardening: AUTH_TOKEN startup validation, MFA-gated legacy admin, prompt injection scrubbing (base64/Unicode NFC), CSP headers, TOTP replay persistence, full prompt telemetry with SHA-256, and meta-detection Sigma rules. 831 tests passing. Next: Phase 24 (Recommendation Artifact Store + Approval API).
 
 ---
 
@@ -22,10 +22,15 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 | **SOAR Playbooks** | ✅ | 5 NIST IR playbooks; analyst-gated step execution; SSE stream; audit trail |
 | **Reporting & Compliance** | ✅ | WeasyPrint PDF reports, MITRE ATT&CK heatmap, D3 KPI trends, NIST CSF 2.0 + TheHive ZIP export |
 | **Threat Hunting** | Beta | Structured hunt queries, hypothesis tracking |
-| **Bearer Token Auth** | ✅ | All `/api/*` routes protected; secure-by-default (`AUTH_TOKEN=changeme`) |
+| **Bearer Token Auth** | ✅ | Startup validator rejects weak tokens; MFA-gated legacy admin path |
 | **Citation Verification** | ✅ | LLM responses verified against retrieved context; `citation_verified` in payload |
-| **Prompt Injection Scrubbing** | ✅ | Free-text fields sanitized before embedding/LLM pass |
-| **LLM Audit Logging** | ✅ | All Ollama calls logged to `logs/llm_audit.jsonl` |
+| **Prompt Injection Scrubbing** | ✅ | Base64/Unicode NFC normalization + regex scrub on all free-text fields; evidence in system turn |
+| **LLM Audit Logging** | ✅ | Full prompt text (64KB cap) + SHA-256 hash logged to `llm_calls` table |
+| **TOTP Replay Protection** | ✅ | SQLite `system_kv` persistent across restarts; L1 in-process cache |
+| **Security Headers** | ✅ | CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via Caddy |
+| **Meta-Detection Rules** | ✅ | Sigma rules monitoring auth burst, LLM token spikes, ChromaDB deletions |
+| **Identity & RBAC** | ✅ | Operator table, bcrypt hashed passwords, role-based route guards |
+| **Firewall Integration** | ✅ | IPFire syslog + Suricata EVE JSON ingestion; heartbeat monitoring |
 | **osquery Telemetry** | Optional | Live host telemetry via `OSQUERY_ENABLED=True` |
 | **CI Pipeline** | ✅ | ruff + pytest (≥70% coverage) + pip-audit + gitleaks + frontend build/svelte-check |
 
@@ -271,6 +276,12 @@ fixtures/          Test fixture data (NDJSON, EVTX samples)
 | 16 | Security Hardening — end-to-end auth, citation verification, injection scrubbing, frontend CI | ✅ |
 | 17 | SOAR & Playbook Engine — 5 NIST IR playbooks, analyst-gated execution, SSE, UI | ✅ |
 | 18 | Reporting & Compliance — PDF reports, MITRE ATT&CK heatmap, KPI trends, NIST CSF 2.0 + TheHive export | ✅ |
+| 19 | Identity & RBAC — operator table, bcrypt, role-based guards, session management | ✅ |
+| 20 | Schema Standardisation — ECS/OCSF alignment, NormalizedEvent schema migration, DuckDB column renames | ✅ |
+| 21 | Evidence Provenance — SHA-256 content hashing, provenance chain, chain-of-custody audit | ✅ |
+| 22 | AI Lifecycle Hardening — model drift detection, grounding scores, confidence tracking, LLMOps audit | ✅ |
+| 23 | Firewall Telemetry Ingestion — IPFire syslog + Suricata EVE JSON parsers, collector, heartbeat, `GET /api/firewall/status` | ✅ |
+| 23.5 | Security Hardening (expert panel) — 12 findings closed: token validation, MFA, injection scrubbing, CSP, TOTP persistence, meta-detection | ✅ |
 
 ---
 

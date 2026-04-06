@@ -436,3 +436,95 @@ The dashboard started with Svelte 5 runes (`$state`, `$derived`, `$effect`) but 
 - Consistent reactive pattern across all 11 views
 - Documented in `CLAUDE.md` conventions: "Svelte 5 runes: $state(), $derived(), $effect() — NOT stores"
 - No `svelte:store` or `writable()` usage anywhere in the codebase
+
+---
+
+## ADR-023: Firewall Telemetry — File-Tail Over UDP Listener
+
+**Date:** 2026-04-03
+**Status:** ACCEPTED
+
+**Context:**
+Phase 23 required ingesting IPFire syslog and Suricata EVE JSON from a connected firewall appliance. Windows asyncio does not support `create_datagram_endpoint` with `reuse_port`, making a native UDP listener unreliable on the desktop target.
+
+**Decision:** Implement file-tail collection (`FirewallCollector`) reading log files written by an intermediate syslog agent rather than binding a UDP socket directly.
+
+**Implementation:**
+- `ingestion/jobs/firewall_collector.py` — asyncio task; `asyncio.to_thread()` for all file I/O
+- `ingestion/parsers/ipfire_syslog_parser.py` — RFC 3164 IPFire format: FORWARDFW/INPUTFW/DROP_*/REJECT_* prefixes, iptables fields
+- `ingestion/parsers/suricata_eve_parser.py` — EVE JSON: alert/flow/dns/http; severity inversion (1=critical); MITRE ATT&CK from `alert.metadata`
+- Heartbeat stored in `system_kv`; `GET /api/firewall/status` derives connected/degraded/offline from heartbeat age
+- `FIREWALL_SYSLOG_HOST`/`PORT` settings stubbed for future UDP; current path uses file-tail
+
+**Consequences:**
+- All telemetry flows through `IngestionLoader.ingest_events()` — free dedup, embedding, graph extraction, provenance
+- 817 tests passing on Phase 23 completion
+
+---
+
+## ADR-024: Two-Bounded-Systems Trust Architecture (SOC ↔ Firewall)
+
+**Date:** 2026-04-03
+**Status:** ACCEPTED
+
+**Context:**
+The firewall appliance (enforcement plane) and the SOC Brain (analysis plane) must interoperate without allowing raw LLM output to reach the enforcement plane. NIST AI RMF GOVERN 1.1 requires human-in-the-loop for consequential AI actions.
+
+**Decision:** Establish explicit trust boundary: SOC produces recommendation artifacts (schema-validated JSON); firewall executes them only after analyst approval. No raw LLM text crosses the boundary.
+
+**Implementation:**
+- `docs/ADR-030-ai-recommendation-governance.md` — governance rules for recommendation artifacts
+- `docs/ADR-031-transport-contract-reference.md` — SOC consumer obligations
+- `docs/ADR-032-executor-failure-reference.md` — receipt `failure_taxonomy` → case-state transitions
+- `contracts/recommendation.schema.json` — versioned JSON Schema v1.0.0 with `prompt_inspection`, `override_log`, `expires_at`
+- `validation_failed` and `rolled_back` receipts require mandatory analyst review; `expired_rejected` triggers re-approval
+
+**Consequences:**
+- SOC never dispatches to unreachable endpoint silently — transport failures surface as case state
+- Firewall repo holds canonical transport/executor ADRs and receipt schema
+
+---
+
+## ADR-025: Security Hardening — AUTH_TOKEN Startup Validation
+
+**Date:** 2026-04-05
+**Status:** ACCEPTED
+
+**Context:**
+Expert panel (E3-01) identified `AUTH_TOKEN: str = "changeme"` as a CRITICAL finding. Any operator who forgets to set the token ships with an exploitable default.
+
+**Decision:** Add `model_validator(mode="after")` to `Settings` that raises `ValueError` at construction if `AUTH_TOKEN == "changeme"` or `len(AUTH_TOKEN) < 32`. The literal string `"dev-only-bypass"` is an explicit allow-list for local development.
+
+**Implementation:**
+- `backend/core/config.py` — validator in `Settings` class
+- `LEGACY_TOTP_SECRET: str = ""` default disables legacy admin path entirely; opt-in via `.env`
+- `tests/security/test_auth_hardening.py::test_default_token_rejected`
+
+**Consequences:**
+- Zero-config deployments fail fast at startup with a clear error message
+- Legacy admin path requires both `LEGACY_TOTP_SECRET` (non-empty) and `X-TOTP-Code` header
+
+---
+
+## ADR-026: Security Hardening — Prompt Injection Scrubbing Architecture
+
+**Date:** 2026-04-05
+**Status:** ACCEPTED
+
+**Context:**
+Expert panel (E6-01, E6-02) identified two injection vectors: (1) RAG evidence bypassing scrubbing via base64/Unicode homoglyphs; (2) `body.question` interpolated directly into prompts without scrubbing.
+
+**Decision:**
+1. `_normalize_for_scrub()` applies Unicode NFC normalization and base64 decode heuristic (≥16 chars, >70% text ratio in decoded output) before regex pattern matching.
+2. `build_prompt()` returns `tuple[str, str]` — evidence in system turn, question in user turn.
+3. `body.question` scrubbed with `_scrub_injection()` before prompt construction in `chat.py`.
+
+**Implementation:**
+- `ingestion/normalizer.py` — `_normalize_for_scrub()` helper
+- `prompts/analyst_qa.py` — `build_prompt()` returns `(system_str, user_str)`
+- `backend/api/chat.py` — `safe_question = _scrub_injection(body.question)`
+- `tests/eval/fixtures/injection_b64_bypass.json` — adversarial eval fixture
+
+**Consequences:**
+- RAG evidence cannot contaminate the user turn; separates LLM trust domains at prompt level
+- 831 tests passing on Phase 23.5 completion; all 12 expert panel findings closed

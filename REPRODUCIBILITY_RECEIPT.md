@@ -2,7 +2,7 @@
 # AI-SOC-Brain — Reproducibility Receipt
 
 **Status:** VERIFIED
-**Date:** 2026-03-26
+**Date:** 2026-04-05
 
 > Pinned via uv.lock — run `uv export --no-hashes` to reproduce
 
@@ -229,3 +229,72 @@ Install pip-audit as a dev dependency if CI enforcement is required. As of 2026-
 ```powershell
 pwsh -File scripts\smoke-test-phase8.ps1
 ```
+
+---
+
+## Phase 23 — Firewall Telemetry Ingestion (2026-04-05)
+
+### New Components
+- `ingestion/parsers/ipfire_syslog_parser.py` — IPFire RFC 3164 syslog → NormalizedEvent
+- `ingestion/parsers/suricata_eve_parser.py` — Suricata EVE JSON → NormalizedEvent
+- `ingestion/jobs/firewall_collector.py` — file-tail asyncio collector with exponential backoff
+- `backend/api/firewall.py` — `GET /api/firewall/status` heartbeat endpoint
+
+### New Settings (`.env`)
+```
+FIREWALL_ENABLED=False          # Set True to activate collector
+FIREWALL_SYSLOG_PATH=           # Path to IPFire syslog file
+FIREWALL_EVE_PATH=              # Path to Suricata EVE JSON file
+FIREWALL_HEARTBEAT_TIMEOUT_CONNECTED=120
+FIREWALL_HEARTBEAT_TIMEOUT_DEGRADED=300
+```
+
+### Test Count
+817 passed on Phase 23 completion (prior to 23.5 hardening).
+
+---
+
+## Phase 23.5 — Security Hardening (2026-04-05)
+
+### Findings Closed (expert panel sweep — 10 experts, 18 findings)
+
+| Finding | Severity | Fix |
+|---------|----------|-----|
+| E3-01: Default AUTH_TOKEN | CRITICAL | `model_validator` rejects at startup; tokens < 32 chars rejected |
+| E3-02: Legacy admin bypass | CRITICAL | `LEGACY_TOTP_SECRET` required + `X-TOTP-Code` header |
+| E6-01: RAG injection bypass | CRITICAL | `_normalize_for_scrub()`: NFC + base64 decode heuristic |
+| E6-02: Chat question unscrubbed | CRITICAL | `_scrub_injection(body.question)` in `chat.py` |
+| E1-01/E10-01: Sigma SQL + backend | HIGH | Parameterization audit confirmed; 4 injection tests activated |
+| E4-01: Ollama port unverified | HIGH | `Test-NetConnection` check in `scripts/status.ps1` |
+| E8-02: No meta-detection rules | HIGH | 3 parse-valid Sigma rules in `detections/sigma/meta/` |
+| E9-01: Missing security headers | MEDIUM | CSP, X-Frame-Options, X-Content-Type-Options in Caddyfile |
+| E3-04: /health info disclosure | MEDIUM | All exceptions sanitized to `"component unavailable"` |
+| E8-01: No log rotation | MEDIUM | `TimedRotatingFileHandler(when="midnight", backupCount=30)` |
+| E2-01: TOTP replay after restart | MEDIUM | SQLite `system_kv` L2 with 90s TTL + in-process L1 cache |
+| E7-02: Partial prompt logging | MEDIUM | `prompt_text` (64KB cap) + `prompt_hash` (SHA-256) in `llm_calls` |
+
+### New Required Settings (`.env`)
+```
+# AUTH_TOKEN must be 32+ chars or "dev-only-bypass" for local dev
+AUTH_TOKEN=<generate with: python -c "import secrets; print(secrets.token_urlsafe(32))">
+
+# Optional: enable legacy admin path (disabled by default)
+# LEGACY_TOTP_SECRET=<base32-encoded TOTP secret>
+```
+
+### Test Count
+831 passed, 2 skipped, 11 xfailed — Phase 23.5 completion.
+
+### New Files
+- `tests/security/test_auth_hardening.py` — T01, T02, T09, T11, T12
+- `tests/security/test_injection_hardening.py` — T03, T04
+- `tests/security/test_sigma_hardening.py` — T05 (4 SQL injection tests)
+- `tests/sigma_smoke/test_meta_rules.py` — T07 (3 meta-rule parse tests)
+- `tests/eval/fixtures/injection_b64_bypass.json` — adversarial eval fixture
+- `detections/sigma/meta/auth_failure_burst.yml`
+- `detections/sigma/meta/llm_token_spike.yml`
+- `detections/sigma/meta/collection_delete.yml`
+- `docs/ADR-030-ai-recommendation-governance.md`
+- `docs/ADR-031-transport-contract-reference.md`
+- `docs/ADR-032-executor-failure-reference.md`
+- `contracts/recommendation.schema.json`
