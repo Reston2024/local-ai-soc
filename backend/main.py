@@ -185,6 +185,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         sqlite_store=sqlite_store,
     )
 
+    # 6a. Model digest verification (E6-03) — runs after OllamaClient is constructed.
+    #     Gracefully skips if Ollama is unreachable; raises only when ENFORCE_DIGEST=True.
+    if settings.OLLAMA_MODEL_DIGEST or settings.OLLAMA_EMBEDDING_DIGEST:
+        log.info("Running Ollama model digest verification (E6-03)")
+    if settings.OLLAMA_MODEL_DIGEST or not settings.OLLAMA_MODEL_DIGEST:
+        # Always run for the primary model so the digest is always logged.
+        await ollama.verify_model_digest(
+            model_name=settings.OLLAMA_MODEL,
+            expected_digest_prefix=settings.OLLAMA_MODEL_DIGEST,
+            enforce=settings.OLLAMA_ENFORCE_DIGEST,
+        )
+    if settings.OLLAMA_EMBEDDING_DIGEST:
+        await ollama.verify_model_digest(
+            model_name=settings.OLLAMA_EMBED_MODEL,
+            expected_digest_prefix=settings.OLLAMA_EMBEDDING_DIGEST,
+            enforce=settings.OLLAMA_ENFORCE_DIGEST,
+        )
+
     # 7. Attach to app.state
     app.state.settings = settings
     app.state.stores = stores

@@ -188,6 +188,78 @@ class OllamaClient:
             log.warning("Ollama health check failed", error=str(exc))
             return False
 
+    async def verify_model_digest(
+        self,
+        model_name: str,
+        expected_digest_prefix: str,
+        enforce: bool = False,
+    ) -> str | None:
+        """Verify the running Ollama model against an expected digest prefix (E6-03).
+
+        Calls ``GET /api/show`` with the configured model name, reads the
+        ``digest`` field from the response, and optionally enforces that it
+        starts with the configured prefix.
+
+        Always logs the actual digest at INFO level so operators can see
+        exactly which model binary is loaded.
+
+        Args:
+            model_name:              The model name to inspect (e.g. "qwen3:14b").
+            expected_digest_prefix:  The known-good sha256 digest prefix
+                                     (first 12+ chars).  Empty string disables
+                                     the comparison check.
+            enforce:                 If True, raise RuntimeError when the digest
+                                     does not match.  If False, only warn.
+
+        Returns:
+            The actual digest string returned by Ollama, or None if Ollama is
+            unavailable (graceful degradation — startup is not blocked).
+
+        Raises:
+            RuntimeError: Only when ``enforce=True`` and the digest mismatches.
+        """
+        try:
+            resp = await self._client.post(
+                "/api/show",
+                json={"name": model_name},
+                timeout=httpx.Timeout(connect=5.0, read=10.0, write=5.0, pool=5.0),
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            actual_digest: str = data.get("digest", "")
+            log.info(
+                "Ollama model digest",
+                model=model_name,
+                digest=actual_digest,
+                enforce=enforce,
+            )
+            if expected_digest_prefix:
+                if not actual_digest.startswith(expected_digest_prefix):
+                    msg = (
+                        f"Model digest mismatch for '{model_name}': "
+                        f"expected prefix '{expected_digest_prefix}', "
+                        f"got '{actual_digest}'"
+                    )
+                    if enforce:
+                        raise RuntimeError(msg)
+                    log.warning(msg)
+                else:
+                    log.info(
+                        "Model digest verified OK",
+                        model=model_name,
+                        digest_prefix=expected_digest_prefix,
+                    )
+            return actual_digest
+        except RuntimeError:
+            raise
+        except Exception as exc:
+            log.warning(
+                "Model digest check unavailable (Ollama unreachable) — skipping",
+                model=model_name,
+                error=str(exc),
+            )
+            return None
+
     async def list_models(self) -> list[str]:
         """Return list of model names available in Ollama."""
         try:

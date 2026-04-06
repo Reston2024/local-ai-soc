@@ -446,3 +446,86 @@ class TestOllamaClientDuckDBStore:
         call_kwargs = mock_stream.call_args
         payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][2]
         assert payload["model"] == "foundation-sec:8b"
+
+
+class TestOllamaClientVerifyModelDigest:
+    """E6-03: Model digest pinning tests."""
+
+    async def test_matching_digest_no_error(self):
+        """When the returned digest starts with the expected prefix, no error is raised."""
+        client = _make_client()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"digest": "sha256:abc123def456"}
+
+        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+            result = await client.verify_model_digest(
+                model_name="qwen3:14b",
+                expected_digest_prefix="sha256:abc123",
+                enforce=True,
+            )
+        assert result == "sha256:abc123def456"
+
+    async def test_mismatching_digest_with_enforce_raises_runtime_error(self):
+        """When digest doesn't match and enforce=True, RuntimeError is raised."""
+        client = _make_client()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"digest": "sha256:zzzzzzzzzzzz"}
+
+        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+            with pytest.raises(RuntimeError, match="digest mismatch"):
+                await client.verify_model_digest(
+                    model_name="qwen3:14b",
+                    expected_digest_prefix="sha256:abc123",
+                    enforce=True,
+                )
+
+    async def test_mismatching_digest_without_enforce_warns_no_error(self):
+        """When digest doesn't match but enforce=False, no error is raised."""
+        client = _make_client()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"digest": "sha256:zzzzzzzzzzzz"}
+
+        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+            # Should not raise even though digest doesn't match
+            result = await client.verify_model_digest(
+                model_name="qwen3:14b",
+                expected_digest_prefix="sha256:abc123",
+                enforce=False,
+            )
+        assert result == "sha256:zzzzzzzzzzzz"
+
+    async def test_ollama_unavailable_returns_none_no_error(self):
+        """When Ollama is unreachable, the method returns None and does not raise."""
+        import httpx
+
+        client = _make_client()
+
+        with patch.object(
+            client._client,
+            "post",
+            new=AsyncMock(side_effect=httpx.ConnectError("connection refused")),
+        ):
+            result = await client.verify_model_digest(
+                model_name="qwen3:14b",
+                expected_digest_prefix="sha256:abc123",
+                enforce=True,  # enforce=True should NOT raise when Ollama is unreachable
+            )
+        assert result is None
+
+    async def test_empty_expected_digest_logs_actual_without_comparison(self):
+        """When expected_digest_prefix is empty, actual digest is returned without error."""
+        client = _make_client()
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"digest": "sha256:realdigest000"}
+
+        with patch.object(client._client, "post", new=AsyncMock(return_value=mock_response)):
+            result = await client.verify_model_digest(
+                model_name="qwen3:14b",
+                expected_digest_prefix="",
+                enforce=True,
+            )
+        assert result == "sha256:realdigest000"

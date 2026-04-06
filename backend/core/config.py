@@ -38,6 +38,17 @@ class Settings(BaseSettings):
     # Cybersecurity-specialised model (ADR-020) — used for investigation/triage prompts
     OLLAMA_CYBERSEC_MODEL: str = "foundation-sec:8b"
 
+    # Model digest pinning (E6-03) — prevents silent model substitution attacks.
+    # Set the expected sha256 digest prefix (first 12+ chars) of the configured model.
+    # Get the current digest:
+    #   curl http://localhost:11434/api/show -d '{"name":"qwen3:14b"}' | python -m json.tool
+    # OLLAMA_MODEL_DIGEST=sha256:abc123...  # First 12 chars of digest
+    # OLLAMA_EMBEDDING_DIGEST=sha256:...    # Digest for embedding model
+    # OLLAMA_ENFORCE_DIGEST=False           # Set True in production to hard-fail on mismatch
+    OLLAMA_MODEL_DIGEST: str = ""          # Expected sha256 digest prefix for OLLAMA_MODEL
+    OLLAMA_EMBEDDING_DIGEST: str = ""      # Expected sha256 digest prefix for OLLAMA_EMBED_MODEL
+    OLLAMA_ENFORCE_DIGEST: bool = False    # If True, raise RuntimeError on digest mismatch
+
     # Logging
     LOG_LEVEL: str = "INFO"
 
