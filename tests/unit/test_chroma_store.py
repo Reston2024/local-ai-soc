@@ -174,3 +174,46 @@ class TestChromaStore:
         # Health check accesses collection list
         names = store.list_collections()
         assert isinstance(names, list)
+
+
+class TestChromaStoreDeleteCollection:
+    """E5-01: Collection deletion must require explicit admin authorization."""
+
+    def test_delete_collection_without_admin_override_raises_permission_error(self):
+        """Calling delete_collection without _admin_override=True raises PermissionError."""
+        from unittest.mock import MagicMock
+
+        from backend.stores.chroma_store import ChromaStore
+
+        store = ChromaStore.__new__(ChromaStore)
+        store._client = MagicMock()
+
+        with pytest.raises(PermissionError, match="admin authorization"):
+            store.delete_collection("some_collection")
+
+        # The underlying client method must NOT have been called.
+        store._client.delete_collection.assert_not_called()
+
+    def test_delete_collection_with_admin_override_succeeds(self):
+        """Calling delete_collection(_admin_override=True) calls through to the client."""
+        from unittest.mock import MagicMock
+
+        from backend.stores.chroma_store import ChromaStore
+
+        store = ChromaStore.__new__(ChromaStore)
+        store._client = MagicMock()
+        # Provide a minimal logger so log.info doesn't fail on the bare object.
+        import logging
+        store._logger = logging.getLogger("test")
+
+        # Patch the module-level log so it doesn't need a real structlog setup.
+        import backend.stores.chroma_store as cs_module
+        original_log = cs_module.log
+        cs_module.log = MagicMock()
+
+        try:
+            store.delete_collection("target_collection", _admin_override=True)
+        finally:
+            cs_module.log = original_log
+
+        store._client.delete_collection.assert_called_once_with("target_collection")

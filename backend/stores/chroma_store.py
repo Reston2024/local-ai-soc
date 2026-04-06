@@ -217,6 +217,42 @@ class ChromaStore:
         return await asyncio.to_thread(self.count, collection_name)
 
     # ------------------------------------------------------------------
+    # Destructive operations (admin-gated)
+    # ------------------------------------------------------------------
+
+    def delete_collection(self, name: str, *, _admin_override: bool = False) -> None:
+        """Delete a ChromaDB collection. Only callable with explicit admin_override=True.
+
+        This guard prevents accidental or unauthorized deletion of collections from
+        any non-admin code path.  At the API layer, gate all callers behind
+        ``require_role('admin')`` before passing ``_admin_override=True``.
+
+        Production use: gate this behind require_role('admin') at the API layer.
+
+        Args:
+            name:            The collection name to delete.
+            _admin_override: Must be True to proceed.  Pass True only from
+                             API endpoints that are already protected by
+                             ``require_role('admin')``.
+
+        Raises:
+            PermissionError: If called without ``_admin_override=True``.
+        """
+        if not _admin_override:
+            raise PermissionError(
+                "Collection deletion requires explicit admin authorization. "
+                "Pass _admin_override=True only from admin-gated API endpoints."
+            )
+        self._client.delete_collection(name)
+        log.info("Collection deleted (admin action)", collection=name)
+
+    async def delete_collection_async(
+        self, name: str, *, _admin_override: bool = False
+    ) -> None:
+        """Async wrapper around delete_collection."""
+        await asyncio.to_thread(self.delete_collection, name, _admin_override=_admin_override)
+
+    # ------------------------------------------------------------------
     # Initialisation helper
     # ------------------------------------------------------------------
 
