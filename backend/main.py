@@ -554,6 +554,20 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("Recommendations router not available: %s", exc)
 
+    try:
+        from backend.api.receipts import router as receipts_router  # noqa: E402
+        app.include_router(receipts_router, dependencies=[Depends(verify_token)])  # /api/receipts
+        log.info("Receipts router mounted at /api/receipts")
+    except ImportError as exc:
+        log.warning("Receipts router not available: %s", exc)
+
+    try:
+        from backend.api.notifications import router as notifications_router  # noqa: E402
+        app.include_router(notifications_router, dependencies=[Depends(verify_token)])  # /api/notifications
+        log.info("Notifications router mounted at /api/notifications")
+    except ImportError as exc:
+        log.warning("Notifications router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
