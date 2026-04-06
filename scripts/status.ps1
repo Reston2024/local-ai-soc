@@ -39,6 +39,16 @@ if ($LASTEXITCODE -ne 0) {
 Check-Service "FastAPI Backend" "http://localhost:8000/health"
 Check-Service "Ollama"          "http://localhost:11434"
 
+# Ollama network isolation check (E4-01)
+Write-Host ""
+Write-Host "[*] Checking Ollama network isolation..." -ForegroundColor Cyan
+$ollamaTest = Test-NetConnection -ComputerName "0.0.0.0" -Port 11434 -WarningAction SilentlyContinue -ErrorAction SilentlyContinue
+if ($ollamaTest.TcpTestSucceeded) {
+    Write-Warning "SECURITY: Ollama port 11434 reachable on 0.0.0.0 — run scripts/configure-firewall.ps1 to restrict access"
+} else {
+    Write-Host "  OK: Ollama port 11434 is not publicly reachable" -ForegroundColor Green
+}
+
 # Check Docker / Caddy
 try {
     $containers = docker ps --format "{{.Names}}\t{{.Status}}" 2>$null
