@@ -2,12 +2,48 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 23 (complete)
+current_plan: 23-04 complete — Final verification checkpoint; 817 tests pass, 0 failures; all 14 Phase 23 tests passing; P23-T01..P23-T04 all satisfied; Phase 23 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-05T08:15:00Z"
+stopped_at: "Completed 23-04-PLAN.md — Phase 23 checkpoint verified: 817 full suite pass, 0 failures; IPFireSyslogParser (6 events), SuricataEveParser (5 events + MITRE), FirewallCollector (file-tail + backoff + heartbeat), GET /api/firewall/status — all confirmed; Phase 23 COMPLETE"
+progress:
+  [██████████] 100%
+  completed_phases: 23
+  total_plans: 115
+  completed_plans: 120
+  percent: 100
+decisions:
+  - "23-04: Live firewall connectivity test deferred to live integration (no physical IPFire device in CI) — all automated checks passed"
+  - "23-04: Phase 23 complete; all four requirements P23-T01..P23-T04 verified by 817-test automated suite"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-06T04:05:21.464Z"
+progress:
+  total_phases: 26
+  completed_phases: 21
+  total_plans: 115
+  completed_plans: 120
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
 last_updated: "2026-04-05T08:08:54.267Z"
 progress:
-  total_phases: 26
+  [██████████] 100%
   completed_phases: 20
   total_plans: 115
   completed_plans: 119
