@@ -15,12 +15,12 @@ async def test_triage_response_references_severity(mock_ollama):
     events = load_event_fixtures("triage_events_a.ndjson")
     detections = [json.dumps(e) for e in events]
 
-    prompt = triage.build_prompt(detections=detections)
+    system_addition, user_turn = triage.build_prompt(detections=detections)
 
     with patch.object(mock_ollama._client, "post", new=mock_ollama._mock_post):
         result = await mock_ollama.generate(
-            prompt=prompt,
-            system=triage.SYSTEM,
+            prompt=user_turn,
+            system=triage.SYSTEM + system_addition,
         )
 
     assert len(result) > 0
@@ -34,15 +34,15 @@ async def test_triage_response_fixture_b(mock_ollama):
     detections = [json.dumps(e) for e in events]
     context_ids = [e["event_id"] for e in events]
 
-    prompt = triage.build_prompt(
+    system_addition, user_turn = triage.build_prompt(
         detections=detections,
         context_events=[json.dumps(e) for e in events],
     )
 
     with patch.object(mock_ollama._client, "post", new=mock_ollama._mock_post):
         result = await mock_ollama.generate(
-            prompt=prompt,
-            system=triage.SYSTEM,
+            prompt=user_turn,
+            system=triage.SYSTEM + system_addition,
             grounding_event_ids=context_ids,
         )
 

@@ -29,7 +29,7 @@ dependencies = [
     # Data seeding
     "datasets>=2.21.0",
     # Metrics scheduling
-    "apscheduler>=3.10.0,<4.0",
+    "apscheduler==3.11.2",
     "slowapi==0.1.9",
     "weasyprint>=68.1",
     "passlib[bcrypt]>=1.7.4",

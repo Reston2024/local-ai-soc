@@ -104,8 +104,8 @@
     },
     "model_run_id": {
       "type": "string",
-      "format": "uuid",
-      "description": "UUID v4. Links to the llm_audit_provenance row for this generation run."
+      "description": "Links to llm_audit_provenance table (Phase 22+). For artifacts created before Phase 22, use sentinel value 'pre-phase-22-no-audit'. Migration: populate from llm_calls.run_id.",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000", "pre-phase-22-no-audit"]
     },
     "prompt_inspection": {
       "type": "object",
@@ -180,15 +180,36 @@
       "description": "ISO-8601 UTC. Firewall executor MUST reject artifacts presented after this timestamp. Typically 7 days from generated_at."
     }
   },
-  "if": {
-    "properties": {
-      "analyst_approved": { "const": true }
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "analyst_approved": { "const": true }
+        },
+        "required": ["analyst_approved"]
+      },
+      "then": {
+        "properties": {
+          "approved_by": { "minLength": 1 }
+        }
+      }
     },
-    "required": ["analyst_approved"]
-  },
-  "then": {
-    "properties": {
-      "approved_by": { "minLength": 1 }
+    {
+      "if": {
+        "anyOf": [
+          {"properties": {"inference_confidence": {"enum": ["low", "none"]}}, "required": ["inference_confidence"]},
+          {"properties": {"prompt_inspection": {"properties": {"passed": {"const": false}}, "required": ["passed"]}}, "required": ["prompt_inspection"]}
+        ]
+      },
+      "then": {
+        "required": ["override_log"],
+        "properties": {
+          "override_log": {
+            "minLength": 1,
+            "description": "Required when inference_confidence is low/none or prompt_inspection failed"
+          }
+        }
+      }
     }
-  }
+  ]
 }

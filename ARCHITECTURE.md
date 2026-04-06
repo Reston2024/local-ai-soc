@@ -239,7 +239,7 @@ Analyst types question →
 |----------|----------|-------|
 | Dashboard ↔ FastAPI | HTTP REST + SSE + WebSocket | JSON over HTTPS via Caddy |
 | FastAPI ↔ Ollama | HTTP REST to localhost:11434 | httpx async, chunked streaming |
-| FastAPI ↔ DuckDB | In-process Python API | No network. Single writer + read-only pool. |
+| FastAPI ↔ DuckDB | In-process Python API | No network. Single writer + read-only pool. Startup assertion fails fast if `WEB_CONCURRENCY > 1` (A-03). |
 | FastAPI ↔ Chroma | In-process Python API | PersistentClient, no HTTP mode |
 | FastAPI ↔ SQLite | In-process Python API | WAL mode |
 | Caddy ↔ FastAPI | HTTP reverse proxy | Caddy terminates TLS, proxies to :8000 |

@@ -154,7 +154,22 @@ The script uses Test-NetConnection to verify the firewall rule is active.
 
 ---
 
-### T-07: Dependency Supply Chain Attack
+### T-07: Bearer Token Exposure via Query Parameter in Access Logs
+
+**Vector:** The `/api/reports/{id}/pdf` and `/api/reports/compliance` endpoints accept `?token=` as a query parameter fallback for browser-initiated binary downloads (required because browsers cannot set custom headers on `<a href>` downloads).
+
+**Risk:** If access logs are forwarded off-box (e.g., to Grafana Loki, SIEM, or log aggregators), the bearer token will appear in log entries as a URL parameter, creating a token exposure window equal to the token lifetime.
+
+**Controls:**
+- Auth tokens are long-lived secrets; treat any log forwarding pipeline as a sensitive data sink
+- Rotate `AUTH_TOKEN` if logs are known to have been forwarded to an untrusted destination
+- Future mitigation: implement short-lived single-use export tokens (POST /api/export/token → {token, expires_in: 60s}) to minimize exposure window — planned for Phase 24+
+
+**Residual risk:** MEDIUM — acceptable for local desktop deployment with no off-box log forwarding.
+
+---
+
+### T-08: Dependency Supply Chain Attack
 
 **Threat:** A malicious package or compromised dependency introduces backdoor code into the analysis platform.
 
@@ -172,7 +187,7 @@ The script uses Test-NetConnection to verify the firewall rule is active.
 
 ---
 
-### T-08: DuckDB Write Queue Starvation / DoS
+### T-09: DuckDB Write Queue Starvation / DoS
 
 **Threat:** A malicious or malformed ingestion job submits millions of events that overwhelm the write queue, causing legitimate analyst queries to time out or the application to become unresponsive.
 

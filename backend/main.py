@@ -128,6 +128,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     3. Close SQLite connection
     4. Close OllamaClient httpx session
     """
+    # DuckDB single-writer safety: fail fast if running with multiple workers.
+    # DuckDB does not support concurrent writers from separate processes.
+    import multiprocessing
+    import os
+    _worker_count = int(os.environ.get("WEB_CONCURRENCY", "1"))
+    if _worker_count > 1:
+        raise RuntimeError(
+            f"DuckDB single-writer constraint violated: WEB_CONCURRENCY={_worker_count}. "
+            "This application must run with a single uvicorn worker. "
+            "Remove --workers or set WEB_CONCURRENCY=1."
+        )
+
     settings = Settings()
     setup_logging(log_level=settings.LOG_LEVEL, log_dir="logs")
     log.info(
@@ -369,7 +381,14 @@ def create_app() -> FastAPI:
         ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "X-TOTP-Code",
+            "X-Request-ID",
+            "Accept",
+            "Origin",
+        ],
     )
 
     # -----------------------------------------------------------------------
