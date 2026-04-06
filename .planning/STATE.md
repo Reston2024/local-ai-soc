@@ -2,16 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 24 (in_progress)
+current_plan: 24-01 complete — recommendations + recommendation_dispatch_log tables in DuckDB; 29 tests pass; next: 24-02 (RecommendationArtifact Pydantic model)
 status: in_progress
-last_updated: "2026-04-06T13:14:41.425Z"
+last_updated: "2026-04-06T13:17:00Z"
+stopped_at: "Completed 24-01-PLAN.md — _CREATE_RECOMMENDATIONS_TABLE + _CREATE_DISPATCH_LOG_TABLE DDL + indexes; TDD: 5 new tests GREEN; 29/29 targeted tests pass"
 progress:
   total_phases: 27
   completed_phases: 21
   total_plans: 128
-  completed_plans: 124
-  percent: 97
+  completed_plans: 126
+  percent: 98
+decisions:
+  - "24-01: FK omitted on dispatch_log.recommendation_id — DuckDB 1.3 does not enforce FOREIGN KEY constraints; integrity enforced at application layer"
+  - "24-01: Two indexes created: idx_recommendations_case_id and idx_recommendations_status for primary API query patterns"
 ---
 
 ---
