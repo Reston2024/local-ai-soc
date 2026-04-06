@@ -123,8 +123,12 @@ class OllamaClient:
         latency_ms: int,
         success: bool,
         error_type: Optional[str] = None,
+        full_prompt: Optional[str] = None,
     ) -> None:
         """Write one telemetry row to llm_calls in DuckDB.
+
+        Stores the full prompt text (truncated to 64 KB) and its SHA-256 hash
+        for audit and prompt-injection forensics (E7-02).
 
         No-ops silently when no store was provided at init time.
         """
@@ -132,11 +136,19 @@ class OllamaClient:
             return
         import uuid
         from datetime import datetime, timezone
+        # Truncate to 64 KB max to avoid bloating the telemetry table
+        prompt_text = full_prompt[:65536] if full_prompt else None
+        prompt_hash = (
+            hashlib.sha256(full_prompt.encode("utf-8", errors="replace")).hexdigest()
+            if full_prompt
+            else None
+        )
         await self._duckdb_store.execute_write(
             """INSERT OR IGNORE INTO llm_calls
                (call_id, called_at, model, endpoint, prompt_chars,
-                completion_chars, latency_ms, success, error_type)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                completion_chars, latency_ms, success, error_type,
+                prompt_text, prompt_hash)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 str(uuid.uuid4()),
                 datetime.now(timezone.utc).isoformat(),
@@ -147,6 +159,8 @@ class OllamaClient:
                 latency_ms,
                 success,
                 error_type,
+                prompt_text,
+                prompt_hash,
             ],
         )
 
@@ -429,6 +443,7 @@ class OllamaClient:
                 completion_chars=len(response_text),
                 latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
                 success=True,
+                full_prompt=prompt,
             )
             try:
                 import asyncio as _asyncio
@@ -468,6 +483,7 @@ class OllamaClient:
                 latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
                 success=False,
                 error_type="HTTPStatusError",
+                full_prompt=prompt,
             )
             raise OllamaError(
                 f"Ollama generate HTTP error {exc.response.status_code}: {exc.response.text}"
@@ -488,6 +504,7 @@ class OllamaClient:
                 latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
                 success=False,
                 error_type=type(exc).__name__,
+                full_prompt=prompt,
             )
             raise OllamaError(f"Ollama generate failed: {exc}") from exc
 
@@ -589,6 +606,7 @@ class OllamaClient:
                 latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
                 success=False,
                 error_type="HTTPStatusError",
+                full_prompt=prompt,
             )
             raise OllamaError(
                 f"Ollama stream HTTP error {exc.response.status_code}: {exc.response.text}"
@@ -603,6 +621,7 @@ class OllamaClient:
                 latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
                 success=False,
                 error_type=type(exc).__name__,
+                full_prompt=prompt,
             )
             raise OllamaError(f"Ollama stream failed: {exc}") from exc
 
@@ -620,6 +639,7 @@ class OllamaClient:
                 completion_chars=len(result),
                 latency_ms=(time.monotonic_ns() - t0) // 1_000_000,
                 success=True,
+                full_prompt=prompt,
             )
             try:
                 import asyncio as _asyncio

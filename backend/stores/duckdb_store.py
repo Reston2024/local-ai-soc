@@ -85,7 +85,9 @@ CREATE TABLE IF NOT EXISTS llm_calls (
     completion_chars INTEGER,
     latency_ms       INTEGER,
     success          BOOLEAN NOT NULL DEFAULT TRUE,
-    error_type       TEXT
+    error_type       TEXT,
+    prompt_text      TEXT,
+    prompt_hash      TEXT
 )
 """
 
@@ -197,6 +199,14 @@ class DuckDBStore:
             except Exception:
                 # DuckDB raises if column already exists (no IF NOT EXISTS support)
                 log.debug("ECS column already exists — skipping", column=col_name)
+        # E7-02 migration: add prompt_text and prompt_hash columns to llm_calls
+        for col_name, col_type in [("prompt_text", "TEXT"), ("prompt_hash", "TEXT")]:
+            try:
+                await self.execute_write(
+                    f"ALTER TABLE llm_calls ADD COLUMN {col_name} {col_type}"
+                )
+            except Exception:
+                log.debug("llm_calls column already exists — skipping", column=col_name)
         log.info("DuckDB schema initialised")
 
     # ------------------------------------------------------------------
