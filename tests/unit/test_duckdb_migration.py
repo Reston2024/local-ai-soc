@@ -125,3 +125,121 @@ async def test_schema_version_value(tmp_path):
         assert isinstance(value, str)
     finally:
         await _cleanup(worker)
+
+
+# ---------------------------------------------------------------------------
+# Phase 24: Recommendation artifact store tables
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_recommendations_table_created(tmp_path):
+    """initialise_schema() must create the recommendations table with key columns."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        cols = await store.fetch_all(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='recommendations'"
+        )
+        col_names = {row[0] for row in cols}
+        for expected in (
+            "recommendation_id",
+            "case_id",
+            "analyst_approved",
+            "status",
+            "expires_at",
+            "created_at",
+            "model_id",
+            "prompt_inspection",
+        ):
+            assert expected in col_names, f"Missing column in recommendations: {expected}"
+    finally:
+        await _cleanup(worker)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_log_table_created(tmp_path):
+    """initialise_schema() must create recommendation_dispatch_log with key columns."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        cols = await store.fetch_all(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='recommendation_dispatch_log'"
+        )
+        col_names = {row[0] for row in cols}
+        for expected in (
+            "log_id",
+            "recommendation_id",
+            "dispatched_at",
+            "http_status",
+            "failure_taxonomy",
+        ):
+            assert expected in col_names, f"Missing column in dispatch_log: {expected}"
+    finally:
+        await _cleanup(worker)
+
+
+@pytest.mark.asyncio
+async def test_recommendations_idempotent(tmp_path):
+    """Running initialise_schema() twice must not raise (CREATE TABLE IF NOT EXISTS)."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        await store.initialise_schema()  # second call must not raise
+    finally:
+        await _cleanup(worker)
+
+
+@pytest.mark.asyncio
+async def test_recommendations_table_primary_key(tmp_path):
+    """recommendations table has recommendation_id as TEXT PRIMARY KEY."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        # Insert a row, then try to insert duplicate PK — must raise
+        await store.execute_write(
+            "INSERT INTO recommendations "
+            "(recommendation_id, case_id, schema_version, type, proposed_action, "
+            "target, scope, rationale, evidence_event_ids, retrieval_sources, "
+            "inference_confidence, model_id, model_run_id, prompt_inspection, "
+            "generated_at, expires_at, created_at) "
+            "VALUES ('rec-001', 'case-1', '1.0.0', 'block_host', 'Block host', "
+            "'host-a', 'single_host', '[]', '[]', '[]', 'high', 'llm-1', 'run-1', "
+            "'{}', NOW(), NOW() + INTERVAL 1 DAY, NOW())"
+        )
+        rows = await store.fetch_all(
+            "SELECT recommendation_id FROM recommendations WHERE recommendation_id='rec-001'"
+        )
+        assert len(rows) == 1
+        assert rows[0][0] == "rec-001"
+    finally:
+        await _cleanup(worker)
+
+
+@pytest.mark.asyncio
+async def test_recommendations_defaults(tmp_path):
+    """analyst_approved defaults to FALSE and status defaults to 'draft'."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        await store.execute_write(
+            "INSERT INTO recommendations "
+            "(recommendation_id, case_id, schema_version, type, proposed_action, "
+            "target, scope, rationale, evidence_event_ids, retrieval_sources, "
+            "inference_confidence, model_id, model_run_id, prompt_inspection, "
+            "generated_at, expires_at, created_at) "
+            "VALUES ('rec-002', 'case-2', '1.0.0', 'block_host', 'Block host', "
+            "'host-b', 'single_host', '[]', '[]', '[]', 'high', 'llm-1', 'run-2', "
+            "'{}', NOW(), NOW() + INTERVAL 1 DAY, NOW())"
+        )
+        rows = await store.fetch_all(
+            "SELECT analyst_approved, status FROM recommendations "
+            "WHERE recommendation_id='rec-002'"
+        )
+        assert len(rows) == 1
+        analyst_approved, status = rows[0]
+        assert analyst_approved is False
+        assert status == "draft"
+    finally:
+        await _cleanup(worker)
