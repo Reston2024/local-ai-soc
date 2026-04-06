@@ -1,25 +1,22 @@
-title: SOC Brain ChromaDB Collection Delete
-id: meta-collection-delete-001
+title: ChromaDB Collection Delete or Reset
+id: 249cac6d-fcdf-4238-af19-fa8e83a064ae
 status: experimental
-description: >
-  Detects any call to delete or reset a ChromaDB collection in the SOC Brain
-  system. Collection deletes destroy evidence and may indicate insider threat
-  or compromised analyst credentials.
+description: Detects deletion or reset of a ChromaDB collection, which would destroy the SOC Brain's RAG knowledge base.
 author: AI-SOC-Brain meta-detection
 date: 2026-04-05
 logsource:
-  category: application
-  product: ai-soc-brain
+    category: application
+    product: ai-soc-brain
 detection:
-  selection:
-    message|contains:
-      - 'delete_collection'
-      - 'reset_collection'
-      - 'collection.delete'
-  condition: selection
+    selection:
+        event_type: chroma_operation
+        operation:
+            - delete_collection
+            - reset_collection
+    condition: selection
 falsepositives:
-  - Authorized maintenance operations
+    - Authorized maintenance operations
 level: critical
 tags:
-  - attack.impact
-  - attack.t1485
+    - attack.defense-evasion
+    - attack.t1485
