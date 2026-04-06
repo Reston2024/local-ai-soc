@@ -45,6 +45,15 @@ jobs:
             --cov-fail-under=70 \
             --junitxml=junit.xml \
             -q
+      - name: Security coverage gate (≥80% on security-critical modules)
+        run: |
+          uv run pytest tests/security/ tests/unit/ \
+            --cov=backend.core.auth \
+            --cov=ingestion.normalizer \
+            --cov=backend.api.ingest \
+            --cov-report=term-missing \
+            --cov-fail-under=80 \
+            -q
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()

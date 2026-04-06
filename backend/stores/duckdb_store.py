@@ -170,6 +170,8 @@ class DuckDBStore:
         # DuckDB is not thread-safe; all write operations must run on the
         # write_worker thread via asyncio.to_thread.
         self._write_conn: duckdb.DuckDBPyConnection = duckdb.connect(self._db_path)
+        # E5-02: disable COPY TO / httpfs / remote reads to prevent SQL-based exfiltration.
+        self._write_conn.execute("SET enable_external_access = false")
         self._write_queue: asyncio.Queue[_WriteOp] = asyncio.Queue()
         self._worker_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 
@@ -295,7 +297,10 @@ class DuckDBStore:
             finally:
                 conn.close()
         """
-        return duckdb.connect(self._db_path)
+        conn = duckdb.connect(self._db_path)
+        # E5-02: disable COPY TO / httpfs / remote reads on read connections too.
+        conn.execute("SET enable_external_access = false")
+        return conn
 
     # ------------------------------------------------------------------
     # Convenience helpers

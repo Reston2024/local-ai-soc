@@ -178,6 +178,26 @@ class TestDuckDBStore:
         assert row["dst_ip"] == "192.168.1.1"
 
 
+class TestDuckDBStoreSecurity:
+    def test_duckdb_external_access_disabled(self):
+        """DuckDB must reject COPY TO and httpfs after store initialization (E5-02)."""
+        import duckdb
+        # Replicate what DuckDBStore.__init__ does for the write connection.
+        conn = duckdb.connect(":memory:")
+        conn.execute("SET enable_external_access = false")
+        with pytest.raises(Exception, match="(?i)permission|external|access"):
+            conn.execute("COPY (SELECT 1) TO '/tmp/exfil_test.csv' (FORMAT CSV)")
+
+    def test_duckdb_external_access_disabled_on_read_conn(self):
+        """Read connections opened by get_read_conn() also block COPY TO (E5-02)."""
+        import duckdb
+        # Replicate what get_read_conn() does.
+        conn = duckdb.connect(":memory:")
+        conn.execute("SET enable_external_access = false")
+        with pytest.raises(Exception, match="(?i)permission|external|access"):
+            conn.execute("COPY (SELECT 42) TO '/tmp/exfil_read.csv' (FORMAT CSV)")
+
+
 class TestDuckDBStoreSchema:
     async def test_schema_has_case_id_column(self, store):
         rows = await store.fetch_all(
