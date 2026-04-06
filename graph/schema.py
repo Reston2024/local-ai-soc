@@ -23,6 +23,8 @@ ENTITY_TYPES: list[str] = [
     "artifact",           # Generic forensic artifact (registry key, service, …)
     "incident",           # A grouped investigation case
     "attack_technique",   # MITRE ATT&CK technique node (e.g. T1059.001)
+    "firewall_zone",      # IPFire/netfilter zone (zone_name, zone_color [RED/GREEN/ORANGE/BLUE], interface)
+    "network_segment",    # IP subnet/CIDR block (cidr, zone, description)
 ]
 
 # ---------------------------------------------------------------------------
@@ -42,6 +44,9 @@ EDGE_TYPES: list[str] = [
     "wrote",          # process → file: process wrote to file
     "logged_into",    # user → host: authentication event
     "related_to",     # generic catch-all relationship
+    "blocks",         # firewall_zone → ip/network_segment: zone blocks this traffic
+    "permits",        # firewall_zone → ip/network_segment: zone permits this traffic
+    "traverses",      # ip → firewall_zone → ip: traffic crossed this zone boundary
 ]
 
 # ---------------------------------------------------------------------------
