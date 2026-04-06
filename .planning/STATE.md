@@ -2,16 +2,24 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 25 (in_progress)
+current_plan: 25-01 complete — execution_receipts + notifications DDL in duckdb_store.py; contracts/execution-receipt.schema.json stub; 885 suite pass; next: 25-02 (receipt model + validation)
 status: in_progress
-last_updated: "2026-04-06T13:31:38.323Z"
+last_updated: "2026-04-06T16:35:15Z"
+stopped_at: "Completed 25-00-PLAN.md — 17 pre-skipped Wave-0 test stubs across 3 files (test_receipt_transitions.py, test_receipt_api.py, test_notifications_api.py); 885 suite pass"
 progress:
+  [██████████] 98%
   total_phases: 27
   completed_phases: 22
-  total_plans: 128
-  completed_plans: 129
-  percent: 100
+  total_plans: 133
+  completed_plans: 131
+  percent: 98
+decisions:
+  - "25-00: pytestmark module-level skip used for Wave-0 stubs — single decorator per file, activated in plan 25-05"
+  - "25-00: Requirement IDs (P25-T01 through P25-T05) embedded in stub docstrings for activation traceability"
+  - "25-01: failure_taxonomy enum has exactly 5 values per ADR-032: applied, noop_already_present, validation_failed, expired_rejected, rolled_back"
+  - "25-01: receipt schema version pinned to 1.0.0-stub — frozen until canonical firewall repo ships"
+  - "25-01: three execution_receipts indexes (recommendation_id, case_id, failure_taxonomy) cover all anticipated Wave 2 query patterns"
 ---
 
 ---
