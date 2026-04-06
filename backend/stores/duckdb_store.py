@@ -174,6 +174,45 @@ CREATE TABLE IF NOT EXISTS recommendation_dispatch_log (
 )
 """
 
+# ---------------------------------------------------------------------------
+# Phase 25: Receipt ingestion + notifications
+# ---------------------------------------------------------------------------
+
+_CREATE_EXECUTION_RECEIPTS_TABLE = """
+CREATE TABLE IF NOT EXISTS execution_receipts (
+    receipt_id           TEXT PRIMARY KEY,
+    recommendation_id    TEXT NOT NULL,
+    case_id              TEXT NOT NULL,
+    failure_taxonomy     TEXT NOT NULL,
+    executed_at          TIMESTAMP NOT NULL,
+    executor_version     TEXT,
+    detail               TEXT,
+    raw_receipt          TEXT NOT NULL,
+    received_at          TIMESTAMP NOT NULL
+)
+"""
+
+_CREATE_EXECUTION_RECEIPTS_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_receipts_recommendation_id ON execution_receipts (recommendation_id)",
+    "CREATE INDEX IF NOT EXISTS idx_receipts_case_id ON execution_receipts (case_id)",
+    "CREATE INDEX IF NOT EXISTS idx_receipts_failure_taxonomy ON execution_receipts (failure_taxonomy)",
+]
+
+_CREATE_NOTIFICATIONS_TABLE = """
+CREATE TABLE IF NOT EXISTS notifications (
+    notification_id  TEXT PRIMARY KEY,
+    case_id          TEXT NOT NULL,
+    receipt_id       TEXT NOT NULL,
+    required_action  TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'pending',
+    created_at       TIMESTAMP NOT NULL
+)
+"""
+
+_CREATE_NOTIFICATIONS_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_notifications_status ON notifications (status)"
+)
+
 # One entry per ALTER TABLE statement — DuckDB allows only one column per statement.
 # DuckDB does NOT support ADD COLUMN IF NOT EXISTS; idempotency is via try/except.
 _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
@@ -265,6 +304,12 @@ class DuckDBStore:
                 )
             except Exception:
                 log.debug("llm_calls column already exists — skipping", column=col_name)
+        # Phase 25: Receipt ingestion + notifications
+        await self.execute_write(_CREATE_EXECUTION_RECEIPTS_TABLE)
+        for idx_sql in _CREATE_EXECUTION_RECEIPTS_INDEXES:
+            await self.execute_write(idx_sql)
+        await self.execute_write(_CREATE_NOTIFICATIONS_TABLE)
+        await self.execute_write(_CREATE_NOTIFICATIONS_INDEX)
         log.info("DuckDB schema initialised")
 
     # ------------------------------------------------------------------
