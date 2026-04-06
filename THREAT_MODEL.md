@@ -91,6 +91,9 @@
 - Monitor: `scripts/status.ps1` checks firewall rule is active.
 - `OLLAMA_ORIGINS=*` is set but controls CORS for web browsers only, not direct TCP access — firewall is the actual control.
 
+**Verification:** Run `scripts/status.ps1` to confirm port 11434 is blocked externally.
+The script uses Test-NetConnection to verify the firewall rule is active.
+
 **OWASP ASVS:** V9.1 Communications Security.
 
 ---
