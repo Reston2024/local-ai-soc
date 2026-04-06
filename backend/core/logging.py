@@ -3,7 +3,7 @@ Structured JSON logging for the AI-SOC-Brain backend.
 
 Sets up a root logger that emits JSON lines to:
   - stderr (console)
-  - logs/backend.jsonl (rotating file, 10 MB × 5 backups)
+  - logs/backend.jsonl (time-rotating file, midnight rotation, 30-day retention)
 
 Usage:
     from backend.core.logging import get_logger
@@ -129,14 +129,14 @@ def setup_logging(log_level: str = "INFO", log_dir: str = "logs") -> None:
     console_handler.setFormatter(formatter)
     root.addHandler(console_handler)
 
-    # --- File handler (JSONL, rotating) ---
+    # --- File handler (JSONL, time-rotating) ---
     try:
         log_path = Path(log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.handlers.RotatingFileHandler(
+        file_handler = logging.handlers.TimedRotatingFileHandler(
             log_path / "backend.jsonl",
-            maxBytes=10 * 1024 * 1024,  # 10 MB
-            backupCount=5,
+            when="midnight",
+            backupCount=30,
             encoding="utf-8",
         )
         file_handler.setLevel(numeric_level)
@@ -145,10 +145,10 @@ def setup_logging(log_level: str = "INFO", log_dir: str = "logs") -> None:
 
         # LLM Audit Logger — separate file, no propagation to root logger
         llm_audit_log = log_path / "llm_audit.jsonl"
-        llm_audit_handler = logging.handlers.RotatingFileHandler(
+        llm_audit_handler = logging.handlers.TimedRotatingFileHandler(
             llm_audit_log,
-            maxBytes=10 * 1024 * 1024,  # 10 MB
-            backupCount=5,
+            when="midnight",
+            backupCount=30,
             encoding="utf-8",
         )
         llm_audit_handler.setFormatter(formatter)  # reuse same JSON formatter
