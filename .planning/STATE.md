@@ -19,16 +19,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 25 (in_progress)
-current_plan: 25-03 complete — backend/api/receipts.py (POST /api/receipts) + backend/api/notifications.py (GET /api/notifications) + main.py registration; 898 suite pass; next: 25-04 (integration tests)
+current_plan: 25-04 complete — 17 stubs activated across test_receipt_transitions.py (6) + test_receipt_api.py (5) + test_notifications_api.py (6); 915 suite pass; next: 25-05 (e2e validation)
 status: in_progress
-last_updated: "2026-04-06T16:43:00Z"
-stopped_at: "Completed 25-03-PLAN.md — receipts and notifications routers created and registered in main.py; 17 stubs skipped; 898 full suite pass"
+last_updated: "2026-04-06T16:46:25Z"
+stopped_at: "Completed 25-04-PLAN.md — all 17 pytest stubs replaced with real implementations; P25-T01 through P25-T05 covered; 915 full suite pass"
 progress:
   [██████████] 99%
   total_phases: 27
   completed_phases: 22
   total_plans: 133
-  completed_plans: 132
+  completed_plans: 133
   percent: 99
 decisions:
   - "25-00: pytestmark module-level skip used for Wave-0 stubs — single decorator per file, activated in plan 25-05"
@@ -41,6 +41,8 @@ decisions:
   - "25-03: audit-first insert — receipt always stored in DuckDB before case state or notification steps"
   - "25-03: best-effort case state propagation — SQLite failure logs warning but does not roll back receipt"
   - "25-03: deferred try/except router registration matches Phase 24 recommendations_router pattern"
+  - "25-04: call_args_list inspection on execute_write used to verify notification SQL targeting + required_action value"
+  - "25-04: MagicMock sqlite.update_investigation_case verified via assert_called_once_with — asyncio.to_thread wraps transparently"
 ---
 
 ---
