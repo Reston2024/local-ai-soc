@@ -942,7 +942,7 @@ Plans:
 *Phase 25 added: 2026-04-03 (Receipt Ingestion and Case-State Propagation)*
 
 ## Phase 26: Graph Schema Versioning and Perimeter Entities
-**Status:** TODO
+**Status:** planned
 **Depends on:** Phase 25 complete
 **Goal:** The graph store gains explicit schema versioning and two new perimeter entity types (firewall_zone, network_segment) with associated edge types (blocks, permits, traverses). All changes are strictly additive. Malcolm/OpenSearch schema compatibility maintained. Dashboard graph view renders perimeter nodes.
 
@@ -952,5 +952,14 @@ Plans:
 - P26-T03: Perimeter edge types — `blocks`, `permits`, `traverses` edge types added; edges created by IPFire syslog parser on ingest; existing edge types unchanged
 - P26-T04: Additive-only constraint — migration uses ALTER TABLE ADD COLUMN only (never DROP/MODIFY); migration test asserts no existing columns/tables removed; Malcolm/OpenSearch parser test asserts existing field preservation
 - P26-T05: Dashboard graph rendering — firewall_zone nodes rendered with zone-color coding; network_segment nodes as subnet bubbles; new edge types with distinct styles; no visual regression on existing types; human visual verification checkpoint required
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 26-00-PLAN.md — Wave 0: pre-skipped test stubs (test_graph_schema.py, test_graph_versioning.py)
+- [ ] 26-01-PLAN.md — Wave 1: schema constants + versioning route (graph/schema.py, sqlite_store.py, graph.py)
+- [ ] 26-02-PLAN.md — Wave 2: IPFire perimeter edge emission (entity_extractor.py)
+- [ ] 26-03-PLAN.md — Wave 2: dashboard perimeter rendering (GraphView.svelte) [autonomous: false]
+- [ ] 26-04-PLAN.md — Wave 3: activate all tests (12 tests passing)
 
 *Phase 26 added: 2026-04-03 (Graph Schema Versioning and Perimeter Entities)*
