@@ -902,7 +902,7 @@ Plans:
 *Phase 23.5 added: 2026-04-05 (Security Hardening — Expert Panel Sweep)*
 
 ## Phase 24: Recommendation Artifact Store and Approval API
-**Status:** TODO
+**Status:** IN PROGRESS
 **Depends on:** Phase 23.5 complete
 **Goal:** The SOC can create, store, and approve AI-assisted recommendation artifacts conforming to contracts/recommendation.schema.json. A human-in-the-loop approval gate is enforced programmatically — no artifact crosses the trust boundary without analyst_approved=true and schema validation. The recommendation lifecycle (draft > approved > dispatched) is fully tracked with audit trail.
 
@@ -912,6 +912,18 @@ Plans:
 - P24-T03: API routes — POST /api/recommendations (create draft); GET /api/recommendations/{id}; PATCH /api/recommendations/{id}/approve (set analyst_approved=true, approved_by, override_log if required); GET /api/recommendations (list with filters)
 - P24-T04: Human-in-the-loop gate — PATCH /approve enforces: schema valid, analyst_approved only via this endpoint, approved_by non-empty, expires_at in future, override_log required when inference_confidence in [low, none] or prompt_inspection.passed=false; gate failures return 422 with structured error
 - P24-T05: Tests — unit tests for RecommendationArtifact model validation; integration tests for all four API routes; gate enforcement tests; at least 10 test cases
+
+
+
+**Plans:** 6 plans
+
+Plans:
+- [ ] 24-00-PLAN.md — Wave 0: pre-skipped test stubs (test_recommendation_model.py, test_recommendation_api.py)
+- [ ] 24-01-PLAN.md — Wave 1: DuckDB schema migration — recommendations + dispatch_log tables (P24-T01)
+- [ ] 24-02-PLAN.md — Wave 1: RecommendationArtifact Pydantic model + jsonschema validation (P24-T02) [parallel with 24-01]
+- [ ] 24-03-PLAN.md — Wave 2: CRUD API routes — POST, GET/{id}, GET list + main.py wiring (P24-T03)
+- [ ] 24-04-PLAN.md — Wave 2: Approval gate — PATCH /approve + _run_approval_gate (P24-T04) [parallel with 24-03]
+- [ ] 24-05-PLAN.md — Wave 3: Activate all tests — 22 test cases passing (P24-T05)
 
 *Phase 24 added: 2026-04-03 (Recommendation Artifact Store and Approval API)*
 
