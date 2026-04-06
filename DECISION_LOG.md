@@ -504,6 +504,9 @@ Expert panel (E3-01) identified `AUTH_TOKEN: str = "changeme"` as a CRITICAL fin
 - Zero-config deployments fail fast at startup with a clear error message
 - Legacy admin path requires both `LEGACY_TOTP_SECRET` (non-empty) and `X-TOTP-Code` header
 
+**Deprecation plan:** The legacy admin path (E3-02) has a hard deprecation target of Phase 26 (2026-Q2).
+All new deployments must use operator table authentication. The legacy path will be removed entirely in Phase 26.
+
 ---
 
 ## ADR-026: Security Hardening — Prompt Injection Scrubbing Architecture
