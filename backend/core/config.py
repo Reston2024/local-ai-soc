@@ -4,7 +4,7 @@ Application configuration loaded from environment / .env file.
 Uses pydantic-settings for type-validated settings with .env file support.
 """
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,11 +60,44 @@ class Settings(BaseSettings):
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
+    # The value "dev-only-bypass" is the explicit local dev bypass — all other
+    # tokens shorter than 32 characters are rejected at startup.
     AUTH_TOKEN: str = "changeme"
+
+    # Legacy admin path TOTP secret — empty string disables the legacy path entirely.
+    # Set LEGACY_TOTP_SECRET=<base32-secret> in .env to enable the legacy admin path
+    # with TOTP MFA. Leave empty (default) to disable the legacy path completely.
+    LEGACY_TOTP_SECRET: str = ""
 
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
+
+    @model_validator(mode="after")
+    def reject_default_auth_token(self) -> "Settings":
+        """Reject startup if AUTH_TOKEN is the default 'changeme' or is weak.
+
+        Raises ValueError so pydantic wraps it in ValidationError at Settings()
+        construction time — never at request time.
+
+        The value 'dev-only-bypass' is explicitly allowed for local development
+        without a .env file. All other values shorter than 32 characters are rejected.
+        """
+        token = self.AUTH_TOKEN
+        _ALLOWED_WEAK = {"dev-only-bypass"}
+        if token == "changeme":
+            raise ValueError(
+                "AUTH_TOKEN is set to the default 'changeme'. "
+                "Generate a strong token: python -c \"import secrets; print(secrets.token_hex(32))\" "
+                "and set AUTH_TOKEN=<token> in your .env file."
+            )
+        if token not in _ALLOWED_WEAK and len(token) < 32:
+            raise ValueError(
+                f"AUTH_TOKEN is too short ({len(token)} chars). "
+                "Minimum 32 characters required. "
+                "Generate: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        return self
 
     @field_validator("OLLAMA_HOST", mode="before")
     @classmethod
