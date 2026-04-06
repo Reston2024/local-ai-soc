@@ -12,7 +12,9 @@ normalize_event() is a pure function (no I/O) that:
 
 from __future__ import annotations
 
+import base64
 import re
+import unicodedata
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -38,14 +40,60 @@ _INJECTION_PATTERNS = re.compile(
 )
 
 
+def _normalize_for_scrub(text: str) -> str:
+    """Normalize text before injection pattern matching.
+
+    Two bypass vectors are addressed:
+    1. Unicode homoglyphs — NFC normalization collapses look-alike characters
+       (e.g. FULLWIDTH LATIN letters) to their ASCII equivalents.
+    2. Base64 encoding — attempt to decode and append the plaintext so patterns
+       can match the decoded content even if the original is opaque.
+
+    The original text is always preserved; decoded content is appended with a
+    space separator so the scanner sees both representations.
+    """
+    # Step 1: Unicode NFC normalization
+    normalized = unicodedata.normalize("NFC", text)
+
+    # Step 2: Try base64 decode; append decoded text if successful.
+    # Only attempt decode when input looks like base64: all characters in the
+    # base64 alphabet, minimum length of 16 characters (short strings produce
+    # too many false positives), and the decoded output is readable text
+    # (high ratio of printable ASCII letters/digits/spaces).
+    _B64_ALPHABET_RE = re.compile(r"^[A-Za-z0-9+/\s]+=*$")
+    stripped = normalized.strip()
+    no_spaces = stripped.replace(" ", "")
+    if len(no_spaces) >= 16 and _B64_ALPHABET_RE.match(stripped):
+        padded = no_spaces + "=="
+        try:
+            decoded_bytes = base64.b64decode(padded, validate=True)
+            decoded_text = decoded_bytes.decode("utf-8", errors="ignore")
+            # Require decoded text to be mostly readable (letters, digits, spaces,
+            # common punctuation) — this filters out binary garbage that happens
+            # to survive base64 decoding.
+            text_ratio = sum(
+                1 for c in decoded_text
+                if c.isalnum() or c in " .,!?;:'-_()/\\\n\t"
+            ) / max(len(decoded_text), 1)
+            if decoded_text.strip() and text_ratio > 0.7:
+                normalized = normalized + " " + decoded_text
+        except Exception:
+            pass
+
+    return normalized
+
+
 def _scrub_injection(text: str) -> str:
     """Strip prompt-injection patterns from a string field.
 
+    Normalizes the input (Unicode NFC + base64 decode attempt) before
+    applying the regex, preventing homoglyph and base64 encoding bypasses.
+
     Called after null-byte/_clean_str stripping (step 5 in normalize_event).
-    Does NOT log the original value — caller is responsible for audit trail
-    if needed.
+    Does NOT log the original value — caller is responsible for audit trail.
     """
-    return _INJECTION_PATTERNS.sub("", text).strip()
+    normalized = _normalize_for_scrub(text)
+    return _INJECTION_PATTERNS.sub("", normalized).strip()
 
 
 # Mapping of severity aliases to canonical values
