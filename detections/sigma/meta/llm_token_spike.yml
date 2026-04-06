@@ -1,0 +1,22 @@
+title: SOC Brain LLM Token Spike
+id: meta-llm-token-spike-001
+status: experimental
+description: >
+  Detects when prompt_chars for a single LLM call exceeds 5x the rolling
+  average of the last 10 calls, indicating potential prompt stuffing or
+  data exfiltration via large context injection.
+author: AI-SOC-Brain meta-detection
+date: 2026-04-05
+logsource:
+  category: llm_telemetry
+  product: ai-soc-brain
+detection:
+  selection:
+    endpoint: generate
+  condition: selection
+falsepositives:
+  - Large evidence batches for complex investigations
+level: medium
+tags:
+  - attack.exfiltration
+  - attack.t1048

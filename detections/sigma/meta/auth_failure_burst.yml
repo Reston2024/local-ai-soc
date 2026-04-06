@@ -1,0 +1,22 @@
+title: SOC Brain Auth Failure Burst
+id: meta-auth-failure-burst-001
+status: experimental
+description: >
+  Detects more than 10 HTTP 401 responses within a 60-second window,
+  indicating a brute-force or credential stuffing attempt against the SOC Brain API.
+author: AI-SOC-Brain meta-detection
+date: 2026-04-05
+logsource:
+  category: webserver
+  product: ai-soc-brain
+detection:
+  selection:
+    http_status: 401
+  timeframe: 60s
+  condition: selection | count() > 10
+falsepositives:
+  - Misconfigured clients with stale tokens
+level: high
+tags:
+  - attack.credential_access
+  - attack.t1110
