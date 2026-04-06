@@ -3,12 +3,50 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 23.5 (in_progress)
+current_plan: 23.5-02 complete — AUTH_TOKEN startup validator (model_validator rejects 'changeme'/weak tokens), legacy-admin path gated behind TOTP via LEGACY_TOTP_SECRET; T01+T02 tests PASS; 821 full suite pass, 0 failures
+status: in_progress
+last_updated: "2026-04-06T05:34:01Z"
+stopped_at: "Completed 23.5-02-PLAN.md — T01: model_validator(mode='after') rejects 'changeme' and tokens <32 chars; T02: legacy path requires LEGACY_TOTP_SECRET + X-TOTP-Code; 3 rule-1 auto-fixes for MagicMock guard and test fixture updates"
+progress:
+  [██████████] 100%
+  completed_phases: 21
+  total_plans: 122
+  completed_plans: 123
+  percent: 100
+decisions:
+  - "23.5-02: model_validator(mode='after') rejects 'changeme' and tokens < 32 chars at Settings() construction — 'dev-only-bypass' is explicit allowed weak token for local dev"
+  - "23.5-02: LEGACY_TOTP_SECRET='' default disables legacy path entirely — opt-in via .env with TOTP MFA"
+  - "23.5-02: isinstance(str) guard before .strip() prevents MagicMock attributes from bypassing the disabled-path check"
+  - "23.5-02: tests using legacy token fallback updated to dependency_overrides pattern — correct for tests testing non-auth functionality"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-06T05:28:20.719Z"
+progress:
+  total_phases: 27
+  completed_phases: 21
+  total_plans: 122
+  completed_plans: 123
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 23.5 (in_progress)
 current_plan: 23.5-03 complete — _scrub_injection hardened with b64+Unicode, EVIDENCE moved to system turn in analyst_qa, chat.py scrubs question before prompt; 820 tests pass, 1 pre-existing failure (out of scope)
 status: in_progress
 last_updated: "2026-04-06T05:35:00Z"
 stopped_at: "Completed 23.5-03-PLAN.md — injection hardening: _normalize_for_scrub, build_prompt tuple return, chat.py _scrub_injection; 2 injection tests PASS; 820 full suite pass (1 pre-existing auth stub failure deferred)"
 progress:
-  total_phases: 27
+  [██████████] 100%
   completed_phases: 21
   total_plans: 122
   completed_plans: 122
