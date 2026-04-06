@@ -20,6 +20,15 @@ localhost {
     # TLS with local cert (Caddy generates and trusts automatically)
     tls internal
 
+    # Security headers (E9-01)
+    header {
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' wss:; frame-ancestors 'none'"
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+
     # SSE streaming — must be listed BEFORE handle /api/* (Caddy: first match wins).
     # flush_interval -1 disables response buffering so tokens stream to the browser.
     # No request_body limit here: query payloads are small JSON and SSE needs unbuffered response.
