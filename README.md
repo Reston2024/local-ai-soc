@@ -4,7 +4,7 @@
 
 A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
 
-**Status:** Phase 23.5 complete — Security Hardening: AUTH_TOKEN startup validation, MFA-gated legacy admin, prompt injection scrubbing (base64/Unicode NFC), CSP headers, TOTP replay persistence, full prompt telemetry with SHA-256, and meta-detection Sigma rules. 831 tests passing. Next: Phase 24 (Recommendation Artifact Store + Approval API).
+**Status:** Phase 23.5 complete — Security Hardening: all 18 expert panel findings addressed (10 CRITICAL/HIGH closed, 5 MEDIUM closed, 2 accepted risk, 1 mitigated). 842 tests passing. Next: Phase 24 (Recommendation Artifact Store + Approval API).
 
 ---
 
@@ -281,7 +281,7 @@ fixtures/          Test fixture data (NDJSON, EVTX samples)
 | 21 | Evidence Provenance — SHA-256 content hashing, provenance chain, chain-of-custody audit | ✅ |
 | 22 | AI Lifecycle Hardening — model drift detection, grounding scores, confidence tracking, LLMOps audit | ✅ |
 | 23 | Firewall Telemetry Ingestion — IPFire syslog + Suricata EVE JSON parsers, collector, heartbeat, `GET /api/firewall/status` | ✅ |
-| 23.5 | Security Hardening (expert panel) — 12 findings closed: token validation, MFA, injection scrubbing, CSP, TOTP persistence, meta-detection | ✅ |
+| 23.5 | Security Hardening (expert panel) — all 18 findings addressed: token validation, MFA, injection scrubbing, CSP, DuckDB external access disabled, ChromaDB ACL, Ollama digest pinning, CI gate | ✅ |
 
 ---
 

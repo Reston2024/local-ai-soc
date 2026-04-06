@@ -528,3 +528,68 @@ Expert panel (E6-01, E6-02) identified two injection vectors: (1) RAG evidence b
 **Consequences:**
 - RAG evidence cannot contaminate the user turn; separates LLM trust domains at prompt level
 - 831 tests passing on Phase 23.5 completion; all 12 expert panel findings closed
+
+---
+
+## ADR-027: Security Hardening — DuckDB External Access Disabled
+
+**Date:** 2026-04-05
+**Status:** ACCEPTED
+
+**Context:**
+Expert panel (E5-02) identified that DuckDB's default configuration allows `COPY TO 'file'`, `COPY TO 'http://...'`, and `LOAD 'httpfs'` — all of which could be exploited via a Sigma SQL injection (E1-01) to exfiltrate data. This is especially relevant given the compounded attack chain: Sigma rule injection → DuckDB COPY TO exfiltration.
+
+**Decision:** Apply `SET enable_external_access = false` to every DuckDB connection immediately after opening. This disables all remote reads, remote writes, and extension loading from network sources.
+
+**Implementation:**
+- `backend/stores/duckdb_store.py` — setting applied in `__init__` (write connection) and `get_read_conn()` (all read connections)
+- `tests/unit/test_duckdb_store.py::TestDuckDBStoreSecurity` — confirms `COPY TO` raises permission error
+
+**Consequences:**
+- `COPY TO` file and HTTP exfiltration paths are blocked at the DuckDB engine level
+- No functional impact: the application never uses COPY TO or httpfs for legitimate operations
+- Attack chain 3 (Sigma → DB exfil) broken in combination with E1-01 parameterization
+
+---
+
+## ADR-028: Security Hardening — ChromaDB Collection Delete Authorization
+
+**Date:** 2026-04-05
+**Status:** ACCEPTED
+
+**Context:**
+Expert panel (E5-01) identified that ChromaDB collection operations had no access control. A compromised code path could delete the entire RAG knowledge base, destroying the SOC Brain's grounding capability (also detectable via the `collection_delete.yml` meta-detection rule from E8-02).
+
+**Decision:** Gate `ChromaStore.delete_collection()` behind an explicit `_admin_override=True` keyword argument. Callers without the override receive `PermissionError`. Production API endpoints must apply `require_role("admin")` before passing the override.
+
+**Implementation:**
+- `backend/stores/chroma_store.py` — `delete_collection(name, *, _admin_override=False)` + async wrapper
+- `tests/unit/test_chroma_store.py` — verifies PermissionError without override; client called with override
+
+**Consequences:**
+- No existing API endpoint exposes collection delete — defense-in-depth for internal callers
+- Pattern establishes precedent for all future destructive store operations
+
+---
+
+## ADR-029: Security Hardening — Ollama Model Digest Verification
+
+**Date:** 2026-04-05
+**Status:** ACCEPTED
+
+**Context:**
+Expert panel (E6-03) identified that the application uses bare model name strings (e.g., `"qwen3:14b"`) with no integrity check. A compromised local Ollama installation could serve a different model under the same name, silently degrading analysis quality or injecting adversarial behavior.
+
+**Decision:** Add optional digest verification via `OllamaClient.verify_model_digest()`, called during startup lifespan. Settings `OLLAMA_MODEL_DIGEST`, `OLLAMA_EMBEDDING_DIGEST`, and `OLLAMA_ENFORCE_DIGEST` control the behavior. Graceful degradation (warn, don't fail) when Ollama is unavailable or digest is unconfigured.
+
+**Implementation:**
+- `backend/core/config.py` — three new optional settings
+- `backend/services/ollama_client.py` — `verify_model_digest()` calls `/api/show`, logs actual digest
+- `backend/main.py` — verification called in startup lifespan after client construction
+- `config/.env.example` — documented with curl command to retrieve digest
+- `tests/unit/test_ollama_client.py` — 5 tests covering match, mismatch+enforce, mismatch+no-enforce, unavailable, unconfigured
+
+**Consequences:**
+- Default (`OLLAMA_ENFORCE_DIGEST=False`): logs digest for audit, never blocks startup
+- Production hardening: set `OLLAMA_ENFORCE_DIGEST=True` with pinned digest to detect model substitution
+- 842 tests passing; all 18 expert panel findings now fully addressed

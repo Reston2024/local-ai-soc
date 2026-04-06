@@ -264,7 +264,7 @@ FIREWALL_HEARTBEAT_TIMEOUT_DEGRADED=300
 | E3-02: Legacy admin bypass | CRITICAL | `LEGACY_TOTP_SECRET` required + `X-TOTP-Code` header |
 | E6-01: RAG injection bypass | CRITICAL | `_normalize_for_scrub()`: NFC + base64 decode heuristic |
 | E6-02: Chat question unscrubbed | CRITICAL | `_scrub_injection(body.question)` in `chat.py` |
-| E1-01/E10-01: Sigma SQL + backend | HIGH | Parameterization audit confirmed; 4 injection tests activated |
+| E1-01/E10-01: Sigma SQL + backend | HIGH | Custom DuckDB backend parameterization verified; 4 injection tests; unused `pySigma-backend-sqlite` dep removed |
 | E4-01: Ollama port unverified | HIGH | `Test-NetConnection` check in `scripts/status.ps1` |
 | E8-02: No meta-detection rules | HIGH | 3 parse-valid Sigma rules in `detections/sigma/meta/` |
 | E9-01: Missing security headers | MEDIUM | CSP, X-Frame-Options, X-Content-Type-Options in Caddyfile |
@@ -273,6 +273,16 @@ FIREWALL_HEARTBEAT_TIMEOUT_DEGRADED=300
 | E2-01: TOTP replay after restart | MEDIUM | SQLite `system_kv` L2 with 90s TTL + in-process L1 cache |
 | E7-02: Partial prompt logging | MEDIUM | `prompt_text` (64KB cap) + `prompt_hash` (SHA-256) in `llm_calls` |
 
+### Additional Findings Closed (verifier v2 delta — 2026-04-05)
+
+| Finding | Severity | Fix |
+|---------|----------|-----|
+| E3-03: File upload path traversal | MEDIUM | `test_path_traversal_rejected` activated; 415 on traversal filenames confirmed |
+| E5-01: ChromaDB no collection ACL | HIGH | `delete_collection()` guarded by `_admin_override` flag; `PermissionError` without override |
+| E5-02: DuckDB COPY TO / httpfs | HIGH | `SET enable_external_access = false` applied to all connection paths at init |
+| E6-03: Ollama model digest unpinned | MEDIUM | `verify_model_digest()` on startup; `OLLAMA_MODEL_DIGEST` + `OLLAMA_ENFORCE_DIGEST` settings |
+| E7-01: No security coverage CI gate | MEDIUM | Separate CI step: `--cov-fail-under=80` on `auth`, `normalizer`, `ingest` modules |
+
 ### New Required Settings (`.env`)
 ```
 # AUTH_TOKEN must be 32+ chars or "dev-only-bypass" for local dev
@@ -280,15 +290,20 @@ AUTH_TOKEN=<generate with: python -c "import secrets; print(secrets.token_urlsaf
 
 # Optional: enable legacy admin path (disabled by default)
 # LEGACY_TOTP_SECRET=<base32-encoded TOTP secret>
+
+# Optional: pin Ollama model digest for integrity verification
+# Get digest: curl http://localhost:11434/api/show -d '{"name":"qwen3:14b"}' | python -m json.tool
+# OLLAMA_MODEL_DIGEST=sha256:abc123  # First 12+ chars of digest
+# OLLAMA_ENFORCE_DIGEST=False        # Set True to refuse startup on mismatch
 ```
 
 ### Test Count
-831 passed, 2 skipped, 11 xfailed — Phase 23.5 completion.
+842 passed, 2 skipped, 9 xfailed — full closure (all 18 expert panel findings addressed).
 
 ### New Files
 - `tests/security/test_auth_hardening.py` — T01, T02, T09, T11, T12
 - `tests/security/test_injection_hardening.py` — T03, T04
-- `tests/security/test_sigma_hardening.py` — T05 (4 SQL injection tests)
+- `tests/security/test_sigma_hardening.py` — T05 (4 SQL injection parameterization tests)
 - `tests/sigma_smoke/test_meta_rules.py` — T07 (3 meta-rule parse tests)
 - `tests/eval/fixtures/injection_b64_bypass.json` — adversarial eval fixture
 - `detections/sigma/meta/auth_failure_burst.yml`
