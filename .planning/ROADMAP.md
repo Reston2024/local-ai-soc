@@ -953,7 +953,7 @@ Plans:
 - P26-T04: Additive-only constraint — migration uses ALTER TABLE ADD COLUMN only (never DROP/MODIFY); migration test asserts no existing columns/tables removed; Malcolm/OpenSearch parser test asserts existing field preservation
 - P26-T05: Dashboard graph rendering — firewall_zone nodes rendered with zone-color coding; network_segment nodes as subnet bubbles; new edge types with distinct styles; no visual regression on existing types; human visual verification checkpoint required
 
-**Plans:** 5 plans
+**Plans:** 2/5 plans executed
 
 Plans:
 - [ ] 26-00-PLAN.md — Wave 0: pre-skipped test stubs (test_graph_schema.py, test_graph_versioning.py)

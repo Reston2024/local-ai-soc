@@ -2,15 +2,23 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 26 (in_progress)
+current_plan: 26-00 complete — 12 wave-0 stubs (test_graph_schema.py 7 stubs + test_graph_versioning.py 5 stubs); P26-T01 through P26-T04 covered; 901 full suite pass; next: 26-01
 status: in_progress
-last_updated: "2026-04-06T16:51:00.898Z"
+last_updated: "2026-04-06T17:47:00Z"
+stopped_at: "Completed 26-00-PLAN.md — wave-0 Nyquist stubs for graph schema versioning and perimeter entities; all 12 stubs SKIP cleanly; 901 passed 0 failures"
 progress:
+  [██████████] 99%
   total_phases: 27
   completed_phases: 23
-  total_plans: 133
-  completed_plans: 134
+  total_plans: 138
+  completed_plans: 137
+  percent: 99
+decisions:
+  - "26-00: pytestmark module-level skip used for Wave-0 stubs — single decorator per file, activated in plan 26-05"
+  - "26-00: extract_perimeter_entities import wrapped in try/except inside test body — avoids module-level ImportError breaking skip mechanism"
+  - "26-00: test_preexisting_install_gets_version_1 bootstraps schema via first SQLiteStore then injects row via sqlite3 — decoupled from not-yet-implemented seeding logic"
+  - "26-00: test_system_kv_not_clobbered uses INSERT OR REPLACE to pre-set key then re-opens store — verifies INSERT OR IGNORE semantics"
 ---
 
 ---
