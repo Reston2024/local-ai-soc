@@ -36,7 +36,7 @@ from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
 from backend.services.ollama_client import OllamaClient
 from backend.stores.chroma_store import DEFAULT_COLLECTION
-from ingestion.entity_extractor import extract_entities_and_edges
+from ingestion.entity_extractor import extract_entities_and_edges, extract_perimeter_entities
 from ingestion.normalizer import normalize_event
 from ingestion.registry import get_parser
 
@@ -531,6 +531,32 @@ class IngestionLoader:
                         )
                         if result is not None:
                             local_edges += 1
+
+                    # Perimeter entities/edges for IPFire syslog events (Phase 26 — P26-T03)
+                    if event.source_type == "ipfire_syslog":
+                        perim_entities, perim_edges = extract_perimeter_entities(event)
+
+                        for entity in perim_entities:
+                            attrs = entity.get("attributes") or {}
+                            sqlite.upsert_entity(
+                                entity_id=entity["id"],
+                                entity_type=entity["type"],
+                                name=entity["name"],
+                                attributes=attrs,
+                                case_id=entity.get("case_id"),
+                            )
+
+                        for edge in perim_edges:
+                            result = sqlite.insert_edge(
+                                source_type=edge["source_type"],
+                                source_id=edge["source_id"],
+                                edge_type=edge["edge_type"],
+                                target_type=edge["target_type"],
+                                target_id=edge["target_id"],
+                                properties=edge.get("properties"),
+                            )
+                            if result is not None:
+                                local_edges += 1
 
                 except Exception as exc:
                     msg = f"Graph write error for event {event.event_id}: {exc}"

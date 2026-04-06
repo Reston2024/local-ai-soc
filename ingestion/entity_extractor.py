@@ -246,3 +246,94 @@ def extract_entities_and_edges(
             })
 
     return entities, edges
+
+
+# ---------------------------------------------------------------------------
+# IPFire perimeter entity / edge extraction (Phase 26 — P26-T03)
+# ---------------------------------------------------------------------------
+
+_ZONE_COLOR_UPPER: dict[str, str] = {
+    "green": "GREEN",
+    "red": "RED",
+    "blue": "BLUE",
+    "orange": "ORANGE",
+}
+
+
+def extract_perimeter_entities(
+    event: NormalizedEvent,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """
+    Derive perimeter graph entities and edges from an IPFire syslog NormalizedEvent.
+
+    Only processes events where source_type == "ipfire_syslog" and dst_ip is populated.
+    Returns an empty ([], []) for all other event types (safe to call unconditionally).
+
+    Returns the same (entities, edges) shape as extract_entities_and_edges().
+    """
+    if event.source_type != "ipfire_syslog" or not event.dst_ip:
+        return [], []
+
+    entities: list[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
+
+    # Extract zone name from tags (comma-separated string, e.g. "in:red0,zone:red" -> "red")
+    zone_name: str | None = None
+    for tag in (event.tags.split(",") if event.tags else []):
+        tag = tag.strip()
+        if tag.startswith("zone:"):
+            zone_name = tag[5:].lower()
+            break
+
+    # Destination IP entity
+    ip_id = f"ip:{event.dst_ip}"
+    entities.append({
+        "id": ip_id,
+        "type": "ip",
+        "name": event.dst_ip,
+        "attributes": {"ip_address": event.dst_ip},
+        "case_id": event.case_id,
+    })
+
+    # firewall_zone entity (only when zone is known from tags)
+    zone_id: str | None = None
+    if zone_name:
+        zone_id = f"firewall_zone:{zone_name}"
+        entities.append({
+            "id": zone_id,
+            "type": "firewall_zone",
+            "name": zone_name,
+            "attributes": {
+                "zone_name": zone_name,
+                "zone_color": _ZONE_COLOR_UPPER.get(zone_name, zone_name.upper()),
+                "interface": None,
+            },
+            "case_id": event.case_id,
+        })
+
+    edge_props: dict[str, Any] = {
+        "event_id": event.event_id,
+        "timestamp": event.timestamp.isoformat() if event.timestamp else None,
+        "src_ip": event.src_ip,
+    }
+
+    # Determine edge type: blocks (failure), traverses (success + src+dst), permits (success)
+    if event.event_outcome == "failure":
+        edge_type = "blocks"
+    elif event.src_ip and event.dst_ip:
+        edge_type = "traverses"
+    else:
+        edge_type = "permits"
+
+    # Emit edge: firewall_zone -> ip (if zone known), else skip edge
+    if zone_id:
+        edges.append({
+            "source_type": "firewall_zone",
+            "source_id": zone_id,
+            "edge_type": edge_type,
+            "target_type": "ip",
+            "target_id": ip_id,
+            "properties": edge_props,
+        })
+
+    return entities, edges
