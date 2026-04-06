@@ -869,9 +869,41 @@ Plans:
 - [x] 23-03-PLAN.md — Wave 2: FirewallCollector + GET /api/firewall/status + settings + main.py wiring (P23-T03, P23-T04)
 - [x] 23-04-PLAN.md — Wave 3: Final verification checkpoint
 
-## Phase 24: Recommendation Artifact Store and Approval API
+## Phase 23.5: Security Hardening (Expert Panel Findings)
 **Status:** TODO
 **Depends on:** Phase 23 complete
+**Goal:** Close all CRITICAL and HIGH findings from the full-panel security sweep (18 findings, 3 attack chains). Quick-win findings are implemented atomically. Sprint findings are batched by domain. The system must not have a zero-configuration unauthenticated admin path, must not have unsanitized prompt injection surfaces, and must have verified firewall protection on Ollama. All security tests must be green before Phase 24 proceeds.
+
+### Requirements
+- P23.5-T01 [CRITICAL]: Default token guard — startup assertion rejects AUTH_TOKEN=="changeme"; warn and exit; test confirms 401 on default token (E3-01)
+- P23.5-T02 [CRITICAL]: Legacy admin bypass fix — legacy-admin path in auth.py requires TOTP verification or is removed; no backdoor admin path without MFA (E3-02)
+- P23.5-T03 [CRITICAL]: Indirect prompt injection hardening — move [EVIDENCE] chunk content to system prompt section; add base64 + Unicode normalization before regex scrubbing; adversarial eval fixture (E6-01)
+- P23.5-T04 [HIGH]: Direct chat injection fix — apply _scrub_injection() to body.question in chat.py before prompt construction (E6-02)
+- P23.5-T05 [HIGH]: Sigma SQL injection + wrong backend — implement parameterized Sigma SQL test (remove @xfail); evaluate pySigma-backend-duckdb availability and switch if available (E1-01, E10-01)
+- P23.5-T06 [HIGH]: Ollama network isolation verification — add to scripts/status.ps1 a PowerShell check that port 11434 is not reachable from non-loopback; document in THREAT_MODEL.md (E4-01)
+- P23.5-T07 [HIGH]: Meta-detection rules — add anomaly Sigma rules: auth failure burst (10+ failures in 60s), LLM token spike (>5x baseline), unexpected collection delete event (E8-02)
+- P23.5-T08 [MEDIUM]: CSP headers — add Content-Security-Policy, X-Frame-Options, X-Content-Type-Options to Caddyfile (E9-01)
+- P23.5-T09 [MEDIUM]: Health endpoint sanitization — sanitize exception detail strings in /health; return generic component error strings not internal paths or schema names (E3-04)
+- P23.5-T10 [MEDIUM]: Log rotation — add TimedRotatingFileHandler with 30-day retention and 100MB max size to backend/core/logging.py (E8-01)
+- P23.5-T11 [MEDIUM]: TOTP replay persistence — persist seen-TOTP codes to SQLite system_kv; survive app restart; add replay-after-restart test (E2-01)
+- P23.5-T12 [MEDIUM]: Full prompt audit logging — log full prompt_text (not just char count) to llm_calls table; hash for integrity (E7-02)
+
+**Plans:** 7 plans
+
+Plans:
+- [ ] 23.5-01-PLAN.md — Wave 1: Test stubs + fixtures + Sigma meta-rule stubs (all requirements)
+- [ ] 23.5-02-PLAN.md — Wave 2: Auth hardening — AUTH_TOKEN validator + legacy TOTP gate (P23.5-T01, P23.5-T02)
+- [ ] 23.5-03-PLAN.md — Wave 2: Injection hardening — _scrub_injection b64/Unicode + EVIDENCE in system turn + chat scrub (P23.5-T03, P23.5-T04)
+- [ ] 23.5-04-PLAN.md — Wave 3: Sigma SQL injection test + matcher audit (P23.5-T05)
+- [ ] 23.5-05-PLAN.md — Wave 3: Infrastructure fixes — CSP headers, health sanitization, log rotation, Ollama port check (P23.5-T06, P23.5-T08, P23.5-T09, P23.5-T10)
+- [ ] 23.5-06-PLAN.md — Wave 4: Meta-detection rules + TOTP persistence + full prompt logging (P23.5-T07, P23.5-T11, P23.5-T12)
+- [ ] 23.5-07-PLAN.md — Wave 5: Final verification checkpoint
+
+*Phase 23.5 added: 2026-04-05 (Security Hardening — Expert Panel Sweep)*
+
+## Phase 24: Recommendation Artifact Store and Approval API
+**Status:** TODO
+**Depends on:** Phase 23.5 complete
 **Goal:** The SOC can create, store, and approve AI-assisted recommendation artifacts conforming to contracts/recommendation.schema.json. A human-in-the-loop approval gate is enforced programmatically — no artifact crosses the trust boundary without analyst_approved=true and schema validation. The recommendation lifecycle (draft > approved > dispatched) is fully tracked with audit trail.
 
 ### Requirements
