@@ -52,6 +52,16 @@
     artifact: '#6e7681',
     incident: '#e3b341',
     attack_technique: '#ff6b6b',
+    firewall_zone: '#e05252',      // zone node — base red; overridden per zone_color attribute
+    network_segment: '#1a7f64',    // subnet node — green
+  }
+
+  // Zone-color map for firewall_zone nodes (zone_color attribute is uppercase: RED/GREEN/ORANGE/BLUE)
+  const ZONE_COLORS: Record<string, string> = {
+    RED: '#e05252',
+    GREEN: '#3fb950',
+    ORANGE: '#d29922',
+    BLUE: '#58a6ff',
   }
 
   function buildCytoStyle() {
@@ -128,6 +138,46 @@
           'border-width': 2,
           'border-color': '#ff6b6b',
         }
+      },
+      // --- Phase 26: perimeter node types ---
+      {
+        selector: 'node[type = "firewall_zone"]',
+        style: {
+          'background-color': (ele: any) =>
+            ZONE_COLORS[(ele.data('attributes')?.zone_color ?? '').toUpperCase()] ?? '#e05252',
+          'shape': 'diamond',
+        } as any,
+      },
+      {
+        selector: 'node[type = "network_segment"]',
+        style: {
+          'background-color': '#1a7f64',
+          'shape': 'roundrectangle',
+        },
+      },
+      // --- Phase 26: perimeter edge types ---
+      {
+        selector: 'edge[edge_type = "blocks"]',
+        style: {
+          'line-color': '#f85149',
+          'target-arrow-color': '#f85149',
+          'line-style': 'dashed',
+        },
+      },
+      {
+        selector: 'edge[edge_type = "permits"]',
+        style: {
+          'line-color': '#3fb950',
+          'target-arrow-color': '#3fb950',
+        },
+      },
+      {
+        selector: 'edge[edge_type = "traverses"]',
+        style: {
+          'line-color': '#ffa657',
+          'target-arrow-color': '#ffa657',
+          'line-style': 'dotted',
+        },
       },
     ]
   }
