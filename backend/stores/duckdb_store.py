@@ -123,6 +123,57 @@ VALUES ('schema_version', '20')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
 """
 
+# ---------------------------------------------------------------------------
+# Phase 24: Recommendation artifact store DDL
+# ---------------------------------------------------------------------------
+
+_CREATE_RECOMMENDATIONS_TABLE = """
+CREATE TABLE IF NOT EXISTS recommendations (
+    recommendation_id    TEXT PRIMARY KEY,
+    case_id              TEXT NOT NULL,
+    schema_version       TEXT NOT NULL DEFAULT '1.0.0',
+    type                 TEXT NOT NULL,
+    proposed_action      TEXT NOT NULL,
+    target               TEXT NOT NULL,
+    scope                TEXT NOT NULL,
+    rationale            TEXT NOT NULL,
+    evidence_event_ids   TEXT NOT NULL,
+    retrieval_sources    TEXT NOT NULL,
+    inference_confidence TEXT NOT NULL,
+    model_id             TEXT NOT NULL,
+    model_run_id         TEXT NOT NULL,
+    prompt_inspection    TEXT NOT NULL,
+    generated_at         TIMESTAMP NOT NULL,
+    analyst_approved     BOOLEAN NOT NULL DEFAULT FALSE,
+    approved_by          TEXT NOT NULL DEFAULT '',
+    override_log         TEXT,
+    expires_at           TIMESTAMP NOT NULL,
+    status               TEXT NOT NULL DEFAULT 'draft',
+    created_at           TIMESTAMP NOT NULL
+)
+"""
+
+_CREATE_RECOMMENDATIONS_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_recommendations_case_id "
+    "ON recommendations (case_id)"
+)
+
+_CREATE_RECOMMENDATIONS_STATUS_INDEX = (
+    "CREATE INDEX IF NOT EXISTS idx_recommendations_status "
+    "ON recommendations (status)"
+)
+
+_CREATE_DISPATCH_LOG_TABLE = """
+CREATE TABLE IF NOT EXISTS recommendation_dispatch_log (
+    log_id             TEXT PRIMARY KEY,
+    recommendation_id  TEXT NOT NULL,
+    dispatched_at      TIMESTAMP NOT NULL,
+    http_status        INTEGER,
+    response_body      TEXT,
+    failure_taxonomy   TEXT
+)
+"""
+
 # One entry per ALTER TABLE statement — DuckDB allows only one column per statement.
 # DuckDB does NOT support ADD COLUMN IF NOT EXISTS; idempotency is via try/except.
 _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
@@ -193,6 +244,11 @@ class DuckDBStore:
         # ECS schema migration (Phase 20) — additive, idempotent
         await self.execute_write(_CREATE_DB_META_TABLE)
         await self.execute_write(_INSERT_SCHEMA_VERSION)
+        # Phase 24: Recommendation artifact store
+        await self.execute_write(_CREATE_RECOMMENDATIONS_TABLE)
+        await self.execute_write(_CREATE_RECOMMENDATIONS_INDEX)
+        await self.execute_write(_CREATE_RECOMMENDATIONS_STATUS_INDEX)
+        await self.execute_write(_CREATE_DISPATCH_LOG_TABLE)
         for col_name, col_type in _ECS_MIGRATION_COLUMNS:
             try:
                 await self.execute_write(
