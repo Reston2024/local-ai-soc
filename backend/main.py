@@ -547,6 +547,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("Firewall router not available: %s", exc)
 
+    try:
+        from backend.api.recommendations import router as recommendations_router  # noqa: E402
+        app.include_router(recommendations_router, dependencies=[Depends(verify_token)])  # /api/recommendations
+        log.info("Recommendations router mounted at /api/recommendations")
+    except ImportError as exc:
+        log.warning("Recommendations router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
