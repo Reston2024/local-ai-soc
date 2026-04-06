@@ -19,10 +19,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 25 (in_progress)
-current_plan: 25-02 complete — ReceiptIngest model + NotificationItem + ADR-032 constants; 898 suite pass; next: 25-03 (receipts API route)
+current_plan: 25-03 complete — backend/api/receipts.py (POST /api/receipts) + backend/api/notifications.py (GET /api/notifications) + main.py registration; 898 suite pass; next: 25-04 (integration tests)
 status: in_progress
-last_updated: "2026-04-06T16:39:30Z"
-stopped_at: "Completed 25-02-PLAN.md — backend/models/receipt.py (ReceiptIngest, NotificationItem, CASE_STATE_MAP, NOTIFICATION_TRIGGERS, REQUIRED_ACTION_MAP); 13 TDD tests pass; 898 full suite pass"
+last_updated: "2026-04-06T16:43:00Z"
+stopped_at: "Completed 25-03-PLAN.md — receipts and notifications routers created and registered in main.py; 17 stubs skipped; 898 full suite pass"
 progress:
   [██████████] 99%
   total_phases: 27
@@ -38,6 +38,9 @@ decisions:
   - "25-01: three execution_receipts indexes (recommendation_id, case_id, failure_taxonomy) cover all anticipated Wave 2 query patterns"
   - "25-02: ReceiptIngest mirrors recommendation.py pattern exactly — same model_validator, exclude_none, no format_checker"
   - "25-02: CASE_STATE_MAP/NOTIFICATION_TRIGGERS/REQUIRED_ACTION_MAP co-located in receipt.py for single-import by route handler"
+  - "25-03: audit-first insert — receipt always stored in DuckDB before case state or notification steps"
+  - "25-03: best-effort case state propagation — SQLite failure logs warning but does not roll back receipt"
+  - "25-03: deferred try/except router registration matches Phase 24 recommendations_router pattern"
 ---
 
 ---

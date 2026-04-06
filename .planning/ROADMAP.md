@@ -928,7 +928,7 @@ Plans:
 *Phase 24 added: 2026-04-03 (Recommendation Artifact Store and Approval API)*
 
 ## Phase 25: Receipt Ingestion and Case-State Propagation
-**Status:** TODO
+**Status:** in_progress (plans 25-00 through 25-03 complete; 25-04 next)
 **Depends on:** Phase 24 complete
 **Goal:** The SOC ingests execution receipts from the firewall executor and propagates case-state updates automatically. Every receipt is stored with full audit linkage to its recommendation_id and case_id. The five failure_taxonomy paths each produce a deterministic case-state transition per ADR-032. Analyst notification is triggered for conditions requiring human review.
 
