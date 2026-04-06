@@ -2,13 +2,34 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 23.5 (in_progress)
+current_plan: 23.5-01 complete — 8 pre-skipped security stubs, adversarial eval fixture (b64 injection), 3 Sigma meta-rule YAMLs; 817 tests pass, 0 failures
+status: in_progress
+last_updated: "2026-04-06T05:20:00Z"
+stopped_at: "Completed 23.5-01-PLAN.md — Wave 0 stubs: test_auth_hardening.py (5 stubs), test_injection_hardening.py (2 stubs), test_sigma_hardening.py (1 stub), injection_b64_bypass.json, 3 Sigma meta YAMLs; 817 full suite pass"
+progress:
+  total_phases: 27
+  completed_phases: 21
+  total_plans: 122
+  completed_plans: 121
+  percent: 99
+decisions:
+  - "23.5-01: All imports inside test body (not module-level) so @pytest.mark.skip fires before any ImportError"
+  - "23.5-01: detections/sigma/meta/ created as separate dir for SOC Brain self-monitoring meta-rules vs external threat rules"
+  - "23.5-01: test_sigma_hardening.py is correctly-named replacement for xfail in test_injection.py — existing xfail untouched"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 23 (complete)
 current_plan: 23-04 complete — Final verification checkpoint; 817 tests pass, 0 failures; all 14 Phase 23 tests passing; P23-T01..P23-T04 all satisfied; Phase 23 FULLY COMPLETE
 status: in_progress
 last_updated: "2026-04-05T08:15:00Z"
 stopped_at: "Completed 23-04-PLAN.md — Phase 23 checkpoint verified: 817 full suite pass, 0 failures; IPFireSyslogParser (6 events), SuricataEveParser (5 events + MITRE), FirewallCollector (file-tail + backoff + heartbeat), GET /api/firewall/status — all confirmed; Phase 23 COMPLETE"
 progress:
-  [██████████] 100%
+  [██████████] 99%
   completed_phases: 23
   total_plans: 115
   completed_plans: 120
