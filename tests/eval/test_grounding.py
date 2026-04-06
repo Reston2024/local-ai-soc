@@ -75,10 +75,15 @@ def _build_client(chroma_ids: list[str] | None = None):
     app.state.ollama = ollama
     app.state.settings = MagicMock()
 
-    with patch("backend.core.auth.settings") as mock_auth_settings:
-        mock_auth_settings.AUTH_TOKEN = _AUTH_TOKEN
-        client = TestClient(app, raise_server_exceptions=True)
-        yield client, _audit_id
+    # Bypass auth with dependency override — legacy token path is now TOTP-gated.
+    # Grounding eval tests test response logic, not auth mechanics.
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    app.dependency_overrides[verify_token] = lambda: _ctx
+
+    client = TestClient(app, raise_server_exceptions=True)
+    yield client, _audit_id
 
 
 # ---------------------------------------------------------------------------

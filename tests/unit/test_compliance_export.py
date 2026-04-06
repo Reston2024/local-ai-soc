@@ -56,9 +56,11 @@ def stores(sqlite_store):
 
 @pytest.fixture()
 def client(stores):
-    """FastAPI TestClient with injected stores and patched AUTH_TOKEN."""
+    """FastAPI TestClient with injected stores and dependency-overridden auth."""
     from fastapi.testclient import TestClient
 
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
     from backend.main import create_app
 
     app = create_app()
@@ -66,9 +68,12 @@ def client(stores):
     app.state.ollama = MagicMock()
     app.state.settings = MagicMock()
 
-    with patch("backend.core.auth.settings") as mock_auth_settings:
-        mock_auth_settings.AUTH_TOKEN = _AUTH_TOKEN
-        yield TestClient(app, raise_server_exceptions=True)
+    # Bypass auth with dependency override — compliance tests are testing export logic, not auth.
+    # Legacy token path is now TOTP-gated, so we override the dependency directly.
+    _ctx = OperatorContext(operator_id="test-admin", username="test", role="admin")
+    app.dependency_overrides[verify_token] = lambda: _ctx
+
+    yield TestClient(app, raise_server_exceptions=True)
 
 
 # ---------------------------------------------------------------------------

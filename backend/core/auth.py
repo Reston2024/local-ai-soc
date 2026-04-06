@@ -128,12 +128,32 @@ async def verify_token(
 
     # --- Legacy AUTH_TOKEN fallback ---
     if hmac.compare_digest(raw, configured):
+        # Require TOTP even on the legacy path — no backdoor admin without MFA.
+        # LEGACY_TOTP_SECRET must be set in .env to enable this path at all.
+        _raw_secret = getattr(settings, "LEGACY_TOTP_SECRET", "")
+        # Guard: accept only plain strings — rejects mock objects and other non-str types
+        legacy_secret = _raw_secret.strip() if isinstance(_raw_secret, str) else ""
+        if not legacy_secret:
+            # Legacy path disabled: LEGACY_TOTP_SECRET not configured
+            raise HTTPException(
+                status_code=401,
+                detail="Legacy admin path disabled: configure LEGACY_TOTP_SECRET to use this path",
+            )
+        totp_code = request.headers.get("X-TOTP-Code")
+        if not totp_code:
+            raise HTTPException(
+                status_code=401,
+                detail="TOTP code required for legacy admin path (X-TOTP-Code header)",
+            )
+        from backend.core.totp_utils import verify_totp
+        if not verify_totp(legacy_secret, totp_code, "legacy-admin"):
+            raise HTTPException(status_code=401, detail="Invalid or replayed TOTP code")
         ctx = OperatorContext(
             operator_id="legacy-admin",
             username="admin",
             role="admin",
             totp_verified=True,
-            totp_enabled=False,
+            totp_enabled=True,
         )
         request.state.operator = ctx
         return ctx

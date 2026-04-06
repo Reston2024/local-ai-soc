@@ -36,22 +36,43 @@ def test_default_token_rejected():
     assert dev.AUTH_TOKEN == "dev-only-bypass"
 
 
-@pytest.mark.skip(reason="stub — activated in 23.5-02")
-def test_legacy_path_requires_totp():
+@pytest.mark.asyncio
+async def test_legacy_path_requires_totp(monkeypatch):
     """
     T02: The legacy-admin path in auth.py must return 401 when TOTP code is absent.
     Verifies TOTP enforcement on the legacy hmac path (line ~130 in auth.py).
+    Tests verify_token() directly as a unit test — no full app needed.
     """
-    from fastapi.testclient import TestClient
+    from unittest.mock import MagicMock
 
-    from backend.main import create_app
+    from fastapi import HTTPException
+    from fastapi.security import HTTPAuthorizationCredentials
 
-    client = TestClient(create_app())
-    # Legacy-admin path without TOTP code should return 401
-    response = client.get("/api/admin/legacy", headers={"Authorization": "Bearer valid-token"})
-    assert response.status_code == 401, "Legacy admin path must require TOTP"
+    from backend.core.auth import verify_token
 
-    assert False, "stub — not yet implemented"
+    strong_token = "a" * 32
+    mock_settings = MagicMock()
+    mock_settings.AUTH_TOKEN = strong_token
+    mock_settings.LEGACY_TOTP_SECRET = ""  # empty = legacy path disabled → 401 always
+
+    monkeypatch.setattr("backend.core.auth.settings", mock_settings)
+
+    # Build a mock request: no operator in sqlite (falls through to legacy path)
+    mock_request = MagicMock()
+    mock_request.app.state.stores.sqlite.get_operator_by_prefix.return_value = None
+    mock_request.app.state.stores.sqlite.update_last_seen = MagicMock()
+    mock_request.state = MagicMock()
+    mock_request.headers.get.return_value = None  # no X-TOTP-Code header
+
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=strong_token)
+
+    # With LEGACY_TOTP_SECRET="" and no TOTP header — must raise 401
+    with pytest.raises(HTTPException) as exc_info:
+        await verify_token(request=mock_request, credentials=creds)
+    assert exc_info.value.status_code == 401
+    # Detail must mention legacy path or TOTP
+    detail = exc_info.value.detail.lower()
+    assert "legacy" in detail or "totp" in detail
 
 
 @pytest.mark.skip(reason="stub — activated in 23.5-03")

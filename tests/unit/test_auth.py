@@ -30,13 +30,28 @@ def _mock_request(operator_row=None):
 
 @pytest.mark.asyncio
 async def test_valid_token_passes():
+    """A token matching a valid operator row succeeds without TOTP (operator has no totp_secret)."""
+    from backend.core.operator_utils import hash_api_key
+
+    raw = "valid-operator-token-1234abcd"
+    hashed = hash_api_key(raw)
+    operator_row = {
+        "operator_id": "op-test",
+        "username": "testuser",
+        "hashed_key": hashed,
+        "role": "analyst",
+        "totp_secret": None,
+        "is_active": 1,
+    }
     with patch("backend.core.auth.settings") as mock_settings:
         mock_settings.AUTH_TOKEN = "testtoken"
+        mock_settings.LEGACY_TOTP_SECRET = ""
         from backend.core.auth import verify_token
-        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="testtoken")
-        req = _mock_request(operator_row=None)
+        creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=raw)
+        req = _mock_request(operator_row=operator_row)
         result = await verify_token(request=req, credentials=creds)
         assert isinstance(result, OperatorContext)
+        assert result.operator_id == "op-test"
 
 
 @pytest.mark.asyncio
@@ -133,30 +148,45 @@ class TestOperatorLookup:
 
     @pytest.mark.asyncio
     async def test_legacy_token_fallback(self):
-        """verify_token returns OperatorContext(operator_id='legacy-admin') when table empty + AUTH_TOKEN match."""
+        """Legacy path now requires TOTP — returns 401 when LEGACY_TOTP_SECRET is not configured."""
         with patch("backend.core.auth.settings") as mock_settings:
             mock_settings.AUTH_TOKEN = "my-secret-token"
+            mock_settings.LEGACY_TOTP_SECRET = ""  # legacy path disabled — 401 always
             from backend.core.auth import verify_token
             creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="my-secret-token")
             req = _mock_request(operator_row=None)
-            result = await verify_token(request=req, credentials=creds)
+            with pytest.raises(HTTPException) as exc_info:
+                await verify_token(request=req, credentials=creds)
 
-        assert isinstance(result, OperatorContext)
-        assert result.operator_id == "legacy-admin"
-        assert result.role == "admin"
+        assert exc_info.value.status_code == 401
+        assert "legacy" in exc_info.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_state_injection(self):
-        """After verify_token, request.state.operator is an OperatorContext."""
+        """After verify_token via operator table, request.state.operator is an OperatorContext."""
+        from backend.core.operator_utils import hash_api_key
+
+        raw = "operator-state-inject-test-xyz"
+        hashed = hash_api_key(raw)
+        operator_row = {
+            "operator_id": "op-state-test",
+            "username": "stateuser",
+            "hashed_key": hashed,
+            "role": "analyst",
+            "totp_secret": None,
+            "is_active": 1,
+        }
         with patch("backend.core.auth.settings") as mock_settings:
             mock_settings.AUTH_TOKEN = "my-secret-token"
+            mock_settings.LEGACY_TOTP_SECRET = ""
             from backend.core.auth import verify_token
-            creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="my-secret-token")
-            req = _mock_request(operator_row=None)
+            creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=raw)
+            req = _mock_request(operator_row=operator_row)
             result = await verify_token(request=req, credentials=creds)
 
         assert req.state.operator is result
         assert isinstance(req.state.operator, OperatorContext)
+        assert result.operator_id == "op-state-test"
 
     @pytest.mark.asyncio
     async def test_no_token_401(self):
