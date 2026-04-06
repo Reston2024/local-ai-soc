@@ -22,7 +22,7 @@ def build_prompt(
     question: str,
     context_events: list[str],
     context_notes: list[str] | None = None,
-) -> str:
+) -> tuple[str, str]:
     """
     Build a prompt for analyst Q&A.
 
@@ -36,13 +36,18 @@ def build_prompt(
                         as additional context.
 
     Returns:
-        A formatted prompt string ready to pass to the LLM as the user turn.
-        The SYSTEM string should be passed separately as the system prompt.
+        (system_evidence_block, user_question): The system_evidence_block should
+        be appended to the SYSTEM string before calling the LLM. The user_question
+        is the analyst's question only — no evidence in the user turn.
+
+    This architecture prevents indirect RAG injection: evidence in the system
+    turn is treated as trusted context, not as potentially-attacker-controlled
+    user input. The model processes them in separate trust domains.
     """
     if not context_events:
-        context = "[No evidence retrieved for this query]"
+        evidence_section = "[No evidence retrieved for this query]"
     else:
-        context = "\n\n".join(
+        evidence_section = "\n\n".join(
             f"[EVIDENCE]\n{e}\n[/EVIDENCE]" for e in context_events
         )
 
@@ -50,9 +55,16 @@ def build_prompt(
         notes_section = "\n\n".join(
             f"[ANALYST NOTE]\n{n}\n[/ANALYST NOTE]" for n in context_notes
         )
-        context = context + "\n\n" + notes_section
+        evidence_section = evidence_section + "\n\n" + notes_section
 
-    return f"{context}\n\nQuestion: {question}"
+    system_addition = (
+        f"\n\n--- BEGIN EVIDENCE CONTEXT ---\n"
+        f"{evidence_section}\n"
+        f"--- END EVIDENCE CONTEXT ---"
+    )
+    user_turn = f"Question: {question}"
+
+    return system_addition, user_turn
 
 
 # ---------------------------------------------------------------------------

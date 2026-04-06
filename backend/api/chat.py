@@ -22,6 +22,7 @@ from pydantic import BaseModel
 
 from backend.api.query import verify_citations
 from backend.core.logging import get_logger
+from ingestion.normalizer import _scrub_injection
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/api/investigations", tags=["investigations"])
@@ -142,7 +143,9 @@ async def chat_stream(
     context = await _build_investigation_context(
         investigation_id, stores, body.context_limit
     )
-    prompt = f"Investigation context:\n{context}\n\nAnalyst question: {body.question}"
+    # Scrub injection from question BEFORE incorporating into prompt
+    safe_question = _scrub_injection(body.question)
+    prompt = f"Investigation context:\n{context}\n\nAnalyst question: {safe_question}"
 
     full_tokens: list[str] = []
 

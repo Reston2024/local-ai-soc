@@ -16,15 +16,15 @@ async def test_analyst_qa_response_contains_event_reference(mock_ollama):
     context_events = [json.dumps(e) for e in events]
     context_ids = [e["event_id"] for e in events]
 
-    prompt = analyst_qa.build_prompt(
+    system_addition, user_turn = analyst_qa.build_prompt(
         question="What lateral movement activity is present?",
         context_events=context_events,
     )
 
     with patch.object(mock_ollama._client, "post", new=mock_ollama._mock_post):
         result = await mock_ollama.generate(
-            prompt=prompt,
-            system=analyst_qa.SYSTEM,
+            prompt=user_turn,
+            system=analyst_qa.SYSTEM + system_addition,
             grounding_event_ids=context_ids,
             prompt_template_name=analyst_qa.TEMPLATE_NAME,
             prompt_template_sha256=analyst_qa.TEMPLATE_SHA256,
