@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Reston2024/local-ai-soc/contracts/execution-receipt.schema.json",
+  "title": "Firewall Execution Receipt",
+  "description": "Receipt returned by the firewall executor after processing a recommendation. SOC local stub. Canonical: firewall repo. Version: 1.0.0-stub.",
+  "version": "1.0.0-stub",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "recommendation_id",
+    "case_id",
+    "failure_taxonomy",
+    "executed_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0.0-stub" },
+    "receipt_id": { "type": "string", "format": "uuid" },
+    "recommendation_id": { "type": "string", "format": "uuid" },
+    "case_id": { "type": "string", "format": "uuid" },
+    "failure_taxonomy": {
+      "type": "string",
+      "enum": ["applied", "noop_already_present", "validation_failed", "expired_rejected", "rolled_back"]
+    },
+    "executed_at": { "type": "string", "format": "date-time" },
+    "executor_version": { "type": "string" },
+    "detail": { "type": "string" }
+  }
+}
