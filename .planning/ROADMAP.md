@@ -888,12 +888,12 @@ Plans:
 - P23.5-T11 [MEDIUM]: TOTP replay persistence — persist seen-TOTP codes to SQLite system_kv; survive app restart; add replay-after-restart test (E2-01)
 - P23.5-T12 [MEDIUM]: Full prompt audit logging — log full prompt_text (not just char count) to llm_calls table; hash for integrity (E7-02)
 
-**Plans:** 1/7 plans executed
+**Plans:** 3/7 plans executed
 
 Plans:
-- [ ] 23.5-01-PLAN.md — Wave 1: Test stubs + fixtures + Sigma meta-rule stubs (all requirements)
-- [ ] 23.5-02-PLAN.md — Wave 2: Auth hardening — AUTH_TOKEN validator + legacy TOTP gate (P23.5-T01, P23.5-T02)
-- [ ] 23.5-03-PLAN.md — Wave 2: Injection hardening — _scrub_injection b64/Unicode + EVIDENCE in system turn + chat scrub (P23.5-T03, P23.5-T04)
+- [x] 23.5-01-PLAN.md — Wave 1: Test stubs + fixtures + Sigma meta-rule stubs (all requirements)
+- [x] 23.5-02-PLAN.md — Wave 2: Auth hardening — AUTH_TOKEN validator + legacy TOTP gate (P23.5-T01, P23.5-T02)
+- [x] 23.5-03-PLAN.md — Wave 2: Injection hardening — _scrub_injection b64/Unicode + EVIDENCE in system turn + chat scrub (P23.5-T03, P23.5-T04)
 - [ ] 23.5-04-PLAN.md — Wave 3: Sigma SQL injection test + matcher audit (P23.5-T05)
 - [ ] 23.5-05-PLAN.md — Wave 3: Infrastructure fixes — CSP headers, health sanitization, log rotation, Ollama port check (P23.5-T06, P23.5-T08, P23.5-T09, P23.5-T10)
 - [ ] 23.5-06-PLAN.md — Wave 4: Meta-detection rules + TOTP persistence + full prompt logging (P23.5-T07, P23.5-T11, P23.5-T12)

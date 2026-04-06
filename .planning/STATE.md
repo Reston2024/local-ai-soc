@@ -3,20 +3,22 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 23.5 (in_progress)
-current_plan: 23.5-01 complete — 8 pre-skipped security stubs, adversarial eval fixture (b64 injection), 3 Sigma meta-rule YAMLs; 817 tests pass, 0 failures
+current_plan: 23.5-03 complete — _scrub_injection hardened with b64+Unicode, EVIDENCE moved to system turn in analyst_qa, chat.py scrubs question before prompt; 820 tests pass, 1 pre-existing failure (out of scope)
 status: in_progress
-last_updated: "2026-04-06T05:20:00Z"
-stopped_at: "Completed 23.5-01-PLAN.md — Wave 0 stubs: test_auth_hardening.py (5 stubs), test_injection_hardening.py (2 stubs), test_sigma_hardening.py (1 stub), injection_b64_bypass.json, 3 Sigma meta YAMLs; 817 full suite pass"
+last_updated: "2026-04-06T05:35:00Z"
+stopped_at: "Completed 23.5-03-PLAN.md — injection hardening: _normalize_for_scrub, build_prompt tuple return, chat.py _scrub_injection; 2 injection tests PASS; 820 full suite pass (1 pre-existing auth stub failure deferred)"
 progress:
   total_phases: 27
   completed_phases: 21
   total_plans: 122
-  completed_plans: 121
+  completed_plans: 122
   percent: 99
 decisions:
   - "23.5-01: All imports inside test body (not module-level) so @pytest.mark.skip fires before any ImportError"
   - "23.5-01: detections/sigma/meta/ created as separate dir for SOC Brain self-monitoring meta-rules vs external threat rules"
   - "23.5-01: test_sigma_hardening.py is correctly-named replacement for xfail in test_injection.py — existing xfail untouched"
+  - "23.5-03: b64 decode heuristic requires >=16 chars + base64 alphabet + text_ratio>0.7 to prevent false positives on normal text"
+  - "23.5-03: analyst_qa.build_prompt returns tuple (system_addition, user_turn) to enforce trust domain separation"
 ---
 
 ---
