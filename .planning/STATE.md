@@ -2,12 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 24 (in_progress)
+current_plan: 24-04 complete — _run_approval_gate + PATCH /approve; ADR-030 §2+§4 gate; 22 recommendation tests green; next: 24-05 (dispatch route)
+status: in_progress
+last_updated: "2026-04-06T13:25:00Z"
+stopped_at: "Completed 24-04-PLAN.md — _run_approval_gate(rec, body)->list[str]; PATCH /{id}/approve returns 409/422/200; analyst_approved=True exclusive via this endpoint; 885 suite pass"
+progress:
+  [██████████] 100%
+  total_phases: 27
+  completed_phases: 21
+  total_plans: 128
+  completed_plans: 128
+  percent: 100
+decisions:
+  - "24-04: 409 double-approval check in route handler (not _run_approval_gate) — immutability constraint vs 422 validation gate failure"
+  - "24-04: inspection field handled as str or dict in gate — DuckDB row vs already-parsed _row_to_dict output"
+  - "24-04: expires_at timezone normalization: replace Z->+00:00 + replace(tzinfo=UTC) for naive datetimes"
+  - "24-04: analyst_approved=True is ONLY settable via PATCH /approve — POST always inserts False"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
 last_updated: "2026-04-06T13:23:00.256Z"
 progress:
-  total_phases: 27
+  [██████████] 100%
   completed_phases: 21
   total_plans: 128
   completed_plans: 127
