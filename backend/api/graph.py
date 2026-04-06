@@ -375,6 +375,23 @@ async def get_case_graph(case_id: str, request: Request) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
+# GET /graph/schema-version  (must be declared BEFORE /{investigation_id})
+# ---------------------------------------------------------------------------
+
+
+@router.get("/schema-version")
+async def get_schema_version(request: Request) -> JSONResponse:
+    """Return the current graph schema version stored in system_kv."""
+    stores = request.app.state.stores
+
+    def _read() -> str:
+        return stores.sqlite.get_graph_schema_version()
+
+    version = await asyncio.to_thread(_read)
+    return JSONResponse(content={"graph_schema_version": version})
+
+
+# ---------------------------------------------------------------------------
 # GET /graph/{investigation_id}
 # ---------------------------------------------------------------------------
 

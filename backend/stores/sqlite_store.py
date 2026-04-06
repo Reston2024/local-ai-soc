@@ -321,6 +321,33 @@ class SQLiteStore:
         except Exception:
             pass  # column already exists — idempotent
 
+        # Graph schema version seeding (Phase 26)
+        # Step 1: default for pre-existing installs — INSERT OR IGNORE leaves existing untouched
+        try:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO system_kv (key, value, updated_at) "
+                "VALUES (?, ?, ?)",
+                ("graph_schema_version", "1.0.0", _now_iso()),
+            )
+            self._conn.commit()
+        except Exception:
+            pass
+
+        # Step 2: fresh install (empty entities table) — upgrade to 2.0.0
+        try:
+            entity_count = self._conn.execute(
+                "SELECT COUNT(*) FROM entities"
+            ).fetchone()[0]
+            if entity_count == 0:
+                self._conn.execute(
+                    "UPDATE system_kv SET value = ?, updated_at = ? "
+                    "WHERE key = ? AND value = ?",
+                    ("2.0.0", _now_iso(), "graph_schema_version", "1.0.0"),
+                )
+                self._conn.commit()
+        except Exception:
+            pass
+
         log.info("SQLite store initialised", db_path=self._db_path)
 
     # ------------------------------------------------------------------
@@ -1469,6 +1496,13 @@ class SQLiteStore:
             (key, value, _now_iso()),
         )
         self._conn.commit()
+
+    def get_graph_schema_version(self) -> str:
+        """Return the current graph schema version from system_kv."""
+        row = self._conn.execute(
+            "SELECT value FROM system_kv WHERE key = 'graph_schema_version'"
+        ).fetchone()
+        return row[0] if row else "1.0.0"
 
     def record_model_change(self, previous_model: Optional[str], active_model: str) -> None:
         """Record a model change event in model_change_events."""
