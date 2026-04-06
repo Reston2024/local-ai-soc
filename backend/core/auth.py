@@ -76,6 +76,7 @@ async def verify_token(
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     # --- Named operator lookup (prefix-based) ---
+    sqlite_store = None
     try:
         sqlite_store = request.app.state.stores.sqlite
         prefix = key_prefix(raw)
@@ -101,7 +102,7 @@ async def verify_token(
                         detail="TOTP code required (X-TOTP-Code header)",
                     )
                 from backend.core.totp_utils import verify_totp
-                if not verify_totp(row["totp_secret"], totp_code, row["operator_id"]):
+                if not verify_totp(row["totp_secret"], totp_code, row["operator_id"], sqlite_store):
                     raise HTTPException(status_code=401, detail="Invalid or replayed TOTP code")
                 ctx.totp_verified = True
             else:
@@ -146,7 +147,7 @@ async def verify_token(
                 detail="TOTP code required for legacy admin path (X-TOTP-Code header)",
             )
         from backend.core.totp_utils import verify_totp
-        if not verify_totp(legacy_secret, totp_code, "legacy-admin"):
+        if not verify_totp(legacy_secret, totp_code, "legacy-admin", sqlite_store):
             raise HTTPException(status_code=401, detail="Invalid or replayed TOTP code")
         ctx = OperatorContext(
             operator_id="legacy-admin",
