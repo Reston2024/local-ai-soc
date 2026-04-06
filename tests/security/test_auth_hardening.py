@@ -75,23 +75,66 @@ async def test_legacy_path_requires_totp(monkeypatch):
     assert "legacy" in detail or "totp" in detail
 
 
-@pytest.mark.skip(reason="stub — activated in 23.5-03")
-def test_health_no_path_leak():
+@pytest.mark.asyncio
+async def test_health_no_path_leak():
     """
-    T09: /health component error detail must not expose filesystem paths or tracebacks.
+    T09/E3-04: /health component error detail must not expose filesystem paths or tracebacks.
     Verifies that health check error responses are sanitised before returning to clients.
     """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
     from fastapi.testclient import TestClient
 
-    from backend.main import create_app
+    from backend.api.health import router
 
-    client = TestClient(create_app())
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(router)
+
+    # Build a fake stores state where duckdb raises with a file path in the message
+    fake_path = "/data/secret/backend.duckdb"
+    fake_duckdb = MagicMock()
+    fake_duckdb.fetch_all = AsyncMock(
+        side_effect=RuntimeError(f"Cannot open database: {fake_path}")
+    )
+
+    fake_chroma = MagicMock()
+    fake_chroma.list_collections_async = AsyncMock(
+        side_effect=RuntimeError(f"Chroma directory not found: {fake_path}")
+    )
+
+    fake_sqlite = MagicMock()
+    fake_sqlite.health_check = MagicMock(
+        side_effect=RuntimeError(f"SQLite file missing: {fake_path}")
+    )
+
+    fake_ollama = MagicMock()
+    fake_ollama.health_check = AsyncMock(return_value=True)
+
+    fake_stores = MagicMock()
+    fake_stores.duckdb = fake_duckdb
+    fake_stores.chroma = fake_chroma
+    fake_stores.sqlite = fake_sqlite
+
+    app.state.stores = fake_stores
+    app.state.ollama = fake_ollama
+
+    client = TestClient(app, raise_server_exceptions=False)
     response = client.get("/health")
-    body = response.text
-    # Must not contain filesystem path separators or traceback keywords
-    assert "/" not in body or "Traceback" not in body, "Health endpoint must not leak paths"
 
-    assert False, "stub — not yet implemented"
+    body = response.text
+    # The fake_path must NOT appear anywhere in the response body
+    assert fake_path not in body, (
+        f"Health endpoint leaked file path in response: {body!r}"
+    )
+    # No Python traceback keywords should appear
+    assert "Traceback" not in body, (
+        f"Health endpoint leaked traceback in response: {body!r}"
+    )
+    assert "RuntimeError" not in body, (
+        f"Health endpoint leaked exception class name in response: {body!r}"
+    )
 
 
 @pytest.mark.skip(reason="stub — activated in 23.5-03")

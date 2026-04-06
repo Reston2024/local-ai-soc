@@ -38,7 +38,8 @@ async def _check_ollama(request: Request) -> dict[str, Any]:
             return {"status": "ok"}
         return {"status": "error", "detail": "GET /api/tags returned no models or failed"}
     except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+        log.error("Health check failed for ollama: %s", str(exc))
+        return {"status": "error", "detail": "component unavailable"}
 
 
 async def _check_duckdb(request: Request) -> dict[str, Any]:
@@ -50,7 +51,8 @@ async def _check_duckdb(request: Request) -> dict[str, Any]:
             return {"status": "ok"}
         return {"status": "error", "detail": "Unexpected SELECT 1 result"}
     except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+        log.error("Health check failed for duckdb: %s", str(exc))
+        return {"status": "error", "detail": "component unavailable"}
 
 
 async def _check_chroma(request: Request) -> dict[str, Any]:
@@ -60,7 +62,8 @@ async def _check_chroma(request: Request) -> dict[str, Any]:
         collections = await stores.chroma.list_collections_async()
         return {"status": "ok", "collections": collections}
     except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+        log.error("Health check failed for chroma: %s", str(exc))
+        return {"status": "error", "detail": "component unavailable"}
 
 
 async def _check_sqlite(request: Request) -> dict[str, Any]:
@@ -70,7 +73,8 @@ async def _check_sqlite(request: Request) -> dict[str, Any]:
         info = await asyncio.to_thread(stores.sqlite.health_check)
         return {"status": "ok", **info}
     except Exception as exc:
-        return {"status": "error", "detail": str(exc)}
+        log.error("Health check failed for sqlite: %s", str(exc))
+        return {"status": "error", "detail": "component unavailable"}
 
 
 @router.get("/health")
