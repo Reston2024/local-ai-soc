@@ -2,13 +2,29 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 24 (in_progress)
-current_plan: 24-02 complete — RecommendationArtifact Pydantic models with jsonschema allOf enforcement; 16 unit tests green; next: 24-03 (API routes)
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-06T13:15:34Z"
-stopped_at: "Completed 24-02-PLAN.md — RecommendationArtifact + PromptInspection + RetrievalSources + OverrideLog + RecommendationCreate + ApproveRequest; TDD: 16 tests RED then GREEN; 783 suite pass, 0 failures"
+last_updated: "2026-04-06T13:23:00.256Z"
 progress:
   total_phases: 27
+  completed_phases: 21
+  total_plans: 128
+  completed_plans: 127
+  percent: 99
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 24 (in_progress)
+current_plan: 24-03 complete — POST/GET recommendation API routes; router registered in main.py; 22 tests pass, 870 suite pass; next: 24-04 (approval gate endpoint)
+status: in_progress
+last_updated: "2026-04-06T13:23:00Z"
+stopped_at: "Completed 24-03-PLAN.md — backend/api/recommendations.py POST+GET routes; main.py router registration; 22 unit tests all pass, 870 full suite pass"
+progress:
+  [██████████] 99%
   completed_phases: 21
   total_plans: 128
   completed_plans: 127
@@ -18,6 +34,9 @@ decisions:
   - "24-01: Two indexes created: idx_recommendations_case_id and idx_recommendations_status for primary API query patterns"
   - "24-02: model_dump(exclude_none=True) used before jsonschema.validate() to prevent allOf false positives on null-valued optional fields (Research pitfall 3)"
   - "24-02: TDD — RED commit (5d3ebf8) before GREEN implementation (9f7171e); 16 unit tests all pass"
+  - "24-03: Prefix /api/recommendations set on router directly — no prefix added at include_router call"
+  - "24-03: params=None passed to fetch_all when no filter params (avoids DuckDB parameter mismatch)"
+  - "24-03: Router registered via try/except deferred pattern in main.py following existing conventions"
 ---
 
 ---
