@@ -963,3 +963,18 @@ Plans:
 - [ ] 26-04-PLAN.md — Wave 3: activate all tests (12 tests passing)
 
 *Phase 26 added: 2026-04-03 (Graph Schema Versioning and Perimeter Entities)*
+
+## Phase 27: Malcolm NSM Integration and Live Feed Collector
+**Status:** planned
+**Depends on:** Phase 26 complete
+**Goal:** Live telemetry flows from Malcolm NSM (OpenSearch) into local-ai-soc in real time. A new MalcolmCollector polls arkime_sessions3-* (Suricata alerts) and malcolm_beats_syslog_* (IPFire firewall) on a configurable interval, normalizes to NormalizedEvent, and persists to DuckDB + Chroma. Recommendation dispatch validates approved artifacts against the recommendation schema before any firewall action. ChromaDB corpus from supportTAK-server is available locally for RAG queries. End-to-end alert flow is verified from IPFire → Suricata → Malcolm → local-ai-soc → Svelte dashboard.
+
+### Requirements
+- P27-T01: Expose Malcolm OpenSearch to LAN — port 9200 accessible at 192.168.1.22 (either docker-compose port mapping or Caddy proxy); verified via curl from Windows host
+- P27-T02: MalcolmCollector — new ingestion/jobs/malcolm_collector.py polls arkime_sessions3-* for event.dataset:alert events and malcolm_beats_syslog_* for syslog events; uses httpx with SSL verify=False; tracks last-seen @timestamp to avoid re-ingest; normalizes to NormalizedEvent; runs on configurable MALCOLM_POLL_INTERVAL (default 30s)
+- P27-T03: Settings integration — MALCOLM_OPENSEARCH_URL, MALCOLM_OPENSEARCH_USER, MALCOLM_OPENSEARCH_PASS, MALCOLM_OPENSEARCH_VERIFY_SSL, MALCOLM_POLL_INTERVAL added to backend/core/config.py (pydantic-settings); collector registered in backend/main.py lifespan alongside existing FirewallCollector
+- P27-T04: Recommendation dispatch validation — PATCH /api/recommendations/{id}/approve triggers schema validation of the artifact against contracts/recommendation.schema.json before dispatch; Svelte dashboard shows "Dispatch" button on approved recommendations; dispatch endpoint returns 422 if schema validation fails
+- P27-T05: ChromaDB corpus sync — rsync or scp of /var/lib/chromadb from supportTAK-server (192.168.1.22) to local data/chroma/; sync script scripts/sync-chroma-corpus.ps1; existing local embeddings preserved; post-sync collection count verified
+- P27-T06: End-to-end verification — curl trigger on IPFire generates Suricata alert; alert ingested by MalcolmCollector within 2 poll cycles; alert visible in GET /api/events and Svelte Detections view; test documented in scripts/e2e-malcolm-verify.ps1
+
+*Phase 27 added: 2026-04-07 (Malcolm NSM Integration and Live Feed Collector)*
