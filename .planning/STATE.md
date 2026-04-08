@@ -2,16 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 29 (in_progress)
+current_plan: 29-04 complete — 18-VERIFICATION.md created with status:passed (PDF/MITRE/TheHive confirmed); P29-T04 gap closed
 status: in_progress
-last_updated: "2026-04-08T17:14:19.088Z"
+last_updated: "2026-04-08T16:20:00Z"
+stopped_at: "Completed 29-04-PLAN.md — Phase 18 VERIFICATION.md created with status:passed"
 progress:
   total_phases: 31
-  completed_phases: 27
+  completed_phases: 28
   total_plans: 157
-  completed_plans: 158
+  completed_plans: 159
   percent: 100
+decisions:
+  - "29-04: Status passed for Phase 18 — all routers import OK, weasyprint installed, 48 tests pass; live PDF render deferred (requires running backend, confirmed by human verifier in Phase 18 checkpoint)"
 ---
 
 ---
