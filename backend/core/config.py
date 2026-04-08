@@ -68,6 +68,14 @@ class Settings(BaseSettings):
     FIREWALL_POLL_INTERVAL: int = 5                   # seconds between file checks
     FIREWALL_CONSECUTIVE_FAILURE_LIMIT: int = 5       # failures before alert
 
+    # Malcolm NSM OpenSearch collector (Phase 27)
+    MALCOLM_ENABLED: bool = False  # Default OFF — set True in .env when Malcolm is on LAN
+    MALCOLM_OPENSEARCH_URL: str = "https://192.168.1.22:9200"
+    MALCOLM_OPENSEARCH_USER: str = "malcolm_internal"
+    MALCOLM_OPENSEARCH_PASS: str = "AzZqIn8B6AS1RuX0K8NbbzJZuYaTDARks9Tu"
+    MALCOLM_OPENSEARCH_VERIFY_SSL: bool = False  # Intentional — Malcolm uses self-signed TLS
+    MALCOLM_POLL_INTERVAL: int = 30  # seconds between OpenSearch polls
+
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
