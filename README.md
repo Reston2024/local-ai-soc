@@ -4,7 +4,7 @@
 
 A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
 
-**Status:** Phase 23.5 complete — Security Hardening: all 18 expert panel findings addressed (10 CRITICAL/HIGH closed, 5 MEDIUM closed, 2 accepted risk, 1 mitigated). 842 tests passing. Next: Phase 24 (Recommendation Artifact Store + Approval API).
+**Status:** v1.0 milestone gap closure in progress — Phases 3–27 complete (938 tests passing, 10 integration tests expected-fail while backend offline). Live Malcolm NSM feed, recommendation workflow, graph schema versioning, and receipt ingestion all shipped. Phase 28 next: dashboard integration fixes (RAG SSE endpoint, event search shape, SettingsView routing).
 
 ---
 
@@ -30,7 +30,12 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 | **Security Headers** | ✅ | CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via Caddy |
 | **Meta-Detection Rules** | ✅ | Sigma rules monitoring auth burst, LLM token spikes, ChromaDB deletions |
 | **Identity & RBAC** | ✅ | Operator table, bcrypt hashed passwords, role-based route guards |
-| **Firewall Integration** | ✅ | IPFire syslog + Suricata EVE JSON ingestion; heartbeat monitoring |
+| **Firewall Integration** | ✅ | IPFire syslog + Suricata EVE JSON ingestion; FirewallCollector heartbeat monitoring |
+| **Malcolm NSM Integration** | ✅ | MalcolmCollector polls OpenSearch (arkime + beats); ECS field normalization; 30s poll cycle |
+| **Recommendation Workflow** | ✅ | AI artifact store; approve/dispatch pipeline; JSON schema validation; dispatch log |
+| **Receipt Ingestion** | ✅ | Firewall execution receipts → case state propagation; audit trail |
+| **Graph Schema Versioning** | ✅ | `schema_version` in SQLite; firewall_zone + network_segment entity types; migration support |
+| **Perimeter Entities** | ✅ | Firewall zone nodes with colour-coded risk; network segment subnet bubbles in Attack Graph |
 | **osquery Telemetry** | Optional | Live host telemetry via `OSQUERY_ENABLED=True` |
 | **CI Pipeline** | ✅ | ruff + pytest (≥70% coverage) + pip-audit + gitleaks + frontend build/svelte-check |
 
