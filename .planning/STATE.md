@@ -2,21 +2,57 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 28 (in_progress)
-current_plan: 28-03 complete — pagination translation offset/limit->page/page_size (INT-05), NormalizedEvent field renames process_pid->process_id and raw_data->raw_event (INT-06)
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-08T15:34:37Z"
-stopped_at: "Completed 28-03-PLAN.md — pagination translation (INT-05) and NormalizedEvent field renames (INT-06)"
+last_updated: "2026-04-08T17:14:19.088Z"
 progress:
-  [██████████] 100%
   total_phases: 31
   completed_phases: 27
-  total_plans: 149
-  completed_plans: 154
+  total_plans: 157
+  completed_plans: 158
   percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 29 (in_progress)
+current_plan: 29-02 complete — Phase 19 VERIFICATION.md created (status: passed); operator CRUD API confirmed, 20 tests pass, INT-04 resolved Phase 28
+status: in_progress
+last_updated: "2026-04-08T17:14:01.034Z"
+stopped_at: "Completed 29-02-PLAN.md — Phase 19 Identity & RBAC verification complete"
+progress:
+  [██████████] 100%
+  completed_phases: 27
+  total_plans: 157
+  completed_plans: 157
+  percent: 99
+decisions:
+  - "29-02: Phase 19 status set to passed — all backend operator CRUD endpoints confirmed, 20 tests pass, INT-04 routing gap confirmed resolved in Phase 28"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 28 (complete)
+current_plan: 28-04 complete — SettingsView wired into App.svelte nav (INT-04); human verified: Settings nav item visible, operator table renders, backend healthy
+status: in_progress
+last_updated: "2026-04-08T16:00:00Z"
+stopped_at: "Phase 28 fully complete — all 6 integration gaps (INT-01 through INT-06) closed and human verified. Phase 29 (missing phase verifiers) is next."
+progress:
+  [██████████] 99%
+  total_phases: 31
+  completed_phases: 28
+  total_plans: 149
+  completed_plans: 155
+  percent: 90
 decisions:
   - "28-01: Map result.loaded->events_processed, result.parsed->events_total for dashboard IngestJobStatus compat; add /status/{id} alias; store filename at upload time"
   - "28-03: Translate offset/limit to 1-indexed page/page_size in api.events.list(); update EventsListResponse to page/page_size/has_next; rename process_pid->process_id and raw_data->raw_event in NormalizedEvent"
+  - "28-04: Settings nav item placed in existing Platform group with gear SVG icon; human verified 2026-04-08 — SettingsView renders operator table with admin operator, Rotate Key/Disable/Enable TOTP actions visible"
 ---
 
 ---
