@@ -1005,7 +1005,13 @@ Plans:
 - P28-T05: Fix pagination — add offset/limit query params to GET /api/events backend (or update api.ts to use page/page_size); align api.ts EventsListResponse interface
 - P28-T06: Fix NormalizedEvent TS types — update api.ts interface: process_pid → process_id, raw_data → raw_event
 
-**Plans:** 0 plans
+**Plans:** 4 plans
+
+Plans:
+- [ ] 28-01-PLAN.md — Add /ingest/status/{id} compat route + filename in _JOBS (P28-T04)
+- [ ] 28-02-PLAN.md — Fix SSE URL and event search shape in api.ts + EventsView (P28-T01, P28-T02)
+- [ ] 28-03-PLAN.md — Fix pagination translation and NormalizedEvent field names in api.ts (P28-T05, P28-T06)
+- [ ] 28-04-PLAN.md — Wire SettingsView into App.svelte nav and routing (P28-T03)
 
 *Phase 28 added: 2026-04-08 (Dashboard Integration Fixes — milestone gap closure)*
 
