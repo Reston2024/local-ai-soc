@@ -3,12 +3,49 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 23.5 (complete)
+current_plan: 23.5-07 complete — all 12 security requirements verified (17 security tests PASS, 3 meta rule tests PASS, all spot checks PASS); Phase 23.5 FULLY COMPLETE; Phase 24 gate open
+status: completed
+last_updated: "2026-04-08T13:05:31Z"
+stopped_at: "Completed 23.5-07-PLAN.md — Phase 23.5 security hardening fully complete, all 12 requirements verified"
+progress:
+  [██████████] 100%
+  total_phases: 28
+  completed_phases: 26
+  total_plans: 145
+  completed_plans: 150
+  percent: 100
+decisions:
+  - "23.5-07: Integration test failures in test_backend_health.py are pre-existing (different app at localhost:8000) — not a Phase 23.5 regression"
+  - "23.5-07: auto_advance=true — checkpoint:human-verify auto-approved after all 17 security tests confirmed PASS"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: completed
+last_updated: "2026-04-08T13:06:14.579Z"
+progress:
+  total_phases: 28
+  completed_phases: 26
+  total_plans: 145
+  completed_plans: 150
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 23.5 (complete)
 current_plan: 23.5-06 complete — Meta-detection Sigma rules parse-clean (3 smoke tests pass), SQLite-backed TOTP replay prevention verified, full prompt_text/hash logging confirmed; Phase 23.5 FULLY COMPLETE
 status: completed
 last_updated: "2026-04-08T13:01:48Z"
 stopped_at: "Completed 23.5-06-PLAN.md — Phase 23.5 security hardening fully complete"
 progress:
-  total_phases: 28
+  [██████████] 100%
   completed_phases: 25
   total_plans: 145
   completed_plans: 149
