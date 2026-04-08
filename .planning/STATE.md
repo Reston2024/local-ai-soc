@@ -2,6 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-08T20:45:39.113Z"
+progress:
+  total_phases: 31
+  completed_phases: 28
+  total_plans: 157
+  completed_plans: 162
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 29 (in_progress)
 current_plan: 29-08 complete — 01-VERIFICATION.md created with status:passed (FastAPI create_app, DuckDB execute_write, ChromaStore PersistentClient, SQLite WAL, health endpoint, Caddy proxy all confirmed; 869 tests pass; pre-GSD context acknowledged); P29-T08 gap closed
 status: in_progress
