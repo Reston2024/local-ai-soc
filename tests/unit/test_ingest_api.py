@@ -217,3 +217,27 @@ class TestIngestJobStatus:
             assert status_resp.status_code == 200
             body = status_resp.json()
             assert "status" in body
+
+
+class TestJobStatusCompat:
+    def test_unknown_job_returns_404(self, tmp_path):
+        client, _ = _build_app(tmp_path)
+        resp = client.get("/api/ingest/status/nonexistent-job-id")
+        assert resp.status_code == 404
+
+    def test_status_alias_returns_dashboard_shape(self, tmp_path):
+        client, _ = _build_app(tmp_path)
+        csv_content = b"event_id,event_type\nevt-1,process_create\n"
+        upload_resp = client.post(
+            "/api/ingest/file",
+            files={"file": ("events.csv", io.BytesIO(csv_content), "text/csv")},
+        )
+        if upload_resp.status_code == 202:
+            job_id = upload_resp.json()["job_id"]
+            status_resp = client.get(f"/api/ingest/status/{job_id}")
+            assert status_resp.status_code == 200
+            body = status_resp.json()
+            for key in ("job_id", "status", "filename", "events_processed", "events_total", "error", "started_at"):
+                assert key in body, f"Missing key: {key}"
+            assert isinstance(body["events_processed"], int)
+            assert isinstance(body["events_total"], int)
