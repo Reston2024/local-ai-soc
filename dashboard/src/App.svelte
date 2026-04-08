@@ -16,11 +16,12 @@
   import AssetsView from './views/AssetsView.svelte'
   import ProvenanceView from './views/ProvenanceView.svelte'
   import RecommendationsView from './views/RecommendationsView.svelte'
+  import SettingsView from './views/SettingsView.svelte'
 
   type View =
     | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
-    | 'recommendations'
+    | 'recommendations' | 'settings'
 
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -126,8 +127,9 @@
     {
       label: 'Platform',
       items: [
-        { id: 'query',  label: 'AI Query', color: '#00d4ff' },
-        { id: 'ingest', label: 'Ingest',   color: '#f97316' },
+        { id: 'query',    label: 'AI Query',  color: '#00d4ff' },
+        { id: 'ingest',   label: 'Ingest',    color: '#f97316' },
+        { id: 'settings', label: 'Settings',  color: '#a78bfa' },
       ],
     },
   ]
@@ -209,6 +211,8 @@
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="10" width="3" height="4" rx="1" fill="currentColor" opacity="0.5"/><rect x="6.5" y="6" width="3" height="8" rx="1" fill="currentColor" opacity="0.75"/><rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor"/></svg>
                     {:else if item.id === 'assets'}
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/></svg>
+                    {:else if item.id === 'settings'}
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.33.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/></svg>
                     {/if}
                   </span>
                   <span class="nav-label">{item.label}</span>
@@ -267,6 +271,8 @@
       <ProvenanceView />
     {:else if currentView === 'recommendations'}
       <RecommendationsView />
+    {:else if currentView === 'settings'}
+      <SettingsView />
     {/if}
   </main>
 </div>
