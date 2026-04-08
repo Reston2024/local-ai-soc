@@ -992,8 +992,9 @@ Plans:
 *Phase 27 added: 2026-04-07 (Malcolm NSM Integration and Live Feed Collector)*
 
 ## Phase 28: Dashboard Integration Fixes
-**Status:** planned
+**Status:** complete
 **Added:** 2026-04-08
+**Completed:** 2026-04-08
 **Goal:** Close the 6 dashboard–backend contract mismatches found in the v1.0 milestone audit. The RAG query flow returns empty answers (wrong endpoint), event search crashes (shape mismatch), SettingsView is unreachable (not routed), ingest progress always shows 0%, pagination always returns page 1, and TS field names are wrong. All 6 are UI/api.ts fixes with no backend schema changes required.
 **Gap closure:** INT-01, INT-02, INT-03, INT-04, INT-05, INT-06
 
@@ -1008,10 +1009,10 @@ Plans:
 **Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 28-01-PLAN.md — Add /ingest/status/{id} compat route + filename in _JOBS (P28-T04)
-- [ ] 28-02-PLAN.md — Fix SSE URL and event search shape in api.ts + EventsView (P28-T01, P28-T02)
-- [ ] 28-03-PLAN.md — Fix pagination translation and NormalizedEvent field names in api.ts (P28-T05, P28-T06)
-- [ ] 28-04-PLAN.md — Wire SettingsView into App.svelte nav and routing (P28-T03)
+- [x] 28-01-PLAN.md — Add /ingest/status/{id} compat route + filename in _JOBS (P28-T04)
+- [x] 28-02-PLAN.md — Fix SSE URL and event search shape in api.ts + EventsView (P28-T01, P28-T02)
+- [x] 28-03-PLAN.md — Fix pagination translation and NormalizedEvent field names in api.ts (P28-T05, P28-T06)
+- [x] 28-04-PLAN.md — Wire SettingsView into App.svelte nav and routing (P28-T03)
 
 *Phase 28 added: 2026-04-08 (Dashboard Integration Fixes — milestone gap closure)*
 
@@ -1031,7 +1032,17 @@ Plans:
 - P29-T07: Verify Phase 06 (Hardening & Integration) — pre-GSD phase, document confirmed working state
 - P29-T08: Verify Phase 01 (Foundation) — pre-GSD phase, document confirmed working state
 
-**Plans:** 0 plans
+**Plans:** 8 plans
+
+Plans:
+- [ ] 29-01-PLAN.md — Verify Phase 27: Malcolm NSM Integration (P29-T01)
+- [ ] 29-02-PLAN.md — Verify Phase 19: Identity & RBAC (P29-T02)
+- [ ] 29-03-PLAN.md — Verify Phase 23: Firewall Telemetry Ingestion (P29-T03)
+- [ ] 29-04-PLAN.md — Verify Phase 18: Reporting & Compliance (P29-T04)
+- [ ] 29-05-PLAN.md — Verify Phase 12: API Hardening & Parser Coverage (P29-T05)
+- [ ] 29-06-PLAN.md — Verify Phase 10: Compliance Hardening (P29-T06)
+- [ ] 29-07-PLAN.md — Verify Phase 06: Hardening & Integration — pre-GSD (P29-T07)
+- [ ] 29-08-PLAN.md — Verify Phase 01: Foundation — pre-GSD (P29-T08)
 
 *Phase 29 added: 2026-04-08 (Missing Phase Verifiers — milestone gap closure)*
 
