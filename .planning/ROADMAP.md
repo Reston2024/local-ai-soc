@@ -1057,7 +1057,7 @@ Plans:
 - P30-T02: Phase 22 human UI verification — confirm advisory banner has no dismiss button, Settings System tab loads model-status card, confidence badge colour thresholds render correctly [human action required]
 - P30-T03: Sigma rules guard — add explicit warning log + non-zero exit when 0 rules loaded in POST /api/detect/run; create rules/sigma/ directory with README
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 30-01-PLAN.md — Sigma rules guard: HTTPException(422) when 0 rules loaded, rules/sigma/README.md, unit tests

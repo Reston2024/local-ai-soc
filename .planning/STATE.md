@@ -3,12 +3,31 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 30 (in_progress)
+current_plan: 30-02 complete — caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0 digest verified present in docker-compose.yml; supply-chain pin confirmed; conditional re-pin checkpoint not triggered
+status: in_progress
+last_updated: "2026-04-08T21:07:30Z"
+stopped_at: "Completed 30-02-PLAN.md — Caddy digest verified present, supply-chain pin confirmed"
+progress:
+  total_phases: 31
+  completed_phases: 28
+  total_plans: 160
+  completed_plans: 164
+  percent: 100
+decisions:
+  - "30-02: caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0 digest verified present in docker-compose.yml — supply-chain pin confirmed, conditional re-pin checkpoint not triggered"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 30 (in_progress)
 current_plan: 30-01 complete — Sigma 0-rule guard HTTPException(422) in POST /api/detect/run; SigmaMatcher import moved to module level; rules/sigma/README.md created; 2 unit tests pass; 871 unit tests green
 status: in_progress
 last_updated: "2026-04-08T21:11:00Z"
 stopped_at: "Completed 30-01-PLAN.md — Sigma guard + rules/sigma/README.md + unit tests"
 progress:
-  total_phases: 31
+  [██████████] 100%
   completed_phases: 28
   total_plans: 160
   completed_plans: 163
