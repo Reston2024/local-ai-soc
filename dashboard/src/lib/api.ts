@@ -554,6 +554,19 @@ export const api = {
       request<PlaybookProvenanceRecord>(`/api/provenance/playbook/${encodeURIComponent(runId)}`),
   },
 
+  recommendations: {
+    list: (params?: { status?: string; case_id?: string; limit?: number; offset?: number }) => {
+      const q = new URLSearchParams()
+      if (params?.status) q.set('status', params.status)
+      if (params?.case_id) q.set('case_id', params.case_id)
+      if (params?.limit !== undefined) q.set('limit', String(params.limit))
+      if (params?.offset !== undefined) q.set('offset', String(params.offset))
+      return request<RecommendationsListResponse>(`/api/recommendations?${q}`)
+    },
+    get: (id: string) => request<RecommendationItem>(`/api/recommendations/${encodeURIComponent(id)}`),
+    dispatch: (id: string) => dispatchRecommendation(id),
+  },
+
   settings: {
     operators: {
       list: () =>
@@ -671,6 +684,51 @@ export interface KpiSnapshot {
   open_cases: KpiValue
   assets_monitored: KpiValue
   log_sources: KpiValue
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation dispatch (Phase 27-04)
+// ---------------------------------------------------------------------------
+
+export interface RecommendationItem {
+  recommendation_id: string
+  case_id: string
+  type: string
+  proposed_action: string
+  target: string
+  scope: string
+  rationale: string[]
+  inference_confidence: string
+  model_id: string
+  status: string
+  analyst_approved: boolean
+  approved_by: string
+  generated_at: string
+  expires_at: string
+  created_at: string
+}
+
+export interface RecommendationsListResponse {
+  items: RecommendationItem[]
+  total: number
+}
+
+export interface DispatchResult {
+  dispatched: boolean
+  recommendation_id: string
+  artifact_type: string
+}
+
+export async function dispatchRecommendation(id: string): Promise<DispatchResult> {
+  const res = await fetch(`/api/recommendations/${encodeURIComponent(id)}/dispatch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.detail ?? body.error ?? `dispatch failed: ${res.status}`)
+  }
+  return res.json()
 }
 
 export async function score(request: ScoreRequest): Promise<ScoreResponse> {
