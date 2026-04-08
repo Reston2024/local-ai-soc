@@ -888,7 +888,7 @@ Plans:
 - P23.5-T11 [MEDIUM]: TOTP replay persistence — persist seen-TOTP codes to SQLite system_kv; survive app restart; add replay-after-restart test (E2-01)
 - P23.5-T12 [MEDIUM]: Full prompt audit logging — log full prompt_text (not just char count) to llm_calls table; hash for integrity (E7-02)
 
-**Plans:** 3/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 - [x] 23.5-01-PLAN.md — Wave 1: Test stubs + fixtures + Sigma meta-rule stubs (all requirements)
