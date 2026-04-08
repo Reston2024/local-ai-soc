@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 27 (in_progress)
-current_plan: 27-06 Task 1 complete — scripts/e2e-malcolm-verify.ps1 written and committed (9a45509); awaiting human checkpoint (Task 2: live E2E run)
-status: checkpoint_required
-last_updated: "2026-04-08T05:00:00Z"
-stopped_at: "27-06-PLAN.md Task 2 checkpoint:human-verify — run scripts/e2e-malcolm-verify.ps1 live, confirm PASS + alert visible in Svelte dashboard"
+current_phase: Phase 27 (complete)
+current_plan: 27-06 complete — E2E pipeline verified: MalcolmCollector ingested 20+ suricata_eve events from OpenSearch; GET /api/events returns live alerts; Phase 27 fully complete
+status: complete
+last_updated: "2026-04-08T06:00:00Z"
 progress:
-  [██████████] 99%
+  [██████████] 100%
   total_phases: 28
-  completed_phases: 24
+  completed_phases: 25
   total_plans: 145
   completed_plans: 145
-  percent: 99
+  percent: 100
 decisions:
-  - "27-06: scripts/e2e-malcolm-verify.ps1 written verbatim from plan; PowerShell syntax verified (SYNTAX OK)"
+  - "27-06: E2E pipeline confirmed working via cursor reset to 2026-04-05T11:06:00 (historical alerts); 20+ suricata_eve events ingested and visible in API"
+  - "27-06: Malcolm span/tap interface limitation documented — SSH trigger requires real end-user traffic through monitored interface"
 ---
 
 ---

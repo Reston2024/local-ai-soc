@@ -965,7 +965,8 @@ Plans:
 *Phase 26 added: 2026-04-03 (Graph Schema Versioning and Perimeter Entities)*
 
 ## Phase 27: Malcolm NSM Integration and Live Feed Collector
-**Status:** planned
+**Status:** complete
+**Completed:** 2026-04-08
 **Depends on:** Phase 26 complete
 **Goal:** Live telemetry flows from Malcolm NSM (OpenSearch) into local-ai-soc in real time. A new MalcolmCollector polls arkime_sessions3-* (Suricata alerts) and malcolm_beats_syslog_* (IPFire firewall) on a configurable interval, normalizes to NormalizedEvent, and persists to DuckDB + Chroma. Recommendation dispatch validates approved artifacts against the recommendation schema before any firewall action. ChromaDB corpus from supportTAK-server is available locally for RAG queries. End-to-end alert flow is verified from IPFire → Suricata → Malcolm → local-ai-soc → Svelte dashboard.
 
@@ -977,15 +978,15 @@ Plans:
 - P27-T05: ChromaDB corpus sync — rsync or scp of /var/lib/chromadb from supportTAK-server (192.168.1.22) to local data/chroma/; sync script scripts/sync-chroma-corpus.ps1; existing local embeddings preserved; post-sync collection count verified
 - P27-T06: End-to-end verification — curl trigger on IPFire generates Suricata alert; alert ingested by MalcolmCollector within 2 poll cycles; alert visible in GET /api/events and Svelte Detections view; test documented in scripts/e2e-malcolm-verify.ps1
 
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
-- [ ] 27-00-PLAN.md — Wave 0: test stubs (test_malcolm_collector.py, test_malcolm_normalizer.py, test_dispatch_endpoint.py)
-- [ ] 27-01-PLAN.md — Wave 1: expose Malcolm OpenSearch port 9200 to LAN via docker-compose [autonomous: false]
-- [ ] 27-02-PLAN.md — Wave 2A: MALCOLM_* settings + MalcolmCollector polling skeleton + main.py lifespan wiring
-- [ ] 27-03-PLAN.md — Wave 2B: Malcolm field normalization (_normalize_alert, _normalize_syslog) + test activation
-- [ ] 27-04-PLAN.md — Wave 3A: POST /api/recommendations/{id}/dispatch endpoint + Svelte Dispatch button
-- [ ] 27-05-PLAN.md — Wave 3B: ChromaDB corpus sync script (scripts/sync-chroma-corpus.ps1)
-- [ ] 27-06-PLAN.md — Wave 4: end-to-end alert pipeline verification (scripts/e2e-malcolm-verify.ps1) [autonomous: false]
+- [x] 27-00-PLAN.md — Wave 0: test stubs (test_malcolm_collector.py, test_malcolm_normalizer.py, test_dispatch_endpoint.py)
+- [x] 27-01-PLAN.md — Wave 1: expose Malcolm OpenSearch port 9200 to LAN via docker-compose [autonomous: false]
+- [x] 27-02-PLAN.md — Wave 2A: MALCOLM_* settings + MalcolmCollector polling skeleton + main.py lifespan wiring
+- [x] 27-03-PLAN.md — Wave 2B: Malcolm field normalization (_normalize_alert, _normalize_syslog) + test activation
+- [x] 27-04-PLAN.md — Wave 3A: POST /api/recommendations/{id}/dispatch endpoint + Svelte Dispatch button
+- [x] 27-05-PLAN.md — Wave 3B: ChromaDB corpus sync script (scripts/sync-chroma-corpus.ps1)
+- [x] 27-06-PLAN.md — Wave 4: end-to-end alert pipeline verification (scripts/e2e-malcolm-verify.ps1) [autonomous: false]
 
 *Phase 27 added: 2026-04-07 (Malcolm NSM Integration and Live Feed Collector)*

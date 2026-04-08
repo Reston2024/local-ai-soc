@@ -77,10 +77,10 @@ try {
         Write-Host "  Alerts ingested so far: $($collectorStatus.alerts_ingested)"
     } else {
         Write-Host "  WARNING: MalcolmCollector status endpoint unavailable or not running." -ForegroundColor Yellow
-        Write-Host "  Continuing — will verify by checking events after trigger."
+        Write-Host "  Continuing - will verify by checking events after trigger."
     }
 } catch {
-    Write-Host "  (No collector status endpoint — continuing)" -ForegroundColor Yellow
+    Write-Host "  (No collector status endpoint - continuing)" -ForegroundColor Yellow
 }
 
 # ---------------------------------------------------------------------------
