@@ -1065,3 +1065,98 @@ Plans:
 - [ ] 30-03-PLAN.md — Phase 22 human UI sign-off: advisory banner, confidence badge, citations, Settings System tab
 
 *Phase 30 added: 2026-04-08 (Final Security and Human Sign-off — milestone gap closure)*
+
+## Phase 31: Malcolm Full Telemetry
+**Status:** planned
+**Added:** 2026-04-09
+**Goal:** Expand Malcolm NSM integration from 2 index patterns (alerts + syslog) to all 15 Zeek log types. Expand NormalizedEvent schema with ~50 new fields covering DNS, HTTP, TLS, connection state, file transfers, protocol anomalies, authentication (Kerberos/NTLM), SMB, RDP, DHCP, and Zeek notices. Run DuckDB schema migration. Update Malcolm collector to poll all Zeek indices. This gives the SOC full network visibility — not just alerts.
+
+### Requirements
+- P31-T01: Expand NormalizedEvent model with DNS, HTTP, TLS/JA3, conn_state, file, anomaly, auth, SMB, RDP, DHCP, notice fields (~50 new optional fields). Run DuckDB migration.
+- P31-T02: Add zeek-conn normalizer — every network connection with conn_state (S0/S1/SF/REJ/RSTO), duration, bytes (critical for anomaly detection)
+- P31-T03: Add zeek-weird normalizer — protocol anomalies, highest intrusion signal, severity: high by default
+- P31-T04: Add zeek-dns normalizer — DNS queries, response codes, resolved IPs, TTL
+- P31-T05: Add zeek-http normalizer — URI, method, status, user-agent, content-type, body sizes
+- P31-T06: Add zeek-ssl normalizer — TLS version, cipher, SNI, JA3/JA3S fingerprints, cert subject/issuer, validation status
+- P31-T07: Add zeek-smb_mapping + zeek-dce_rpc normalizers — SMB share access, Windows RPC (lateral movement indicators)
+- P31-T08: Add zeek-notice normalizer — Zeek detection notices with severity mapping
+- P31-T09: Add zeek-files normalizer — file transfers with MD5/SHA256, MIME type, source protocol
+- P31-T10: Add zeek-kerberos + zeek-ntlm normalizers — Kerberos/NTLM auth events (golden ticket, pass-the-hash detection)
+- P31-T11: Add zeek-rdp + zeek-x509 + zeek-software + zeek-dhcp normalizers
+- P31-T12: Expand _poll_and_ingest() to query all 15 Zeek index patterns with correct event.dataset filters. Add cursor keys per index.
+- P31-T13: Add event_type filter chips to EventsView (DNS / HTTP / TLS / Connection / Alert / Anomaly / Auth / File / SMB / RDP) so analysts can slice by telemetry type
+
+**Plans:** 0 plans
+
+*Phase 31 added: 2026-04-09 (Malcolm Full Telemetry — professional NSM coverage)*
+
+## Phase 32: Real Threat Hunting
+**Status:** planned
+**Added:** 2026-04-09
+**Goal:** Replace the completely disabled HuntingView with a working threat hunting engine. Implement backend hunting API that translates natural language queries to DuckDB SQL via the local LLM, executes against ingested telemetry, and returns ranked results. Enable all preset hunt queries against real data.
+
+### Requirements
+- P32-T01: Implement backend/api/hunting.py — POST /api/hunts/query (NL→SQL via Ollama), GET /api/hunts/{hunt_id}/results, GET /api/hunts/presets
+- P32-T02: Implement hunt query engine in backend/services/ — NL prompt → validated DuckDB SQL → execute → rank results by severity/recency
+- P32-T03: Store hunt results in SQLite (hunt_id, query, sql, results_json, created_at, analyst_id)
+- P32-T04: Wire HuntingView.svelte — remove all disabled attributes, connect input to POST /api/hunts/query, display results table with event drill-down
+- P32-T05: Make preset hunt cards functional — each preset sends its MITRE-mapped query to the hunt engine and shows results
+- P32-T06: Add hunt history panel — analyst can replay previous hunts, see results over time
+- P32-T07: Register hunting router in main.py with auth
+
+**Plans:** 0 plans
+
+*Phase 32 added: 2026-04-09 (Real Threat Hunting — no disabled buttons)*
+
+## Phase 33: Real Threat Intelligence
+**Status:** planned
+**Added:** 2026-04-09
+**Goal:** Replace the completely stubbed ThreatIntelView with working IOC matching and enrichment. Phase 1: match IOCs from ingested telemetry against each other and known-bad indicators stored locally. Phase 2: optional external feed polling (Abuse.ch, OTX free API). Enrich detections with IOC context automatically on ingestion.
+
+### Requirements
+- P33-T01: Implement backend/api/intel.py — GET /api/intel/iocs (search), POST /api/intel/iocs (add manual IOC), GET /api/intel/feeds (feed status), POST /api/intel/feeds/{name}/sync (trigger sync)
+- P33-T02: Create SQLite ioc_store table — (ioc_id, ioc_type [ip/domain/hash/url], value, source, confidence, tags, first_seen, last_seen, hit_count)
+- P33-T03: Implement IOC matching on ingest — after each event normalizes, check src_ip/dst_ip/domain/file_hash against ioc_store, tag matching events with detection_source="ioc_match"
+- P33-T04: Implement Abuse.ch URLhaus free feed sync (no API key required) — download CSV, parse, upsert to ioc_store
+- P33-T05: Implement OTX free feed polling via pulse API (API key optional, falls back to graceful skip if not configured)
+- P33-T06: Wire ThreatIntelView.svelte — real feed status from API, real IOC count, last sync time, manual IOC search, add IOC form
+- P33-T07: Add IOC enrichment display to EventsView and InvestigationView — matched events show IOC badge with source and confidence
+
+**Plans:** 0 plans
+
+*Phase 33 added: 2026-04-09 (Real Threat Intelligence — IOC matching and feed integration)*
+
+## Phase 34: Asset Inventory
+**Status:** planned
+**Added:** 2026-04-09
+**Goal:** Build a real asset inventory derived automatically from Malcolm/Zeek telemetry. Every unique host IP seen in conn/dns/http/dhcp logs becomes a tracked asset with last-seen timestamp, associated hostnames (from DHCP/DNS), open ports/services (from conn logs), OS fingerprint (from software/TLS logs), and associated detections/alerts. AssetsView becomes a live CMDB.
+
+### Requirements
+- P34-T01: Implement asset_store in SQLite — (asset_id, ip, hostname, mac, os_guess, first_seen, last_seen, open_ports JSON, tags, alert_count)
+- P34-T02: Implement asset upsert pipeline — on ingest of zeek-conn/zeek-dhcp/zeek-dns/zeek-software events, upsert asset record (update last_seen, merge open ports, update hostname if DHCP provides one)
+- P34-T03: Implement backend/api/assets.py — GET /api/assets (list with filters), GET /api/assets/{id} (detail with events), POST /api/assets/{id}/tag
+- P34-T04: Wire AssetsView.svelte — remove disabled "Discover Assets" button, replace with live asset table sorted by last_seen, click-through to asset detail with event history and associated alerts
+- P34-T05: Add asset timeline — for each asset, show chronological events from all Zeek log types
+- P34-T06: Register assets router in main.py with auth
+
+**Plans:** 0 plans
+
+*Phase 34 added: 2026-04-09 (Asset Inventory — auto-derived from Malcolm telemetry)*
+
+## Phase 35: SOC Completeness
+**Status:** planned
+**Added:** 2026-04-09
+**Goal:** Eliminate all remaining theatre, broken flows, and professional gaps. Fix explain.py silent failures, wire playbook runs into investigation timeline, add Zeek-type event filtering to EventsView, remove all "coming soon" badges, and ensure the SOC presents as a coherent professional tool with no dead ends.
+
+### Requirements
+- P35-T01: Fix explain.py — replace silent return {} with structured error response; ensure investigation context always returns evidence or an explicit "no context" message with reason
+- P35-T02: Wire playbook runs into investigation timeline — timeline.py returns real PlaybookRun rows from SQLite when case_id matches
+- P35-T03: Add event_type filter to EventsView — filter chips for DNS/HTTP/TLS/Connection/Alert/Anomaly/Auth/File/SMB pull from real NormalizedEvent.event_type values
+- P35-T04: Remove all "BETA — Coming Soon" badges from nav items — once phases 32/33/34 are complete, features are real
+- P35-T05: Add Malcolm telemetry summary to dashboard home/overview — show counts by Zeek type (N DNS queries, N connections, N alerts, N anomalies) in last 24h
+- P35-T06: Ensure Sigma rules can match on new Zeek fields — update field_map.py to cover conn_state, dns_query, http_user_agent, tls_ja3, smb_path so detection rules can fire on full telemetry
+- P35-T07: End-to-end smoke test — ingest Malcolm telemetry sample, verify all 15 event types appear in EventsView, confirm hunt returns results, confirm IOC matching fires on known-bad IP, confirm asset inventory populates
+
+**Plans:** 0 plans
+
+*Phase 35 added: 2026-04-09 (SOC Completeness — no theatre, no dead ends)*
