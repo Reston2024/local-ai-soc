@@ -2,7 +2,7 @@
 
 **Project:** AI-SOC-Brain
 **Date:** 2026-03-15
-**Status:** IN PROGRESS — Phase 12 (API Hardening & Parser Coverage) next
+**Status:** IN PROGRESS — Phase 28 (Dashboard Integration Fixes) next
 
 ---
 
@@ -990,3 +990,56 @@ Plans:
 - [x] 27-06-PLAN.md — Wave 4: end-to-end alert pipeline verification (scripts/e2e-malcolm-verify.ps1) [autonomous: false]
 
 *Phase 27 added: 2026-04-07 (Malcolm NSM Integration and Live Feed Collector)*
+
+## Phase 28: Dashboard Integration Fixes
+**Status:** planned
+**Added:** 2026-04-08
+**Goal:** Close the 6 dashboard–backend contract mismatches found in the v1.0 milestone audit. The RAG query flow returns empty answers (wrong endpoint), event search crashes (shape mismatch), SettingsView is unreachable (not routed), ingest progress always shows 0%, pagination always returns page 1, and TS field names are wrong. All 6 are UI/api.ts fixes with no backend schema changes required.
+**Gap closure:** INT-01, INT-02, INT-03, INT-04, INT-05, INT-06
+
+### Requirements
+- P28-T01: Fix RAG query SSE — change api.query.ask() to POST /api/query/ask/stream; update QueryView streaming parser to match token/done SSE format
+- P28-T02: Fix event search shape — update /api/events/search to return {results:[{event,score}]} OR update api.ts + EventsView to read res.events directly
+- P28-T03: Wire SettingsView — add 'settings' to App.svelte nav items; import and render SettingsView.svelte; add gear icon to nav
+- P28-T04: Fix ingest job progress — map loader.py _JOBS result.loaded → events_processed, result.parsed → events_total; add started_at/completed_at timestamps
+- P28-T05: Fix pagination — add offset/limit query params to GET /api/events backend (or update api.ts to use page/page_size); align api.ts EventsListResponse interface
+- P28-T06: Fix NormalizedEvent TS types — update api.ts interface: process_pid → process_id, raw_data → raw_event
+
+**Plans:** 0 plans
+
+*Phase 28 added: 2026-04-08 (Dashboard Integration Fixes — milestone gap closure)*
+
+## Phase 29: Missing Phase Verifiers
+**Status:** planned
+**Added:** 2026-04-08
+**Goal:** Run the GSD verifier against the 8 phases that were completed without a VERIFICATION.md. Creates authoritative VERIFICATION.md for each. If any gaps are found they are documented but do not block milestone completion (all phases are confirmed functionally working via integration check).
+**Gap closure:** Missing VERIFICATION.md for phases 01, 06, 10, 12, 18, 19, 23, 27
+
+### Requirements
+- P29-T01: Verify Phase 27 (Malcolm NSM Integration) — pipeline confirmed working, verifier documents evidence
+- P29-T02: Verify Phase 19 (Identity & RBAC) — operators API confirmed working; SettingsView gap addressed in Phase 28
+- P29-T03: Verify Phase 23 (Firewall Telemetry Ingestion) — IPFire syslog collector confirmed working
+- P29-T04: Verify Phase 18 (Reporting & Compliance) — reports/export confirmed working via integration check
+- P29-T05: Verify Phase 12 (API Hardening & Parser Coverage) — rate limiting, Caddy limits confirmed
+- P29-T06: Verify Phase 10 (Compliance Hardening) — compliance report generation confirmed
+- P29-T07: Verify Phase 06 (Hardening & Integration) — pre-GSD phase, document confirmed working state
+- P29-T08: Verify Phase 01 (Foundation) — pre-GSD phase, document confirmed working state
+
+**Plans:** 0 plans
+
+*Phase 29 added: 2026-04-08 (Missing Phase Verifiers — milestone gap closure)*
+
+## Phase 30: Final Security and Human Sign-off
+**Status:** planned
+**Added:** 2026-04-08
+**Goal:** Close the remaining human-action items before milestone completion: pin the Caddy Docker image to an immutable sha256 digest (requires Docker Desktop running), verify 3 Phase 22 UI items with the live frontend, and add a guard to prevent silent 0-detection failures when Sigma rule directories are absent.
+**Gap closure:** P11-T02, P22 human verification, Sigma rules guard
+
+### Requirements
+- P30-T01: Pin Caddy digest — start Docker Desktop, docker inspect caddy:2.9-alpine, update docker-compose.yml to caddy:2.9-alpine@sha256:<digest> [human action required]
+- P30-T02: Phase 22 human UI verification — confirm advisory banner has no dismiss button, Settings System tab loads model-status card, confidence badge colour thresholds render correctly [human action required]
+- P30-T03: Sigma rules guard — add explicit warning log + non-zero exit when 0 rules loaded in POST /api/detect/run; create rules/sigma/ directory with README
+
+**Plans:** 0 plans
+
+*Phase 30 added: 2026-04-08 (Final Security and Human Sign-off — milestone gap closure)*
