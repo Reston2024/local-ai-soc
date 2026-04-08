@@ -18,23 +18,26 @@ progress:
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 26 (in_progress)
-current_plan: 26-00 complete — 12 wave-0 stubs (test_graph_schema.py 7 stubs + test_graph_versioning.py 5 stubs); P26-T01 through P26-T04 covered; 901 full suite pass; next: 26-01
+current_phase: Phase 26 (complete)
+current_plan: 26-04 complete — 15 tests activated (7 schema + 5 versioning + 3 pipeline); all P26-T01 through P26-T05 covered; 930 full suite pass; Phase 26 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-06T17:47:00Z"
-stopped_at: "Completed 26-00-PLAN.md — wave-0 Nyquist stubs for graph schema versioning and perimeter entities; all 12 stubs SKIP cleanly; 901 passed 0 failures"
+last_updated: "2026-04-07T02:15:00Z"
+stopped_at: "Completed 26-04-PLAN.md — all phase-26 test stubs activated; 15 tests passing; 930 full suite pass, 0 failures"
 progress:
   [██████████] 99%
   total_phases: 27
-  completed_phases: 23
+  completed_phases: 24
   total_plans: 138
-  completed_plans: 137
-  percent: 99
+  completed_plans: 138
+  percent: 100
 decisions:
   - "26-00: pytestmark module-level skip used for Wave-0 stubs — single decorator per file, activated in plan 26-05"
   - "26-00: extract_perimeter_entities import wrapped in try/except inside test body — avoids module-level ImportError breaking skip mechanism"
-  - "26-00: test_preexisting_install_gets_version_1 bootstraps schema via first SQLiteStore then injects row via sqlite3 — decoupled from not-yet-implemented seeding logic"
-  - "26-00: test_system_kv_not_clobbered uses INSERT OR REPLACE to pre-set key then re-opens store — verifies INSERT OR IGNORE semantics"
+  - "26-01: firewall_zone and network_segment appended to ENTITY_TYPES; blocks/permits/traverses appended to EDGE_TYPES — strictly additive"
+  - "26-01: two-step seeding — INSERT OR IGNORE for pre-existing installs; conditional UPDATE to 2.0.0 for fresh installs"
+  - "26-04: Use 'custom-version' sentinel in test_system_kv_not_clobbered — upgrade UPDATE only fires for value='1.0.0'"
+  - "26-04: test_preexisting_install_gets_version_1 deletes version key before re-opening to simulate pre-phase-26 DB"
+  - "26-04: extract_perimeter_entities() returns (entities, edges) tuple — perimeter tests must unpack both sides"
 ---
 
 ---
