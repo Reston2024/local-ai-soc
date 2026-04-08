@@ -2,6 +2,21 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-08T22:40:26.378Z"
+progress:
+  total_phases: 31
+  completed_phases: 29
+  total_plans: 160
+  completed_plans: 165
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 30 (complete)
 current_plan: 30-03 complete — Phase 22 human UI sign-off: Checks 1+4 confirmed (no-dismiss banner, model-status card with live drift data); Checks 2+3 human_needed (confidence badge colours, citation tags — require active AI Copilot session); 22-VERIFICATION.md updated; Phase 30 FULLY COMPLETE
 status: in_progress
