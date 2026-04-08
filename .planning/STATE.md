@@ -2,15 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 30 (in_progress)
+current_plan: 30-01 complete — Sigma 0-rule guard HTTPException(422) in POST /api/detect/run; SigmaMatcher import moved to module level; rules/sigma/README.md created; 2 unit tests pass; 871 unit tests green
 status: in_progress
-last_updated: "2026-04-08T20:45:39.113Z"
+last_updated: "2026-04-08T21:11:00Z"
+stopped_at: "Completed 30-01-PLAN.md — Sigma guard + rules/sigma/README.md + unit tests"
 progress:
   total_phases: 31
   completed_phases: 28
-  total_plans: 157
-  completed_plans: 162
+  total_plans: 160
+  completed_plans: 163
+  percent: 100
+decisions:
+  - "30-01: HTTPException(422) guard added to POST /api/detect/run when 0 Sigma rules loaded; SigmaMatcher import moved to module level for testability; rules/sigma/README.md created for operator onboarding"
 ---
 
 ---
