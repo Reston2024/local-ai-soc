@@ -3,21 +3,24 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 27 (in_progress)
-current_plan: 27-00 complete — 17 wave-0 stubs (5+7+5) created, all SKIPPED, 850 passed full suite; next: 27-01
+current_plan: 27-02 complete — MalcolmCollector skeleton + MALCOLM_* settings + main.py registration; 5 collector tests PASSED, 855 unit suite pass; next: 27-03
 status: in_progress
-last_updated: "2026-04-07T00:00:00Z"
-stopped_at: "Completed 27-00-PLAN.md — 17 wave-0 stubs created; 850 unit tests passed, 0 failures"
+last_updated: "2026-04-07T00:18:00Z"
+stopped_at: "Completed 27-02-PLAN.md — MalcolmCollector skeleton created; MALCOLM_* settings added; 5 collector tests PASSING; 855 full suite pass, 0 failures"
 progress:
   [██████████] 97%
   total_phases: 28
   completed_phases: 24
   total_plans: 145
-  completed_plans: 140
-  percent: 97
+  completed_plans: 142
+  percent: 98
 decisions:
   - "27-00: try/except ImportError guard used for test_malcolm_collector.py and test_malcolm_normalizer.py — ingestion/jobs/malcolm_collector.py does not yet exist"
   - "27-00: simple module-level pytestmark skip used for test_dispatch_endpoint.py — backend/api/recommendations.py already exists, no import risk"
   - "27-00: 17 stubs across 3 files all report SKIPPED; full unit suite 850 passed, 0 failures"
+  - "27-02: MALCOLM_OPENSEARCH_USER defaults to malcolm_internal (discovered credential from 27-01 checkpoint, not 'admin' per plan template)"
+  - "27-02: _NORMALIZER_IMPLEMENTED=False guard added to test_malcolm_normalizer.py — Wave-3 stubs stay skipped until plan 27-03 activates them"
+  - "27-02: MalcolmCollector.__init__ all params default to None/sensible values for zero-arg unit test construction"
 ---
 
 ---
