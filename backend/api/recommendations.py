@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from backend.core.logging import get_logger
-from backend.models.recommendation import ApproveRequest, RecommendationCreate
+from backend.models.recommendation import ApproveRequest, RecommendationArtifact, RecommendationCreate
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
@@ -265,4 +265,68 @@ async def approve_recommendation(
     return JSONResponse(
         content={"status": "approved", "recommendation_id": recommendation_id},
         status_code=200,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Dispatch endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{recommendation_id}/dispatch")
+async def dispatch_recommendation(recommendation_id: str, request: Request) -> JSONResponse:
+    """
+    Validate and dispatch an approved recommendation artifact (ADR-030).
+
+    Requires status == "approved". Re-validates the artifact against
+    contracts/recommendation.schema.json via RecommendationArtifact pydantic model.
+    Does NOT make outbound HTTP calls to the firewall executor — dispatch is
+    schema validation only (future phase handles execution).
+    """
+    stores = request.app.state.stores
+
+    rows = await stores.duckdb.fetch_all(_SELECT_BY_ID, [recommendation_id])
+    if not rows:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+
+    rec = _row_to_dict(rows[0])
+
+    if rec.get("status") != "approved":
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "not_approved",
+                "detail": (
+                    f"Recommendation status is '{rec.get('status')}'; "
+                    "must be 'approved' to dispatch."
+                ),
+            },
+        )
+
+    try:
+        RecommendationArtifact(**rec)
+    except Exception as exc:
+        import jsonschema
+        from pydantic import ValidationError
+
+        if isinstance(exc, (ValidationError, jsonschema.ValidationError)):
+            detail = exc.errors() if hasattr(exc, "errors") else [str(exc)]
+            return JSONResponse(
+                status_code=422,
+                content={"error": "schema_validation_failed", "detail": detail},
+            )
+        raise  # Unexpected error — propagate
+
+    log.info(
+        "Recommendation dispatched (schema validated)",
+        recommendation_id=recommendation_id,
+        artifact_type=rec.get("type"),
+    )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "dispatched": True,
+            "recommendation_id": recommendation_id,
+            "artifact_type": rec.get("type"),
+        },
     )
