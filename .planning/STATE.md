@@ -2,6 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 28 (in_progress)
+current_plan: 28-01 complete — /ingest/status/{job_id} compat route + filename tracking in _set_job; 18 ingest tests pass, 869 unit tests pass
+status: in_progress
+last_updated: "2026-04-07T00:00:00Z"
+stopped_at: "Completed 28-01-PLAN.md — ingest status compat route and filename tracking"
+progress:
+  [██████████] 100%
+  total_phases: 30
+  completed_phases: 26
+  total_plans: 149
+  completed_plans: 151
+  percent: 87
+decisions:
+  - "28-01: Map result.loaded->events_processed, result.parsed->events_total for dashboard IngestJobStatus compat; add /status/{id} alias; store filename at upload time"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: completed
