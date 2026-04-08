@@ -1005,7 +1005,7 @@ Plans:
 - P28-T05: Fix pagination — add offset/limit query params to GET /api/events backend (or update api.ts to use page/page_size); align api.ts EventsListResponse interface
 - P28-T06: Fix NormalizedEvent TS types — update api.ts interface: process_pid → process_id, raw_data → raw_event
 
-**Plans:** 4 plans
+**Plans:** 3/4 plans executed
 
 Plans:
 - [ ] 28-01-PLAN.md — Add /ingest/status/{id} compat route + filename in _JOBS (P28-T04)
