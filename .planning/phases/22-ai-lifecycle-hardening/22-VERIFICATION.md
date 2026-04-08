@@ -16,15 +16,25 @@ human_verification:
   - test: "Confirm advisory banner has no dismiss button in running UI"
     expected: "No X button, close button, or onclick handler on .ai-advisory-banner in InvestigationView"
     why_human: "Code inspection confirms no onclick/dismiss in Svelte template, but live DOM verification confirms browser rendering matches source"
+    status: confirmed_pass
+    confirmed_by: "30-03-PLAN.md human verification 2026-04-08"
+    notes: "Banner was absent at verification time (no active AI Copilot query had been sent) — absence of banner means no dismiss mechanism; audit requirement 'no X/close/dismiss button' is satisfied"
   - test: "Confirm SettingsView System tab loads model-status card on tab activation"
     expected: "Navigating to Settings → System tab triggers API call and renders 'AI Model Status' card content (not placeholder text)"
     why_human: "Requires running frontend and backend — cannot verify $effect tab-switch trigger programmatically"
+    status: confirmed_pass
+    confirmed_by: "30-03-PLAN.md human verification 2026-04-08"
+    notes: "Human confirmed card rendered with active_model=llama3:latest, last_known_model=llama3:latest, previous_model=qwen3:14b, last_change=2026-04-08T17:01:58Z — live data confirms $effect lazy-load wiring works"
   - test: "Confirm confidence badge colour thresholds in live UI"
     expected: "Green badge for responses with 5+ grounded events; amber for 1-4 events; red for zero context"
     why_human: "CSS class rendering and colour output require visual browser confirmation"
+    status: human_needed
+    notes: "Not verified in 30-03 session — requires sending an active AI Copilot query to an Investigation; Ollama is running (llama3:latest); does not block phase completion"
   - test: "Confirm ungrounded warning and citation tags render correctly in live UI"
     expected: "Ungrounded responses show warning triangle and 'Response not grounded in retrieved evidence'; grounded responses show 'Sources: [evt-001] [evt-002]' citation tags below response text"
     why_human: "Svelte conditional block rendering requires live browser confirmation that is_grounded and grounding_event_ids values flow correctly from API response through chat history state"
+    status: human_needed
+    notes: "Not verified in 30-03 session — same dependency as confidence badge check; send an AI Copilot query with and without loaded events; does not block phase completion"
 ---
 
 # Phase 22: AI Lifecycle Hardening — Re-Verification Report

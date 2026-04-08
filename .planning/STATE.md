@@ -2,13 +2,48 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 30 (complete)
+current_plan: 30-03 complete — Phase 22 human UI sign-off: Checks 1+4 confirmed (no-dismiss banner, model-status card with live drift data); Checks 2+3 human_needed (confidence badge colours, citation tags — require active AI Copilot session); 22-VERIFICATION.md updated; Phase 30 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-08T22:20:00Z"
+stopped_at: "Completed 30-03-PLAN.md — Phase 22 UI sign-off (2/4 confirmed, 2/4 human_needed, non-blocking)"
+progress:
+  total_phases: 31
+  completed_phases: 29
+  total_plans: 160
+  completed_plans: 165
+  percent: 100
+decisions:
+  - "30-03: Checks 1+4 of Phase 22 human UI verification confirmed — advisory banner no-dismiss satisfied, model-status card renders with live drift data; Checks 2+3 (confidence badge colours, citation tags) remain human_needed but do not block phase completion"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-08T22:18:20.742Z"
+progress:
+  total_phases: 31
+  completed_phases: 29
+  total_plans: 160
+  completed_plans: 165
+  percent: 100
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 30 (in_progress)
 current_plan: 30-02 complete — caddy:2.9-alpine@sha256:b4e3952384eb9524a887633ce65c752dd7c71314d2c2acf98cd5c715aaa534f0 digest verified present in docker-compose.yml; supply-chain pin confirmed; conditional re-pin checkpoint not triggered
 status: in_progress
 last_updated: "2026-04-08T21:07:30Z"
 stopped_at: "Completed 30-02-PLAN.md — Caddy digest verified present, supply-chain pin confirmed"
 progress:
-  total_phases: 31
+  [██████████] 100%
   completed_phases: 28
   total_plans: 160
   completed_plans: 164
