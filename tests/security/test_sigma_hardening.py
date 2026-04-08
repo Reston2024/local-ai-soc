@@ -243,7 +243,9 @@ detection:
     assert "?" in sql_fragment, f"No ? placeholder in SQL fragment: {sql_fragment!r}"
 
     # Additional metacharacter variants
-    for payload in ["1=1", "OR 1=1", "--", "/**/", "UNION SELECT"]:
+    # Note: payloads must not contain Sigma wildcard characters (* and ?) since
+    # pySigma converts those to SQL LIKE wildcards before we see the value.
+    for payload in ["1=1", "OR 1=1", "--", "UNION SELECT", "EXEC sp-configure"]:
         test_yaml = f"""
 title: Test {payload}
 id: 00000000-0000-0000-0000-000000000002

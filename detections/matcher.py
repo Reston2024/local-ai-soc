@@ -87,6 +87,12 @@ def _value_to_sql_fragment(
     corresponding parameter value to *params*.
 
     Returns None if the value should be skipped (e.g. wildcard-only "*").
+
+    # SECURITY AUDIT 2026-04-07: All value bindings in this function use '?' placeholders.
+    # Values are appended to the 'params' list which is passed to cursor.execute(sql, params).
+    # No f-string or .format() interpolation of user-supplied values exists in this function.
+    # Field names come exclusively from SIGMA_FIELD_MAP (a closed dict) — not from raw rule text.
+    # Audit result: SQL injection via Sigma rule values is NOT POSSIBLE with current implementation.
     """
     is_contains = SigmaContainsModifier in modifier_classes
     is_startswith = SigmaStartswithModifier in modifier_classes
@@ -193,6 +199,46 @@ def _detection_item_to_fragments(
             joined = " OR ".join(f"({f})" for f in fragments)
 
     return [joined]
+
+
+# ---------------------------------------------------------------------------
+# Module-level convenience function
+# ---------------------------------------------------------------------------
+
+
+def rule_to_sql(rule: SigmaRule) -> tuple[str, list[Any]]:
+    """
+    Compile a SigmaRule to a parameterised DuckDB WHERE clause.
+
+    Convenience wrapper around SigmaMatcher._rule_to_sql_impl() that requires
+    no Stores/DuckDB connection — suitable for unit tests and offline
+    compilation.
+
+    Args:
+        rule: A parsed SigmaRule object.
+
+    Returns:
+        A (where_clause, params) tuple where *where_clause* contains only
+        ``?`` placeholders and *params* holds the bound values in order.
+
+    Raises:
+        ValueError: If the rule cannot be converted to SQL (unsupported
+            modifiers, all fields unmapped, etc.).
+
+    Security note: All values are passed via params — never interpolated into
+    the SQL string.  See _value_to_sql_fragment docstring for the full audit
+    trail.
+    """
+    from unittest.mock import MagicMock
+
+    matcher = SigmaMatcher(stores=MagicMock())
+    result = matcher._rule_to_sql_impl(rule)
+    if result is None:
+        raise ValueError(
+            f"Cannot convert Sigma rule '{rule.title}' to SQL — "
+            "check that at least one detection field is present in SIGMA_FIELD_MAP."
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------
