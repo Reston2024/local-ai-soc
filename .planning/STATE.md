@@ -2,16 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 23.5 (complete)
+current_plan: 23.5-06 complete — Meta-detection Sigma rules parse-clean (3 smoke tests pass), SQLite-backed TOTP replay prevention verified, full prompt_text/hash logging confirmed; Phase 23.5 FULLY COMPLETE
 status: completed
-last_updated: "2026-04-08T12:56:34.217Z"
+last_updated: "2026-04-08T13:01:48Z"
+stopped_at: "Completed 23.5-06-PLAN.md — Phase 23.5 security hardening fully complete"
 progress:
   total_phases: 28
   completed_phases: 25
   total_plans: 145
-  completed_plans: 148
+  completed_plans: 149
   percent: 100
+decisions:
+  - "23.5-06: Meta-detection rules use simple detection.selection — timeframe/count() delegated to collection layer (not pySigma-native)"
+  - "23.5-06: TOTP replay key is SHA-256(operator_id:code) for uniform key length and collision-resistance"
+  - "23.5-06: prompt_hash computed from FULL prompt (not 64KB-truncated) for integrity verification"
+  - "23.5-06: All T07/T11/T12 requirements pre-satisfied by Wave 1-3 implementation; plan 06 served as final verification pass"
 ---
 
 ---
