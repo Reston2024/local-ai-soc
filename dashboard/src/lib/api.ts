@@ -14,10 +14,10 @@ export interface NormalizedEvent {
   hostname: string | null
   username: string | null
   process_name: string | null
-  process_pid: number | null
+  process_id: number | null
   event_type: string | null
   severity: string
-  raw_data: Record<string, unknown>
+  raw_event: string | null
   tags: string[]
   ingested_at: string
 }
