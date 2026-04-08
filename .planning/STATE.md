@@ -2,6 +2,26 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
+current_phase: Phase 27 (in_progress)
+current_plan: 27-06 Task 1 complete — scripts/e2e-malcolm-verify.ps1 written and committed (9a45509); awaiting human checkpoint (Task 2: live E2E run)
+status: checkpoint_required
+last_updated: "2026-04-08T05:00:00Z"
+stopped_at: "27-06-PLAN.md Task 2 checkpoint:human-verify — run scripts/e2e-malcolm-verify.ps1 live, confirm PASS + alert visible in Svelte dashboard"
+progress:
+  [██████████] 99%
+  total_phases: 28
+  completed_phases: 24
+  total_plans: 145
+  completed_plans: 145
+  percent: 99
+decisions:
+  - "27-06: scripts/e2e-malcolm-verify.ps1 written verbatim from plan; PowerShell syntax verified (SYNTAX OK)"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
