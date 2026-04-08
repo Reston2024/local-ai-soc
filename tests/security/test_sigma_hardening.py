@@ -192,3 +192,75 @@ def test_where_clause_structure_with_injection_value():
     assert '"' not in where_clause, (
         f"Double quotes in WHERE clause indicate value interpolation: {where_clause!r}"
     )
+
+
+def test_sigma_sql_injection():
+    """
+    rule_to_sql must produce parameterized SQL for Sigma rules with SQL
+    metacharacter values (P23.5-T05).
+
+    Verifies:
+    - The WHERE clause string does NOT contain the injection payload literally.
+    - The params list DOES contain the value (with LIKE wildcards from |contains).
+    - A ? placeholder is present in the SQL string.
+    - Multiple metacharacter variants (1=1, OR 1=1, --, /**/, UNION SELECT) are
+      all safely bound via params, never interpolated.
+
+    NOTE: rule_to_sql is implemented as SigmaMatcher.rule_to_sql_with_params().
+    This test calls it directly without executing against DuckDB (pure unit test).
+    """
+    from sigma.rule import SigmaRule
+    from detections.matcher import rule_to_sql
+
+    # Adversarial Sigma rule: field value contains SQL injection metacharacters
+    adversarial_yaml = """
+title: SQL Injection Test
+id: 00000000-0000-0000-0000-000000000001
+status: test
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|contains: "'; DROP TABLE normalized_events; --"
+    condition: selection
+"""
+    rule = SigmaRule.from_yaml(adversarial_yaml)
+    sql_fragment, params = rule_to_sql(rule)
+
+    # The SQL string must NOT contain the injection payload literally
+    injection_payload = "'; DROP TABLE normalized_events; --"
+    assert injection_payload not in sql_fragment, (
+        f"SQL injection payload found in SQL string (should be in params): {sql_fragment!r}"
+    )
+
+    # The params list MUST contain the value (with LIKE wildcards added by |contains)
+    assert any(
+        "DROP TABLE" in str(p) for p in params
+    ), f"Injection payload not found in params list: {params}"
+
+    # SQL string must use ? placeholder
+    assert "?" in sql_fragment, f"No ? placeholder in SQL fragment: {sql_fragment!r}"
+
+    # Additional metacharacter variants
+    for payload in ["1=1", "OR 1=1", "--", "/**/", "UNION SELECT"]:
+        test_yaml = f"""
+title: Test {payload}
+id: 00000000-0000-0000-0000-000000000002
+status: test
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|contains: "{payload}"
+    condition: selection
+"""
+        rule2 = SigmaRule.from_yaml(test_yaml)
+        sql2, params2 = rule_to_sql(rule2)
+        assert payload not in sql2, (
+            f"Metacharacter '{payload}' found literally in SQL: {sql2!r}"
+        )
+        assert any(payload in str(p) for p in params2), (
+            f"Metacharacter '{payload}' not in params: {params2}"
+        )
