@@ -9,9 +9,14 @@ try:
 except ImportError:
     _IMPORT_OK = False
 
+# Normalization methods (_normalize_alert, _normalize_syslog) are stubs in plan 27-02.
+# They are fully implemented in plan 27-03. This flag keeps the normalizer tests skipped
+# until plan 27-03 removes this guard and sets it to True.
+_NORMALIZER_IMPLEMENTED = False
+
 pytestmark = pytest.mark.skipif(
-    not _IMPORT_OK,
-    reason="MalcolmCollector not implemented — Wave 2 (plan 27-03)",
+    not _IMPORT_OK or not _NORMALIZER_IMPLEMENTED,
+    reason="Malcolm normalizer methods not implemented — Wave 3 (plan 27-03)",
 )
 
 

@@ -274,6 +274,36 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.info("Firewall collection disabled (FIREWALL_ENABLED=False)")
         app.state.firewall_collector = None
 
+    # 8c. Conditional Malcolm NSM OpenSearch collector
+    malcolm_task: asyncio.Task | None = None
+    if settings.MALCOLM_ENABLED:
+        try:
+            from ingestion.jobs.malcolm_collector import MalcolmCollector as _MCCollector
+            from ingestion.loader import IngestionLoader as _MCLoader
+            _mc_loader = _MCLoader(stores=stores, ollama_client=ollama)
+            _mc_collector = _MCCollector(
+                loader=_mc_loader,
+                sqlite_store=sqlite_store,
+                interval_sec=settings.MALCOLM_POLL_INTERVAL,
+                opensearch_url=settings.MALCOLM_OPENSEARCH_URL,
+                opensearch_user=settings.MALCOLM_OPENSEARCH_USER,
+                opensearch_pass=settings.MALCOLM_OPENSEARCH_PASS,
+                verify_ssl=settings.MALCOLM_OPENSEARCH_VERIFY_SSL,
+            )
+            malcolm_task = asyncio.ensure_future(_mc_collector.run())
+            app.state.malcolm_collector = _mc_collector
+            log.info(
+                "MalcolmCollector started",
+                opensearch_url=settings.MALCOLM_OPENSEARCH_URL,
+                interval_sec=settings.MALCOLM_POLL_INTERVAL,
+            )
+        except ImportError as exc:
+            log.warning("MalcolmCollector not available — skipping: %s", exc)
+            app.state.malcolm_collector = None
+    else:
+        log.info("Malcolm collection disabled (MALCOLM_ENABLED=False)")
+        app.state.malcolm_collector = None
+
     # 8a. Daily KPI snapshot scheduler (midnight cron job)
     global _daily_snapshot_scheduler
     _daily_snapshot_scheduler = AsyncIOScheduler()
@@ -316,6 +346,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         firewall_task.cancel()
         try:
             await firewall_task
+        except asyncio.CancelledError:
+            pass
+
+    # Cancel malcolm collector task if running
+    if malcolm_task is not None and not malcolm_task.done():
+        malcolm_task.cancel()
+        try:
+            await malcolm_task
         except asyncio.CancelledError:
             pass
 
