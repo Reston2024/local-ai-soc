@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from backend.core.logging import get_logger
 from backend.core.rate_limit import limiter
+from detections.matcher import SigmaMatcher
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/detect", tags=["detect"])
@@ -117,8 +118,6 @@ async def run_detection(
 
     from pathlib import Path as _Path
 
-    from detections.matcher import SigmaMatcher
-
     matcher = SigmaMatcher(stores=stores)
 
     rules_dirs = [_Path("fixtures/sigma"), _Path("rules/sigma")]
@@ -126,6 +125,19 @@ async def run_detection(
     for d in rules_dirs:
         if d.exists():
             loaded += matcher.load_rules_dir(str(d))
+
+    if loaded == 0:
+        log.warning(
+            "run_detection: no Sigma rules found in any rules directory",
+            checked=["fixtures/sigma", "rules/sigma"],
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "No Sigma rules loaded — rules/sigma/ is empty or missing. "
+                "Add Sigma YAML rule files to rules/sigma/ and retry."
+            ),
+        )
 
     log.info("run_detection: loaded %d Sigma rules, running...", loaded)
 
