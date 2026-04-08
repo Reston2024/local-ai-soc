@@ -2,18 +2,34 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 27 (in_progress)
-current_plan: 27-02 complete — MalcolmCollector skeleton + MALCOLM_* settings + main.py registration; 5 collector tests PASSED, 855 unit suite pass; next: 27-03
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-07T00:18:00Z"
-stopped_at: "Completed 27-02-PLAN.md — MalcolmCollector skeleton created; MALCOLM_* settings added; 5 collector tests PASSING; 855 full suite pass, 0 failures"
+last_updated: "2026-04-08T04:10:49.755Z"
 progress:
-  [██████████] 97%
   total_phases: 28
   completed_phases: 24
   total_plans: 145
-  completed_plans: 142
-  percent: 98
+  completed_plans: 143
+  percent: 99
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 27 (in_progress)
+current_plan: 27-03 complete — _normalize_alert and _normalize_syslog implemented; 7 normalizer tests PASSED; 862 full suite pass; next: 27-04
+status: in_progress
+last_updated: "2026-04-08T04:10:00Z"
+stopped_at: "Completed 27-03-PLAN.md — _normalize_alert and _normalize_syslog implemented; 7 normalizer tests PASSED; 862 full suite pass, 0 failures"
+progress:
+  [██████████] 99%
+  total_phases: 28
+  completed_phases: 24
+  total_plans: 145
+  completed_plans: 143
+  percent: 99
 decisions:
   - "27-00: try/except ImportError guard used for test_malcolm_collector.py and test_malcolm_normalizer.py — ingestion/jobs/malcolm_collector.py does not yet exist"
   - "27-00: simple module-level pytestmark skip used for test_dispatch_endpoint.py — backend/api/recommendations.py already exists, no import risk"
@@ -21,6 +37,8 @@ decisions:
   - "27-02: MALCOLM_OPENSEARCH_USER defaults to malcolm_internal (discovered credential from 27-01 checkpoint, not 'admin' per plan template)"
   - "27-02: _NORMALIZER_IMPLEMENTED=False guard added to test_malcolm_normalizer.py — Wave-3 stubs stay skipped until plan 27-03 activates them"
   - "27-02: MalcolmCollector.__init__ all params default to None/sensible values for zero-arg unit test construction"
+  - "27-03: _normalize_syslog accepts str|dict — string input handled as plain syslog line for test ergonomics and real-world use"
+  - "27-03: Integer severity values coerced to string via str(severity).lower() — NormalizedEvent.severity is Optional[str]"
 ---
 
 ---
