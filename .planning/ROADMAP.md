@@ -1032,7 +1032,7 @@ Plans:
 - P29-T07: Verify Phase 06 (Hardening & Integration) — pre-GSD phase, document confirmed working state
 - P29-T08: Verify Phase 01 (Foundation) — pre-GSD phase, document confirmed working state
 
-**Plans:** 5/8 plans executed
+**Plans:** 6/8 plans executed
 
 Plans:
 - [ ] 29-01-PLAN.md — Verify Phase 27: Malcolm NSM Integration (P29-T01)
