@@ -9,11 +9,8 @@ Covers:
 All tests are skipped (wave-0 stubs) and will be activated in plan 26-05.
 """
 
-import pytest
 import sqlite3
 from pathlib import Path
-
-pytestmark = pytest.mark.skip(reason="wave-0 stub — activate in plan 26-05")
 
 from backend.stores.sqlite_store import SQLiteStore
 
@@ -79,15 +76,17 @@ def test_fresh_install_gets_version_2(tmp_path):
 def test_preexisting_install_gets_version_1(tmp_path):
     """A SQLiteStore with pre-existing rows must report schema version 1.0.0 (P26-T01).
 
-    Simulates an upgrade scenario where entities already exist.
+    Simulates an upgrade scenario where entities already exist but version was
+    not yet seeded (i.e., the DB was created before phase-26 versioning was added).
     """
     db_path = tmp_path / "graph.db"
 
-    # Bootstrap the schema by creating a store first
+    # Bootstrap the schema by creating a store first (seeds version as 2.0.0 for empty DB)
     SQLiteStore(str(tmp_path))
 
-    # Insert a pre-existing entity row directly to simulate an old install
+    # Simulate a pre-existing install: remove the version key and add an entity row
     conn = sqlite3.connect(str(db_path))
+    conn.execute("DELETE FROM system_kv WHERE key = 'graph_schema_version'")
     conn.execute(
         "INSERT OR IGNORE INTO entities (id, type, name, attributes, case_id, created_at) "
         "VALUES ('old-ent-001', 'host', 'legacy-host', '{}', NULL, '2025-01-01T00:00:00Z')"
@@ -95,7 +94,8 @@ def test_preexisting_install_gets_version_1(tmp_path):
     conn.commit()
     conn.close()
 
-    # A second store pointing at the same file should detect existing data
+    # Re-opening the store triggers seeding: INSERT OR IGNORE inserts 1.0.0 (no existing row),
+    # then entity count >= 1 so the upgrade to 2.0.0 is skipped -> stays at 1.0.0
     store2 = SQLiteStore(str(tmp_path))
     version = store2.get_graph_schema_version()
     assert version == "1.0.0", (
@@ -126,26 +126,31 @@ def test_schema_version_endpoint(tmp_path):
 def test_system_kv_not_clobbered(tmp_path):
     """Existing graph_schema_version in system_kv must NOT be overwritten on re-init (P26-T04).
 
-    Relies on INSERT OR IGNORE semantics in the seeding logic.
+    The seeding uses INSERT OR IGNORE, so an existing value should be preserved.
+    The upgrade step only fires when value == '1.0.0', so a sentinel value like
+    'custom-version' is immune to both the INSERT OR IGNORE and the upgrade UPDATE.
     """
     db_path = tmp_path / "graph.db"
 
     # Create first store to bootstrap schema
     SQLiteStore(str(tmp_path))
 
-    # Manually set version to 1.0.0 in system_kv
+    # Manually override version to a sentinel value (not '1.0.0') in system_kv
     conn = sqlite3.connect(str(db_path))
     conn.execute(
-        "INSERT OR REPLACE INTO system_kv (key, value) VALUES ('graph_schema_version', '1.0.0')"
+        "INSERT OR REPLACE INTO system_kv (key, value, updated_at) "
+        "VALUES ('graph_schema_version', 'custom-version', '2026-01-01T00:00:00Z')"
     )
     conn.commit()
     conn.close()
 
-    # Re-opening the store must NOT overwrite the manually set version
+    # Re-opening the store must NOT overwrite the sentinel value:
+    # INSERT OR IGNORE is a no-op (key exists), and the upgrade UPDATE only
+    # matches rows WHERE value = '1.0.0' so 'custom-version' is untouched.
     store2 = SQLiteStore(str(tmp_path))
     version = store2.get_graph_schema_version()
-    assert version == "1.0.0", (
-        f"system_kv was clobbered — expected '1.0.0', got {version!r}"
+    assert version == "custom-version", (
+        f"system_kv was clobbered — expected 'custom-version', got {version!r}"
     )
 
 
