@@ -96,6 +96,19 @@ The script uses Test-NetConnection to verify the firewall rule is active.
 
 **OWASP ASVS:** V9.1 Communications Security.
 
+### Ollama Network Isolation
+
+**Control:** Windows Firewall rule blocks inbound connections to port 11434 from non-loopback addresses.
+
+**Configured by:** `scripts/configure-firewall.ps1`
+
+**Verification:** Run `scripts/status.ps1` — it performs a `Test-NetConnection` check on
+port 11434. If the port is reachable externally, the script emits a WARNING and instructs
+the operator to run `configure-firewall.ps1`.
+
+**Risk if not configured:** External actors can query Ollama directly, bypassing all
+authentication and prompt injection protections implemented in the FastAPI layer.
+
 ---
 
 ### T-04: Malicious Sigma Rule Injection
