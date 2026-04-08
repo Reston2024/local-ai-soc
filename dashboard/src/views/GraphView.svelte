@@ -144,7 +144,7 @@
         selector: 'node[type = "firewall_zone"]',
         style: {
           'background-color': (ele: any) =>
-            ZONE_COLORS[(ele.data('attributes')?.zone_color ?? '').toUpperCase()] ?? '#e05252',
+            ZONE_COLORS[(ele.data('zone_color') ?? '').toUpperCase()] ?? '#e05252',
           'shape': 'diamond',
         } as any,
       },
