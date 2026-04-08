@@ -25,8 +25,9 @@ export interface NormalizedEvent {
 export interface EventsListResponse {
   events: NormalizedEvent[]
   total: number
-  offset: number
-  limit: number
+  page: number
+  page_size: number
+  has_next: boolean
 }
 
 export interface Detection {
@@ -333,8 +334,11 @@ export const api = {
   events: {
     list: (params?: { offset?: number; limit?: number; hostname?: string; severity?: string }) => {
       const q = new URLSearchParams()
-      if (params?.offset !== undefined) q.set('offset', String(params.offset))
-      if (params?.limit !== undefined) q.set('limit', String(params.limit))
+      const limit = params?.limit ?? 50
+      const offset = params?.offset ?? 0
+      const page = Math.floor(offset / limit) + 1
+      q.set('page', String(page))
+      q.set('page_size', String(limit))
       if (params?.hostname) q.set('hostname', params.hostname)
       if (params?.severity) q.set('severity', params.severity)
       return request<EventsListResponse>(`/api/events?${q}`)
