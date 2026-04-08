@@ -30,7 +30,7 @@
     error = null
     try {
       const res = await api.events.search(searchQuery, 50)
-      events = res.results.map(r => r.event)
+      events = res.events
       total = events.length
     } catch (e) {
       error = String(e)

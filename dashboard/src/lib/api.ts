@@ -341,7 +341,7 @@ export const api = {
     },
     get: (id: string) => request<NormalizedEvent>(`/api/events/${id}`),
     search: (query: string, limit = 10) =>
-      request<{ results: Array<{ event: NormalizedEvent; score: number }> }>(
+      request<{ events: NormalizedEvent[]; total: number; query: string }>(
         `/api/events/search?q=${encodeURIComponent(query)}&limit=${limit}`
       ),
   },
