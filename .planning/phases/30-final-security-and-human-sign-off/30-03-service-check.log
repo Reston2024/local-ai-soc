@@ -1,0 +1,16 @@
+30-03 Task 1 — Service Pre-flight Check
+Executed: 2026-04-08T21:07:09Z
+
+Backend (http://localhost:8000/health):
+  status: healthy
+  ollama: ok
+  duckdb: ok
+  chroma: ok (collections: soc_evidence)
+  sqlite: ok (entity_count: 58, edge_count: 69, detection_count: 6)
+
+Frontend (http://localhost:5173):
+  status: running (Vite dev server, serving Svelte SPA)
+
+Ollama: confirmed running via backend health check
+
+All services confirmed ready for human visual verification (Task 2).
