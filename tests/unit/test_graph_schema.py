@@ -1,17 +1,13 @@
-"""Stub tests for phase-26 graph schema additions.
+"""Tests for phase-26 graph schema additions.
 
 Covers:
 - P26-T02: firewall_zone and network_segment added to ENTITY_TYPES
 - P26-T03: blocks, permits, traverses added to EDGE_TYPES;
            extract_perimeter_entities() emits correct edge types
 - P26-T04: additive-only guard — no pre-existing constants removed
-
-All tests are skipped (wave-0 stubs) and will be activated in plan 26-05.
 """
 
 import pytest
-
-pytestmark = pytest.mark.skip(reason="wave-0 stub — activate in plan 26-05")
 
 # ---------------------------------------------------------------------------
 # P26-T02: new entity types
@@ -103,65 +99,62 @@ def test_pre_existing_edge_types_preserved():
 
 
 # ---------------------------------------------------------------------------
-# P26-T03: extract_perimeter_entities() integration stubs
+# P26-T03: extract_perimeter_entities() integration tests
 # ---------------------------------------------------------------------------
 
 
 def test_extract_perimeter_entities_blocks():
     """Given an ipfire_syslog event with failure outcome, expects a 'blocks' edge (P26-T03).
 
-    extract_perimeter_entities() does not exist yet — this stub will fail at
-    activation if not implemented.
+    extract_perimeter_entities() returns (entities, edges) — a two-tuple.
+    The edge_type is determined by event_outcome: failure -> blocks.
+    A dst_ip is required for the function to emit any output.
     """
-    try:
-        from ingestion.entity_extractor import extract_perimeter_entities
-    except ImportError:
-        pytest.fail(
-            "ingestion.entity_extractor.extract_perimeter_entities not found — "
-            "implement in plan 26-03"
-        )
-
+    from ingestion.entity_extractor import extract_perimeter_entities
     from backend.models.event import NormalizedEvent
+    from datetime import datetime, timezone
 
     event = NormalizedEvent(
-        event_id="stub-blocks-001",
+        event_id="test-blocks-001",
         source_type="ipfire_syslog",
+        event_type="network_firewall",
         event_outcome="failure",
-        raw_log="DROP_INPUT ...",
-        timestamp="2026-04-06T00:00:00Z",
         severity="medium",
-        host_name="fw01",
+        src_ip="10.0.0.1",
+        dst_ip="8.8.8.8",
+        tags="zone:red",
+        timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        ingested_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
     )
-    edges = extract_perimeter_entities(event)
-    edge_types = [e.get("edge_type") for e in edges]
-    assert "blocks" in edge_types, (
-        f"Expected 'blocks' edge for DROP event, got edge_types={edge_types!r}"
-    )
+    entities, edges = extract_perimeter_entities(event)
+    edge_types = [e["edge_type"] for e in edges]
+    assert "blocks" in edge_types, f"Expected 'blocks' edge for DROP event, got edge_types={edge_types!r}"
+    entity_types = [e["type"] for e in entities]
+    assert "firewall_zone" in entity_types, f"Expected firewall_zone entity, got: {entity_types}"
 
 
 def test_extract_perimeter_entities_permits():
-    """Given an ipfire_syslog event with success/FORWARDFW outcome, expects 'permits' edge (P26-T03)."""
-    try:
-        from ingestion.entity_extractor import extract_perimeter_entities
-    except ImportError:
-        pytest.fail(
-            "ingestion.entity_extractor.extract_perimeter_entities not found — "
-            "implement in plan 26-03"
-        )
+    """Given an ipfire_syslog event with success outcome and no src_ip, expects 'permits' edge (P26-T03).
 
+    When event_outcome == 'success' but src_ip is None, edge_type is 'permits' (not 'traverses').
+    A dst_ip is required for the function to emit any output.
+    """
+    from ingestion.entity_extractor import extract_perimeter_entities
     from backend.models.event import NormalizedEvent
+    from datetime import datetime, timezone
 
     event = NormalizedEvent(
-        event_id="stub-permits-001",
+        event_id="test-permits-001",
         source_type="ipfire_syslog",
+        event_type="network_firewall",
         event_outcome="success",
-        raw_log="FORWARDFW ACCEPT ...",
-        timestamp="2026-04-06T00:00:00Z",
         severity="low",
-        host_name="fw01",
+        src_ip=None,
+        dst_ip="1.2.3.4",
+        tags="zone:green",
+        timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        ingested_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
     )
-    edges = extract_perimeter_entities(event)
-    edge_types = [e.get("edge_type") for e in edges]
-    assert "permits" in edge_types, (
-        f"Expected 'permits' edge for FORWARDFW ACCEPT event, got edge_types={edge_types!r}"
-    )
+    entities, edges = extract_perimeter_entities(event)
+    edge_types = [e["edge_type"] for e in edges]
+    assert "permits" in edge_types, f"Expected 'permits' edge for ACCEPT event, got edge_types={edge_types!r}"
