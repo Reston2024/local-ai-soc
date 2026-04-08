@@ -111,12 +111,135 @@ class MalcolmCollector:
     # ------------------------------------------------------------------
 
     def _normalize_alert(self, doc: dict) -> NormalizedEvent | None:
-        """Normalize arkime_sessions3-* alert doc to NormalizedEvent. Implemented in plan 27-03."""
-        return None
+        """
+        Normalize an arkime_sessions3-* alert document to NormalizedEvent.
+
+        Returns None if src_ip cannot be extracted (incomplete event — drop silently).
+        source_type is always "suricata_eve".
+        """
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or doc.get("src_ip")
+            or doc.get("srcip")
+        )
+        if not src_ip:
+            return None  # Drop incomplete alerts with no source IP
+
+        dst_ip = (
+            (doc.get("destination") or {}).get("ip")
+            or doc.get("dst_ip")
+            or doc.get("dstip")
+        )
+        src_port_raw = (
+            (doc.get("source") or {}).get("port")
+            or doc.get("src_port")
+        )
+        dst_port_raw = (
+            (doc.get("destination") or {}).get("port")
+            or doc.get("dst_port")
+        )
+
+        severity = (
+            (doc.get("event") or {}).get("severity")
+            or (doc.get("alert") or {}).get("severity")
+            or "info"
+        )
+        detection_source = (
+            (doc.get("rule") or {}).get("name")
+            or (doc.get("alert") or {}).get("signature")
+            or "malcolm_alert"
+        )
+        hostname = (
+            (doc.get("observer") or {}).get("hostname")
+            or (doc.get("agent") or {}).get("hostname")
+            or "malcolm"
+        )
+
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+
+        raw_event = json.dumps(doc)[:8192]
+
+        return NormalizedEvent(
+            event_id=str(uuid4()),
+            timestamp=ts,
+            ingested_at=datetime.now(timezone.utc),
+            source_type="suricata_eve",
+            hostname=hostname,
+            event_type="alert",
+            severity=str(severity).lower() if severity else "info",
+            detection_source=detection_source,
+            raw_event=raw_event,
+            src_ip=str(src_ip),
+            dst_ip=str(dst_ip) if dst_ip else None,
+            src_port=int(src_port_raw) if src_port_raw else None,
+            dst_port=int(dst_port_raw) if dst_port_raw else None,
+        )
 
     def _normalize_syslog(self, doc: dict) -> NormalizedEvent | None:
-        """Normalize malcolm_beats_syslog_* doc to NormalizedEvent. Implemented in plan 27-03."""
-        return None
+        """
+        Normalize a malcolm_beats_syslog_* document to NormalizedEvent.
+
+        Syslog events are informational — never dropped for missing IPs.
+        source_type is always "ipfire_syslog".
+        Accepts a dict (OpenSearch _source) or a raw string (plain syslog line).
+        """
+        if isinstance(doc, str):
+            # Plain syslog line — wrap as raw event, no structured fields
+            raw_event = doc[:8192]
+            return NormalizedEvent(
+                event_id=str(uuid4()),
+                timestamp=datetime.now(timezone.utc),
+                ingested_at=datetime.now(timezone.utc),
+                source_type="ipfire_syslog",
+                hostname="ipfire",
+                event_type="syslog",
+                severity="info",
+                detection_source="ipfire_syslog",
+                raw_event=raw_event,
+            )
+
+        hostname = (
+            (doc.get("host") or {}).get("name")
+            or doc.get("hostname")
+            or "ipfire"
+        )
+
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or doc.get("src_ip")
+            or doc.get("srcip")
+        )
+        dst_ip = (
+            (doc.get("destination") or {}).get("ip")
+            or doc.get("dst_ip")
+            or doc.get("dstip")
+        )
+
+        raw_event = json.dumps(doc)[:8192]
+
+        return NormalizedEvent(
+            event_id=str(uuid4()),
+            timestamp=ts,
+            ingested_at=datetime.now(timezone.utc),
+            source_type="ipfire_syslog",
+            hostname=hostname,
+            event_type="syslog",
+            severity="info",
+            detection_source="ipfire_syslog",
+            raw_event=raw_event,
+            src_ip=str(src_ip) if src_ip else None,
+            dst_ip=str(dst_ip) if dst_ip else None,
+        )
 
     # ------------------------------------------------------------------
     # Poll cycle

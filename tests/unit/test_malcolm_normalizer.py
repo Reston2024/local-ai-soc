@@ -1,5 +1,7 @@
-"""Stub tests for Phase 27 Malcolm field normalization (P27-T02). Activated in plan 27-03."""
+"""Tests for Phase 27 Malcolm field normalization (P27-T02/P27-T03)."""
 from __future__ import annotations
+
+import json
 
 import pytest
 
@@ -9,10 +11,9 @@ try:
 except ImportError:
     _IMPORT_OK = False
 
-# Normalization methods (_normalize_alert, _normalize_syslog) are stubs in plan 27-02.
-# They are fully implemented in plan 27-03. This flag keeps the normalizer tests skipped
-# until plan 27-03 removes this guard and sets it to True.
-_NORMALIZER_IMPLEMENTED = False
+# Normalization methods (_normalize_alert, _normalize_syslog) are fully
+# implemented in plan 27-03. This flag was False in plan 27-02 (stubs only).
+_NORMALIZER_IMPLEMENTED = True
 
 pytestmark = pytest.mark.skipif(
     not _IMPORT_OK or not _NORMALIZER_IMPLEMENTED,
@@ -29,14 +30,14 @@ def test_normalize_alert_extracts_src_ip():
     doc_ecs = {"source": {"ip": "10.0.0.1"}, "destination": {"ip": "8.8.8.8"}}
     event = collector._normalize_alert(doc_ecs)
     assert event is not None
-    assert event.source_ip == "10.0.0.1"
+    assert event.src_ip == "10.0.0.1"
     assert event.source_type == "suricata_eve"
 
     # Flat-style fallback
     doc_flat = {"src_ip": "192.168.1.5", "dst_ip": "1.1.1.1"}
     event_flat = collector._normalize_alert(doc_flat)
     assert event_flat is not None
-    assert event_flat.source_ip == "192.168.1.5"
+    assert event_flat.src_ip == "192.168.1.5"
 
 
 def test_normalize_alert_extracts_dst_ip():
@@ -46,16 +47,16 @@ def test_normalize_alert_extracts_dst_ip():
     doc_ecs = {"source": {"ip": "10.0.0.2"}, "destination": {"ip": "93.184.216.34"}}
     event = collector._normalize_alert(doc_ecs)
     assert event is not None
-    assert event.dest_ip == "93.184.216.34"
+    assert event.dst_ip == "93.184.216.34"
 
     doc_flat = {"src_ip": "10.0.0.3", "dst_ip": "172.16.0.1"}
     event_flat = collector._normalize_alert(doc_flat)
     assert event_flat is not None
-    assert event_flat.dest_ip == "172.16.0.1"
+    assert event_flat.dst_ip == "172.16.0.1"
 
 
 def test_normalize_alert_severity_mapping():
-    """event.severity or alert.severity becomes NormalizedEvent.severity."""
+    """event.severity or alert.severity becomes NormalizedEvent.severity (as string)."""
     collector = MalcolmCollector()
 
     doc_event_sev = {
@@ -65,7 +66,8 @@ def test_normalize_alert_severity_mapping():
     }
     event = collector._normalize_alert(doc_event_sev)
     assert event is not None
-    assert event.severity == 3
+    # severity is stored as string; integer 3 is coerced to "3"
+    assert event.severity == "3"
 
     doc_alert_sev = {
         "source": {"ip": "10.0.0.1"},
@@ -74,7 +76,7 @@ def test_normalize_alert_severity_mapping():
     }
     event2 = collector._normalize_alert(doc_alert_sev)
     assert event2 is not None
-    assert event2.severity == 2
+    assert event2.severity == "2"
 
 
 def test_normalize_alert_detection_source():
@@ -104,16 +106,21 @@ def test_normalize_syslog_source_type():
     """_normalize_syslog() returns NormalizedEvent with source_type='ipfire_syslog'."""
     collector = MalcolmCollector()
 
+    # Plain syslog line (string) — accepted for direct syslog ingestion
     raw_line = "Apr  7 12:00:00 ipfire kernel: FORWARDFW IN=green0 SRC=10.0.0.1 DST=8.8.8.8"
     event = collector._normalize_syslog(raw_line)
     assert event is not None
     assert event.source_type == "ipfire_syslog"
 
+    # Dict form (OpenSearch _source)
+    doc = {"host": {"name": "ipfire"}, "@timestamp": "2024-01-01T00:00:00Z", "message": raw_line}
+    event2 = collector._normalize_syslog(doc)
+    assert event2 is not None
+    assert event2.source_type == "ipfire_syslog"
+
 
 def test_normalize_alert_raw_event_truncated():
     """raw_event in NormalizedEvent is truncated to 8192 characters when doc JSON exceeds 8KB."""
-    import json
-
     collector = MalcolmCollector()
 
     # Create a doc whose JSON representation exceeds 8192 characters
