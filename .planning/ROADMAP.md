@@ -1057,6 +1057,11 @@ Plans:
 - P30-T02: Phase 22 human UI verification — confirm advisory banner has no dismiss button, Settings System tab loads model-status card, confidence badge colour thresholds render correctly [human action required]
 - P30-T03: Sigma rules guard — add explicit warning log + non-zero exit when 0 rules loaded in POST /api/detect/run; create rules/sigma/ directory with README
 
-**Plans:** 0 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 30-01-PLAN.md — Sigma rules guard: HTTPException(422) when 0 rules loaded, rules/sigma/README.md, unit tests
+- [ ] 30-02-PLAN.md — Caddy digest pin: verify sha256 in docker-compose.yml, optional re-pin via Docker Desktop
+- [ ] 30-03-PLAN.md — Phase 22 human UI sign-off: advisory banner, confidence badge, citations, Settings System tab
 
 *Phase 30 added: 2026-04-08 (Final Security and Human Sign-off — milestone gap closure)*
