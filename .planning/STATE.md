@@ -2,15 +2,22 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: Phase 8 (complete)
-current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+current_phase: Phase 27 (in_progress)
+current_plan: 27-00 complete — 17 wave-0 stubs (5+7+5) created, all SKIPPED, 850 passed full suite; next: 27-01
 status: in_progress
-last_updated: "2026-04-08T03:06:14.122Z"
+last_updated: "2026-04-07T00:00:00Z"
+stopped_at: "Completed 27-00-PLAN.md — 17 wave-0 stubs created; 850 unit tests passed, 0 failures"
 progress:
+  [██████████] 97%
   total_phases: 28
   completed_phases: 24
   total_plans: 145
-  completed_plans: 139
+  completed_plans: 140
+  percent: 97
+decisions:
+  - "27-00: try/except ImportError guard used for test_malcolm_collector.py and test_malcolm_normalizer.py — ingestion/jobs/malcolm_collector.py does not yet exist"
+  - "27-00: simple module-level pytestmark skip used for test_dispatch_endpoint.py — backend/api/recommendations.py already exists, no import risk"
+  - "27-00: 17 stubs across 3 files all report SKIPPED; full unit suite 850 passed, 0 failures"
 ---
 
 ---
