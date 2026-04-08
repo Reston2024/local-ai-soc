@@ -401,7 +401,7 @@ export const api = {
 
   query: {
     ask: async (question: string, context_events?: string[]): Promise<string> => {
-      const res = await fetch('/api/query/ask', {
+      const res = await fetch('/api/query/ask/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ question, context_events }),
