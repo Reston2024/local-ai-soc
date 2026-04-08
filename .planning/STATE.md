@@ -5,9 +5,25 @@ milestone_name: milestone
 current_phase: Phase 8 (complete)
 current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
 status: in_progress
-last_updated: "2026-04-08T04:10:49.755Z"
+last_updated: "2026-04-08T04:21:54.214Z"
 progress:
   total_phases: 28
+  completed_phases: 24
+  total_plans: 145
+  completed_plans: 144
+  percent: 99
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 8 (complete)
+current_plan: 08-03 complete — smoke-test-phase8.ps1 (7 checks), REPRODUCIBILITY_RECEIPT versions filled, ARCHITECTURE.md OsqueryCollector section, main.py docstring fixed; Phase 8 FULLY COMPLETE
+status: in_progress
+last_updated: "2026-04-08T04:10:49.755Z"
+progress:
+  [██████████] 99%
   completed_phases: 24
   total_plans: 145
   completed_plans: 143
@@ -19,10 +35,10 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 27 (in_progress)
-current_plan: 27-03 complete — _normalize_alert and _normalize_syslog implemented; 7 normalizer tests PASSED; 862 full suite pass; next: 27-04
+current_plan: 27-04 complete — dispatch endpoint + 5 tests activated + RecommendationsView.svelte; 867 full suite pass; next: 27-05
 status: in_progress
-last_updated: "2026-04-08T04:10:00Z"
-stopped_at: "Completed 27-03-PLAN.md — _normalize_alert and _normalize_syslog implemented; 7 normalizer tests PASSED; 862 full suite pass, 0 failures"
+last_updated: "2026-04-07T00:00:00Z"
+stopped_at: "Completed 27-04-PLAN.md — POST /api/recommendations/{id}/dispatch + 5 activated tests + dispatchRecommendation() in api.ts + RecommendationsView.svelte; 867 unit tests pass, 0 failures"
 progress:
   [██████████] 99%
   total_phases: 28
@@ -39,6 +55,9 @@ decisions:
   - "27-02: MalcolmCollector.__init__ all params default to None/sensible values for zero-arg unit test construction"
   - "27-03: _normalize_syslog accepts str|dict — string input handled as plain syslog line for test ergonomics and real-world use"
   - "27-03: Integer severity values coerced to string via str(severity).lower() — NormalizedEvent.severity is Optional[str]"
+  - "27-04: dispatch route catches both pydantic.ValidationError and jsonschema.ValidationError — RecommendationArtifact model_validator wraps jsonschema errors as ValueError"
+  - "27-04: Wave-0 stub tests rewritten with mock-DuckDB fixture pattern (no create_app()) — prevents real DB dependency in unit tests"
+  - "27-04: RecommendationsView.svelte created new (no existing recommendation card component found in dashboard)"
 ---
 
 ---

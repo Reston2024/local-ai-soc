@@ -977,7 +977,7 @@ Plans:
 - P27-T05: ChromaDB corpus sync — rsync or scp of /var/lib/chromadb from supportTAK-server (192.168.1.22) to local data/chroma/; sync script scripts/sync-chroma-corpus.ps1; existing local embeddings preserved; post-sync collection count verified
 - P27-T06: End-to-end verification — curl trigger on IPFire generates Suricata alert; alert ingested by MalcolmCollector within 2 poll cycles; alert visible in GET /api/events and Svelte Detections view; test documented in scripts/e2e-malcolm-verify.ps1
 
-**Plans:** 4/7 plans executed
+**Plans:** 5/7 plans executed
 
 Plans:
 - [ ] 27-00-PLAN.md — Wave 0: test stubs (test_malcolm_collector.py, test_malcolm_normalizer.py, test_dispatch_endpoint.py)
