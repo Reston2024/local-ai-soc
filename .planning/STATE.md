@@ -3,6 +3,27 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: Phase 28 (in_progress)
+current_plan: 28-03 complete — pagination translation offset/limit->page/page_size (INT-05), NormalizedEvent field renames process_pid->process_id and raw_data->raw_event (INT-06)
+status: in_progress
+last_updated: "2026-04-08T15:34:37Z"
+stopped_at: "Completed 28-03-PLAN.md — pagination translation (INT-05) and NormalizedEvent field renames (INT-06)"
+progress:
+  [██████████] 100%
+  total_phases: 31
+  completed_phases: 27
+  total_plans: 149
+  completed_plans: 154
+  percent: 100
+decisions:
+  - "28-01: Map result.loaded->events_processed, result.parsed->events_total for dashboard IngestJobStatus compat; add /status/{id} alias; store filename at upload time"
+  - "28-03: Translate offset/limit to 1-indexed page/page_size in api.events.list(); update EventsListResponse to page/page_size/has_next; rename process_pid->process_id and raw_data->raw_event in NormalizedEvent"
+---
+
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+current_phase: Phase 28 (in_progress)
 current_plan: 28-01 complete — /ingest/status/{job_id} compat route + filename tracking in _set_job; 18 ingest tests pass, 869 unit tests pass
 status: in_progress
 last_updated: "2026-04-07T00:00:00Z"
