@@ -117,10 +117,17 @@ def get_job_status(job_id: str) -> dict[str, Any] | None:
     return _JOBS.get(job_id)
 
 
-def _set_job(job_id: str, status: str, result: IngestionResult | None = None, error: str | None = None) -> None:
+def _set_job(
+    job_id: str,
+    status: str,
+    result: IngestionResult | None = None,
+    error: str | None = None,
+    filename: str = "",
+) -> None:
     _JOBS[job_id] = {
         "job_id": job_id,
         "status": status,
+        "filename": filename,
         "result": {
             "parsed": result.parsed if result else 0,
             "loaded": result.loaded if result else 0,

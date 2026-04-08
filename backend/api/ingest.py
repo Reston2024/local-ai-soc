@@ -285,7 +285,7 @@ async def upload_file(
 
     # Mark job as queued in the in-memory tracker
     from ingestion.loader import _set_job
-    _set_job(job_id, "queued")
+    _set_job(job_id, "queued", filename=filename)
 
     # Schedule background ingestion
     background_tasks.add_task(
@@ -354,3 +354,30 @@ async def get_job(job_id: str) -> JSONResponse:
             detail=f"Job {job_id!r} not found. Jobs are lost on server restart.",
         )
     return JSONResponse(content=status)
+
+
+@router.get("/status/{job_id}")
+async def get_job_status_compat(job_id: str) -> JSONResponse:
+    """Dashboard-compatible status endpoint — maps internal job keys to IngestJobStatus shape.
+
+    The dashboard's IngestView polls /api/ingest/status/{jobId} and expects:
+    - events_processed  (mapped from result.loaded)
+    - events_total      (mapped from result.parsed)
+    - filename          (stored at upload time)
+    - started_at, completed_at, error
+    """
+    raw = get_job_status(job_id)
+    if raw is None:
+        raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.")
+    result = raw.get("result") or {}
+    is_terminal = raw["status"] in ("complete", "error")
+    return JSONResponse(content={
+        "job_id": raw["job_id"],
+        "status": raw["status"],
+        "filename": raw.get("filename", ""),
+        "events_processed": result.get("loaded", 0),
+        "events_total": result.get("parsed", 0),
+        "error": raw.get("error"),
+        "started_at": raw.get("updated_at", ""),
+        "completed_at": raw.get("updated_at") if is_terminal else None,
+    })
