@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 31-malcolm-full-telemetry
 status: executing
-last_updated: "2026-04-09T08:40:46.518Z"
+last_updated: "2026-04-09T08:46:24.366Z"
 progress:
   total_phases: 37
-  completed_phases: 29
+  completed_phases: 30
   total_plans: 163
-  completed_plans: 167
+  completed_plans: 168
 ---
 
 # Session State
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.0 milestone
 **Current phase:** 31-malcolm-full-telemetry
-**Status:** Executing — Plans 31-01 and 31-02 complete, Plan 31-03 next
+**Status:** Phase 31 complete — Plans 31-01, 31-02, and 31-03 all done
 
 ## Session Log
 
@@ -34,6 +34,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Hardware purchased — 2TB external drive (Ubuntu evidence archive) + Netgear GS308E managed switch (SPAN port for Phase 36). Phase 36 status: blocked → planned/in-transit. See ADR-034.
 - 2026-04-09: Phase 31 P31-T12 added — beta Zeek telemetry chips in EventsView (disabled, Phase 36 preview). Plan 31-03 updated.
 - 2026-04-09: Plan 31-02 complete — EvidenceArchiver (gzip chain-of-custody) + Ubuntu ECS normalization FastAPI server + systemd units. All 3 unit tests pass, 876 total unit tests green.
+- 2026-04-09: Plan 31-03 complete — UBUNTU_NORMALIZER_URL setting, Ubuntu NDJSON poll in MalcolmCollector, api.ts event_type param, EventsView filter chips (7 active + 8 Zeek beta). 882 unit tests green.
 - 2026-04-09: Plan 31-01 complete — NormalizedEvent expanded to 55 columns (20 new EVE fields), DuckDB migration, loader INSERT SQL, 4 new normalizers, 6-source poll loop. 881 unit tests green.
 
 ## Key Decisions
@@ -44,3 +45,7 @@ See: .planning/PROJECT.md
 - **31-01:** dns_answers stored as json.dumps() string (TEXT column) to avoid array type in DuckDB
 - **31-01:** tls_validation_status mapped from boolean established: True=valid, False=failed, None=None
 - **31-01:** event_type_filter and event_dataset_filter are independent in _build_query()
+- **31-03:** Empty UBUNTU_NORMALIZER_URL disables Ubuntu poll silently (returns [] immediately)
+- **31-03:** Line-count cursor tracks Ubuntu NDJSON append-only file position in SQLite KV
+- **31-03:** $effect() replaces onMount(load) in EventsView — handles initial load + reactive chip re-fetch
+- **31-03:** ZEEK_CHIPS disabled/dashed in UI as Phase 36 preview with tooltip
