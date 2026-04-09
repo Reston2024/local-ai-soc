@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 32-real-threat-hunting
 status: in-progress
-last_updated: "2026-04-09T09:16:53.311Z"
+last_updated: "2026-04-09T10:03:00.000Z"
 progress:
   total_phases: 37
   completed_phases: 30
-  total_plans: 163
-  completed_plans: 168
+  total_plans: 167
+  completed_plans: 170
 ---
 
 # Session State
@@ -21,8 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 31-malcolm-full-telemetry
-**Status:** Ready to plan
+**Current phase:** 32-real-threat-hunting
+**Current plan:** 32-02 (complete)
+**Status:** In progress
 
 ## Session Log
 
@@ -37,6 +38,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Plan 31-03 complete — UBUNTU_NORMALIZER_URL setting, Ubuntu NDJSON poll in MalcolmCollector, api.ts event_type param, EventsView filter chips (7 active + 8 Zeek beta). 882 unit tests green.
 - 2026-04-09: Plan 31-01 complete — NormalizedEvent expanded to 55 columns (20 new EVE fields), DuckDB migration, loader INSERT SQL, 4 new normalizers, 6-source poll loop. 881 unit tests green.
 - 2026-04-09: Plan 32-01 complete — NL→SQL hunt engine (validate_hunt_sql 7 rules, HuntEngine, PRESET_HUNTS), SQLite hunts table, POST /api/hunts/query + GET /api/hunts/presets + GET /api/hunts/{id}/results. 891 unit tests green.
+- 2026-04-09: Plan 32-02 complete — Passive OSINT enrichment service (WHOIS/AbuseIPDB/GeoLite2/VirusTotal/Shodan), 24h SQLite cache, GET /api/osint/{ip}, rate limiters. 899 unit tests green.
 
 ## Key Decisions
 
@@ -53,3 +55,6 @@ See: .planning/PROJECT.md
 - **32-01:** Multi-statement semicolon check runs before DDL check in validate_hunt_sql — correct error for compound injection attempts
 - **32-01:** GET /api/hunts/presets defined before /{hunt_id}/results — prevents 'presets' being captured as path param
 - **32-01:** OSINT API keys added to config.py with empty defaults — optional for Phases 32-02+
+- **32-02:** Rate limiters sleep inside asyncio.Lock so concurrent callers queue serially, preventing free-tier quota exhaustion
+- **32-02:** _sanitize_ip checks loopback before private — both overlap in Python's ipaddress module; loopback check first gives correct error message
+- **32-02:** GeoIP mmdb missing-file warning deduplicated via module-level flag — no log spam on repeated requests
