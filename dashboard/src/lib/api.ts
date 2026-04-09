@@ -201,6 +201,101 @@ export interface TrendDataPoint {
 export type TrendsResponse = Record<string, TrendDataPoint[]>
 
 // ---------------------------------------------------------------------------
+// Phase 32 — Hunting + OSINT interfaces
+// ---------------------------------------------------------------------------
+
+export interface HuntPreset {
+  id: string
+  name: string
+  mitre: string
+  desc: string
+  query: string
+}
+
+export interface HuntRow {
+  event_id?: string
+  ts?: string
+  hostname?: string
+  severity?: string
+  event_type?: string
+  src_ip?: string
+  dst_ip?: string
+  dst_port?: number
+  process_name?: string
+  user_name?: string
+  [key: string]: unknown
+}
+
+export interface HuntResult {
+  hunt_id: string
+  query: string
+  sql: string
+  rows: HuntRow[]
+  row_count: number
+  created_at: string
+}
+
+export interface HuntHistoryItem {
+  hunt_id: string
+  query: string
+  sql_text: string
+  row_count: number
+  analyst_id: string
+  created_at: string
+}
+
+export interface OsintWhois {
+  registrar?: string | null
+  creation_date?: string | null
+  country?: string | null
+  org?: string | null
+}
+
+export interface OsintAbuseIPDB {
+  abuseConfidenceScore?: number
+  totalReports?: number
+  countryCode?: string
+  isp?: string
+}
+
+export interface OsintGeo {
+  country_name?: string | null
+  country_iso_code?: string | null
+  city?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  autonomous_system_number?: number | null
+  autonomous_system_organization?: string | null
+}
+
+export interface OsintVirusTotal {
+  malicious?: number
+  suspicious?: number
+  harmless?: number
+  country?: string
+  reputation?: number
+}
+
+export interface OsintShodan {
+  org?: string
+  isp?: string
+  country_name?: string
+  open_ports?: number[]
+  hostnames?: string[]
+}
+
+export interface OsintResult {
+  ip: string
+  whois: OsintWhois | null
+  abuseipdb: OsintAbuseIPDB | null
+  geo: OsintGeo | null
+  virustotal: OsintVirusTotal | null
+  shodan: OsintShodan | null
+  cached: boolean
+  fetched_at: string
+}
+
+// ---------------------------------------------------------------------------
 // Provenance interfaces (Phase 21-05)
 // ---------------------------------------------------------------------------
 
@@ -609,6 +704,24 @@ export const api = {
 
     modelStatus: (): Promise<ModelStatus> =>
       request<ModelStatus>('/api/settings/model-status'),
+  },
+
+  hunts: {
+    query: (query: string, analyst_id = 'analyst') =>
+      request<HuntResult>('/api/hunts/query', {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, analyst_id }),
+      }),
+    presets: () =>
+      request<{ presets: HuntPreset[] }>('/api/hunts/presets', { headers: authHeaders() }),
+    getResults: (hunt_id: string) =>
+      request<HuntHistoryItem>(`/api/hunts/${hunt_id}/results`, { headers: authHeaders() }),
+  },
+
+  osint: {
+    get: (ip: string) =>
+      request<OsintResult>(`/api/osint/${ip}`, { headers: authHeaders() }),
   },
 }
 
