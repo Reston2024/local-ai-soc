@@ -240,11 +240,18 @@ class HuntEngine:
         sql = re.sub(r"\s*```$", "", sql)
         sql = sql.strip()
 
+        # Normalize common LLM column name mistakes (llama3 uses 'ts' instead of 'timestamp')
+        sql = re.sub(r'\bts\b', 'timestamp', sql)
+        sql = re.sub(r'\bsrc_host\b', 'hostname', sql)
+        sql = re.sub(r'\bdst_host\b', 'hostname', sql)
+        sql = re.sub(r'\buser\b(?=\s*[,\)\s])', 'username', sql)
+        sql = re.sub(r'\bproc\b', 'process_name', sql)
+
         # 3. Validate SQL — raises ValueError on failure
         validate_hunt_sql(sql)
 
-        # 4. Execute against DuckDB
-        rows: list[dict] = await self._duckdb.fetch_all(sql)
+        # 4. Execute against DuckDB — fetch_df returns list[dict] (fetch_all returns tuples)
+        rows: list[dict] = await self._duckdb.fetch_df(sql)
 
         # 5. Rank results
         ranked_rows = _rank_results(rows)
