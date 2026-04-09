@@ -277,6 +277,13 @@ CREATE TABLE IF NOT EXISTS hunts (
 );
 CREATE INDEX IF NOT EXISTS idx_hunts_analyst ON hunts (analyst_id);
 CREATE INDEX IF NOT EXISTS idx_hunts_created ON hunts (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS osint_cache (
+    ip          TEXT PRIMARY KEY,
+    result_json TEXT NOT NULL,
+    fetched_at  TEXT NOT NULL,
+    expires_at  TEXT NOT NULL
+);
 """
 
 
@@ -1587,6 +1594,42 @@ class SQLiteStore:
 
     # Shutdown
     # ------------------------------------------------------------------
+
+    # ---------------------------------------------------------------------------
+    # OSINT cache methods (Phase 32-02)
+    # ---------------------------------------------------------------------------
+
+    def get_osint_cache(self, ip: str) -> dict | None:
+        """Retrieve a cached OSINT result for an IP address.
+
+        Returns a dict with keys 'data' (the OsintResult fields dict) and
+        'fetched_at' (ISO string), or None if not cached.
+        """
+        row = self._conn.execute(
+            "SELECT result_json, fetched_at FROM osint_cache WHERE ip = ?",
+            (ip,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "data": json.loads(row["result_json"]),
+            "fetched_at": row["fetched_at"],
+        }
+
+    def set_osint_cache(
+        self,
+        ip: str,
+        result_json: str,
+        fetched_at: str,
+        expires_at: str,
+    ) -> None:
+        """Insert or replace a cached OSINT result for an IP address."""
+        self._conn.execute(
+            "INSERT OR REPLACE INTO osint_cache (ip, result_json, fetched_at, expires_at) "
+            "VALUES (?, ?, ?, ?)",
+            (ip, result_json, fetched_at, expires_at),
+        )
+        self._conn.commit()
 
     def close(self) -> None:
         """Close the SQLite connection."""

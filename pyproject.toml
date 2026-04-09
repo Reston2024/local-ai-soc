@@ -35,6 +35,9 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "pyotp>=2.9",
     "qrcode[pil]>=7.4",
+    "python-whois==0.9.5",
+    "geoip2==4.8.1",
+    "shodan==1.31.0",
 ]
 
 [dependency-groups]
