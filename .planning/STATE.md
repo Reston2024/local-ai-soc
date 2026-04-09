@@ -3,13 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 32-real-threat-hunting
-status: in-progress
-last_updated: "2026-04-09T10:03:00.000Z"
+current_plan: 32-03 (complete)
+status: executing
+last_updated: "2026-04-09T10:28:00.000Z"
 progress:
   total_phases: 37
   completed_phases: 30
   total_plans: 167
-  completed_plans: 170
+  completed_plans: 171
 ---
 
 # Session State
@@ -22,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.0 milestone
 **Current phase:** 32-real-threat-hunting
-**Current plan:** 32-02 (complete)
+**Current plan:** 32-03 (complete)
 **Status:** In progress
 
 ## Session Log
@@ -39,6 +40,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Plan 31-01 complete — NormalizedEvent expanded to 55 columns (20 new EVE fields), DuckDB migration, loader INSERT SQL, 4 new normalizers, 6-source poll loop. 881 unit tests green.
 - 2026-04-09: Plan 32-01 complete — NL→SQL hunt engine (validate_hunt_sql 7 rules, HuntEngine, PRESET_HUNTS), SQLite hunts table, POST /api/hunts/query + GET /api/hunts/presets + GET /api/hunts/{id}/results. 891 unit tests green.
 - 2026-04-09: Plan 32-02 complete — Passive OSINT enrichment service (WHOIS/AbuseIPDB/GeoLite2/VirusTotal/Shodan), 24h SQLite cache, GET /api/osint/{ip}, rate limiters. 899 unit tests green.
+- 2026-04-09: Plan 32-03 complete — HuntingView.svelte fully wired: NL query input, results table with severity badges, per-row OSINT enrichment panel, 6 preset hunt cards, hunt history replay. All Phase 32 frontend work complete.
 
 ## Key Decisions
 
@@ -58,3 +60,6 @@ See: .planning/PROJECT.md
 - **32-02:** Rate limiters sleep inside asyncio.Lock so concurrent callers queue serially, preventing free-tier quota exhaustion
 - **32-02:** _sanitize_ip checks loopback before private — both overlap in Python's ipaddress module; loopback check first gives correct error message
 - **32-02:** GeoIP mmdb missing-file warning deduplicated via module-level flag — no log spam on repeated requests
+- **32-03:** Existing Detection interface (Phase 22, more complete) kept — plan's simpler version would conflict; hunt interfaces added alongside
+- **32-03:** Private IP check in expandRow() handles RFC1918 + loopback before backend OSINT call to avoid unnecessary 400 requests
+- **32-03:** OSINT fetch errors caught silently with fallback UI message — prevents crash on 400 (private IP) backend errors
