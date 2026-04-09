@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 32-real-threat-hunting
-current_plan: 32-03 (complete)
+current_plan: 32-04 (complete)
 status: executing
-last_updated: "2026-04-09T10:28:00.000Z"
+last_updated: "2026-04-09T10:24:00.000Z"
 progress:
   total_phases: 37
-  completed_phases: 30
+  completed_phases: 31
   total_plans: 167
-  completed_plans: 171
+  completed_plans: 172
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.0 milestone
 **Current phase:** 32-real-threat-hunting
-**Current plan:** 32-03 (complete)
+**Current plan:** 32-04 (complete)
 **Status:** In progress
 
 ## Session Log
@@ -41,6 +41,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Plan 32-01 complete — NL→SQL hunt engine (validate_hunt_sql 7 rules, HuntEngine, PRESET_HUNTS), SQLite hunts table, POST /api/hunts/query + GET /api/hunts/presets + GET /api/hunts/{id}/results. 891 unit tests green.
 - 2026-04-09: Plan 32-02 complete — Passive OSINT enrichment service (WHOIS/AbuseIPDB/GeoLite2/VirusTotal/Shodan), 24h SQLite cache, GET /api/osint/{ip}, rate limiters. 899 unit tests green.
 - 2026-04-09: Plan 32-03 complete — HuntingView.svelte fully wired: NL query input, results table with severity badges, per-row OSINT enrichment panel, 6 preset hunt cards, hunt history replay. All Phase 32 frontend work complete.
+- 2026-04-09: Plan 32-04 complete — MapView.svelte: Leaflet.js world map with detection IP markers, severity colouring, OSINT side panel, OSM attribution, 60s auto-refresh. "Threat Map" nav item added to Intelligence group.
 
 ## Key Decisions
 
@@ -63,3 +64,6 @@ See: .planning/PROJECT.md
 - **32-03:** Existing Detection interface (Phase 22, more complete) kept — plan's simpler version would conflict; hunt interfaces added alongside
 - **32-03:** Private IP check in expandRow() handles RFC1918 + loopback before backend OSINT call to avoid unnecessary 400 requests
 - **32-03:** OSINT fetch errors caught silently with fallback UI message — prevents crash on 400 (private IP) backend errors
+- **32-04:** api.detections.list() used (not api.detect.list() from plan pseudocode) — matches actual api.ts client
+- **32-04:** Detection interface extended with src_ip and created_at — required for map marker data extraction
+- **32-04:** Threat Map in Intelligence nav group with BETA tag; dynamic Leaflet import in onMount avoids SSR issues
