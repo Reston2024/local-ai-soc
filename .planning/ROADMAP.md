@@ -1085,7 +1085,13 @@ Plans:
 - P31-T10: Add EventsView filter chips — horizontal chip row: All | Alert | TLS | DNS | File | Anomaly | Syslog. Single-select, maps to ?event_type= param on GET /api/events. Backend adds optional WHERE clause.
 - P31-T11: Add OCSF class UID entries for new event_type values (tls, dns_query, file_transfer, anomaly) to OCSF_CLASS_UID_MAP in event.py.
 
-**Plans:** 0 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 31-01-PLAN.md — EVE schema expansion: 20 new fields, 4 normalizers, 5-type poll loop
+- [ ] 31-02-PLAN.md — Ubuntu EvidenceArchiver + normalization FastAPI server + systemd units
+- [ ] 31-03-PLAN.md — Ubuntu poll setting, EventsView filter chips
+
 **Hardware note:** Zeek data requires managed switch with SPAN port (Cisco SG350-8 or Netgear GS308E, ~$50-80). See Phase 36.
 
 *Phase 31 revised: 2026-04-09 (Real telemetry only — no theater, no Zeek without hardware)*
