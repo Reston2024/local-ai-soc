@@ -596,3 +596,110 @@ Expert panel (E6-03) identified that the application uses bare model name string
 - Default (`OLLAMA_ENFORCE_DIGEST=False`): logs digest for audit, never blocks startup
 - Production hardening: set `OLLAMA_ENFORCE_DIGEST=True` with pinned digest to detect model substitution
 - 842 tests passing; all 18 expert panel findings now fully addressed
+
+---
+
+## ADR-030: Ubuntu Box — Dumb Pipe Architecture (No AI on Ubuntu)
+
+**Date:** 2026-04-09
+**Status:** ACCEPTED
+
+**Context:**
+The supportTAK-server (GMKtec N150, Ubuntu) runs Malcolm NSM with 17 containers. An early design question was whether to run any AI inference (triage, classification, anomaly detection) on the Ubuntu box, closer to the raw telemetry source.
+
+**Decision:** Ubuntu box is a dumb pipe only — collection and indexing, no AI. All inference runs on the Windows desktop.
+
+**Rationale:**
+- The GMKtec N150 is an Intel N150 (4-core Alder Lake-N, 16GB DDR5). No GPU. CPU-only Ollama would yield approximately 2-5 tok/s.
+- The desktop RTX 5080 delivers 50-80+ tok/s with qwen3:14b (Blackwell sm_120, 16GB VRAM).
+- That is a 20-30x throughput disadvantage on the Ubuntu box.
+- Adding an AI interpretation layer between raw telemetry and the analyst violates the single-source-of-truth principle: the desktop has full event history in DuckDB/SQLite; the Ubuntu box has only OpenSearch.
+- Operational simplicity: one AI config, one audit log, one LLM version to manage.
+
+**Alternatives considered:**
+- Hybrid: run fast heuristic models (distilbert classification) on Ubuntu, send scores to desktop — rejected: adds a distributed pipeline with no clear performance win over just shipping the raw events.
+- Full AI on Ubuntu: rejected — throughput unacceptable for real-time triage.
+
+**Trade-offs:** Raw telemetry must cross the LAN from Ubuntu to desktop for analysis. At current volumes (22M syslog, 71K alerts) the 30-second poll cycle is sufficient.
+
+---
+
+## ADR-031: Zeek Telemetry Deferred — No SPAN Port
+
+**Date:** 2026-04-09
+**Status:** ACCEPTED — blocked on hardware
+
+**Context:**
+Malcolm includes Zeek containers for network protocol analysis (DNS, HTTP, TLS, SMB, Kerberos, DHCP, etc.). These containers are configured and started. Zeek requires a live packet source — either a network interface in promiscuous mode or a SPAN (mirror) port on a managed switch.
+
+**Decision:** Defer Zeek telemetry to Phase 36. Accept zero Zeek output until hardware arrives.
+
+**Evidence:**
+- Zeek OpenSearch index: 0 documents as of 2026-04-09.
+- pcap-capture container: running, but bound to an interface with no mirrored traffic.
+- No SPAN/mirror port exists on the current unmanaged switch.
+
+**Hardware needed:** A managed switch with SPAN/mirror port capability. Cost: approximately $50-80 (e.g., TP-Link TL-SG108E or similar). The GMKtec N150 would connect via a second NIC or VLAN to receive mirrored traffic.
+
+**Consequences:**
+- 13 Malcolm containers are effectively idle: pcap-capture, Zeek, Strelka (scanner/frontend/backend/redis/coordinator), freq-server, and the Arkime capture process.
+- These consume approximately 630 MB RAM on the Ubuntu box — accepted trade-off given they will become useful once the switch arrives.
+- The Arkime packet viewer, Strelka file analysis, and network-level context are all blocked on the same hardware dependency.
+
+**Review trigger:** When a managed switch with SPAN port is installed, execute Phase 36 to verify Zeek log flow into OpenSearch and onward to DuckDB via MalcolmCollector.
+
+---
+
+## ADR-032: Malcolm Theater Containers — 17 Running, Most Idle
+
+**Date:** 2026-04-09
+**Status:** ACCEPTED — documented gap
+
+**Context:**
+Malcolm deploys 17+ Docker containers as a complete NSM stack. Without a PCAP source (see ADR-031), most of these containers start successfully but produce no output.
+
+**Decision:** Keep all Malcolm containers running. Do not selectively disable containers.
+
+**Rationale:**
+- Malcolm's compose file is not designed for selective container removal without risking dependency failures.
+- The containers that ARE producing output (OpenSearch, Logstash, Filebeat, Arkime indexing) share the same compose network and depend on the full stack.
+- The ~630 MB RAM cost is acceptable on a machine with 16 GB total RAM (the GMKtec N150).
+- Disabling containers would require maintaining a fork of Malcolm's compose configuration — an ongoing maintenance burden.
+
+**Containers active and producing output:**
+- OpenSearch (7.4 GB RAM — the main store)
+- Logstash, Filebeat, Arkime viewer/indexer, Malcolm API
+
+**Containers running but idle (no output without PCAP):**
+- Zeek, pcap-capture, Strelka (5 containers), freq-server, NetBox, Keycloak
+
+**Impact:** ~630 MB RAM consumed by idle containers. Accepted.
+
+---
+
+## ADR-033: Auto-Triage Not Yet Wired — Documented Gap
+
+**Date:** 2026-04-09
+**Status:** ACCEPTED — Phase 35 closes this
+
+**Context:**
+The AI triage capability appears complete from the outside: `triage.py` has `build_prompt()`, `explain_engine.py` builds evidence context, and `OllamaClient` is production-grade. However, the detection pipeline does not call AI automatically. `POST /api/detect/run` fires Sigma rules, writes `DetectionRecord` entries to SQLite, and returns — without ever touching Ollama.
+
+The AI only runs when an analyst explicitly initiates a chat or RAG query (analyst-initiated, reactive). There is no background worker that automatically triages new detections.
+
+**Decision:** Document the gap explicitly. Phase 35 will close it by adding:
+- `POST /api/triage/run` — triggers AI triage for a batch of detections
+- Background worker: after each `POST /api/detect/run`, enqueue detections for async AI analysis
+- `DetectionRecord` schema update: add `triage_summary`, `triage_confidence`, `triage_at`
+- UI update: DetectionsView shows AI triage summary inline
+
+**Why not done earlier:**
+- ADR-014 (Human-in-the-Loop) requires that analyst oversight exists before AI output drives case workflow.
+- Phase 35 will implement the loop WITH full audit logging, analyst override, and confidence thresholds — not a silent background process.
+
+**Current state (honest):**
+- `POST /api/detect/run` → Sigma → DetectionRecord → STOP. No AI.
+- `POST /api/investigations/{id}/chat` → AI. Analyst-initiated.
+- `POST /api/query/ask/stream` → AI. Analyst-initiated.
+
+**Consequences of the gap:** An analyst who runs detection and expects AI triage to appear automatically will be disappointed. This is now documented in README.md, ARCHITECTURE.md, and here — not hidden.
