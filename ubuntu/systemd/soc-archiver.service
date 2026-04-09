@@ -1,0 +1,18 @@
+[Unit]
+Description=SOC Evidence Archiver
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=soc
+WorkingDirectory=/opt/soc-pipeline
+Environment=EVIDENCE_ARCHIVE_PATH=/mnt/evidence
+ExecStart=/opt/soc-pipeline/.venv/bin/python -m ubuntu.evidence_archiver
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

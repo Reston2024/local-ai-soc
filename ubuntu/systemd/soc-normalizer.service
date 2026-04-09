@@ -1,0 +1,19 @@
+[Unit]
+Description=SOC Ubuntu Normalization Server
+After=network.target soc-archiver.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=soc
+WorkingDirectory=/opt/soc-pipeline
+Environment=EVIDENCE_ARCHIVE_PATH=/mnt/evidence
+Environment=SOC_NORMALIZED_DIR=/var/lib/soc-pipeline/normalized
+ExecStart=/opt/soc-pipeline/.venv/bin/uvicorn ubuntu.normalization_server:app --host 0.0.0.0 --port 8080
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
