@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 31-malcolm-full-telemetry
-status: planning
+current_phase: 32-real-threat-hunting
+status: in-progress
 last_updated: "2026-04-09T09:16:53.311Z"
 progress:
   total_phases: 37
@@ -36,6 +36,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Plan 31-02 complete — EvidenceArchiver (gzip chain-of-custody) + Ubuntu ECS normalization FastAPI server + systemd units. All 3 unit tests pass, 876 total unit tests green.
 - 2026-04-09: Plan 31-03 complete — UBUNTU_NORMALIZER_URL setting, Ubuntu NDJSON poll in MalcolmCollector, api.ts event_type param, EventsView filter chips (7 active + 8 Zeek beta). 882 unit tests green.
 - 2026-04-09: Plan 31-01 complete — NormalizedEvent expanded to 55 columns (20 new EVE fields), DuckDB migration, loader INSERT SQL, 4 new normalizers, 6-source poll loop. 881 unit tests green.
+- 2026-04-09: Plan 32-01 complete — NL→SQL hunt engine (validate_hunt_sql 7 rules, HuntEngine, PRESET_HUNTS), SQLite hunts table, POST /api/hunts/query + GET /api/hunts/presets + GET /api/hunts/{id}/results. 891 unit tests green.
 
 ## Key Decisions
 
@@ -49,3 +50,6 @@ See: .planning/PROJECT.md
 - **31-03:** Line-count cursor tracks Ubuntu NDJSON append-only file position in SQLite KV
 - **31-03:** $effect() replaces onMount(load) in EventsView — handles initial load + reactive chip re-fetch
 - **31-03:** ZEEK_CHIPS disabled/dashed in UI as Phase 36 preview with tooltip
+- **32-01:** Multi-statement semicolon check runs before DDL check in validate_hunt_sql — correct error for compound injection attempts
+- **32-01:** GET /api/hunts/presets defined before /{hunt_id}/results — prevents 'presets' being captured as path param
+- **32-01:** OSINT API keys added to config.py with empty defaults — optional for Phases 32-02+
