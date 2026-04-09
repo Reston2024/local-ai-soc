@@ -332,7 +332,7 @@ export const api = {
   health: () => request<HealthResponse>('/health'),
 
   events: {
-    list: (params?: { offset?: number; limit?: number; hostname?: string; severity?: string }) => {
+    list: (params?: { offset?: number; limit?: number; hostname?: string; severity?: string; event_type?: string }) => {
       const q = new URLSearchParams()
       const limit = params?.limit ?? 50
       const offset = params?.offset ?? 0
@@ -341,6 +341,7 @@ export const api = {
       q.set('page_size', String(limit))
       if (params?.hostname) q.set('hostname', params.hostname)
       if (params?.severity) q.set('severity', params.severity)
+      if (params?.event_type) q.set('event_type', params.event_type)   // Phase 31
       return request<EventsListResponse>(`/api/events?${q}`)
     },
     get: (id: string) => request<NormalizedEvent>(`/api/events/${id}`),

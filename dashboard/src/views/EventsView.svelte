@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
   import { api, type NormalizedEvent } from '../lib/api.ts'
 
   let events = $state<NormalizedEvent[]>([])
@@ -10,11 +9,39 @@
   let limit = 50
   let searchQuery = $state('')
 
+  // Phase 31: event_type filter chips
+  const CHIPS = [
+    { label: 'All',     value: '' },
+    { label: 'Alert',   value: 'alert' },
+    { label: 'TLS',     value: 'tls' },
+    { label: 'DNS',     value: 'dns_query' },
+    { label: 'File',    value: 'file_transfer' },
+    { label: 'Anomaly', value: 'anomaly' },
+    { label: 'Syslog',  value: 'syslog' },
+  ]
+  let selectedChip = $state('')   // '' = All
+
+  // Phase 36 Zeek chips — disabled until SPAN port is configured (managed switch in transit)
+  const ZEEK_CHIPS = [
+    { label: 'Connection', value: 'conn' },
+    { label: 'HTTP',       value: 'http' },
+    { label: 'SSL',        value: 'ssl' },
+    { label: 'SMB',        value: 'smb' },
+    { label: 'Auth',       value: 'auth' },
+    { label: 'SSH',        value: 'ssh' },
+    { label: 'SMTP',       value: 'smtp' },
+    { label: 'DHCP',       value: 'dhcp' },
+  ]
+
   async function load() {
     loading = true
     error = null
     try {
-      const res = await api.events.list({ offset, limit })
+      const res = await api.events.list({
+        offset,
+        limit,
+        ...(selectedChip ? { event_type: selectedChip } : {}),
+      })
       events = res.events
       total = res.total
     } catch (e) {
@@ -23,6 +50,14 @@
       loading = false
     }
   }
+
+  $effect(() => {
+    // Re-fetch whenever selectedChip changes (Svelte 5 reactive effect)
+    // selectedChip is read here to register the dependency
+    const _ = selectedChip
+    offset = 0       // reset pagination on filter change
+    load()
+  })
 
   async function search() {
     if (!searchQuery.trim()) { load(); return }
@@ -38,8 +73,6 @@
       loading = false
     }
   }
-
-  onMount(load)
 
   function fmtTime(ts: string) {
     return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -59,6 +92,27 @@
       <button class="btn btn-primary" onclick={search}>Search</button>
       <button class="btn" onclick={() => { searchQuery = ''; load() }}>Clear</button>
     </div>
+  </div>
+
+  <div class="chip-row">
+    {#each CHIPS as chip}
+      <button
+        class="chip {selectedChip === chip.value ? 'chip-active' : ''}"
+        onclick={() => { selectedChip = chip.value }}
+      >
+        {chip.label}
+      </button>
+    {/each}
+    <span class="chip-divider" title="Zeek telemetry — available once managed switch SPAN port is configured">Phase 36</span>
+    {#each ZEEK_CHIPS as chip}
+      <button
+        class="chip chip-beta"
+        disabled
+        title="Zeek {chip.label} logs — Phase 36 (managed switch in transit)"
+      >
+        {chip.label}
+      </button>
+    {/each}
   </div>
 
   {#if error}
@@ -123,6 +177,34 @@
     border-radius: 10px; font-size: 11px; font-weight: 600;
     margin-left: 8px; color: var(--text-secondary);
   }
+  .chip-row {
+    display: flex; gap: 6px; padding: 8px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary); flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .chip {
+    padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;
+    border: 1px solid var(--border); background: var(--bg-primary);
+    color: var(--text-secondary); cursor: pointer; white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .chip:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+  .chip-active {
+    background: var(--accent, #4ade80); color: #0d0d0d;
+    border-color: transparent;
+  }
+  .chip-divider {
+    font-size: 10px; font-weight: 600; color: var(--text-muted, #666);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    align-self: center; padding: 0 4px; white-space: nowrap;
+    border-left: 1px solid var(--border); padding-left: 10px; margin-left: 4px;
+  }
+  .chip-beta {
+    opacity: 0.45; cursor: not-allowed;
+    border-style: dashed;
+  }
+  .chip-beta:hover { background: var(--bg-primary); color: var(--text-secondary); }
   .table-wrap { flex: 1; overflow-y: auto; }
   .ts { color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
   .event-type { color: var(--text-secondary); }
