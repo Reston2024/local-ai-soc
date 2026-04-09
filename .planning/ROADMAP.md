@@ -1085,7 +1085,7 @@ Plans:
 - P31-T10: Add EventsView filter chips — horizontal chip row: All | Alert | TLS | DNS | File | Anomaly | Syslog. Single-select, maps to ?event_type= param on GET /api/events. Backend adds optional WHERE clause.
 - P31-T11: Add OCSF class UID entries for new event_type values (tls, dns_query, file_transfer, anomaly) to OCSF_CLASS_UID_MAP in event.py.
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 31-01-PLAN.md — EVE schema expansion: 20 new fields, 4 normalizers, 5-type poll loop
