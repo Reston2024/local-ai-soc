@@ -265,6 +265,18 @@ CREATE TABLE IF NOT EXISTS model_change_events (
     change_source   TEXT NOT NULL DEFAULT 'startup_check'
 );
 CREATE INDEX IF NOT EXISTS idx_mce_detected_at ON model_change_events (detected_at);
+
+CREATE TABLE IF NOT EXISTS hunts (
+    hunt_id     TEXT PRIMARY KEY,
+    query       TEXT NOT NULL,
+    sql_text    TEXT NOT NULL,
+    results_json TEXT NOT NULL DEFAULT '[]',
+    row_count   INTEGER NOT NULL DEFAULT 0,
+    analyst_id  TEXT NOT NULL DEFAULT 'unknown',
+    created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_hunts_analyst ON hunts (analyst_id);
+CREATE INDEX IF NOT EXISTS idx_hunts_created ON hunts (created_at DESC);
 """
 
 
@@ -1526,6 +1538,52 @@ class SQLiteStore:
             "last_known_model": last_known,
             "last_change": last_change,
         }
+
+    # ------------------------------------------------------------------
+    # Hunt persistence (Phase 32)
+    # ------------------------------------------------------------------
+
+    def save_hunt(
+        self,
+        hunt_id: str,
+        query: str,
+        sql_text: str,
+        results_json: str,
+        row_count: int,
+        analyst_id: str = "unknown",
+    ) -> None:
+        """Persist a completed hunt record (INSERT OR REPLACE)."""
+        self._conn.execute(
+            """
+            INSERT OR REPLACE INTO hunts
+                (hunt_id, query, sql_text, results_json, row_count, analyst_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (hunt_id, query, sql_text, results_json, row_count, analyst_id, _now_iso()),
+        )
+        self._conn.commit()
+        log.debug("Hunt saved", hunt_id=hunt_id, row_count=row_count)
+
+    def get_hunt(self, hunt_id: str) -> Optional[dict[str, Any]]:
+        """Return a single hunt record by hunt_id, or None if not found."""
+        row = self._conn.execute(
+            "SELECT * FROM hunts WHERE hunt_id = ?", (hunt_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_hunts(self, analyst_id: Optional[str] = None, limit: int = 50) -> list[dict[str, Any]]:
+        """Return recent hunts ordered by created_at DESC, optionally filtered by analyst_id."""
+        if analyst_id:
+            rows = self._conn.execute(
+                "SELECT * FROM hunts WHERE analyst_id = ? ORDER BY created_at DESC LIMIT ?",
+                (analyst_id, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM hunts ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
 
     # Shutdown
     # ------------------------------------------------------------------
