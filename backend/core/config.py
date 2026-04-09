@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "qwen3:14b"
     OLLAMA_EMBED_MODEL: str = "mxbai-embed-large"
     # Cybersecurity-specialised model (ADR-020) — used for investigation/triage prompts
-    OLLAMA_CYBERSEC_MODEL: str = "foundation-sec:8b"
+    # Falls back to llama3:latest if foundation-sec:8b is not pulled
+    OLLAMA_CYBERSEC_MODEL: str = "llama3:latest"
 
     # Model digest pinning (E6-03) — prevents silent model substitution attacks.
     # Set the expected sha256 digest prefix (first 12+ chars) of the configured model.

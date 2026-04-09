@@ -32,6 +32,10 @@ log = get_logger(__name__)
 # Per-source rate limiters — module-level singletons
 # ---------------------------------------------------------------------------
 
+# ip-api.com free tier: 45 req/min → 1 per 1.5s
+_ipapi_lock = asyncio.Lock()
+_IPAPI_INTERVAL = 1.5
+
 # VirusTotal free tier: 4 req/min → 1 per 15s to be safe
 _vt_lock = asyncio.Lock()
 _VT_INTERVAL = 15.0  # seconds between VirusTotal requests
@@ -268,48 +272,78 @@ class OsintService:
                 return None
 
     async def _geo(self, ip: str) -> dict | None:
-        """MaxMind GeoLite2 lookup from local mmdb file."""
-        global _geo_warned_once
+        """MaxMind GeoLite2 lookup from local mmdb file, with ip-api.com fallback."""
         import os
 
         mmdb_path = self._settings.GEOIP_DB_PATH
-        if not os.path.exists(mmdb_path):
-            if not _geo_warned_once:
-                log.warning(
-                    "GeoLite2-City.mmdb not found — geo lookup disabled",
-                    path=mmdb_path,
-                )
-                _geo_warned_once = True
-            return None
+        if os.path.exists(mmdb_path):
+            try:
+                import geoip2.database  # type: ignore[import]
+                import geoip2.errors  # type: ignore[import]
 
-        try:
-            import geoip2.database  # type: ignore[import]
-            import geoip2.errors  # type: ignore[import]
+                def _read() -> dict | None:
+                    with geoip2.database.Reader(mmdb_path) as reader:
+                        try:
+                            response = reader.city(ip)
+                            return {
+                                "country_name": response.country.name,
+                                "country_iso_code": response.country.iso_code,
+                                "city": response.city.name,
+                                "latitude": response.location.latitude,
+                                "longitude": response.location.longitude,
+                                "autonomous_system_number": getattr(
+                                    response, "autonomous_system_number", None
+                                ),
+                                "autonomous_system_organization": getattr(
+                                    response, "autonomous_system_organization", None
+                                ),
+                            }
+                        except geoip2.errors.AddressNotFoundError:
+                            return None
 
-            def _read() -> dict | None:
-                with geoip2.database.Reader(mmdb_path) as reader:
+                result = await asyncio.to_thread(_read)
+                if result:
+                    return result
+            except Exception as exc:
+                log.warning("GeoIP MaxMind lookup failed", ip=ip, error=str(exc))
+
+        # Fallback: ip-api.com (free, no key, 45 req/min)
+        return await self._geo_ipapi(ip)
+
+    async def _geo_ipapi(self, ip: str) -> dict | None:
+        """ip-api.com geo lookup — free fallback, rate-limited to 1 req/1.5s."""
+        async with _ipapi_lock:
+            await asyncio.sleep(_IPAPI_INTERVAL)
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get(
+                        f"http://ip-api.com/json/{ip}",
+                        params={"fields": "status,country,countryCode,city,lat,lon,as,org"},
+                    )
+                if resp.status_code != 200:
+                    return None
+                d = resp.json()
+                if d.get("status") != "success":
+                    return None
+                as_str: str = d.get("as", "") or ""
+                asn = None
+                if as_str.startswith("AS"):
                     try:
-                        response = reader.city(ip)
-                        return {
-                            "country_name": response.country.name,
-                            "country_iso_code": response.country.iso_code,
-                            "city": response.city.name,
-                            "latitude": response.location.latitude,
-                            "longitude": response.location.longitude,
-                            "autonomous_system_number": getattr(
-                                response, "autonomous_system_number", None
-                            ),
-                            "autonomous_system_organization": getattr(
-                                response, "autonomous_system_organization", None
-                            ),
-                        }
-                    except geoip2.errors.AddressNotFoundError:
-                        return {"country_name": None, "latitude": None, "longitude": None}
-
-            return await asyncio.to_thread(_read)
-        except Exception as exc:
-            log.warning("GeoIP lookup failed", ip=ip, error=str(exc))
-            return None
+                        asn = int(as_str.split()[0][2:])
+                    except (ValueError, IndexError):
+                        pass
+                return {
+                    "country_name": d.get("country"),
+                    "country_iso_code": d.get("countryCode"),
+                    "city": d.get("city"),
+                    "latitude": d.get("lat"),
+                    "longitude": d.get("lon"),
+                    "autonomous_system_number": asn,
+                    "autonomous_system_organization": d.get("org") or d.get("as"),
+                }
+            except Exception as exc:
+                log.warning("ip-api.com geo lookup failed", ip=ip, error=str(exc))
+                return None
 
     async def _virustotal(self, ip: str) -> dict | None:
         """VirusTotal lookup — rate-limited to 1 req/15s."""
