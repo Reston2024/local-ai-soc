@@ -1152,20 +1152,24 @@ Plans:
 ## Phase 35: SOC Completeness
 **Status:** planned
 **Added:** 2026-04-09
-**Goal:** Eliminate all remaining theatre, broken flows, and professional gaps. Fix explain.py silent failures, wire playbook runs into investigation timeline, add Zeek-type event filtering to EventsView, remove all "coming soon" badges, and ensure the SOC presents as a coherent professional tool with no dead ends.
+**Revised:** 2026-04-09 — Added automated AI triage loop (P35-T08 through T10). The AI was reactive-only; it required analyst initiation. A professional SOC AI automatically triages new detections without human prompting.
+**Goal:** Eliminate all remaining theatre, broken flows, and professional gaps. Critically: wire the AI to automatically triage new detections — the AI currently sits idle until asked. Fix explain.py, wire timeline playbooks, add EventsView filters, remove BETA badges, and build the automated triage background worker.
 
 ### Requirements
 - P35-T01: Fix explain.py — replace silent return {} with structured error response; ensure investigation context always returns evidence or an explicit "no context" message with reason
 - P35-T02: Wire playbook runs into investigation timeline — timeline.py returns real PlaybookRun rows from SQLite when case_id matches
 - P35-T03: Add event_type filter to EventsView — filter chips for DNS/HTTP/TLS/Connection/Alert/Anomaly/Auth/File/SMB pull from real NormalizedEvent.event_type values
 - P35-T04: Remove all "BETA — Coming Soon" badges from nav items — once phases 32/33/34 are complete, features are real
-- P35-T05: Add Malcolm telemetry summary to dashboard home/overview — show counts by Zeek type (N DNS queries, N connections, N alerts, N anomalies) in last 24h
-- P35-T06: Ensure Sigma rules can match on new Zeek fields — update field_map.py to cover conn_state, dns_query, http_user_agent, tls_ja3, smb_path so detection rules can fire on full telemetry
-- P35-T07: End-to-end smoke test — ingest Malcolm telemetry sample, verify all 15 event types appear in EventsView, confirm hunt returns results, confirm IOC matching fires on known-bad IP, confirm asset inventory populates
+- P35-T05: Add Malcolm telemetry summary to dashboard home/overview — show counts by EVE type (N DNS, N TLS, N alerts, N anomalies) in last 24h
+- P35-T06: Ensure Sigma rules can match on new EVE fields — update field_map.py to cover dns_query, http_user_agent, tls_ja3 so detection rules can fire on full telemetry
+- P35-T07: End-to-end smoke test — ingest Malcolm telemetry sample, verify EVE event types appear in EventsView with chips, confirm hunt returns results, confirm IOC matching fires, confirm asset inventory populates
+- P35-T08: Add triage_result storage — SQLite table: (triage_id, detection_ids JSON, model, prompt_hash, result_text, severity_summary, created_at, provenance_sha256). Mark DetectionRecords as triaged (add triaged_at column to detections table).
+- P35-T09: Implement POST /api/triage/run — pulls unanalyzed DetectionRecords from SQLite (triaged_at IS NULL), builds prompt via prompts/triage.build_prompt(), calls OllamaClient.generate(), stores result with full provenance, marks detections as triaged. Returns triage_id + severity_summary. Requires auth (verify_token).
+- P35-T10: Wire automated triage background worker — asyncio task in main.py lifespan that polls for unanalyzed detections every 60s and calls POST /api/triage/run internally. Dashboard surfaces latest triage result in a Triage panel (non-blocking — analyst can still query manually). This closes the gap: the AI now analyzes detections automatically without analyst initiation.
 
 **Plans:** 0 plans
 
-*Phase 35 added: 2026-04-09 (SOC Completeness — no theatre, no dead ends)*
+*Phase 35 revised: 2026-04-09 (Auto-triage added — AI analyzes detections without analyst prompting)*
 
 ## Phase 36: Zeek Full Telemetry
 **Status:** blocked
