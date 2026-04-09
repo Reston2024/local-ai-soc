@@ -2,13 +2,15 @@
 # AI-SOC-Brain — Reproducibility Receipt
 
 **Status:** VERIFIED
-**Date:** 2026-04-05
+**Date:** 2026-04-09
 
 > Pinned via uv.lock — run `uv export --no-hashes` to reproduce
 
 ---
 
-## Hardware Requirements
+## Infrastructure
+
+### Desktop — SOC Brain (primary)
 
 | Component | Minimum | This System |
 |-----------|---------|-------------|
@@ -18,6 +20,19 @@
 | GPU VRAM | 8 GB (for 7B models) | 16 GB RTX 5080 |
 | Disk | 100 GB free | 3.4 TB free |
 | CUDA | 12.0+ | 13.1 |
+
+### supportTAK-server — Dumb Pipe (optional, for live NSM telemetry)
+
+| Component | Value |
+|-----------|-------|
+| Hardware | GMKtec N150 (Intel N150, 16 GB DDR5) |
+| OS | Ubuntu |
+| IP | 192.168.1.22 |
+| Role | Malcolm NSM — telemetry collection and indexing ONLY |
+| OpenSearch | https://192.168.1.22:9200 — optional dependency |
+| Malcolm | 17 containers (syslog + EVE alerts collecting; Zeek idle — no SPAN port) |
+
+The desktop operates fully without the Ubuntu box — Malcolm integration is optional. Set `MALCOLM_ENABLED=True` in `.env` to activate MalcolmCollector.
 
 ---
 
