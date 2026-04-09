@@ -221,3 +221,14 @@ async def test_poll_all_eve_types():
     }
     assert set(call_cursor_keys) == expected_keys
     assert mock_fetch.call_count == 6
+
+
+# --- Phase 31 Plan 03: Ubuntu normalizer poll ---
+
+def test_ubuntu_poll():
+    """_poll_ubuntu_normalizer() returns [] when URL is empty (disabled)."""
+    collector = MalcolmCollector(ubuntu_normalizer_url="")
+    # Synchronous path: URL empty → disabled, no HTTP needed
+    import asyncio
+    result = asyncio.run(collector._poll_ubuntu_normalizer())
+    assert result == []
