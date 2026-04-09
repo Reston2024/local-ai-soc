@@ -91,24 +91,133 @@ async def test_malcolm_collector_heartbeat_updates_kv():
 
 def test_normalize_tls():
     """_normalize_tls() maps TLS EVE doc to NormalizedEvent with event_type='tls'."""
-    pytest.skip("RED — implement in Task 1")
+    collector = MalcolmCollector()
+    # Full nested ECS doc
+    doc = {
+        "source": {"ip": "1.2.3.4", "port": 12345},
+        "destination": {"ip": "5.6.7.8", "port": 443},
+        "tls": {
+            "version": "TLSv1.3",
+            "ja3": {"hash": "abc"},
+            "ja3s": {"hash": "def"},
+            "sni": "example.com",
+            "cipher": "TLS_AES_256_GCM_SHA384",
+            "established": True,
+        },
+        "@timestamp": "2026-01-01T00:00:00Z",
+    }
+    event = collector._normalize_tls(doc)
+    assert event is not None
+    assert event.event_type == "tls"
+    assert event.tls_version == "TLSv1.3"
+    assert event.tls_ja3 == "abc"
+    assert event.src_ip == "1.2.3.4"
+    assert event.tls_validation_status == "valid"
+
+    # Arkime-flat fallback
+    doc2 = {"source": {"ip": "1.2.3.4"}, "tls.version_string": "TLSv1.2"}
+    event2 = collector._normalize_tls(doc2)
+    assert event2 is not None
+    assert event2.tls_version == "TLSv1.2"
+
+    # No source.ip → None
+    doc3 = {"tls": {"version": "TLSv1.3"}}
+    assert collector._normalize_tls(doc3) is None
 
 
 def test_normalize_dns():
     """_normalize_dns() maps DNS EVE doc to NormalizedEvent with event_type='dns_query'."""
-    pytest.skip("RED — implement in Task 1")
+    collector = MalcolmCollector()
+    doc = {
+        "source": {"ip": "10.0.0.5", "port": 54321},
+        "destination": {"ip": "8.8.8.8", "port": 53},
+        "dns": {
+            "question": {"name": "malware.ru", "type": "A"},
+            "response_code": "NOERROR",
+            "answers": [{"data": "1.1.1.1", "ttl": 300}],
+        },
+        "@timestamp": "2026-01-01T00:00:00Z",
+    }
+    event = collector._normalize_dns(doc)
+    assert event is not None
+    assert event.event_type == "dns_query"
+    assert event.dns_query == "malware.ru"
+    assert event.dns_query_type == "A"
+    assert event.src_ip == "10.0.0.5"
+    # dns_answers stored as JSON string
+    import json
+    answers = json.loads(event.dns_answers)
+    assert answers[0]["data"] == "1.1.1.1"
+    assert event.dns_ttl == 300
+
+    # No source.ip → None
+    assert collector._normalize_dns({"dns": {"question": {"name": "evil.com"}}}) is None
 
 
 def test_normalize_fileinfo():
     """_normalize_fileinfo() maps fileinfo EVE doc to NormalizedEvent with event_type='file_transfer'."""
-    pytest.skip("RED — implement in Task 1")
+    collector = MalcolmCollector()
+    doc = {
+        "source": {"ip": "10.0.0.1", "port": 54321},
+        "file": {
+            "hash": {"md5": "abc123", "sha256": "sha256hash"},
+            "type": "application/x-pe",
+            "size": 204800,
+        },
+        "@timestamp": "2026-01-01T00:00:00Z",
+    }
+    event = collector._normalize_fileinfo(doc)
+    assert event is not None
+    assert event.event_type == "file_transfer"
+    assert event.file_md5 == "abc123"
+    assert event.file_mime_type == "application/x-pe"
+    assert event.file_size_bytes == 204800
+
+    # No source.ip → None
+    assert collector._normalize_fileinfo({"file": {"hash": {"md5": "x"}}}) is None
 
 
 def test_normalize_anomaly():
     """_normalize_anomaly() maps anomaly EVE doc to NormalizedEvent with event_type='anomaly'."""
-    pytest.skip("RED — implement in Task 1")
+    collector = MalcolmCollector()
+    doc = {
+        "source": {"ip": "10.0.0.2"},
+        "event": {"severity": "high"},
+        "@timestamp": "2026-01-01T00:00:00Z",
+    }
+    event = collector._normalize_anomaly(doc)
+    assert event is not None
+    assert event.event_type == "anomaly"
+    assert event.severity == "high"
+
+    # No source.ip → None
+    assert collector._normalize_anomaly({"event": {"severity": "high"}}) is None
 
 
-def test_poll_all_eve_types():
+@pytest.mark.asyncio
+async def test_poll_all_eve_types():
     """_poll_and_ingest() calls _fetch_index for all 6 cursor keys."""
-    pytest.skip("RED — implement in Task 1")
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    mock_sqlite = MagicMock()
+    mock_sqlite.get_kv = MagicMock(return_value=None)
+    mock_sqlite.set_kv = MagicMock()
+
+    collector = MalcolmCollector(sqlite_store=mock_sqlite)
+
+    # Patch _fetch_index to return [] without making network calls
+    with patch.object(collector, "_fetch_index", new=AsyncMock(return_value=[])) as mock_fetch:
+        await collector._poll_and_ingest()
+
+    # Check all 6 cursor keys were used
+    call_cursor_keys = [call.args[1] for call in mock_fetch.call_args_list]
+    expected_keys = {
+        "malcolm.alerts.last_timestamp",
+        "malcolm.tls.last_timestamp",
+        "malcolm.dns.last_timestamp",
+        "malcolm.fileinfo.last_timestamp",
+        "malcolm.anomaly.last_timestamp",
+        "malcolm.syslog.last_timestamp",
+    }
+    assert set(call_cursor_keys) == expected_keys
+    assert mock_fetch.call_count == 6
