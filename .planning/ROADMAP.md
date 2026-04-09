@@ -1119,7 +1119,13 @@ Plans:
 - P32-T10: Add IP threat trace map — new MapView (or panel within HuntingView): world map using Leaflet.js + OpenStreetMap tiles (free, no API key). Plots src_ip values from recent detections as markers, coloured by severity (red=critical, orange=high, yellow=medium). Click marker → side panel shows IP enrichment (OSINT data) + associated events. MaxMind GeoLite2 (local mmdb file, free, no external API call at render time) for lat/long resolution.
 - P32-T11: Add map nav item — MapView accessible from sidebar as "Threat Map". Real-time: refreshes markers every 60s from GET /api/detections with src_ip filter.
 
-**Plans:** 0 plans
+**Plans:** 4 plans
+
+Plans:
+- [ ] 32-01-PLAN.md — Hunt engine backend: NL→SQL, SQL validation, SQLite hunts schema, FastAPI endpoints
+- [ ] 32-02-PLAN.md — OSINT enrichment service: WHOIS/AbuseIPDB/MaxMind/VT/Shodan + GET /api/osint/{ip}
+- [ ] 32-03-PLAN.md — HuntingView wire-up: results table, OSINT panel, preset cards, hunt history
+- [ ] 32-04-PLAN.md — MapView threat map: Leaflet + OSM tiles, severity markers, OSINT panel, nav item
 
 *Phase 32 revised: 2026-04-09 (OSINT enrichment + IP threat trace map added — passive/legal only)*
 
