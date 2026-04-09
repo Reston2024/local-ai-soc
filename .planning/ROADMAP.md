@@ -1098,23 +1098,30 @@ Plans:
 
 *Phase 31 revised: 2026-04-09 (Real telemetry only — no theater, no Zeek without hardware)*
 
-## Phase 32: Real Threat Hunting
+## Phase 32: Real Threat Hunting + OSINT Enrichment + Threat Map
 **Status:** planned
 **Added:** 2026-04-09
-**Goal:** Replace the completely disabled HuntingView with a working threat hunting engine. Implement backend hunting API that translates natural language queries to DuckDB SQL via the local LLM, executes against ingested telemetry, and returns ranked results. Enable all preset hunt queries against real data.
+**Revised:** 2026-04-09 — Added passive OSINT enrichment pipeline and IP threat trace map.
+**Goal:** Replace the completely disabled HuntingView with a working threat hunting engine. NL→SQL hunt queries against real telemetry. Passive OSINT enrichment (WHOIS, AbuseIPDB, VirusTotal, Shodan read-only) for every threat IP — no active scanning. IP threat trace map: geo-IP world map showing source IPs from detections, click-through to associated events.
+
+**OSINT scope (passive/legal only):** Read-only lookups against public APIs and databases. No active port scanning or external host probing. All APIs free-tier or no-key: MaxMind GeoLite2 (geo-IP), AbuseIPDB (reputation, free), WHOIS (socket), Shodan free tier (read-only host info), VirusTotal free tier (hash + IP reports).
 
 ### Requirements
 - P32-T01: Implement backend/api/hunting.py — POST /api/hunts/query (NL→SQL via Ollama), GET /api/hunts/{hunt_id}/results, GET /api/hunts/presets
 - P32-T02: Implement hunt query engine in backend/services/ — NL prompt → validated DuckDB SQL → execute → rank results by severity/recency
 - P32-T03: Store hunt results in SQLite (hunt_id, query, sql, results_json, created_at, analyst_id)
-- P32-T04: Wire HuntingView.svelte — remove all disabled attributes, connect input to POST /api/hunts/query, display results table with event drill-down
+- P32-T04: Wire HuntingView.svelte — remove all disabled attributes, connect input to POST /api/hunts/query, display results table with event drill-down, add OSINT enrichment panel per result row
 - P32-T05: Make preset hunt cards functional — each preset sends its MITRE-mapped query to the hunt engine and shows results
 - P32-T06: Add hunt history panel — analyst can replay previous hunts, see results over time
 - P32-T07: Register hunting router in main.py with auth
+- P32-T08: Implement passive OSINT enrichment service — backend/services/osint.py: given an IP/domain/hash, queries (async, rate-limited): AbuseIPDB confidence score + report count, WHOIS registrar + creation date, MaxMind GeoLite2 country/ASN/city, VirusTotal free-tier malicious count, Shodan free host info. Results cached in SQLite (osint_cache table, 24h TTL). All lookups passive/read-only.
+- P32-T09: Implement GET /api/osint/{ip} endpoint — returns cached or fresh OSINT enrichment for an IP. Used by hunt results panel and detection detail view.
+- P32-T10: Add IP threat trace map — new MapView (or panel within HuntingView): world map using Leaflet.js + OpenStreetMap tiles (free, no API key). Plots src_ip values from recent detections as markers, coloured by severity (red=critical, orange=high, yellow=medium). Click marker → side panel shows IP enrichment (OSINT data) + associated events. MaxMind GeoLite2 (local mmdb file, free, no external API call at render time) for lat/long resolution.
+- P32-T11: Add map nav item — MapView accessible from sidebar as "Threat Map". Real-time: refreshes markers every 60s from GET /api/detections with src_ip filter.
 
 **Plans:** 0 plans
 
-*Phase 32 added: 2026-04-09 (Real Threat Hunting — no disabled buttons)*
+*Phase 32 revised: 2026-04-09 (OSINT enrichment + IP threat trace map added — passive/legal only)*
 
 ## Phase 33: Real Threat Intelligence
 **Status:** planned
