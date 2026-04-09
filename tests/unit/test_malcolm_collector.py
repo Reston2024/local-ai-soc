@@ -85,3 +85,30 @@ async def test_malcolm_collector_heartbeat_updates_kv():
     assert mock_sqlite.set_kv.called
     kv_key = mock_sqlite.set_kv.call_args[0][0]
     assert kv_key == "malcolm.last_heartbeat"
+
+
+# --- Phase 31: new EVE normalizers and expanded poll ---
+
+def test_normalize_tls():
+    """_normalize_tls() maps TLS EVE doc to NormalizedEvent with event_type='tls'."""
+    pytest.skip("RED — implement in Task 1")
+
+
+def test_normalize_dns():
+    """_normalize_dns() maps DNS EVE doc to NormalizedEvent with event_type='dns_query'."""
+    pytest.skip("RED — implement in Task 1")
+
+
+def test_normalize_fileinfo():
+    """_normalize_fileinfo() maps fileinfo EVE doc to NormalizedEvent with event_type='file_transfer'."""
+    pytest.skip("RED — implement in Task 1")
+
+
+def test_normalize_anomaly():
+    """_normalize_anomaly() maps anomaly EVE doc to NormalizedEvent with event_type='anomaly'."""
+    pytest.skip("RED — implement in Task 1")
+
+
+def test_poll_all_eve_types():
+    """_poll_and_ingest() calls _fetch_index for all 6 cursor keys."""
+    pytest.skip("RED — implement in Task 1")
