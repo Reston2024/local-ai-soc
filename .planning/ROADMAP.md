@@ -1066,29 +1066,29 @@ Plans:
 
 *Phase 30 added: 2026-04-08 (Final Security and Human Sign-off — milestone gap closure)*
 
-## Phase 31: Malcolm Full Telemetry
+## Phase 31: Malcolm Real Telemetry + Evidence Archive
 **Status:** planned
 **Added:** 2026-04-09
-**Goal:** Expand Malcolm NSM integration from 2 index patterns (alerts + syslog) to all 15 Zeek log types. Expand NormalizedEvent schema with ~50 new fields covering DNS, HTTP, TLS, connection state, file transfers, protocol anomalies, authentication (Kerberos/NTLM), SMB, RDP, DHCP, and Zeek notices. Run DuckDB schema migration. Update Malcolm collector to poll all Zeek indices. This gives the SOC full network visibility — not just alerts.
+**Revised:** 2026-04-09 — Zeek normalizers deferred to Phase 36 (no Zeek data without SPAN port). Focus on 235K EVE events currently ignored + Ubuntu data pipeline + forensic evidence archive.
+**Goal:** (1) Expand Malcolm collector to poll ALL 5 Suricata EVE types (TLS, DNS, fileinfo, anomaly are in OpenSearch but not collected — 235K events ignored). (2) Add raw evidence archive to Ubuntu external drive with SHA256 chain of custody. (3) Add Ubuntu normalization pipeline (ECS NDJSON endpoint, desktop polls every 60s). (4) EventsView filter chips. No Zeek — requires SPAN port hardware (Phase 36).
 
 ### Requirements
-- P31-T01: Expand NormalizedEvent model with DNS, HTTP, TLS/JA3, conn_state, file, anomaly, auth, SMB, RDP, DHCP, notice fields (~50 new optional fields). Run DuckDB migration.
-- P31-T02: Add zeek-conn normalizer — every network connection with conn_state (S0/S1/SF/REJ/RSTO), duration, bytes (critical for anomaly detection)
-- P31-T03: Add zeek-weird normalizer — protocol anomalies, highest intrusion signal, severity: high by default
-- P31-T04: Add zeek-dns normalizer — DNS queries, response codes, resolved IPs, TTL
-- P31-T05: Add zeek-http normalizer — URI, method, status, user-agent, content-type, body sizes
-- P31-T06: Add zeek-ssl normalizer — TLS version, cipher, SNI, JA3/JA3S fingerprints, cert subject/issuer, validation status
-- P31-T07: Add zeek-smb_mapping + zeek-dce_rpc normalizers — SMB share access, Windows RPC (lateral movement indicators)
-- P31-T08: Add zeek-notice normalizer — Zeek detection notices with severity mapping
-- P31-T09: Add zeek-files normalizer — file transfers with MD5/SHA256, MIME type, source protocol
-- P31-T10: Add zeek-kerberos + zeek-ntlm normalizers — Kerberos/NTLM auth events (golden ticket, pass-the-hash detection)
-- P31-T11: Add zeek-rdp + zeek-x509 + zeek-software + zeek-dhcp normalizers
-- P31-T12: Expand _poll_and_ingest() to query all 15 Zeek index patterns with correct event.dataset filters. Add cursor keys per index.
-- P31-T13: Add event_type filter chips to EventsView (DNS / HTTP / TLS / Connection / Alert / Anomaly / Auth / File / SMB / RDP) so analysts can slice by telemetry type
+- P31-T01: Expand NormalizedEvent model with ~20 EVE-specific fields: DNS (dns_query, dns_query_type, dns_rcode, dns_answers, dns_ttl), TLS (tls_version, tls_ja3, tls_ja3s, tls_sni, tls_cipher, tls_cert_subject, tls_validation_status), File (file_md5, file_sha256_eve, file_mime_type, file_size_bytes), HTTP (http_method, http_uri, http_status_code, http_user_agent). Run DuckDB migration via _ECS_MIGRATION_COLUMNS pattern.
+- P31-T02: Add _normalize_tls() to MalcolmCollector — map EVE TLS fields to NormalizedEvent. event_type="tls". Cursor key: malcolm.tls.last_timestamp.
+- P31-T03: Add _normalize_dns() to MalcolmCollector — map EVE DNS fields. event_type="dns_query". Cursor key: malcolm.dns.last_timestamp.
+- P31-T04: Add _normalize_fileinfo() to MalcolmCollector — map EVE file info. event_type="file_transfer". Cursor key: malcolm.fileinfo.last_timestamp.
+- P31-T05: Add _normalize_anomaly() to MalcolmCollector — map EVE anomaly events. event_type="anomaly". severity: high. Cursor key: malcolm.anomaly.last_timestamp.
+- P31-T06: Expand _poll_and_ingest() to poll all 5 EVE type filters in arkime_sessions3-*. Each type has its own cursor and normalizer.
+- P31-T07: Implement EvidenceArchiver class on Ubuntu — tails raw syslog and EVE JSON, writes daily gzip files to $EVIDENCE_ARCHIVE_PATH/raw/{syslog,eve}/. Rotates at midnight UTC, writes SHA256 to $EVIDENCE_ARCHIVE_PATH/checksums/. EVIDENCE_ARCHIVE_PATH env var, default /mnt/evidence.
+- P31-T08: Implement Ubuntu normalization HTTP server — lightweight FastAPI: GET /normalized/{date} streams day's NDJSON.gz, GET /normalized/latest returns today's partial file, GET /normalized/index lists available dates. No AI, pure field mapping.
+- P31-T09: Add Ubuntu poll source to desktop Malcolm collector — poll GET http://192.168.1.22:{PORT}/normalized/latest every 60s alongside OpenSearch. Cursor: malcolm.ubuntu_normalized.last_offset.
+- P31-T10: Add EventsView filter chips — horizontal chip row: All | Alert | TLS | DNS | File | Anomaly | Syslog. Single-select, maps to ?event_type= param on GET /api/events. Backend adds optional WHERE clause.
+- P31-T11: Add OCSF class UID entries for new event_type values (tls, dns_query, file_transfer, anomaly) to OCSF_CLASS_UID_MAP in event.py.
 
 **Plans:** 0 plans
+**Hardware note:** Zeek data requires managed switch with SPAN port (Cisco SG350-8 or Netgear GS308E, ~$50-80). See Phase 36.
 
-*Phase 31 added: 2026-04-09 (Malcolm Full Telemetry — professional NSM coverage)*
+*Phase 31 revised: 2026-04-09 (Real telemetry only — no theater, no Zeek without hardware)*
 
 ## Phase 32: Real Threat Hunting
 **Status:** planned
@@ -1160,3 +1160,28 @@ Plans:
 **Plans:** 0 plans
 
 *Phase 35 added: 2026-04-09 (SOC Completeness — no theatre, no dead ends)*
+
+## Phase 36: Zeek Full Telemetry
+**Status:** blocked
+**Added:** 2026-04-09
+**Blocked by:** SPAN port hardware — managed switch required (Cisco SG350-8 or Netgear GS308E, ~$50-80). Malcolm's Zeek containers currently produce zero logs.
+**Goal:** Once a managed switch is installed with SPAN mirroring to Malcolm's capture interface, expand Malcolm collector to all 40+ Zeek log types. Implement normalizers for: conn, dns, http, ssl, x509, files, notice, weird, dhcp, ssh, smtp, rdp, smb_mapping, smb_files, software, kerberos, ntlm, ftp, sip, socks, tunnel, pe, known_hosts, known_services, intel, signatures, and ICS protocols if present. Full NormalizedEvent expansion. DuckDB migration. EventsView chip expansion.
+
+### Requirements
+- P36-T01: Verify SPAN port is delivering packets to Malcolm (Zeek logs appearing in OpenSearch, doc count > 0)
+- P36-T02: Add conn normalizer — every TCP/UDP/ICMP connection, conn_state (S0/S1/SF/REJ/RSTO), duration, bytes
+- P36-T03: Add weird normalizer — protocol anomalies, severity: high by default
+- P36-T04: Add http, ssl, x509, files, notice normalizers
+- P36-T05: Add kerberos, ntlm, ssh normalizers (auth events — golden ticket, pass-the-hash)
+- P36-T06: Add smb_mapping, smb_files, rdp, dce_rpc normalizers (lateral movement indicators)
+- P36-T07: Add dhcp, dns (Zeek), software, known_hosts, known_services normalizers
+- P36-T08: Add remaining protocol normalizers (sip, ftp, smtp, socks, tunnel, pe)
+- P36-T09: Expand NormalizedEvent with conn_state, duration, bytes fields not covered in Phase 31
+- P36-T10: Update EventsView chips to include Connection / SMB / Auth / SSH / Lateral Movement
+- P36-T11: Update Sigma field_map.py to cover all new Zeek fields
+- P36-T12: End-to-end smoke test — verify all 15+ Zeek log types appear in DuckDB
+
+**Plans:** 0 plans
+**Activation:** Start this phase only after confirming Zeek logs are flowing in Malcolm OpenSearch.
+
+*Phase 36 added: 2026-04-09 (Zeek Full Telemetry — pending SPAN port hardware)*
