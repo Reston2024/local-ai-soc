@@ -66,7 +66,11 @@ INSERT OR IGNORE INTO normalized_events (
     attack_technique, attack_tactic,
     raw_event, tags, case_id,
     ocsf_class_uid, event_outcome, user_domain,
-    process_executable, network_protocol, network_direction
+    process_executable, network_protocol, network_direction,
+    dns_query, dns_query_type, dns_rcode, dns_answers, dns_ttl,
+    tls_version, tls_ja3, tls_ja3s, tls_sni, tls_cipher, tls_cert_subject, tls_validation_status,
+    file_md5, file_sha256_eve, file_mime_type, file_size_bytes,
+    http_method, http_uri, http_status_code, http_user_agent
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -77,7 +81,11 @@ INSERT OR IGNORE INTO normalized_events (
     ?, ?,
     ?, ?, ?,
     ?, ?, ?,
-    ?, ?, ?
+    ?, ?, ?,
+    ?, ?, ?, ?, ?,
+    ?, ?, ?, ?, ?, ?, ?,
+    ?, ?, ?, ?,
+    ?, ?, ?, ?
 )
 """
 

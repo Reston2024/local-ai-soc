@@ -120,7 +120,11 @@ def test_backward_compat_existing_fields():
 
 
 def test_to_duckdb_row_includes_new_fields():
-    """to_duckdb_row() must return a 35-element tuple; new fields at positions 29-34."""
+    """to_duckdb_row() must return a 55-element tuple; ECS fields at positions 29-34.
+
+    Updated from 35 to 55 in Phase 31 (plan 31-01) — 20 EVE protocol fields appended.
+    ECS field positions 29-34 are unchanged.
+    """
     event = NormalizedEvent(
         event_id="row-test",
         timestamp=_TS,
@@ -134,7 +138,7 @@ def test_to_duckdb_row_includes_new_fields():
         network_direction="inbound",
     )
     row = event.to_duckdb_row()
-    assert len(row) == 35
+    assert len(row) == 55             # Phase 31: expanded from 35 to 55 columns
     assert row[29] == 4001            # ocsf_class_uid
     assert row[30] == "failure"       # event_outcome
     assert row[31] == "WORKGROUP"     # user_domain

@@ -54,6 +54,12 @@ OCSF_CLASS_UID_MAP: dict[str, int] = {
     "wmi_event": 1009,
     "wmi_consumer": 1009,
     "wmi_subscription": 1009,
+    # Network Activity (4001) — EVE telemetry types added Phase 31
+    "tls": 4001,
+    "anomaly": 4001,
+    # File System Activity (1001) — EVE fileinfo
+    "file_transfer": 1001,
+    # dns_query: 4003 already present above
 }
 
 
@@ -99,11 +105,36 @@ class NormalizedEvent(BaseModel):
     process_executable: Optional[str] = None
     network_protocol: Optional[str] = None
     network_direction: Optional[str] = None
+    # Phase 31: EVE protocol telemetry fields (positions 35-54 in to_duckdb_row)
+    # DNS fields
+    dns_query: Optional[str] = None
+    dns_query_type: Optional[str] = None
+    dns_rcode: Optional[str] = None
+    dns_answers: Optional[str] = None      # JSON-encoded list of answer IPs
+    dns_ttl: Optional[int] = None
+    # TLS fields
+    tls_version: Optional[str] = None
+    tls_ja3: Optional[str] = None
+    tls_ja3s: Optional[str] = None
+    tls_sni: Optional[str] = None
+    tls_cipher: Optional[str] = None
+    tls_cert_subject: Optional[str] = None
+    tls_validation_status: Optional[str] = None
+    # File fields
+    file_md5: Optional[str] = None
+    file_sha256_eve: Optional[str] = None
+    file_mime_type: Optional[str] = None
+    file_size_bytes: Optional[int] = None
+    # HTTP fields
+    http_method: Optional[str] = None
+    http_uri: Optional[str] = None
+    http_status_code: Optional[int] = None
+    http_user_agent: Optional[str] = None
 
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
 
-        Column order (35 elements total):
+        Column order (55 elements total):
             [0]  event_id
             [1]  timestamp
             [2]  ingested_at
@@ -140,9 +171,27 @@ class NormalizedEvent(BaseModel):
             [32] process_executable
             [33] network_protocol
             [34] network_direction
-
-        NOTE: loader.py _INSERT_SQL uses positions 0-28 only until plan 20-02
-        migrates the DuckDB schema to include the six new columns.
+            --- Phase 31: EVE protocol fields ---
+            [35] dns_query
+            [36] dns_query_type
+            [37] dns_rcode
+            [38] dns_answers
+            [39] dns_ttl
+            [40] tls_version
+            [41] tls_ja3
+            [42] tls_ja3s
+            [43] tls_sni
+            [44] tls_cipher
+            [45] tls_cert_subject
+            [46] tls_validation_status
+            [47] file_md5
+            [48] file_sha256_eve
+            [49] file_mime_type
+            [50] file_size_bytes
+            [51] http_method
+            [52] http_uri
+            [53] http_status_code
+            [54] http_user_agent
         """
         def _ts(v: Union[datetime, str, None]) -> Optional[str]:
             if v is None:
@@ -187,6 +236,27 @@ class NormalizedEvent(BaseModel):
             self.process_executable,
             self.network_protocol,
             self.network_direction,
+            # Phase 31: EVE protocol fields (positions 35-54)
+            self.dns_query,
+            self.dns_query_type,
+            self.dns_rcode,
+            self.dns_answers,
+            self.dns_ttl,
+            self.tls_version,
+            self.tls_ja3,
+            self.tls_ja3s,
+            self.tls_sni,
+            self.tls_cipher,
+            self.tls_cert_subject,
+            self.tls_validation_status,
+            self.file_md5,
+            self.file_sha256_eve,
+            self.file_mime_type,
+            self.file_size_bytes,
+            self.http_method,
+            self.http_uri,
+            self.http_status_code,
+            self.http_user_agent,
         )
 
     def to_embedding_text(self) -> str:

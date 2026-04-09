@@ -222,6 +222,27 @@ _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
     ("process_executable", "TEXT"),
     ("network_protocol",   "TEXT"),
     ("network_direction",  "TEXT"),
+    # Phase 31: EVE protocol telemetry fields
+    ("dns_query",            "TEXT"),
+    ("dns_query_type",       "TEXT"),
+    ("dns_rcode",            "TEXT"),
+    ("dns_answers",          "TEXT"),
+    ("dns_ttl",              "INTEGER"),
+    ("tls_version",          "TEXT"),
+    ("tls_ja3",              "TEXT"),
+    ("tls_ja3s",             "TEXT"),
+    ("tls_sni",              "TEXT"),
+    ("tls_cipher",           "TEXT"),
+    ("tls_cert_subject",     "TEXT"),
+    ("tls_validation_status","TEXT"),
+    ("file_md5",             "TEXT"),
+    ("file_sha256_eve",      "TEXT"),
+    ("file_mime_type",       "TEXT"),
+    ("file_size_bytes",      "INTEGER"),
+    ("http_method",          "TEXT"),
+    ("http_uri",             "TEXT"),
+    ("http_status_code",     "INTEGER"),
+    ("http_user_agent",      "TEXT"),
 ]
 
 
