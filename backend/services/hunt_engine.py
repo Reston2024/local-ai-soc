@@ -247,6 +247,20 @@ class HuntEngine:
         sql = re.sub(r'\buser\b(?=\s*[,\)\s])', 'username', sql)
         sql = re.sub(r'\bproc\b', 'process_name', sql)
 
+        # Fix invalid window-function-in-WHERE pattern that llama3 commonly generates:
+        # WHERE ROW_NUMBER() OVER (ORDER BY col [DESC|ASC]) <= N
+        # → ORDER BY col [DESC|ASC] LIMIT N
+        sql = re.sub(
+            r"\s*WHERE\s+ROW_NUMBER\(\)\s+OVER\s*\(\s*ORDER\s+BY\s+(\w+)(\s+(?:DESC|ASC))?\s*\)\s*<=\s*(\d+)",
+            r" ORDER BY \1\2 LIMIT \3",
+            sql,
+            flags=re.IGNORECASE,
+        )
+
+        # Ensure every query has a LIMIT to prevent unbounded scans (cap at 500)
+        if not re.search(r'\bLIMIT\b', sql, flags=re.IGNORECASE):
+            sql = sql.rstrip().rstrip(";") + " LIMIT 500"
+
         # 3. Validate SQL — raises ValueError on failure
         validate_hunt_sql(sql)
 
