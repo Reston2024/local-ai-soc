@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { api, type NormalizedEvent } from '../lib/api.ts'
 
   let events = $state<NormalizedEvent[]>([])
@@ -52,11 +53,14 @@
   }
 
   $effect(() => {
-    // Re-fetch whenever selectedChip changes (Svelte 5 reactive effect)
-    // selectedChip is read here to register the dependency
-    const _ = selectedChip
-    offset = 0       // reset pagination on filter change
-    load()
+    // Track ONLY selectedChip. untrack() prevents load() from registering
+    // offset as a dependency — otherwise every Next/Prev click would trigger
+    // this effect, resetting offset to 0 and bouncing back to page 1.
+    selectedChip
+    untrack(() => {
+      offset = 0
+      load()
+    })
   })
 
   async function search() {
