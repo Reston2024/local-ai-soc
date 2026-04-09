@@ -606,6 +606,13 @@ def create_app() -> FastAPI:
     except ImportError as exc:
         log.warning("Notifications router not available: %s", exc)
 
+    try:
+        from backend.api.hunting import router as hunting_router
+        app.include_router(hunting_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Hunting router mounted at /api/hunts")
+    except Exception as exc:
+        log.warning("Hunting router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------

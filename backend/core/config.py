@@ -82,6 +82,12 @@ class Settings(BaseSettings):
     UBUNTU_NORMALIZER_URL: str = ""          # e.g. "http://192.168.1.22:8080"
     UBUNTU_NORMALIZER_POLL_INTERVAL: int = 60  # seconds between Ubuntu polls
 
+    # Phase 32 — OSINT API keys (all optional — graceful skip if unset)
+    ABUSEIPDB_API_KEY: str = ""
+    VT_API_KEY: str = ""          # VirusTotal
+    SHODAN_API_KEY: str = ""
+    GEOIP_DB_PATH: str = "data/GeoLite2-City.mmdb"
+
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
