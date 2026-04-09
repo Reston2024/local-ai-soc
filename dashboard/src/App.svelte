@@ -293,22 +293,35 @@
 
   /* ── Sidebar ── */
   .sidebar {
-    width: 224px;
+    width: 52px;
     flex-shrink: 0;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .sidebar:hover {
+    width: 224px;
   }
 
   .sidebar-header {
-    padding: 16px 14px 12px;
+    padding: 16px 10px 12px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-shrink: 0;
+    gap: 0;
+    transition: justify-content 0s, padding 0.22s;
+  }
+
+  .sidebar:hover .sidebar-header {
+    padding: 16px 14px 12px;
+    justify-content: space-between;
   }
 
   .logo-row { display: flex; align-items: center; gap: 8px; }
@@ -318,7 +331,11 @@
     font-weight: 800;
     letter-spacing: 2px;
     color: var(--text-primary);
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.15s ease;
   }
+  .sidebar:hover .logo-text { opacity: 1; }
 
   .health-dot {
     width: 7px;
@@ -330,9 +347,18 @@
 
   /* ── Posture block ── */
   .posture-block {
-    padding: 12px 14px;
+    padding: 0 14px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.22s ease, opacity 0.15s ease, padding 0.22s ease;
+  }
+  .sidebar:hover .posture-block {
+    padding: 12px 14px;
+    max-height: 80px;
+    opacity: 1;
   }
 
   .posture-header {
@@ -402,7 +428,17 @@
     letter-spacing: 0.9px;
     text-transform: uppercase;
     color: var(--text-muted);
+    padding: 0 8px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    white-space: nowrap;
+    transition: max-height 0.2s ease, opacity 0.15s ease, padding 0.2s ease;
+  }
+  .sidebar:hover .nav-group-label {
     padding: 8px 8px 4px;
+    max-height: 28px;
+    opacity: 1;
   }
 
   .nav-list {
@@ -417,7 +453,7 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 7px 8px;
+    padding: 7px 5px;
     background: none;
     border: none;
     color: var(--text-secondary);
@@ -426,8 +462,14 @@
     cursor: pointer;
     text-align: left;
     border-radius: var(--radius-md);
-    transition: background 0.12s, color 0.12s;
+    transition: background 0.12s, color 0.12s, padding 0.22s;
     position: relative;
+    justify-content: center;
+  }
+
+  .sidebar:hover .nav-item {
+    padding: 7px 8px;
+    justify-content: flex-start;
   }
 
   .nav-item:hover {
@@ -438,6 +480,9 @@
   .nav-item.active {
     background: rgba(0, 212, 255, 0.07);
     color: var(--item-color, var(--accent-cyan));
+  }
+
+  .sidebar:hover .nav-item.active {
     border-left: 2px solid var(--item-color, var(--accent-cyan));
     padding-left: 6px;
   }
@@ -459,7 +504,13 @@
   .nav-item.active .nav-icon-wrap,
   .active-icon { background: rgba(0, 212, 255, 0.1); color: var(--item-color, var(--accent-cyan)); }
 
-  .nav-label { flex: 1; }
+  .nav-label {
+    flex: 1;
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.12s ease;
+  }
+  .sidebar:hover .nav-label { opacity: 1; }
 
   .beta-tag {
     font-size: 9px;
@@ -471,7 +522,10 @@
     padding: 1px 5px;
     border-radius: 4px;
     flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.12s ease;
   }
+  .sidebar:hover .beta-tag { opacity: 1; }
 
   .inv-dot {
     width: 6px;
@@ -488,22 +542,34 @@
     border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     flex-shrink: 0;
+    transition: justify-content 0s;
+  }
+  .sidebar:hover .sidebar-footer {
+    justify-content: space-between;
   }
 
   .version {
     font-size: 11px;
     color: var(--text-muted);
     font-family: var(--font-mono);
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.12s ease;
   }
+  .sidebar:hover .version { opacity: 1; }
 
   .footer-status {
     font-size: 10px;
     color: var(--text-muted);
     text-transform: capitalize;
     letter-spacing: 0.3px;
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.12s ease;
   }
+  .sidebar:hover .footer-status { opacity: 1; }
 
   /* ── Main ── */
   .main-content {
