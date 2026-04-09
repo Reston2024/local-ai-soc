@@ -70,14 +70,19 @@ async def run_hunt_query(body: HuntQueryRequest, request: Request) -> JSONRespon
 
     return JSONResponse(
         status_code=200,
-        content={
-            "hunt_id": result.hunt_id,
-            "query": result.query,
-            "sql": result.sql,
-            "rows": result.rows,
-            "row_count": result.row_count,
-            "created_at": result.created_at,
-        },
+        content=json.loads(
+            json.dumps(
+                {
+                    "hunt_id": result.hunt_id,
+                    "query": result.query,
+                    "sql": result.sql,
+                    "rows": result.rows,
+                    "row_count": result.row_count,
+                    "created_at": result.created_at,
+                },
+                default=str,
+            )
+        ),
     )
 
 
