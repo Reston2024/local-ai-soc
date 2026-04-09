@@ -703,3 +703,36 @@ The AI only runs when an analyst explicitly initiates a chat or RAG query (analy
 - `POST /api/query/ask/stream` → AI. Analyst-initiated.
 
 **Consequences of the gap:** An analyst who runs detection and expects AI triage to appear automatically will be disappointed. This is now documented in README.md, ARCHITECTURE.md, and here — not hidden.
+
+---
+
+## ADR-034: Hardware Purchases — Evidence Archive Drive + SPAN Switch
+
+**Date:** 2026-04-09
+**Status:** ACCEPTED — hardware in transit
+
+**Context:**
+Phase 31 requires an external drive on the Ubuntu box (supportTAK-server, 192.168.1.22) to host the forensic evidence archive. Phase 36 (Zeek Full Telemetry) is blocked on a managed switch with SPAN port capability — Malcolm's Zeek containers are running but produce zero logs without traffic mirroring.
+
+**Decisions:**
+1. **2TB external drive** — purchased 2026-04-09. Will be mounted at `/mnt/evidence` on Ubuntu (supportTAK-server, GMKtec N150). Hosts EvidenceArchiver daily gzip files + SHA256 checksums. Desktop has read-only access only.
+2. **Netgear GS308E managed switch** — purchased 2026-04-09. Will replace current unmanaged switch between IPFire and LAN. SPAN port configured to mirror all LAN traffic to Malcolm's capture interface (`eth0` or equivalent). This activates all 40+ Zeek log types currently producing zero data.
+
+**Alternatives considered:**
+- Cisco SG350-8 (~$120): more features, overkill for home lab SPAN mirroring.
+- Netgear GS310TP (~$90): acceptable fallback, PoE variant.
+- No SPAN switch: Zeek stays theater indefinitely. Rejected — user wants full NSM coverage.
+
+**Network topology decision:**
+- Netgear GS308E sits between IPFire LAN port and all LAN devices.
+- Port 7 or 8 (configurable via web UI) mirrored to Malcolm's capture interface.
+- Malcolm capture interface must be in promiscuous mode (already configured).
+
+**Phase impact:**
+- Phase 31: 2TB drive enables EvidenceArchiver P31-T07. Archive path `/mnt/evidence` confirmed.
+- Phase 36: Netgear GS308E unblocks Zeek. Phase 36 status changed from "blocked" to "planned — hardware in transit." Activate Phase 36 once switch arrives and Zeek doc count in OpenSearch > 0.
+
+**Trade-offs:**
+- Drive not yet mounted — Phase 31 EvidenceArchiver will need `EVIDENCE_ARCHIVE_PATH` configured on Ubuntu before P31-T07 is live.
+- Switch not yet arrived — Phase 36 remains non-executable until SPAN port is confirmed.
+- Hardware setup documented in `docs/HARDWARE-SETUP.md`.

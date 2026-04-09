@@ -31,3 +31,5 @@ See: .planning/PROJECT.md
 - 2026-04-09: Phases 31-35 revised — Zeek deferred to Phase 36 (no SPAN port hardware)
 - 2026-04-09: Phase 36 (Zeek Full Telemetry) added to ROADMAP — blocked on managed switch purchase
 - 2026-04-09: Architecture decision — Ubuntu box is dumb pipe only (no AI). Evidence archive + normalization pipeline added to Phase 31.
+- 2026-04-09: Hardware purchased — 2TB external drive (Ubuntu evidence archive) + Netgear GS308E managed switch (SPAN port for Phase 36). Phase 36 status: blocked → planned/in-transit. See ADR-034.
+- 2026-04-09: Phase 31 P31-T12 added — beta Zeek telemetry chips in EventsView (disabled, Phase 36 preview). Plan 31-03 updated.

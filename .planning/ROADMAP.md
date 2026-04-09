@@ -1092,7 +1092,9 @@ Plans:
 - [ ] 31-02-PLAN.md — Ubuntu EvidenceArchiver + normalization FastAPI server + systemd units
 - [ ] 31-03-PLAN.md — Ubuntu poll setting, EventsView filter chips
 
-**Hardware note:** Zeek data requires managed switch with SPAN port (Cisco SG350-8 or Netgear GS308E, ~$50-80). See Phase 36.
+- P31-T12: Add beta/coming-soon Zeek log type chips to EventsView — grayed-out, non-clickable chips for Connection | HTTP | SSL | SMB | Auth | SSH | SMTP | DHCP with "Phase 36 — SPAN port in transit" tooltip. No API calls. Real SOC UX pattern: shows analysts what telemetry arrives when SPAN is configured.
+
+**Hardware note:** 2TB external drive purchased 2026-04-09 (Ubuntu evidence archive, not yet mounted). Netgear GS308E managed switch purchased 2026-04-09 (SPAN port for Phase 36, not yet arrived). See Phase 36 for Zeek activation.
 
 *Phase 31 revised: 2026-04-09 (Real telemetry only — no theater, no Zeek without hardware)*
 
@@ -1172,9 +1174,9 @@ Plans:
 *Phase 35 revised: 2026-04-09 (Auto-triage added — AI analyzes detections without analyst prompting)*
 
 ## Phase 36: Zeek Full Telemetry
-**Status:** blocked
+**Status:** planned — hardware in transit
 **Added:** 2026-04-09
-**Blocked by:** SPAN port hardware — managed switch required (Cisco SG350-8 or Netgear GS308E, ~$50-80). Malcolm's Zeek containers currently produce zero logs.
+**Hardware status:** Netgear GS308E managed switch purchased 2026-04-09. Not yet arrived. Malcolm's Zeek containers currently produce zero logs — will produce full telemetry once SPAN port is mirroring traffic to Malcolm's capture interface.
 **Goal:** Once a managed switch is installed with SPAN mirroring to Malcolm's capture interface, expand Malcolm collector to all 40+ Zeek log types. Implement normalizers for: conn, dns, http, ssl, x509, files, notice, weird, dhcp, ssh, smtp, rdp, smb_mapping, smb_files, software, kerberos, ntlm, ftp, sip, socks, tunnel, pe, known_hosts, known_services, intel, signatures, and ICS protocols if present. Full NormalizedEvent expansion. DuckDB migration. EventsView chip expansion.
 
 ### Requirements
@@ -1194,4 +1196,4 @@ Plans:
 **Plans:** 0 plans
 **Activation:** Start this phase only after confirming Zeek logs are flowing in Malcolm OpenSearch.
 
-*Phase 36 added: 2026-04-09 (Zeek Full Telemetry — pending SPAN port hardware)*
+*Phase 36 added: 2026-04-09. Hardware purchased 2026-04-09 (Netgear GS308E, arriving). Activate once SPAN port is configured and Zeek logs confirmed flowing in Malcolm OpenSearch.*

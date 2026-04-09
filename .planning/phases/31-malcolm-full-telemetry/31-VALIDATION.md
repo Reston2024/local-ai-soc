@@ -49,6 +49,7 @@ created: 2026-04-09
 | 31-T09 | 01 | 2 | P31-T09 | unit | `uv run pytest tests/unit/test_malcolm_collector.py::test_ubuntu_poll -x -q` | ⬜ pending |
 | 31-T10 | 03 | 2 | P31-T10 | manual | Open dashboard, verify chip row renders, click DNS chip, verify event list filters | ⬜ pending |
 | 31-T11 | 01 | 1 | P31-T11 | unit | `uv run pytest tests/unit/test_normalized_event.py::test_ocsf_new_types -x -q` | ⬜ pending |
+| 31-T12 | 03 | 2 | P31-T12 | automated | `grep -c "ZEEK_CHIPS\|chip-beta\|chip-divider" dashboard/src/views/EventsView.svelte` | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
