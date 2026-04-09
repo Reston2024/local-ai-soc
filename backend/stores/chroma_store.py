@@ -37,21 +37,30 @@ class ChromaStore:
     """
 
     def __init__(self, data_dir: str, chroma_url: str = "", chroma_token: str = "") -> None:
+        remote_ok = False
         if chroma_url:
             parsed = urlparse(chroma_url)
             host = parsed.hostname or "localhost"
             port = parsed.port or 8000
             ssl = parsed.scheme == "https"
             headers = {"X-Chroma-Token": chroma_token} if chroma_token else {}
-            self._client = chromadb.HttpClient(
-                host=host,
-                port=port,
-                ssl=ssl,
-                headers=headers,
-                settings=ChromaSettings(anonymized_telemetry=False),
-            )
-            log.info("Chroma store initialised (remote)", url=chroma_url)
-        else:
+            try:
+                self._client = chromadb.HttpClient(
+                    host=host,
+                    port=port,
+                    ssl=ssl,
+                    headers=headers,
+                    settings=ChromaSettings(anonymized_telemetry=False),
+                )
+                log.info("Chroma store initialised (remote)", url=chroma_url)
+                remote_ok = True
+            except Exception as exc:
+                log.warning(
+                    "Chroma remote unavailable — falling back to local PersistentClient",
+                    url=chroma_url,
+                    error=str(exc),
+                )
+        if not remote_ok:
             chroma_dir = str(Path(data_dir) / "chroma")
             Path(chroma_dir).mkdir(parents=True, exist_ok=True)
             self._client = chromadb.PersistentClient(
