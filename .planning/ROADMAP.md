@@ -1123,40 +1123,130 @@ Plans:
 
 *Phase 32 revised: 2026-04-09 (OSINT enrichment + IP threat trace map added — passive/legal only)*
 
-## Phase 33: Real Threat Intelligence
+## Phase 33: Threat Intelligence Platform (Commercial Grade)
 **Status:** planned
 **Added:** 2026-04-09
-**Goal:** Replace the completely stubbed ThreatIntelView with working IOC matching and enrichment. Phase 1: match IOCs from ingested telemetry against each other and known-bad indicators stored locally. Phase 2: optional external feed polling (Abuse.ch, OTX free API). Enrich detections with IOC context automatically on ingestion.
+**Revised:** 2026-04-09 — Full TIP rebuild. Target: feature parity with Elastic Security TI, IBM QRadar TI, and Microsoft Sentinel TI blade. All sources free/open.
+**Goal:** Build a production-grade Threat Intelligence Platform. Multi-source IOC ingestion from 10+ free feeds. Automated enrichment on every detection without analyst action. Entity risk scoring (0-100) with confidence decay. IOC lifecycle management (TLP, confidence, revocation). STIX/TAXII 2.1 ingestion. Retroactive hunting — when new IOC arrives, automatically search all historical events. PassiveDNS pivoting. Certificate intelligence. IOC relationship graph. ThreatIntelView becomes a real TIP console.
+
+### Feed Inventory (all free, no paid subscriptions)
+| Feed | Source | IOC Types | Key | Sync |
+|------|--------|-----------|-----|------|
+| Abuse.ch URLhaus | CSV | Malicious URLs | None | Hourly |
+| Abuse.ch MalwareBazaar | REST | File hashes + malware family | None | Hourly |
+| Abuse.ch ThreatFox | REST | IPs, domains, hashes + actor tags | None | Hourly |
+| Feodo Tracker | CSV | C2 IPs (banking trojans, ransomware) | None | Hourly |
+| CISA KEV | JSON | Known exploited CVEs | None | Daily |
+| AlienVault OTX | REST | Full IOC pulses + actor attribution | Free key | 6-hourly |
+| MISP community | TAXII 2.1 | STIX bundles, all types | Free | 6-hourly |
+| Blocklist.de | CSV | Attack IPs by category | None | Hourly |
+| PhishTank | CSV | Phishing URLs | None | Daily |
+| Emerging Threats | Rules | Suricata detection rules | None | Daily |
+| Greynoise community | REST | IP context (scanner/malicious) | Free key | On-demand |
+
+### Enrichment Per Entity (automated, cached 24h in SQLite)
+- **IP:** AbuseIPDB score + categories, MaxMind geo+ASN, BGPView prefix/org, PassiveDNS (CIRCL.lu — no key), Greynoise community context, Shodan free host info, ThreatFox/URLhaus/Feodo match
+- **Domain:** WHOIS (registrar, age, registrant org), PassiveDNS historical IPs (CIRCL.lu), crt.sh certificate history, URLhaus match, PhishTank match, VirusTotal free-tier (4 req/min)
+- **Hash (MD5/SHA256):** MalwareBazaar (malware family, actor tag, AV detections), ThreatFox match, VirusTotal free-tier detection count
+- **URL:** URLhaus (tags, reporter), PhishTank (verified phish), VirusTotal free-tier
+
+### Risk Scoring Model (0–100, per entity)
+- IOC match from C2/ransomware feed (Feodo, ThreatFox): +50
+- IOC match from general abuse feed (URLhaus, Blocklist.de): +25
+- AbuseIPDB confidence >80: +30 | 50–80: +15
+- Greynoise "malicious" tag: +35 | "scanner" tag: +10
+- Active in OTX pulse: +20 (+ actor confidence weight)
+- VirusTotal malicious engines >5: +25
+- Decay: −5 points per week without new signal
+- Floor: 0 (never goes negative from decay alone)
+- Score surfaced on: EventsView, DetectionsView, HuntingView, InvestigationView
+
+### IOC Lifecycle
+- **TLP levels:** WHITE / GREEN / AMBER / RED — controls display and sharing
+- **Confidence:** 0–100 (feed-assigned or calculated). Decays daily.
+- **Status:** active | expired | revoked | false_positive
+- **Expiry:** IOCs > max_age with confidence < threshold → auto-expired
+- **Revocation:** analyst can mark false positive → suppressed from future matching
 
 ### Requirements
-- P33-T01: Implement backend/api/intel.py — GET /api/intel/iocs (search), POST /api/intel/iocs (add manual IOC), GET /api/intel/feeds (feed status), POST /api/intel/feeds/{name}/sync (trigger sync)
-- P33-T02: Create SQLite ioc_store table — (ioc_id, ioc_type [ip/domain/hash/url], value, source, confidence, tags, first_seen, last_seen, hit_count)
-- P33-T03: Implement IOC matching on ingest — after each event normalizes, check src_ip/dst_ip/domain/file_hash against ioc_store, tag matching events with detection_source="ioc_match"
-- P33-T04: Implement Abuse.ch URLhaus free feed sync (no API key required) — download CSV, parse, upsert to ioc_store
-- P33-T05: Implement OTX free feed polling via pulse API (API key optional, falls back to graceful skip if not configured)
-- P33-T06: Wire ThreatIntelView.svelte — real feed status from API, real IOC count, last sync time, manual IOC search, add IOC form
-- P33-T07: Add IOC enrichment display to EventsView and InvestigationView — matched events show IOC badge with source and confidence
+- P33-T01: Create SQLite ioc_store schema — ioc_id, ioc_type (ip/domain/hash/url/cve), value, source_feed, confidence (0-100), tlp, status (active/expired/revoked/false_positive), actor_tag, malware_family, tags JSON, first_seen, last_seen, hit_count, decay_rate
+- P33-T02: Create SQLite ioc_enrichment_cache schema — entity_type, entity_value, enrichment_json, fetched_at, expires_at. 24h TTL, async background refresh.
+- P33-T03: Create SQLite ioc_relationships schema — from_value, to_value, relationship_type (resolves_to / associated_with / delivers / hosted_by / owned_by), source, created_at
+- P33-T04: Implement feed sync engine — backend/services/intel/feed_sync.py: async workers per feed, rate-limited, upsert to ioc_store, conflict resolution (highest confidence wins), deduplication by value+type. Scheduled via asyncio background task every N minutes per feed.
+- P33-T05: Implement Abuse.ch feeds (URLhaus CSV, MalwareBazaar REST, ThreatFox REST) — no API key, parse into IOC schema, extract actor_tag + malware_family from ThreatFox tags
+- P33-T06: Implement Feodo Tracker + Blocklist.de + CISA KEV + PhishTank + Emerging Threats rule sync
+- P33-T07: Implement AlienVault OTX feed sync — OTX_API_KEY env var (graceful skip if unset), poll subscribed pulses, extract IOCs + actor attribution + MITRE ATT&CK tags from pulse metadata
+- P33-T08: Implement MISP/TAXII 2.1 feed ingestion — MISP_TAXII_URL + MISP_TAXII_KEY env vars, use taxii2-client library, parse STIX 2.1 indicator objects, map STIX pattern → ioc_store schema
+- P33-T09: Implement IOC matching on ingest — after each NormalizedEvent normalizes, check src_ip/dst_ip/dns_query/file_md5/file_sha256_eve/http_uri against ioc_store (fast path: SQLite indexed lookup). Tag matching events: ioc_matched=True, ioc_confidence, ioc_actor_tag in NormalizedEvent. Add these fields to DuckDB schema via migration.
+- P33-T10: Implement risk scoring engine — backend/services/intel/risk_score.py: given entity type+value, compute 0-100 score from enrichment data + IOC matches + decay. Store in SQLite entity_risk_scores table (entity_type, entity_value, score, components_json, computed_at). Background task recomputes daily.
+- P33-T11: Implement enrichment service — backend/services/intel/enrichment.py: async enrichment for IP/domain/hash/URL. Rate-limited per API (AbuseIPDB 1k/day, VirusTotal 4/min, Shodan 1/sec). Results stored in ioc_enrichment_cache. Triggered automatically on IOC match and on-demand via API.
+- P33-T12: Implement PassiveDNS pivot — GET /api/intel/passivedns/{domain} and /{ip}: queries CIRCL.lu passive DNS API (no API key required), returns historical resolutions, caches 6h. Used in enrichment panel and investigation view.
+- P33-T13: Implement certificate intelligence — GET /api/intel/certs/{domain}: queries crt.sh REST API (no key), returns TLS cert history with SANs, issuer, validity dates. Reveals actor infrastructure reuse across domains.
+- P33-T14: Implement retroactive hunting — SQLite retrohunt_queue table (ioc_id, status, events_found, created_at, completed_at). When new IOC added: queue DuckDB full-scan against normalized_events for matching fields. Background asyncio task processes queue every 5 min. If matches found: create DetectionRecord with detection_source="retrohunt_ioc_match", surface in DetectionsView.
+- P33-T15: Implement backend/api/intel.py — GET /api/intel/iocs (search + filter by type/status/actor), POST /api/intel/iocs (manual IOC add), DELETE /api/intel/iocs/{id} (revoke), GET /api/intel/feeds (status + last sync + IOC count per feed), POST /api/intel/feeds/{name}/sync (manual trigger), GET /api/intel/enrichment/{type}/{value} (on-demand enrichment), GET /api/intel/risk/{type}/{value} (risk score), GET /api/intel/relationships/{value} (IOC relationship graph)
+- P33-T16: Wire ThreatIntelView.svelte — real TIP console: feed status dashboard (last sync, IOC count, health), IOC search with faceted filters (type/actor/malware/TLP/status), IOC detail panel (all enrichment data, risk score, relationship graph using Cytoscape.js), manual IOC add form with TLP selector, retrohunt queue status
+- P33-T17: Add IOC enrichment panel to EventsView, DetectionsView, InvestigationView — when an event has ioc_matched=True, show inline enrichment card: risk score (colour-coded), actor tag, malware family, AbuseIPDB score, geo/ASN, PassiveDNS count, VirusTotal detection count
 
 **Plans:** 0 plans
 
-*Phase 33 added: 2026-04-09 (Real Threat Intelligence — IOC matching and feed integration)*
+*Phase 33 revised: 2026-04-09 — Commercial-grade TIP. Feature parity with Elastic Security TI and Microsoft Sentinel TI blade. All sources free.*
 
-## Phase 34: Asset Inventory
+## Phase 34: MITRE ATT&CK + Actor Intelligence + Asset Inventory + UEBA
 **Status:** planned
 **Added:** 2026-04-09
-**Goal:** Build a real asset inventory derived automatically from Malcolm/Zeek telemetry. Every unique host IP seen in conn/dns/http/dhcp logs becomes a tracked asset with last-seen timestamp, associated hostnames (from DHCP/DNS), open ports/services (from conn logs), OS fingerprint (from software/TLS logs), and associated detections/alerts. AssetsView becomes a live CMDB.
+**Revised:** 2026-04-09 — Combined ATT&CK/actor intelligence with asset inventory and basic UEBA. This is the attribution and asset layer that turns detection into understanding.
+**Goal:** (1) Full MITRE ATT&CK integration: auto-tag every detection with technique/tactic, ATT&CK coverage heatmap, actor group profile matching. (2) Campaign tracking: cluster related detections by TTP pattern + timeframe + infrastructure. (3) Diamond Model view for any campaign. (4) Real asset inventory from telemetry. (5) Basic UEBA: behavioral baselines per user/host, anomaly detection.
+
+### MITRE ATT&CK Integration
+- Local ATT&CK Enterprise JSON (offline file, free from attack.mitre.org, updated quarterly)
+- SQLite tables: attack_techniques (id, name, tactic, description, detection, data_sources), attack_groups (id, name, aliases, country, TTPs JSON), attack_software (id, name, type, aliases, associated_groups), attack_campaigns (id, name, groups, TTPs, targets)
+- Auto-tag on ingest: Sigma rules already contain `tags: [attack.tXXXX]` — extract and store with DetectionRecord
+- Actor matching: given a set of detected technique IDs, find ATT&CK groups that use ≥60% of them → "Likely actor: [Group] (73% TTP match)"
+- ATT&CK coverage heatmap: SVG matrix (tactics × techniques), green=have rule, yellow=partial, red=no coverage. Shows defensive gaps.
+
+### Campaign Tracking
+- Cluster related DetectionRecords: same actor tag OR same src_ip OR ≥3 shared ATT&CK techniques, within 7-day window
+- Auto-name from actor (if matched) or tactic + date
+- Campaign stored in SQLite: campaign_id, name, actor_tag, technique_ids JSON, src_ips JSON, affected_assets JSON, first_seen, last_seen, status (active/closed)
+- CampaignView: timeline of detections in campaign, ATT&CK techniques heat, affected assets, actor profile card
+
+### Diamond Model
+- For any campaign: 4-quadrant viz (Adversary / Capability / Infrastructure / Victim)
+- Adversary: actor name + confidence + aliases + country
+- Capability: TTPs, tools (from ATT&CK software), malware families (from ThreatFox/MalwareBazaar)
+- Infrastructure: C2 IPs + domains + TLS cert fingerprints (from Phase 33)
+- Victim: affected assets + targeted users + targeted services
+
+### Asset Inventory
+- SQLite asset_store: asset_id, ip, hostname, mac, os_guess, first_seen, last_seen, open_ports JSON, tags, alert_count, risk_score (from Phase 33 scoring)
+- Auto-upsert from normalized events: every src_ip/dst_ip seen becomes an asset record
+- Enriched with Phase 36 Zeek data when available: DHCP hostname, conn open ports, software banner
+- Asset risk: inherit risk score from Phase 33 entity scoring, plus detection frequency weight
+- Actor targeting: show which ATT&CK groups target this asset's OS/service profile
+
+### UEBA (User and Entity Behavior Analytics)
+- 7-day rolling baseline per user and per host (distinct from real-time detection)
+- Behavioral features: login hours, unique dst_ips per day, process set, avg bytes/hour, unique domains queried
+- Anomaly triggers: new country in src_ip, first-seen process, hour-of-day outside baseline (>3σ), volume spike (>5x daily average)
+- Score anomaly 0-100, create DetectionRecord with detection_source="ueba_anomaly"
+- Baseline stored in SQLite entity_baselines table, recomputed nightly
 
 ### Requirements
-- P34-T01: Implement asset_store in SQLite — (asset_id, ip, hostname, mac, os_guess, first_seen, last_seen, open_ports JSON, tags, alert_count)
-- P34-T02: Implement asset upsert pipeline — on ingest of zeek-conn/zeek-dhcp/zeek-dns/zeek-software events, upsert asset record (update last_seen, merge open ports, update hostname if DHCP provides one)
-- P34-T03: Implement backend/api/assets.py — GET /api/assets (list with filters), GET /api/assets/{id} (detail with events), POST /api/assets/{id}/tag
-- P34-T04: Wire AssetsView.svelte — remove disabled "Discover Assets" button, replace with live asset table sorted by last_seen, click-through to asset detail with event history and associated alerts
-- P34-T05: Add asset timeline — for each asset, show chronological events from all Zeek log types
-- P34-T06: Register assets router in main.py with auth
+- P34-T01: Download and parse MITRE ATT&CK Enterprise JSON → SQLite (attack_techniques, attack_groups, attack_software, attack_campaigns tables)
+- P34-T02: Auto-tag DetectionRecords with ATT&CK technique IDs from Sigma rule tags on detection fire
+- P34-T03: Implement actor profile matching — given detected technique set, score each ATT&CK group by TTP overlap %, surface top-3 candidate actors with confidence %
+- P34-T04: Build ATT&CK coverage heatmap — GET /api/attack/coverage returns technique matrix with coverage status. Frontend: SVG grid colored by coverage.
+- P34-T05: Implement campaign clustering — background worker groups related DetectionRecords into campaigns using shared infrastructure + TTP + time window
+- P34-T06: Implement Diamond Model view — CampaignView.svelte or InvestigationView panel: 4-quadrant layout populated from campaign + ATT&CK + TI data
+- P34-T07: Implement asset_store upsert pipeline — on every normalized event, upsert src_ip/dst_ip as assets. Update last_seen, hostname, open_ports.
+- P34-T08: Implement backend/api/assets.py — GET /api/assets (list, filter by risk/tag/alert_count), GET /api/assets/{id} (detail: events, detections, campaigns, OSINT enrichment, actor targeting), POST /api/assets/{id}/tag
+- P34-T09: Wire AssetsView.svelte — live asset table: risk score badge, last-seen, hostname, alert count, actor targeting warning. Click-through to asset detail with event timeline, associated detections, Diamond Model if in campaign.
+- P34-T10: Implement UEBA baseline engine — nightly asyncio task computes behavioral baselines per user/host. Real-time anomaly check on each new event. Creates DetectionRecord on trigger.
+- P34-T11: Add CampaignView nav item and actor profile cards — actor card shows: name, aliases, country, targets, tools, TTPs, confidence score, link to MITRE page.
 
 **Plans:** 0 plans
 
-*Phase 34 added: 2026-04-09 (Asset Inventory — auto-derived from Malcolm telemetry)*
+*Phase 34 revised: 2026-04-09 — ATT&CK integration + actor intelligence + campaign tracking + Diamond Model + asset inventory + UEBA. This is the attribution layer.*
 
 ## Phase 35: SOC Completeness
 **Status:** planned
