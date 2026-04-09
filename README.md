@@ -2,9 +2,39 @@
 
 **Local Windows AI Cybersecurity Investigation Platform**
 
-A single-analyst, air-gapped cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally on a Windows desktop — no cloud, no telemetry, no external services.
+A single-analyst, local-first cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally — no cloud, no telemetry, no external services.
 
-**Status:** v1.0 milestone gap closure in progress — Phases 3–27 complete (938 tests passing, 10 integration tests expected-fail while backend offline). Live Malcolm NSM feed, recommendation workflow, graph schema versioning, and receipt ingestion all shipped. Phase 28 next: dashboard integration fixes (RAG SSE endpoint, event search shape, SettingsView routing).
+**Status:** v1.0 complete (30 phases, 59/59 requirements, 8/8 E2E flows). v1.1 in progress (Phases 31-36).
+
+---
+
+## Architecture (Two-Box)
+
+```
+  supportTAK-server (Ubuntu, GMKtec N150)          Desktop (Windows 11, RTX 5080)
+  192.168.1.22                                       SOC Brain
+  ┌─────────────────────────────────┐               ┌────────────────────────────────────────────┐
+  │  Malcolm NSM (17 containers)    │               │  Caddy (Docker) — TLS termination           │
+  │  ├─ OpenSearch  7.4 GB RAM      │    syslog /   │  FastAPI backend — port 8000                │
+  │  ├─ Logstash                    │  EVE JSON /   │  ├─ DuckDB (events.duckdb)                  │
+  │  ├─ Filebeat                    │  beats ──────▶│  ├─ ChromaDB (vector embeddings)            │
+  │  ├─ Arkime (sessions)           │               │  ├─ SQLite (graph.sqlite3)                  │
+  │  └─ 13 idle containers *        │               │  └─ Ollama qwen3:14b — GPU 50-80+ tok/s    │
+  └─────────────────────────────────┘               │                                            │
+                                                     │  Svelte 5 Dashboard — https://localhost     │
+  * No SPAN port → pcap-capture, Zeek,              └────────────────────────────────────────────┘
+    Strelka, NetBox, Keycloak idle.
+    Zeek produces 0 logs.
+```
+
+**Ubuntu box is a dumb pipe only.** It collects and indexes raw telemetry. No AI, no inference, no analysis. All intelligence runs on the desktop GPU.
+
+**Malcolm telemetry — honest status (as of 2026-04-09):**
+- IPFire syslog → malcolm_beats_syslog_* → 22M+ docs ✓
+- Suricata EVE alerts → arkime_sessions3-* → 71K docs ✓ (collecting)
+- Suricata EVE TLS / DNS / fileinfo / anomaly → NOT collecting yet (Phase 31 fixes this)
+- Zeek logs → 0 docs — no SPAN port, no packet source
+- 17 Malcolm containers run but most are idle without PCAP feed (~630MB RAM consumed)
 
 ---
 
@@ -12,32 +42,35 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 
 | Capability | Status | Details |
 |-----------|--------|---------|
-| **Event Ingestion** | ✅ | EVTX, JSON/NDJSON, CSV, osquery log parsers |
-| **Sigma Detection** | ✅ | pySigma + custom DuckDB backend; MITRE ATT&CK tagging |
-| **Graph Correlation** | ✅ | Entity extraction → SQLite graph; Union-Find clustering |
-| **Investigation Engine** | ✅ | Timeline, attack chain, causality, case management |
-| **AI Analyst Copilot** | ✅ | RAG over events; Ollama qwen3:14b; SSE streaming |
-| **Attack Graph UI** | ✅ | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths |
-| **Svelte 5 Dashboard** | ✅ | Detections, Events, Graph, Investigation, Query, Assets views |
-| **SOAR Playbooks** | ✅ | 5 NIST IR playbooks; analyst-gated step execution; SSE stream; audit trail |
-| **Reporting & Compliance** | ✅ | WeasyPrint PDF reports, MITRE ATT&CK heatmap, D3 KPI trends, NIST CSF 2.0 + TheHive ZIP export |
-| **Threat Hunting** | Beta | Structured hunt queries, hypothesis tracking |
-| **Bearer Token Auth** | ✅ | Startup validator rejects weak tokens; MFA-gated legacy admin path |
-| **Citation Verification** | ✅ | LLM responses verified against retrieved context; `citation_verified` in payload |
-| **Prompt Injection Scrubbing** | ✅ | Base64/Unicode NFC normalization + regex scrub on all free-text fields; evidence in system turn |
-| **LLM Audit Logging** | ✅ | Full prompt text (64KB cap) + SHA-256 hash logged to `llm_calls` table |
-| **TOTP Replay Protection** | ✅ | SQLite `system_kv` persistent across restarts; L1 in-process cache |
-| **Security Headers** | ✅ | CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via Caddy |
-| **Meta-Detection Rules** | ✅ | Sigma rules monitoring auth burst, LLM token spikes, ChromaDB deletions |
-| **Identity & RBAC** | ✅ | Operator table, bcrypt hashed passwords, role-based route guards |
-| **Firewall Integration** | ✅ | IPFire syslog + Suricata EVE JSON ingestion; FirewallCollector heartbeat monitoring |
-| **Malcolm NSM Integration** | ✅ | MalcolmCollector polls OpenSearch (arkime + beats); ECS field normalization; 30s poll cycle |
-| **Recommendation Workflow** | ✅ | AI artifact store; approve/dispatch pipeline; JSON schema validation; dispatch log |
-| **Receipt Ingestion** | ✅ | Firewall execution receipts → case state propagation; audit trail |
-| **Graph Schema Versioning** | ✅ | `schema_version` in SQLite; firewall_zone + network_segment entity types; migration support |
-| **Perimeter Entities** | ✅ | Firewall zone nodes with colour-coded risk; network segment subnet bubbles in Attack Graph |
+| **Event Ingestion** | Ready | EVTX, JSON/NDJSON, CSV, osquery parsers |
+| **Sigma Detection** | Ready | pySigma + custom DuckDB backend; MITRE ATT&CK tagging |
+| **Graph Correlation** | Ready | Entity extraction → SQLite graph; Union-Find clustering |
+| **Investigation Engine** | Ready | Timeline, attack chain, causality, case management |
+| **AI Copilot (RAG Q&A)** | Ready — reactive only | RAG over events; SSE streaming; analyst-initiated only. Auto-triage coming in Phase 35. |
+| **Investigation Chat Copilot** | Ready | SSE streaming chat per investigation |
+| **Attack Graph UI** | Ready | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths |
+| **Svelte 5 Dashboard** | Ready | 11 views; Detections, Events, Graph, Investigation, Query, Ingest, Assets, Reports, Settings, Operators |
+| **SOAR Playbooks** | Ready | 5 NIST IR playbooks; analyst-gated step execution; SSE stream; audit trail |
+| **Reporting & Compliance** | Ready | WeasyPrint PDF, MITRE ATT&CK heatmap, D3 KPI trends, NIST CSF 2.0, TheHive ZIP export |
+| **Bearer Token Auth + TOTP** | Ready | Startup validator rejects weak tokens; MFA-gated legacy admin path |
+| **Identity & RBAC** | Ready | Operator table, bcrypt, role-based route guards |
+| **Citation Verification** | Ready | LLM responses verified against retrieved context; `citation_verified` in payload |
+| **Prompt Injection Scrubbing** | Ready | Base64/Unicode NFC normalization + regex scrub; evidence in system turn |
+| **LLM Audit Logging** | Ready | Full prompt text (64KB cap) + SHA-256 hash logged to `llm_calls` table |
+| **TOTP Replay Protection** | Ready | SQLite `system_kv` persistent across restarts; L1 in-process cache |
+| **Security Headers** | Ready | CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via Caddy |
+| **Meta-Detection Rules** | Ready | Sigma rules monitoring auth burst, LLM token spikes, ChromaDB deletions |
+| **Malcolm NSM Integration** | Partial | Collecting syslog + alerts. EVE expansion in Phase 31. Zeek blocked on managed switch hardware. |
+| **Recommendation Workflow** | Ready | AI artifact store; approve/dispatch pipeline; JSON schema validation; dispatch log |
+| **Evidence Provenance Chain** | Ready | SHA-256 receipt chain; chain-of-custody audit |
+| **Graph Schema Versioning** | Ready | `schema_version` in SQLite; firewall_zone + network_segment entity types |
+| **Perimeter Entities** | Ready | Firewall zone nodes with colour-coded risk; network segment subnet bubbles |
 | **osquery Telemetry** | Optional | Live host telemetry via `OSQUERY_ENABLED=True` |
-| **CI Pipeline** | ✅ | ruff + pytest (≥70% coverage) + pip-audit + gitleaks + frontend build/svelte-check |
+| **CI Pipeline** | Ready | ruff + pytest (≥70% coverage) + pip-audit + gitleaks + frontend build/svelte-check |
+| **Threat Hunting** | Phase 32 — in development | HuntingView is 100% disabled; no backend hunt API yet |
+| **Threat Intelligence** | Phase 33 — in development | ThreatIntelView is a stub with fake feed data; "BETA" badge |
+| **Asset Discovery** | Phase 34 — in development | AssetsView "Discover Assets" button permanently disabled |
+| **Auto AI Triage** | Phase 35 — not yet wired | POST /api/detect/run fires Sigma but does NOT call AI; no background triage loop |
 
 ---
 
@@ -45,7 +78,7 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 
 | Tool | Version | Install |
 |------|---------|---------|
-| Python | 3.12 | `uv python install 3.12` |
+| Python | 3.12 (NOT 3.14) | `uv python install 3.12` |
 | uv | 0.10+ | `winget install astral-sh.uv` |
 | Node.js | 18+ LTS | `winget install OpenJS.NodeJS.LTS` |
 | Docker Desktop | Latest | [docs.docker.com/desktop](https://docs.docker.com/desktop/install/windows-install/) |
@@ -53,6 +86,8 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 | Ollama | 0.13+ | `winget install Ollama.Ollama` |
 
 > PowerShell 7 (`pwsh`) is required for the management scripts. Windows ships with PS 5.1 by default.
+>
+> Python 3.14 is the system default. Do NOT use it — PEP 649 deferred annotations break pySigma, pydantic-core, and pyevtx-rs at runtime. Use 3.12 via uv.
 
 ---
 
@@ -62,6 +97,7 @@ A single-analyst, air-gapped cybersecurity workstation. All inference, detection
 # Clone and set up Python environment
 git clone https://github.com/Reston2024/local-ai-soc.git AI-SOC-Brain
 cd AI-SOC-Brain
+uv python install 3.12
 uv venv --python 3.12
 .venv\Scripts\activate
 uv sync
@@ -70,8 +106,9 @@ uv sync
 ollama pull qwen3:14b
 ollama pull mxbai-embed-large
 
-# Configure auth token
-echo AUTH_TOKEN=changeme > .env
+# Configure auth token (must be 32+ chars, or use "dev-only-bypass" locally)
+copy config\.env.example .env
+# Edit .env: AUTH_TOKEN=<generate with: python -c "import secrets; print(secrets.token_urlsafe(32))">
 
 # Start backend (FastAPI on :8000)
 uv run uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
@@ -99,12 +136,12 @@ Then open **https://localhost**.
 ```powershell
 # Ingest sample NDJSON events
 curl -X POST http://localhost:8000/api/ingest/file `
-  -H "Authorization: Bearer changeme" `
+  -H "Authorization: Bearer <your-token>" `
   -F "file=@fixtures/ndjson/sample_events.ndjson"
 
 # Run Sigma detection
 curl -X POST http://localhost:8000/api/detect/run `
-  -H "Authorization: Bearer changeme"
+  -H "Authorization: Bearer <your-token>"
 ```
 
 ---
@@ -128,50 +165,66 @@ cd dashboard && npm run build
 uv run ruff check .
 ```
 
-**Current test baseline:** 575 passing, 56 new playbook tests (631 collected); 56 playbook unit tests isolated-pass
+**Current test baseline:** 938+ passing tests
 
 ---
 
-## Architecture
+## Two-Box Infrastructure
 
-```
-                      Browser (http://localhost:5173 dev | https://localhost prod)
-                                        │
-                         ┌──────────────▼──────────────┐
-                         │    Caddy (Docker) — prod      │  TLS termination
-                         └──────────────┬──────────────┘
-                                        │ :8000
-                         ┌──────────────▼──────────────────────────┐
-                         │           FastAPI Backend                 │
-                         │                                          │
-                         │  /health  /api/events  /api/ingest       │
-                         │  /api/detect  /api/graph  /api/query     │
-                         │  /api/investigate  /api/investigations   │
-                         │  /api/score  /api/metrics  /api/export   │
-                         │  /api/playbooks  /api/playbook-runs      │
-                         └──┬──────────┬─────────────┬─────────────┘
-                            │          │             │
-                      HTTP REST    embed/SQL        SQL
-                            │          │             │
-               ┌────────────▼┐  ┌─────▼────┐  ┌────▼──────────┐
-               │  Ollama      │  │  Chroma  │  │  DuckDB  │SQLite│
-               │  :11434      │  │  embed   │  │  events  │graph │
-               │  qwen3:14b   │  │  persist │  │  columnar│edges │
-               └─────────────┘  └──────────┘  └────────────────┘
-```
+### Desktop — SOC Brain (Windows 11, RTX 5080)
 
-**Storage:**
+Primary compute node. All AI inference, detection, correlation, and analysis run here.
+
+| Service | Runtime | Port |
+|---------|---------|------|
+| FastAPI / Uvicorn | Native Python 3.12 | :8000 |
+| Caddy | Docker (~40MB) | :443 |
+| Ollama qwen3:14b | Native Windows | :11434 |
+| DuckDB | In-process embedded | — |
+| ChromaDB | In-process embedded | — |
+| SQLite | In-process embedded | — |
+
+### supportTAK-server — Dumb Pipe (Ubuntu, GMKtec N150, 192.168.1.22)
+
+Network telemetry collection and indexing only. No AI. No inference.
+
+| Service | Purpose | Status |
+|---------|---------|--------|
+| Malcolm (17 containers) | NSM orchestration | Running |
+| OpenSearch | Log indexing (7.4 GB RAM) | Running |
+| Logstash | Log processing pipeline | Running |
+| Filebeat | Log shipping | Running |
+| Arkime | Network session indexing | Running (no PCAP feed) |
+| Zeek | Network protocol logs | Running but 0 output — no SPAN port |
+| pcap-capture | Packet capture | Idle — no SPAN port |
+| Strelka, NetBox, Keycloak, etc. | Various | Idle — no PCAP feed |
+
+---
+
+## Storage
+
 - `data/events.duckdb` — normalized events (columnar analytics)
 - `data/chroma/` — vector embeddings (BM25 + semantic search)
 - `data/graph.sqlite3` — entity nodes, edges, detections, cases (WAL mode)
 
-**Dashboard (Svelte 5):** `dashboard/src/views/`
-- `DetectionsView` — Sigma alerts with ATT&CK tactic/technique
-- `InvestigationView` — timeline, attack chain, AI chat copilot, "Run Playbook" entry point
-- `GraphView` — Cytoscape.js fCoSE attack graph, Dijkstra path highlighting
-- `PlaybooksView` — SOAR playbook library browser + step-execution UI with audit trail
-- `EventsView`, `AssetsView`, `QueryView`, `IngestView`
-- `HuntingView`, `ReportsView`, `ThreatIntelView` (Beta)
+---
+
+## Dashboard Views
+
+| View | File | Status |
+|------|------|--------|
+| Detections | `DetectionsView.svelte` | Ready |
+| Investigation | `InvestigationView.svelte` | Ready |
+| Attack Graph | `GraphView.svelte` | Ready — Cytoscape.js fCoSE, Dijkstra paths |
+| Playbooks | `PlaybooksView.svelte` | Ready — library browser + step execution |
+| Events | `EventsView.svelte` | Ready |
+| Query (RAG) | `QueryView.svelte` | Ready — SSE streaming |
+| Ingest | `IngestView.svelte` | Ready |
+| Reports | `ReportsView.svelte` | Ready — PDF, MITRE heatmap, TheHive export |
+| Settings / Operators | `SettingsView.svelte` | Ready |
+| Assets | `AssetsView.svelte` | Partial — "Discover Assets" disabled (Phase 34) |
+| Threat Intel | `ThreatIntelView.svelte` | Stub — fake data, "BETA" badge (Phase 33) |
+| Hunting | `HuntingView.svelte` | Stub — all buttons disabled (Phase 32) |
 
 ---
 
@@ -181,14 +234,15 @@ uv run ruff check .
 |--------|------|-------------|
 | GET | `/health` | Status check (unauthenticated) |
 | GET/POST | `/api/events` | List / ingest single event |
+| POST | `/api/events/search` | Search events by field |
 | POST | `/api/ingest` | Batch ingest with source label |
 | POST | `/api/ingest/file` | Ingest from uploaded file |
-| GET | `/api/ingest/{job_id}` | Ingest job status |
-| POST | `/api/query` | Semantic + DuckDB hybrid search |
+| GET | `/api/ingest/status/{job_id}` | Ingest job status |
+| POST | `/api/query/ask/stream` | Semantic RAG query — SSE stream |
 | POST | `/api/detect/run` | Run Sigma rules against stored events |
 | GET | `/api/detect` | List detection results |
-| GET | `/api/graph/global` | Global entity graph (all entities + edges) |
-| GET | `/api/graph/{investigation_id}` | Subgraph for investigation |
+| GET | `/api/graph/global` | Global entity graph |
+| GET | `/api/graph/{investigation_id}` | Investigation subgraph |
 | GET | `/api/graph/entity/{entity_id}` | Entity neighbours |
 | GET | `/api/graph/traverse/{entity_id}` | BFS traversal from entity |
 | GET | `/api/export` | Export events as NDJSON |
@@ -206,56 +260,19 @@ uv run ruff check .
 | GET | `/api/playbooks` | List all playbooks |
 | POST | `/api/playbooks` | Create a playbook |
 | GET | `/api/playbooks/{id}` | Get playbook by ID |
-| GET | `/api/playbooks/{id}/runs` | List run history for playbook |
-| POST | `/api/playbooks/{id}/run/{inv_id}` | Start a playbook run against an investigation |
-| PATCH | `/api/playbook-runs/{run_id}/step/{n}` | Analyst confirms step N (human-in-the-loop gate) |
-| PATCH | `/api/playbook-runs/{run_id}/cancel` | Cancel an in-progress run |
+| POST | `/api/playbooks/{id}/run/{inv_id}` | Start a playbook run |
+| PATCH | `/api/playbook-runs/{run_id}/step/{n}` | Analyst confirms step N |
+| PATCH | `/api/playbook-runs/{run_id}/cancel` | Cancel a run |
 | GET | `/api/playbook-runs/{run_id}` | Fetch run state |
-| GET | `/api/playbook-runs/{run_id}/stream` | SSE stream of step-completion events |
+| GET | `/api/playbook-runs/{run_id}/stream` | SSE stream of step events |
+| GET/POST/PATCH | `/api/operators` | Operator CRUD (RBAC) |
+| GET/POST | `/api/recommendations` | AI recommendation artifact store |
+| POST | `/api/receipts` | Firewall execution receipts |
+| GET | `/api/firewall/status` | FirewallCollector heartbeat |
 
-**Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. Set `AUTH_TOKEN=<value>` in `.env` (default: `changeme` — always on).
+**Planned in v1.1:** `/api/hunts` (Phase 32), `/api/intel` (Phase 33), `/api/assets` (Phase 34), `/api/triage/run` (Phase 35)
 
----
-
-## Project Structure
-
-```
-backend/           FastAPI app (Python 3.12)
-  api/             Route handlers (including playbooks.py)
-  causality/       Process causality engine + ATT&CK mapping
-  core/            Config, auth, logging, dependencies
-  data/            Built-in playbook definitions (builtin_playbooks.py)
-  intelligence/    Risk scorer, anomaly rules, LLM explanation
-  investigation/   Case manager, timeline, hunt engine
-  models/          Pydantic models (NormalizedEvent, Playbook, PlaybookRun, …)
-  services/        Ollama HTTP client (with LLM audit logging)
-  stores/          DuckDB, Chroma, SQLite store wrappers
-ingestion/         Event parsing + normalization pipeline
-  parsers/         EVTX, JSON/NDJSON, CSV, osquery parsers
-detections/        Sigma rule matching (pySigma + DuckDB backend)
-correlation/       Event clustering (Union-Find + temporal window)
-graph/             Graph schema constants and BFS traversal
-prompts/           LLM prompt templates
-dashboard/         Svelte 5 SPA (npm)
-  src/views/       DetectionsView, InvestigationView, GraphView, ...
-  src/lib/api.ts   Typed API client
-tests/             pytest suite (unit/, integration/, security/, sigma_smoke/)
-config/caddy/      Caddyfile
-scripts/           PowerShell management scripts
-fixtures/          Test fixture data (NDJSON, EVTX samples)
-```
-
----
-
-## Management Scripts
-
-| Script | Description |
-|--------|-------------|
-| `scripts\start.cmd` | Start FastAPI backend + Caddy Docker container |
-| `scripts\stop.cmd` | Stop all services |
-| `scripts\status.cmd` | Show service health |
-| `scripts\configure-acls.ps1` | Harden `data/` directory permissions |
-| `scripts\configure-firewall.ps1` | Block Ollama port 11434 from non-localhost |
+**Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. `AUTH_TOKEN` must be 32+ chars or `dev-only-bypass` in `.env`.
 
 ---
 
@@ -280,13 +297,38 @@ fixtures/          Test fixture data (NDJSON, EVTX samples)
 | 15 | Attack Graph UI — Cytoscape.js fCoSE, attack paths, MITRE overlay | ✅ |
 | 16 | Security Hardening — end-to-end auth, citation verification, injection scrubbing, frontend CI | ✅ |
 | 17 | SOAR & Playbook Engine — 5 NIST IR playbooks, analyst-gated execution, SSE, UI | ✅ |
-| 18 | Reporting & Compliance — PDF reports, MITRE ATT&CK heatmap, KPI trends, NIST CSF 2.0 + TheHive export | ✅ |
-| 19 | Identity & RBAC — operator table, bcrypt, role-based guards, session management | ✅ |
-| 20 | Schema Standardisation — ECS/OCSF alignment, NormalizedEvent schema migration, DuckDB column renames | ✅ |
-| 21 | Evidence Provenance — SHA-256 content hashing, provenance chain, chain-of-custody audit | ✅ |
-| 22 | AI Lifecycle Hardening — model drift detection, grounding scores, confidence tracking, LLMOps audit | ✅ |
-| 23 | Firewall Telemetry Ingestion — IPFire syslog + Suricata EVE JSON parsers, collector, heartbeat, `GET /api/firewall/status` | ✅ |
-| 23.5 | Security Hardening (expert panel) — all 18 findings addressed: token validation, MFA, injection scrubbing, CSP, DuckDB external access disabled, ChromaDB ACL, Ollama digest pinning, CI gate | ✅ |
+| 18 | Reporting & Compliance — PDF reports, MITRE ATT&CK heatmap, KPI trends, NIST CSF 2.0, TheHive export | ✅ |
+| 19 | Identity & RBAC — operator table, bcrypt, role-based guards | ✅ |
+| 20 | Schema Standardisation — ECS/OCSF alignment, NormalizedEvent migration | ✅ |
+| 21 | Evidence Provenance — SHA-256 content hashing, chain-of-custody audit | ✅ |
+| 22 | AI Lifecycle Hardening — model drift detection, grounding scores, LLMOps audit | ✅ |
+| 23 | Firewall Telemetry — IPFire syslog + Suricata EVE parsers, collector, heartbeat | ✅ |
+| 23.5 | Security Hardening — 18 expert panel findings: token validation, MFA, injection scrubbing, CSP, DuckDB lockdown, ChromaDB ACL, Ollama digest pinning, CI gate | ✅ |
+| 24 | Recommendation Artifact Store — AI → approve → dispatch pipeline, JSON schema validation | ✅ |
+| 25 | Receipt Ingestion — Firewall execution receipts → case state propagation | ✅ |
+| 26 | Graph Schema Versioning — schema_version, firewall_zone, network_segment entities | ✅ |
+| 27 | Malcolm NSM Integration — MalcolmCollector → OpenSearch → DuckDB | ✅ |
+| 28 | Dashboard Integration Fixes — RAG SSE, event search shape, ingest status, SettingsView routing | ✅ |
+| 29 | Missing Phase Verifiers — VERIFICATION.md for all phases | ✅ |
+| 30 | Final Security + Sign-Off — Sigma guard, Caddy digest pin, Phase 22 UI | ✅ |
+| **31** | **Malcolm Real Telemetry + Evidence Archive** | **Planned — ready to execute** |
+| 32 | Real Threat Hunting — HuntingView backend API, no disabled buttons | Planned |
+| 33 | Real Threat Intelligence — IOC matching, live feeds | Planned |
+| 34 | Asset Inventory — auto-derived from telemetry | Planned |
+| 35 | SOC Completeness + Auto AI Triage loop — POST /api/triage/run + background worker | Planned |
+| 36 | Zeek Full Telemetry | Blocked — requires managed switch with SPAN port (~$50-80) |
+
+---
+
+## Management Scripts
+
+| Script | Description |
+|--------|-------------|
+| `scripts\start.cmd` | Start FastAPI backend + Caddy Docker container |
+| `scripts\stop.cmd` | Stop all services |
+| `scripts\status.cmd` | Show service health |
+| `scripts\configure-acls.ps1` | Harden `data/` directory permissions |
+| `scripts\configure-firewall.ps1` | Block Ollama port 11434 from non-localhost |
 
 ---
 
@@ -294,10 +336,11 @@ fixtures/          Test fixture data (NDJSON, EVTX samples)
 
 | File | Description |
 |------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, data architecture, decision rationale |
-| [DECISION_LOG.md](DECISION_LOG.md) | Architecture Decision Records (ADR-001 – ADR-021) |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design, two-box architecture, data flow, decisions |
+| [DECISION_LOG.md](DECISION_LOG.md) | Architecture Decision Records (ADR-001 through ADR-033) |
+| [STATE.md](STATE.md) | Live project state — all 30 phases + v1.1 status |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Threat model for local desktop deployment |
-| [REPRODUCIBILITY_RECEIPT.md](REPRODUCIBILITY_RECEIPT.md) | Pinned dependency versions |
+| [REPRODUCIBILITY_RECEIPT.md](REPRODUCIBILITY_RECEIPT.md) | Pinned dependency versions + infrastructure |
 | [docs/manifest.md](docs/manifest.md) | Full file tree and API reference |
 
 ---
