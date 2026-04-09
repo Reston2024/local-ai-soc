@@ -1,14 +1,124 @@
 <script lang="ts">
-  const presetHunts = [
-    { name: 'PowerShell child processes',     mitre: 'T1059.001', desc: 'Identify unusual processes spawned by powershell.exe or pwsh.exe' },
-    { name: 'Suspicious network beaconing',   mitre: 'T1071',     desc: 'Detect regular outbound connections with jitter < 5s to external IPs' },
-    { name: 'Unusual auth hour patterns',     mitre: 'T1078',     desc: 'Logins outside business hours or from new geolocation' },
-    { name: 'LOLBin abuse (certutil/mshta)',  mitre: 'T1218',     desc: 'Living-off-the-land binaries used for payload delivery or evasion' },
-    { name: 'Lateral movement via WMI/PsExec', mitre: 'T1021',   desc: 'Remote execution patterns indicating lateral movement' },
-    { name: 'Credential dumping indicators',  mitre: 'T1003',     desc: 'Access to LSASS memory or SAM database from unexpected processes' },
+  import { api } from '../lib/api.ts'
+  import type { HuntResult, HuntPreset, HuntRow, OsintResult, HuntHistoryItem } from '../lib/api.ts'
+
+  const presetHunts: HuntPreset[] = [
+    {
+      id: 'ps-child',
+      name: 'PowerShell child processes',
+      mitre: 'T1059.001',
+      desc: 'Identify unusual processes spawned by powershell.exe or pwsh.exe',
+      query: 'Show processes where parent process is powershell.exe or pwsh.exe that are not common child processes',
+    },
+    {
+      id: 'beaconing',
+      name: 'Suspicious network beaconing',
+      mitre: 'T1071',
+      desc: 'Detect regular outbound connections with jitter < 5s to external IPs',
+      query: 'Show network events with repeated connections to the same external IP within short intervals',
+    },
+    {
+      id: 'auth-hours',
+      name: 'Unusual auth hour patterns',
+      mitre: 'T1078',
+      desc: 'Logins outside business hours or from new geolocation',
+      query: 'Show authentication events that occurred outside business hours (before 07:00 or after 19:00)',
+    },
+    {
+      id: 'lolbin',
+      name: 'LOLBin abuse (certutil/mshta)',
+      mitre: 'T1218',
+      desc: 'Living-off-the-land binaries used for payload delivery or evasion',
+      query: 'Show process events where process_name contains certutil, mshta, regsvr32, rundll32, or wscript',
+    },
+    {
+      id: 'lateral',
+      name: 'Lateral movement via WMI/PsExec',
+      mitre: 'T1021',
+      desc: 'Remote execution patterns indicating lateral movement',
+      query: 'Show network or process events indicating WMI remote execution or PsExec usage',
+    },
+    {
+      id: 'cred-dump',
+      name: 'Credential dumping indicators',
+      mitre: 'T1003',
+      desc: 'Access to LSASS memory or SAM database from unexpected processes',
+      query: 'Show process events where a process accessed lsass.exe memory or the SAM database',
+    },
   ]
 
   let query = $state('')
+  let isRunning = $state(false)
+  let errorMsg = $state<string | null>(null)
+  let results = $state<HuntResult | null>(null)
+  let expandedIp = $state<string | null>(null)
+  let osintData = $state<OsintResult | null>(null)
+  let osintLoading = $state(false)
+  let huntHistory = $state<HuntHistoryItem[]>([])
+
+  async function runHunt(q: string) {
+    if (!q.trim()) return
+    isRunning = true
+    errorMsg = null
+    expandedIp = null
+    osintData = null
+    try {
+      results = await api.hunts.query(q)
+      huntHistory = [
+        {
+          hunt_id: results.hunt_id,
+          query: q,
+          sql_text: results.sql,
+          row_count: results.row_count,
+          analyst_id: 'analyst',
+          created_at: results.created_at,
+        },
+        ...huntHistory,
+      ].slice(0, 10)
+    } catch (err: unknown) {
+      errorMsg = err instanceof Error ? err.message : String(err)
+    } finally {
+      isRunning = false
+    }
+  }
+
+  async function expandRow(ip: string | undefined | null) {
+    if (!ip) return
+    // Private IP ranges — no OSINT
+    if (
+      ip.startsWith('10.') ||
+      ip.startsWith('192.168.') ||
+      ip.startsWith('172.') ||
+      ip === '127.0.0.1' ||
+      ip.startsWith('::1')
+    ) {
+      expandedIp = ip
+      osintData = null
+      osintLoading = false
+      return
+    }
+    expandedIp = ip
+    osintLoading = true
+    osintData = null
+    try {
+      osintData = await api.osint.get(ip)
+    } catch (err: unknown) {
+      // Silently clear — private IP or invalid IP error from backend
+      osintData = null
+    } finally {
+      osintLoading = false
+    }
+  }
+
+  function isPrivateIp(ip: string): boolean {
+    return (
+      ip.startsWith('10.') ||
+      ip.startsWith('192.168.') ||
+      ip.startsWith('172.') ||
+      ip === '127.0.0.1' ||
+      ip.startsWith('::1')
+    )
+  }
 </script>
 
 <div class="view">
@@ -24,7 +134,7 @@
       </svg>
       <h1>Threat Hunting</h1>
     </div>
-    <span class="coming-soon-badge">BETA — Coming Soon</span>
+    <span class="active-badge">ACTIVE</span>
   </div>
 
   <div class="content">
@@ -34,16 +144,110 @@
         bind:value={query}
         placeholder="Describe what you're hunting for… (e.g. 'PowerShell download cradle')"
         class="hunt-input"
-        disabled
+        disabled={isRunning}
       />
-      <button class="btn btn-primary" disabled>
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-          <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.6"/>
-          <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
+      <button
+        class="btn btn-primary"
+        onclick={() => runHunt(query)}
+        disabled={isRunning || !query.trim()}
+      >
+        {#if isRunning}
+          <span class="spinner"></span>
+        {:else}
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.6"/>
+            <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        {/if}
         Hunt
       </button>
     </div>
+
+    {#if errorMsg}
+      <div class="error-banner">{errorMsg}</div>
+    {/if}
+
+    {#if results}
+      <div class="results-section">
+        <div class="results-header">
+          <span>{results.row_count} event{results.row_count !== 1 ? 's' : ''} found</span>
+          <code class="sql-pill">{results.sql}</code>
+        </div>
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Host</th>
+              <th>Severity</th>
+              <th>Type</th>
+              <th>Src IP</th>
+              <th>Dst IP</th>
+              <th>Process</th>
+              <th>User</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each results.rows as row}
+              <tr onclick={() => expandRow(row.src_ip)} class:selected={expandedIp === row.src_ip && !!row.src_ip}>
+                <td>{row.ts?.slice(0, 19) ?? '—'}</td>
+                <td>{row.hostname ?? '—'}</td>
+                <td><span class="sev-badge sev-{row.severity?.toLowerCase() ?? 'info'}">{row.severity ?? 'info'}</span></td>
+                <td>{row.event_type ?? '—'}</td>
+                <td class="ip-cell">{row.src_ip ?? '—'}</td>
+                <td class="ip-cell">{row.dst_ip ?? '—'}</td>
+                <td>{row.process_name ?? '—'}</td>
+                <td>{row.user_name ?? '—'}</td>
+              </tr>
+              {#if expandedIp === row.src_ip && row.src_ip}
+                <tr class="osint-row">
+                  <td colspan="8">
+                    {#if isPrivateIp(row.src_ip)}
+                      <div class="osint-loading">Private IP — no OSINT</div>
+                    {:else if osintLoading}
+                      <div class="osint-loading">Loading OSINT…</div>
+                    {:else if osintData}
+                      <div class="osint-panel">
+                        <div class="osint-section">
+                          <span class="osint-label">GEO</span>
+                          {osintData.geo?.country_name ?? '—'} / {osintData.geo?.city ?? '—'} ({osintData.geo?.autonomous_system_organization ?? '—'})
+                        </div>
+                        {#if osintData.abuseipdb}
+                          <div class="osint-section">
+                            <span class="osint-label">ABUSE</span>
+                            Confidence: {osintData.abuseipdb.abuseConfidenceScore}% — {osintData.abuseipdb.totalReports} reports — {osintData.abuseipdb.isp}
+                          </div>
+                        {/if}
+                        {#if osintData.virustotal}
+                          <div class="osint-section">
+                            <span class="osint-label">VT</span>
+                            {osintData.virustotal.malicious} malicious / {osintData.virustotal.suspicious} suspicious
+                          </div>
+                        {/if}
+                        {#if osintData.whois}
+                          <div class="osint-section">
+                            <span class="osint-label">WHOIS</span>
+                            {osintData.whois.registrar ?? '—'} — created {osintData.whois.creation_date ?? '—'} — {osintData.whois.org ?? '—'}
+                          </div>
+                        {/if}
+                        {#if osintData.shodan}
+                          <div class="osint-section">
+                            <span class="osint-label">SHODAN</span>
+                            Ports: {osintData.shodan.open_ports?.join(', ') ?? 'none'} — {osintData.shodan.org ?? '—'}
+                          </div>
+                        {/if}
+                        <div class="osint-cached">{osintData.cached ? '(cached)' : '(fresh)'} as of {osintData.fetched_at.slice(0, 19)}</div>
+                      </div>
+                    {:else}
+                      <div class="osint-loading">No OSINT data available</div>
+                    {/if}
+                  </td>
+                </tr>
+              {/if}
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
 
     <div class="preset-label">Preset Hunt Queries</div>
     <div class="hunt-grid">
@@ -54,19 +258,22 @@
             <span class="mitre-tag">{hunt.mitre}</span>
           </div>
           <p class="hunt-desc">{hunt.desc}</p>
-          <button class="hunt-run-btn" disabled>Run Hunt</button>
+          <button class="hunt-run-btn" onclick={() => runHunt(hunt.query)}>Run Hunt</button>
         </div>
       {/each}
     </div>
 
-    <div class="roadmap-note">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0; color:var(--accent-cyan)">
-        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/>
-        <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="8" cy="5" r="0.8" fill="currentColor"/>
-      </svg>
-      Hunting will use AI Query under the hood — natural language → DuckDB SQL → ranked results. Backends already support the <code>execute_hunt()</code> API.
-    </div>
+    {#if huntHistory.length > 0}
+      <div class="history-section">
+        <div class="preset-label">Hunt History</div>
+        {#each huntHistory as h}
+          <div class="history-item" onclick={() => { query = h.query; runHunt(h.query) }} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && runHunt(h.query)}>
+            <span class="history-query">{h.query}</span>
+            <span class="history-meta">{h.row_count} rows · {h.created_at.slice(0, 19)}</span>
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -81,10 +288,10 @@
   .header-left { display: flex; align-items: center; gap: 10px; }
   h1 { font-size: 15px; font-weight: 600; }
 
-  .coming-soon-badge {
+  .active-badge {
     font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
-    color: var(--accent-purple); background: rgba(167,139,250,0.1);
-    border: 1px solid rgba(167,139,250,0.25); padding: 3px 10px; border-radius: 20px;
+    color: #22c55e; background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.25); padding: 3px 10px; border-radius: 20px;
   }
 
   .content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
@@ -94,7 +301,6 @@
     flex: 1; height: 38px; border-radius: var(--radius-md);
     font-size: 13px; padding: 0 14px;
   }
-  .hunt-input:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .preset-label {
     font-size: 11px; font-weight: 600; letter-spacing: 0.8px;
@@ -129,14 +335,39 @@
     align-self: flex-start; font-size: 11px; padding: 4px 12px;
     background: var(--bg-tertiary); color: var(--text-secondary);
     border: 1px solid var(--border); border-radius: var(--radius-md);
-    cursor: not-allowed; opacity: 0.5; font-family: var(--font-sans);
+    cursor: pointer; font-family: var(--font-sans);
   }
+  .hunt-run-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
 
-  .roadmap-note {
-    display: flex; align-items: flex-start; gap: 8px;
-    background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15);
-    border-radius: var(--radius-md); padding: 12px 14px;
-    font-size: 12px; color: var(--text-secondary); line-height: 1.6; max-width: 560px;
-  }
+  /* Results table */
+  .results-section { display: flex; flex-direction: column; gap: 8px; }
+  .results-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .results-table th { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-muted); font-size: 10px; letter-spacing: 0.5px; }
+  .results-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-subtle, var(--border)); }
+  .results-table tr:hover td { background: var(--bg-hover); cursor: pointer; }
+  .results-table tr.selected td { background: rgba(167,139,250,0.08); }
+  .sev-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+  .sev-critical { background: rgba(239,68,68,0.15); color: #ef4444; }
+  .sev-high { background: rgba(249,115,22,0.15); color: #f97316; }
+  .sev-medium { background: rgba(234,179,8,0.15); color: #eab308; }
+  .sev-low { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .sev-info { background: rgba(148,163,184,0.1); color: var(--text-muted); }
+  .osint-panel { display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 0; }
+  .osint-section { font-size: 12px; color: var(--text-secondary); }
+  .osint-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent-purple); margin-right: 6px; }
+  .osint-cached { font-size: 10px; color: var(--text-muted); width: 100%; }
+  .osint-loading { padding: 10px; color: var(--text-muted); font-size: 12px; }
+  .sql-pill { font-size: 10px; color: var(--text-muted); background: var(--bg-secondary); padding: 2px 8px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; max-width: 600px; display: inline-block; white-space: nowrap; }
+  .results-header { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-secondary); }
+  .error-banner { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; }
+  .history-section { display: flex; flex-direction: column; gap: 6px; }
+  .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+  .history-item:hover { background: var(--bg-hover); }
+  .history-query { color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-meta { color: var(--text-muted); font-size: 11px; flex-shrink: 0; margin-left: 12px; }
+  .spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ip-cell { font-family: monospace; font-size: 11px; }
+  .osint-row td { background: var(--bg-secondary); }
   code { font-size: 11px; color: var(--accent-cyan); }
 </style>
