@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 31-malcolm-full-telemetry
-status: Ready to Execute
-last_updated: "2026-04-09T00:00:00.000Z"
+status: verifying
+last_updated: "2026-04-09T08:34:45.384Z"
 progress:
-  total_phases: 36
-  completed_phases: 30
+  total_phases: 37
+  completed_phases: 29
   total_plans: 163
-  completed_plans: 165
+  completed_plans: 166
 ---
 
 # Session State
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.0 milestone
 **Current phase:** 31-malcolm-full-telemetry
-**Status:** Ready to Execute — 3 plans planned, verified, ready for /gsd:execute-phase 31
+**Status:** Executing — Plan 31-02 complete, Plan 31-03 next
 
 ## Session Log
 
@@ -33,3 +33,10 @@ See: .planning/PROJECT.md
 - 2026-04-09: Architecture decision — Ubuntu box is dumb pipe only (no AI). Evidence archive + normalization pipeline added to Phase 31.
 - 2026-04-09: Hardware purchased — 2TB external drive (Ubuntu evidence archive) + Netgear GS308E managed switch (SPAN port for Phase 36). Phase 36 status: blocked → planned/in-transit. See ADR-034.
 - 2026-04-09: Phase 31 P31-T12 added — beta Zeek telemetry chips in EventsView (disabled, Phase 36 preview). Plan 31-03 updated.
+- 2026-04-09: Plan 31-02 complete — EvidenceArchiver (gzip chain-of-custody) + Ubuntu ECS normalization FastAPI server + systemd units. All 3 unit tests pass, 876 total unit tests green.
+
+## Key Decisions
+
+- **31-02:** gzip append mode per-write for forensic safety (no persistent handle); _rotate(closing_date) renames active files before SHA256 sealing
+- **31-02:** NormalizationWriter in-memory line offsets reset on restart — idempotent re-ingestion acceptable for forensic pipeline
+- **31-02:** /normalized/latest returns 404 (not empty stream) when no today data exists
