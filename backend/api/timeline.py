@@ -224,21 +224,64 @@ async def get_investigation_timeline(
     """
     stores = request.app.state.stores
 
-    # Fetch events from DuckDB
-    event_rows: list[tuple] = await stores.duckdb.fetch_all(
-        """SELECT event_id, timestamp, event_type, severity, hostname, process_name,
-                  attack_technique, attack_tactic, command_line
-           FROM normalized_events
-           WHERE case_id = ?
-           ORDER BY timestamp ASC
-           LIMIT 500""",
-        [investigation_id],
-    )
+    # --- Resolve investigation_id to detection + matched event IDs ---
+    # investigation_id is passed as the detection's primary key when the user
+    # clicks "Investigate" on a detection card.  Try direct detection lookup first,
+    # then fall back to case_id-based lookup for backwards compatibility.
+    detection_rows: list[dict] = []
+    matched_event_ids: list[str] = []
 
-    # Fetch detections from SQLite (sync call wrapped in to_thread)
-    detection_rows: list[dict] = await asyncio.to_thread(
-        stores.sqlite.get_detections_by_case, investigation_id
+    detection_by_id: dict | None = await asyncio.to_thread(
+        stores.sqlite.get_detection, investigation_id
     )
+    if detection_by_id:
+        detection_rows = [detection_by_id]
+        import json as _json
+        try:
+            matched_event_ids = _json.loads(detection_by_id.get("matched_event_ids") or "[]")
+        except Exception:
+            matched_event_ids = []
+    else:
+        detection_rows = await asyncio.to_thread(
+            stores.sqlite.get_detections_by_case, investigation_id
+        )
+        import json as _json
+        for d in detection_rows:
+            try:
+                matched_event_ids += _json.loads(d.get("matched_event_ids") or "[]")
+            except Exception:
+                pass
+
+    # Fetch events from DuckDB — prefer matched_event_ids, fall back to case_id
+    if matched_event_ids:
+        placeholders = ",".join("?" * len(matched_event_ids[:500]))
+        event_rows: list[tuple] = await stores.duckdb.fetch_all(
+            f"""SELECT event_id, timestamp, event_type, severity, hostname, process_name,
+                       attack_technique, attack_tactic, command_line
+                FROM normalized_events
+                WHERE event_id IN ({placeholders})
+                ORDER BY timestamp ASC""",
+            matched_event_ids[:500],
+        )
+    else:
+        event_rows = await stores.duckdb.fetch_all(
+            """SELECT event_id, timestamp, event_type, severity, hostname, process_name,
+                      attack_technique, attack_tactic, command_line
+               FROM normalized_events
+               WHERE case_id = ?
+               ORDER BY timestamp ASC
+               LIMIT 500""",
+            [investigation_id],
+        )
+        # Last resort: if still empty, show the 50 most recent events overall
+        if not event_rows:
+            event_rows = await stores.duckdb.fetch_all(
+                """SELECT event_id, timestamp, event_type, severity, hostname, process_name,
+                          attack_technique, attack_tactic, command_line
+                   FROM normalized_events
+                   ORDER BY timestamp DESC
+                   LIMIT 50""",
+            )
 
     # Extract entity names from detections to look up graph edges
     entity_names = _get_entity_names_from_detections(detection_rows)

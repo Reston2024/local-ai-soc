@@ -172,8 +172,46 @@ def _executive_html(
     mttd_avg: float,
     mttr_avg: float,
     generated_at: str,
+    total_events: int = 0,
+    severity_breakdown: dict | None = None,
+    top_hostnames: list | None = None,
+    top_event_types: list | None = None,
+    top_src_ips: list | None = None,
 ) -> str:
     """Build an HTML string for an executive summary report."""
+    if severity_breakdown is None:
+        severity_breakdown = {}
+    if top_hostnames is None:
+        top_hostnames = []
+    if top_event_types is None:
+        top_event_types = []
+    if top_src_ips is None:
+        top_src_ips = []
+
+    # Build severity table rows
+    sev_rows_html = "".join(
+        f"<tr><td>{sev}</td><td>{cnt:,}</td></tr>"
+        for sev, cnt in sorted(severity_breakdown.items(), key=lambda x: -x[1])
+    ) or "<tr><td colspan='2'>No data</td></tr>"
+
+    # Build top hostnames rows
+    host_rows_html = "".join(
+        f"<tr><td>{h['hostname']}</td><td>{h['count']:,}</td></tr>"
+        for h in top_hostnames
+    ) or "<tr><td colspan='2'>No data</td></tr>"
+
+    # Build top event types rows
+    type_rows_html = "".join(
+        f"<tr><td>{t['event_type']}</td><td>{t['count']:,}</td></tr>"
+        for t in top_event_types
+    ) or "<tr><td colspan='2'>No data</td></tr>"
+
+    # Build top source IPs rows
+    ip_rows_html = "".join(
+        f"<tr><td>{i['src_ip']}</td><td>{i['count']:,}</td></tr>"
+        for i in top_src_ips
+    ) or "<tr><td colspan='2'>No data</td></tr>"
+
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -189,6 +227,7 @@ def _executive_html(
   tr:nth-child(even) {{ background: #f2f2f2; }}
   .meta {{ color: #666; font-size: 11px; margin-bottom: 20px; }}
   .kpi {{ font-size: 24px; font-weight: bold; color: #1a1a2e; }}
+  .two-col {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
 </style>
 </head>
 <body>
@@ -199,12 +238,37 @@ def _executive_html(
 <table border="1" cellpadding="8" cellspacing="0" width="100%">
   <thead><tr><th>Metric</th><th>Value</th></tr></thead>
   <tbody>
-    <tr><td>Alert Volume</td><td class="kpi">{alert_volume}</td></tr>
-    <tr><td>Detections Triggered</td><td class="kpi">{detection_count}</td></tr>
-    <tr><td>Investigations Created</td><td class="kpi">{investigation_count}</td></tr>
+    <tr><td>Total Events Ingested</td><td class="kpi">{total_events:,}</td></tr>
+    <tr><td>Alert Volume</td><td class="kpi">{alert_volume:,}</td></tr>
+    <tr><td>Detections Triggered</td><td class="kpi">{detection_count:,}</td></tr>
+    <tr><td>Investigations Created</td><td class="kpi">{investigation_count:,}</td></tr>
     <tr><td>Mean Time to Detect (MTTD) avg</td><td class="kpi">{mttd_avg:.1f} min</td></tr>
     <tr><td>Mean Time to Respond (MTTR) avg</td><td class="kpi">{mttr_avg:.1f} min</td></tr>
   </tbody>
+</table>
+
+<h2>Severity Breakdown</h2>
+<table border="1" cellpadding="6" cellspacing="0" width="100%">
+  <thead><tr><th>Severity</th><th>Event Count</th></tr></thead>
+  <tbody>{sev_rows_html}</tbody>
+</table>
+
+<h2>Top Active Hosts</h2>
+<table border="1" cellpadding="6" cellspacing="0" width="100%">
+  <thead><tr><th>Hostname</th><th>Event Count</th></tr></thead>
+  <tbody>{host_rows_html}</tbody>
+</table>
+
+<h2>Top Event Types</h2>
+<table border="1" cellpadding="6" cellspacing="0" width="100%">
+  <thead><tr><th>Event Type</th><th>Count</th></tr></thead>
+  <tbody>{type_rows_html}</tbody>
+</table>
+
+<h2>Top External Source IPs</h2>
+<table border="1" cellpadding="6" cellspacing="0" width="100%">
+  <thead><tr><th>Source IP</th><th>Count</th></tr></thead>
+  <tbody>{ip_rows_html}</tbody>
 </table>
 </body>
 </html>"""
@@ -359,41 +423,96 @@ async def generate_executive_report(
         _count_investigations, stores.sqlite, body.period_start, body.period_end
     )
 
-    # --- Fetch KPI metrics from DuckDB (graceful fallback) ---
-    alert_volume: int = 0
-    mttd_avg: float = 0.0
-    mttr_avg: float = 0.0
+    # --- Fetch real event stats from DuckDB (primary data source) ---
+    total_events: int = 0
+    severity_breakdown: dict[str, int] = {}
+    top_hostnames: list[dict] = []
+    top_event_types: list[dict] = []
+    top_src_ips: list[dict] = []
 
     try:
-        kpi_rows = await stores.duckdb.fetch_all(
-            """
-            SELECT
-                SUM(alert_volume)   AS alert_volume,
-                AVG(mttd_minutes)   AS mttd_avg,
-                AVG(mttr_minutes)   AS mttr_avg
-            FROM daily_kpi_snapshots
-            WHERE snapshot_date >= ? AND snapshot_date <= ?
-            """,
-            [body.period_start[:10], body.period_end[:10]],
+        # Total events in period
+        count_rows = await stores.duckdb.fetch_all(
+            "SELECT COUNT(*) AS cnt FROM normalized_events WHERE timestamp >= ? AND timestamp <= ?",
+            [body.period_start, body.period_end + "T23:59:59"],
         )
-        if kpi_rows:
-            row = kpi_rows[0]
-            alert_volume = int(row.get("alert_volume") or 0)
-            mttd_avg = float(row.get("mttd_avg") or 0.0)
-            mttr_avg = float(row.get("mttr_avg") or 0.0)
+        if count_rows:
+            total_events = int(count_rows[0][0] if isinstance(count_rows[0], tuple) else count_rows[0].get("cnt", 0))
+
+        # Severity breakdown
+        sev_rows = await stores.duckdb.fetch_all(
+            """SELECT severity, COUNT(*) AS cnt FROM normalized_events
+               WHERE timestamp >= ? AND timestamp <= ?
+               GROUP BY severity ORDER BY cnt DESC""",
+            [body.period_start, body.period_end + "T23:59:59"],
+        )
+        for r in sev_rows:
+            if isinstance(r, tuple):
+                severity_breakdown[str(r[0] or "unknown")] = int(r[1])
+            else:
+                severity_breakdown[str(r.get("severity") or "unknown")] = int(r.get("cnt", 0))
+
+        # Top hostnames
+        host_rows = await stores.duckdb.fetch_all(
+            """SELECT hostname, COUNT(*) AS cnt FROM normalized_events
+               WHERE timestamp >= ? AND timestamp <= ? AND hostname IS NOT NULL
+               GROUP BY hostname ORDER BY cnt DESC LIMIT 10""",
+            [body.period_start, body.period_end + "T23:59:59"],
+        )
+        for r in host_rows:
+            if isinstance(r, tuple):
+                top_hostnames.append({"hostname": r[0], "count": int(r[1])})
+            else:
+                top_hostnames.append({"hostname": r.get("hostname"), "count": int(r.get("cnt", 0))})
+
+        # Top event types
+        type_rows = await stores.duckdb.fetch_all(
+            """SELECT event_type, COUNT(*) AS cnt FROM normalized_events
+               WHERE timestamp >= ? AND timestamp <= ? AND event_type IS NOT NULL
+               GROUP BY event_type ORDER BY cnt DESC LIMIT 10""",
+            [body.period_start, body.period_end + "T23:59:59"],
+        )
+        for r in type_rows:
+            if isinstance(r, tuple):
+                top_event_types.append({"event_type": r[0], "count": int(r[1])})
+            else:
+                top_event_types.append({"event_type": r.get("event_type"), "count": int(r.get("cnt", 0))})
+
+        # Top external source IPs
+        ip_rows = await stores.duckdb.fetch_all(
+            """SELECT src_ip, COUNT(*) AS cnt FROM normalized_events
+               WHERE timestamp >= ? AND timestamp <= ? AND src_ip IS NOT NULL
+                 AND src_ip NOT LIKE '192.168.%' AND src_ip NOT LIKE '10.%'
+                 AND src_ip NOT LIKE '172.1%'
+               GROUP BY src_ip ORDER BY cnt DESC LIMIT 10""",
+            [body.period_start, body.period_end + "T23:59:59"],
+        )
+        for r in ip_rows:
+            if isinstance(r, tuple):
+                top_src_ips.append({"src_ip": r[0], "count": int(r[1])})
+            else:
+                top_src_ips.append({"src_ip": r.get("src_ip"), "count": int(r.get("cnt", 0))})
+
     except Exception as exc:
-        # daily_kpi_snapshots may not exist yet (created in plan 18-03)
-        log.debug("KPI snapshot table not available — using zeros", error=str(exc))
+        log.warning("DuckDB event stats failed for executive report", error=str(exc))
+
+    # Use total_events as alert_volume; fall back to detection_count if DuckDB empty
+    alert_volume: int = total_events or detection_count
 
     # --- Build content dict ---
     content_dict: dict[str, Any] = {
         "period_start": body.period_start,
         "period_end": body.period_end,
         "alert_volume": alert_volume,
+        "total_events": total_events,
         "detection_count": detection_count,
         "investigation_count": investigation_count,
-        "mttd_avg": mttd_avg,
-        "mttr_avg": mttr_avg,
+        "severity_breakdown": severity_breakdown,
+        "top_hostnames": top_hostnames,
+        "top_event_types": top_event_types,
+        "top_src_ips": top_src_ips,
+        "mttd_avg": 0.0,
+        "mttr_avg": 0.0,
     }
 
     # --- Generate HTML ---
@@ -405,9 +524,14 @@ async def generate_executive_report(
         detection_count=detection_count,
         investigation_count=investigation_count,
         alert_volume=alert_volume,
-        mttd_avg=mttd_avg,
-        mttr_avg=mttr_avg,
+        mttd_avg=0.0,
+        mttr_avg=0.0,
         generated_at=generated_at,
+        total_events=total_events,
+        severity_breakdown=severity_breakdown,
+        top_hostnames=top_hostnames,
+        top_event_types=top_event_types,
+        top_src_ips=top_src_ips,
     )
 
     # --- Render PDF (CPU-bound — separate thread) ---

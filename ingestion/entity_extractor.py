@@ -226,6 +226,24 @@ def extract_entities_and_edges(
             "properties": {**edge_props_base},
         })
 
+    # host → ip: "connected_to" — for network events where no process mediates
+    # (e.g. Malcolm Suricata TLS/DNS/alert events that have hostname + dst_ip but no process_id)
+    if host_id and ip_id and not proc_id:
+        edges.append({
+            "source_type": "host",
+            "source_id": host_id,
+            "edge_type": "connected_to",
+            "target_type": "ip",
+            "target_id": ip_id,
+            "properties": {
+                **edge_props_base,
+                "dst_port": event.dst_port,
+                "src_ip": event.src_ip,
+                **({"network_protocol": event.network_protocol} if event.network_protocol else {}),
+                **({"event_type": event.event_type} if event.event_type else {}),
+            },
+        })
+
     # user → host: "logged_into" (for authentication events)
     if user_id and host_id and not proc_id:
         # Only create direct user→host edge when there's no process to mediate
