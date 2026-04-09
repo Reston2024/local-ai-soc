@@ -17,11 +17,12 @@
   import ProvenanceView from './views/ProvenanceView.svelte'
   import RecommendationsView from './views/RecommendationsView.svelte'
   import SettingsView from './views/SettingsView.svelte'
+  import MapView from './views/MapView.svelte'
 
   type View =
     | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
-    | 'recommendations' | 'settings'
+    | 'recommendations' | 'settings' | 'map'
 
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -114,6 +115,7 @@
       items: [
         { id: 'intel',    label: 'Threat Intel', color: '#f97316', beta: true },
         { id: 'hunting',  label: 'Hunting',      color: '#e879f9', beta: true },
+        { id: 'map',      label: 'Threat Map',   color: '#22d3ee', beta: true },
       ],
     },
     {
@@ -205,6 +207,8 @@
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 1 1 0 12A6 6 0 0 1 8 2Z" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     {:else if item.id === 'hunting'}
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="7.5" cy="7.5" r="5" stroke="currentColor" stroke-width="1.4"/><line x1="7.5" y1="2.5" x2="7.5" y2="4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7.5" y1="10.5" x2="7.5" y2="12.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="2.5" y1="7.5" x2="4.5" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10.5" y1="7.5" x2="12.5" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
+                    {:else if item.id === 'map'}
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5C8 1.5 5 5 5 8a3 3 0 006 0c0-3-3-6.5-3-6.5z" stroke="currentColor" stroke-width="1.2"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></svg>
                     {:else if item.id === 'playbooks'}
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/><line x1="6" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="9" x2="9" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
                     {:else if item.id === 'reports'}
@@ -273,6 +277,8 @@
       <RecommendationsView />
     {:else if currentView === 'settings'}
       <SettingsView />
+    {:else if currentView === 'map'}
+      <MapView />
     {/if}
   </main>
 </div>
