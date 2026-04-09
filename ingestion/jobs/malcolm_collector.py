@@ -38,13 +38,17 @@ class MalcolmCollector:
         opensearch_user: str = "malcolm_internal",
         opensearch_pass: str = "",
         verify_ssl: bool = False,
+        ubuntu_normalizer_url: str = "",   # Phase 31: empty = disabled
     ) -> None:
         self._loader = loader
         self._sqlite = sqlite_store
         self._interval = interval_sec
+        self._interval_sec = interval_sec  # alias for tests
         self._url = opensearch_url.rstrip("/")
         self._auth = (opensearch_user, opensearch_pass)
         self._verify_ssl = verify_ssl
+        self._ubuntu_normalizer_url = ubuntu_normalizer_url.rstrip("/")
+        self._ubuntu_ingested: int = 0
         self._consecutive_failures: int = 0
         self._running: bool = False
         self._alerts_ingested: int = 0
@@ -533,6 +537,84 @@ class MalcolmCollector:
             dst_port=int(dst_port_raw) if dst_port_raw else None,
         )
 
+    async def _poll_ubuntu_normalizer(self) -> list[NormalizedEvent]:
+        """
+        Poll Ubuntu normalization server for new NDJSON events.
+
+        Returns [] immediately if UBUNTU_NORMALIZER_URL is empty (disabled).
+        Tracks ingested line count via SQLite key "malcolm.ubuntu_normalized.last_line_count".
+        Skips already-seen lines (file is append-only).
+        """
+        if not self._ubuntu_normalizer_url:
+            return []  # Disabled — no Ubuntu box configured
+
+        url = f"{self._ubuntu_normalizer_url}/normalized/latest"
+        try:
+            response = await asyncio.to_thread(
+                lambda: httpx.get(url, timeout=10.0)
+            )
+            response.raise_for_status()
+        except Exception as exc:
+            log.warning("UbuntuNormalizer poll failed", url=url, error=str(exc))
+            return []
+
+        # Track line offset to avoid re-ingesting old lines
+        last_count_str = await asyncio.to_thread(
+            self._sqlite.get_kv, "malcolm.ubuntu_normalized.last_line_count"
+        )
+        last_count = int(last_count_str) if last_count_str else 0
+
+        lines = response.text.splitlines()
+        new_lines = lines[last_count:]
+        if not new_lines:
+            return []
+
+        events: list[NormalizedEvent] = []
+        for line in new_lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                doc = json.loads(line)
+            except json.JSONDecodeError:
+                log.warning("UbuntuNormalizer: invalid NDJSON line", line=line[:100])
+                continue
+            # Map to NormalizedEvent — use _normalize_syslog for syslog, else build from doc
+            source_type = doc.get("source_type", "ubuntu_normalized")
+            if source_type == "ipfire_syslog":
+                event = self._normalize_syslog(doc)
+            else:
+                # Generic EVE event — build NormalizedEvent directly from mapped fields
+                raw_ts = doc.get("timestamp", "")
+                try:
+                    ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+                except (ValueError, AttributeError):
+                    ts = datetime.now(timezone.utc)
+                event = NormalizedEvent(
+                    event_id=str(uuid4()),
+                    timestamp=ts,
+                    ingested_at=datetime.now(timezone.utc),
+                    source_type="ubuntu_normalized",
+                    hostname=doc.get("hostname"),
+                    event_type=doc.get("event_type"),
+                    severity=doc.get("severity", "info"),
+                    detection_source="ubuntu_normalizer",
+                    raw_event=doc.get("raw_event", line[:8192]),
+                    src_ip=doc.get("src_ip"),
+                    dst_ip=doc.get("dst_ip"),
+                    src_port=int(doc["src_port"]) if doc.get("src_port") else None,
+                    dst_port=int(doc["dst_port"]) if doc.get("dst_port") else None,
+                )
+            if event is not None:
+                events.append(event)
+
+        # Advance cursor
+        new_total = last_count + len(new_lines)
+        await asyncio.to_thread(
+            self._sqlite.set_kv, "malcolm.ubuntu_normalized.last_line_count", str(new_total)
+        )
+        return events
+
     # ------------------------------------------------------------------
     # Poll cycle
     # ------------------------------------------------------------------
@@ -634,6 +716,12 @@ class MalcolmCollector:
                 await self._loader.ingest_events(anomaly_batch)
                 self._anomaly_ingested += len(anomaly_batch)
 
+            # --- Ubuntu normalization pipeline ---
+            ubuntu_events = await self._poll_ubuntu_normalizer()
+            if ubuntu_events and self._loader is not None:
+                await self._loader.ingest_events(ubuntu_events)
+                self._ubuntu_ingested += len(ubuntu_events)
+
             # Heartbeat (proves collector loop is alive)
             iso_str = datetime.now(timezone.utc).isoformat()
             await asyncio.to_thread(self._sqlite.set_kv, "malcolm.last_heartbeat", iso_str)
@@ -676,4 +764,5 @@ class MalcolmCollector:
             "dns_ingested": self._dns_ingested,
             "fileinfo_ingested": self._fileinfo_ingested,
             "anomaly_ingested": self._anomaly_ingested,
+            "ubuntu_ingested": self._ubuntu_ingested,
         }

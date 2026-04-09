@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     MALCOLM_OPENSEARCH_VERIFY_SSL: bool = False  # Intentional — Malcolm uses self-signed TLS
     MALCOLM_POLL_INTERVAL: int = 30  # seconds between OpenSearch polls
 
+    # Ubuntu normalization pipeline (Phase 31)
+    # Set UBUNTU_NORMALIZER_URL=http://192.168.1.22:8080 in .env to enable.
+    # Empty string = Ubuntu poll disabled (default for systems without Ubuntu N150).
+    UBUNTU_NORMALIZER_URL: str = ""          # e.g. "http://192.168.1.22:8080"
+    UBUNTU_NORMALIZER_POLL_INTERVAL: int = 60  # seconds between Ubuntu polls
+
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
