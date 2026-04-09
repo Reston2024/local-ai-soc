@@ -613,6 +613,13 @@ def create_app() -> FastAPI:
     except Exception as exc:
         log.warning("Hunting router not available: %s", exc)
 
+    try:
+        from backend.api.osint_api import router as osint_router
+        app.include_router(osint_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("OSINT router mounted at /api/osint")
+    except Exception as exc:
+        log.warning("OSINT router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------
