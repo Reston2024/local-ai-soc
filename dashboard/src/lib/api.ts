@@ -39,6 +39,8 @@ export interface Detection {
   matched_event_ids?: string[]
   severity: string
   fired_at?: string
+  created_at?: string
+  src_ip?: string | null
   attack_technique?: string
   attack_tactic?: string
   explanation?: string
