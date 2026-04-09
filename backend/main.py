@@ -163,7 +163,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await duckdb_store.initialise_schema()
 
     # 3. Chroma store
-    chroma_store = ChromaStore(data_dir=settings.DATA_DIR)
+    chroma_store = ChromaStore(
+        data_dir=settings.DATA_DIR,
+        chroma_url=settings.CHROMA_URL,
+        chroma_token=settings.CHROMA_TOKEN,
+    )
     await chroma_store.initialise_default_collections(embed_model=settings.OLLAMA_EMBED_MODEL)
 
     # 4. SQLite store

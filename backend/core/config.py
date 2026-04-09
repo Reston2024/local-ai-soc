@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     SHODAN_API_KEY: str = ""
     GEOIP_DB_PATH: str = "data/GeoLite2-City.mmdb"
 
+    # ChromaDB — remote HTTP client (preferred) vs local PersistentClient (fallback)
+    # Set CHROMA_URL to point at a remote Chroma server (e.g. http://192.168.1.22:8200).
+    # Leave empty to use local PersistentClient at DATA_DIR/chroma.
+    CHROMA_URL: str = ""          # e.g. "http://192.168.1.22:8200"
+    CHROMA_TOKEN: str = ""        # Bearer token for remote Chroma (X-Chroma-Token header)
+
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
