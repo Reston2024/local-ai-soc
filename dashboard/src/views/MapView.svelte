@@ -109,6 +109,9 @@
 
     markerLayer = L.layerGroup().addTo(map)
 
+    // Force Leaflet to recalculate container size after flex layout resolves
+    requestAnimationFrame(() => { map?.invalidateSize() })
+
     await loadMarkers()
     refreshInterval = setInterval(loadMarkers, 60_000)
   })
@@ -191,7 +194,7 @@
   .map-header h1 { font-size: 15px; font-weight: 600; }
   .map-meta { font-size: 11px; color: var(--text-muted); }
   .map-body { display: flex; flex: 1; overflow: hidden; }
-  .map-container { flex: 1; }
+  .map-container { flex: 1; min-height: 400px; }
   .osint-side-panel { width: 300px; border-left: 1px solid var(--border); background: var(--bg-secondary); overflow-y: auto; flex-shrink: 0; }
   .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }
   .panel-ip { font-family: monospace; font-size: 13px; font-weight: 600; }
