@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 34-asset-inventory (plan 03 complete)
-status: In-progress (plan 04 next)
-last_updated: "2026-04-10T11:25:12.991Z"
+current_phase: 34-asset-inventory (plan 04 tasks 1-2 complete, checkpoint)
+status: In-progress (plan 04 awaiting human-verify checkpoint)
+last_updated: "2026-04-10T11:38:00.000Z"
 progress:
   total_phases: 37
   completed_phases: 32
@@ -54,6 +54,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 34-01 complete — AttackStore SQLite CRUD (technique/group/group_technique/detection_techniques), STIX bootstrap parser, Sigma tag extractor (pySigma namespace+name split), actor_matches() top-3 with confidence labels, detection-time ATT&CK tagging in matcher.py. 11 ATT&CK unit tests pass, 925 total unit tests green.
 - 2026-04-10: Plan 34-02 complete — AssetStore SQLite CRUD (assets table, ON CONFLICT upsert), _classify_ip() RFC1918+loopback→internal, _apply_asset_upsert() in loader.py to_thread block. Wave 0 stubs (7 tests). 929 total unit tests green.
 - 2026-04-10: Plan 34-03 complete — backend/api/assets.py (3 endpoints), backend/api/attack.py (coverage + actor-matches), AttackStore.list_techniques_by_tactic(), bootstrap_attack_data() STIX task, all wired in main.py. 938 unit tests green.
+- 2026-04-10: Plan 34-04 tasks 1-2 complete — api.ts Asset/TacticCoverage/ActorMatch interfaces + api.assets/api.attack groups, AssetsView full rewrite (IP-centric table + inline OSINT detail), AttackCoverageView new file (14-column ATT&CK heatmap), App.svelte routed + ATT&CK Coverage nav item. Paused at Task 3 human-verify checkpoint.
 
 ## Key Decisions
 
