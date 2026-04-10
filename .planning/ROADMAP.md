@@ -1278,7 +1278,7 @@ Plans:
 - P34-T10: Implement UEBA baseline engine — nightly asyncio task computes behavioral baselines per user/host. Real-time anomaly check on each new event. Creates DetectionRecord on trigger.
 - P34-T11: Add CampaignView nav item and actor profile cards — actor card shows: name, aliases, country, targets, tools, TTPs, confidence score, link to MITRE page.
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 34-01-PLAN.md — ATT&CK data layer: AttackStore, STIX bootstrap, Sigma tag extraction, detection-time tagging (Wave 1)

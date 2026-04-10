@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 34-mitre-attack-actor-asset (context complete — ready to plan)
-status: planning
-last_updated: "2026-04-10T09:00:00.000Z"
+current_phase: 34-asset-inventory (plan 01 complete — P34-T01, P34-T02 satisfied)
+status: in-progress
+last_updated: "2026-04-10T11:11:30.000Z"
 progress:
   total_phases: 37
   completed_phases: 32
-  total_plans: 170
-  completed_plans: 175
+  total_plans: 174
+  completed_plans: 176
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 33-real-threat-intelligence (all 3 plans complete — human-verify approved)
-**Previous phase:** 32-real-threat-hunting (COMPLETE — 2026-04-09)
-**Status:** Ready to plan
+**Current phase:** 34-asset-inventory (plan 01 complete)
+**Previous phase:** 33-real-threat-intelligence (COMPLETE — 2026-04-10)
+**Status:** In-progress (plan 02 next)
 
 ## Session Log
 
@@ -51,6 +51,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 33-03 tasks 1-2 complete — backend/api/intel.py (ioc-hits + feeds endpoints), api.ts IocHit/FeedStatus interfaces + intel.iocHits()/feeds() methods, ThreatIntelView.svelte full rewrite (feed strip, hit list, risk badges, inline expansion, empty state). All 3 intel unit tests pass, TS compiles clean. At human-verify checkpoint.
 - 2026-04-10: Plan 33-03 complete — human-verify checkpoint approved (3/3 unit tests green, TypeScript clean). All Phase 33 code plans done. Requirements P33-T09, P33-T10, P33-T16 satisfied.
 - 2026-04-10: Phase 34 context complete — 4 gray areas discussed. Scope: asset inventory (T07-T09) + ATT&CK tagging/heatmap (T01-T04) + actor matching (T03). Campaign/Diamond/UEBA (T05,T06,T10,T11) deferred to Phase 35. ATT&CK heatmap: simplified 14-col grid, heat scale, own view, inline tactic drill-down. Assets: hostname+risk+last seen+alert count row, event timeline+detections+OSINT detail panel, RFC1918=internal tag.
+- 2026-04-10: Plan 34-01 complete — AttackStore SQLite CRUD (technique/group/group_technique/detection_techniques), STIX bootstrap parser, Sigma tag extractor (pySigma namespace+name split), actor_matches() top-3 with confidence labels, detection-time ATT&CK tagging in matcher.py. 11 ATT&CK unit tests pass, 925 total unit tests green.
 
 ## Key Decisions
 
@@ -86,3 +87,6 @@ See: .planning/PROJECT.md
 - **33-02:** EventIngester = IngestionLoader alias — backward-compatible, satisfies main.py Plan 01 wiring contract
 - **33-03:** verify_token is in backend.core.auth (not backend.core.deps) — plan pseudocode had wrong import
 - **33-03:** Svelte 5 $state<IocHit[] | null>(null) initial value distinguishes loading vs empty state
+- **34-01:** pySigma SigmaRuleTag splits "attack.t1059" into namespace="attack", name="t1059" — regex must match tag.name alone when namespace=="attack"
+- **34-01:** Matcher ATT&CK tagging: _detection_techniques cache dict on SigmaMatcher passes tech IDs from match_rule() to save_detections() using self.stores.sqlite._conn
+- **34-01:** actor_matches() overlap formula = |input ∩ group_techs| / |group_techs| (recall-style); groups with 0 techniques skipped to avoid division-by-zero
