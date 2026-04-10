@@ -1278,9 +1278,16 @@ Plans:
 - P34-T10: Implement UEBA baseline engine — nightly asyncio task computes behavioral baselines per user/host. Real-time anomaly check on each new event. Creates DetectionRecord on trigger.
 - P34-T11: Add CampaignView nav item and actor profile cards — actor card shows: name, aliases, country, targets, tools, TTPs, confidence score, link to MITRE page.
 
-**Plans:** 0 plans
+**Plans:** 4 plans
+
+Plans:
+- [ ] 34-01-PLAN.md — ATT&CK data layer: AttackStore, STIX bootstrap, Sigma tag extraction, detection-time tagging (Wave 1)
+- [ ] 34-02-PLAN.md — Asset data layer: AssetStore, IP classification, loader.py upsert pipeline (Wave 1)
+- [ ] 34-03-PLAN.md — Backend APIs + main.py wiring: assets.py, attack.py routers, store init, STIX bootstrap task (Wave 2)
+- [ ] 34-04-PLAN.md — Frontend: AssetsView rewrite, AttackCoverageView, api.ts methods, App.svelte nav (Wave 3)
 
 *Phase 34 revised: 2026-04-09 — ATT&CK integration + actor intelligence + campaign tracking + Diamond Model + asset inventory + UEBA. This is the attribution layer.*
+*Phase 34 scoped: 2026-04-10 — T05/T06/T10/T11 (campaign/Diamond/UEBA/actor-cards) deferred to Phase 35. Phase 34 ships: T01-T04 + T07-T09.*
 
 ## Phase 35: SOC Completeness
 **Status:** planned
