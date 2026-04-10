@@ -243,3 +243,58 @@ async def test_recommendations_defaults(tmp_path):
         assert status == "draft"
     finally:
         await _cleanup(worker)
+
+
+# ---------------------------------------------------------------------------
+# Phase 33: IOC matching columns migration tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_ioc_matched_column_exists(tmp_path):
+    """After migration, normalized_events must have ioc_matched BOOLEAN column."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        cols = await store.fetch_all(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_name='normalized_events'"
+        )
+        col_map = {row[0]: row[1] for row in cols}
+        assert "ioc_matched" in col_map, "Missing column: ioc_matched"
+        assert "BOOLEAN" in col_map["ioc_matched"].upper()
+    finally:
+        await _cleanup(worker)
+
+
+@pytest.mark.asyncio
+async def test_ioc_confidence_column_exists(tmp_path):
+    """After migration, normalized_events must have ioc_confidence INTEGER column."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        cols = await store.fetch_all(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_name='normalized_events'"
+        )
+        col_map = {row[0]: row[1] for row in cols}
+        assert "ioc_confidence" in col_map, "Missing column: ioc_confidence"
+        assert "INT" in col_map["ioc_confidence"].upper()
+    finally:
+        await _cleanup(worker)
+
+
+@pytest.mark.asyncio
+async def test_ioc_actor_tag_column_exists(tmp_path):
+    """After migration, normalized_events must have ioc_actor_tag TEXT column."""
+    store, worker = await _make_store(tmp_path)
+    try:
+        await store.initialise_schema()
+        cols = await store.fetch_all(
+            "SELECT column_name, data_type FROM information_schema.columns "
+            "WHERE table_name='normalized_events'"
+        )
+        col_map = {row[0]: row[1] for row in cols}
+        assert "ioc_actor_tag" in col_map, "Missing column: ioc_actor_tag"
+        assert "VARCHAR" in col_map["ioc_actor_tag"].upper() or "TEXT" in col_map["ioc_actor_tag"].upper()
+    finally:
+        await _cleanup(worker)

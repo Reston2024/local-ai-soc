@@ -130,6 +130,10 @@ class NormalizedEvent(BaseModel):
     http_uri: Optional[str] = None
     http_status_code: Optional[int] = None
     http_user_agent: Optional[str] = None
+    # Phase 33: IOC matching fields
+    ioc_matched: Optional[bool] = False
+    ioc_confidence: Optional[int] = None
+    ioc_actor_tag: Optional[str] = None
 
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
