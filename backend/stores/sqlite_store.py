@@ -321,6 +321,17 @@ CREATE TABLE IF NOT EXISTS ioc_hits (
 );
 CREATE INDEX IF NOT EXISTS idx_ioc_hits_score ON ioc_hits (risk_score DESC);
 CREATE INDEX IF NOT EXISTS idx_ioc_hits_matched ON ioc_hits (matched_at DESC);
+
+-- Phase 35: Triage results store
+CREATE TABLE IF NOT EXISTS triage_results (
+    run_id          TEXT PRIMARY KEY,
+    severity_summary TEXT NOT NULL DEFAULT '',
+    result_text     TEXT NOT NULL DEFAULT '',
+    detection_count INTEGER NOT NULL DEFAULT 0,
+    model_name      TEXT NOT NULL DEFAULT '',
+    created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_triage_results_created ON triage_results (created_at DESC);
 """
 
 
@@ -373,6 +384,13 @@ class SQLiteStore:
             self._conn.execute(
                 "ALTER TABLE llm_audit_provenance ADD COLUMN confidence_score REAL"
             )
+            self._conn.commit()
+        except Exception:
+            pass  # column already exists — idempotent
+
+        # Backward-compatible migration: add triaged_at to detections if absent
+        try:
+            self._conn.execute("ALTER TABLE detections ADD COLUMN triaged_at TEXT")
             self._conn.commit()
         except Exception:
             pass  # column already exists — idempotent
@@ -728,6 +746,34 @@ class SQLiteStore:
             except (json.JSONDecodeError, TypeError):
                 pass
         return d
+
+    # ------------------------------------------------------------------
+    # Triage results (Phase 35)
+    # ------------------------------------------------------------------
+
+    def save_triage_result(self, result: dict) -> None:
+        """Insert or replace a triage result row."""
+        self._conn.execute(
+            """INSERT OR REPLACE INTO triage_results
+               (run_id, severity_summary, result_text, detection_count, model_name, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                result["run_id"],
+                result.get("severity_summary", ""),
+                result.get("result_text", ""),
+                result.get("detection_count", 0),
+                result.get("model_name", ""),
+                result["created_at"],
+            ),
+        )
+        self._conn.commit()
+
+    def get_latest_triage(self) -> dict | None:
+        """Return the most recent triage result, or None if no results exist."""
+        row = self._conn.execute(
+            "SELECT * FROM triage_results ORDER BY created_at DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else None
 
     # ------------------------------------------------------------------
     # Health check
