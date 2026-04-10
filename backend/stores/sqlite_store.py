@@ -284,6 +284,43 @@ CREATE TABLE IF NOT EXISTS osint_cache (
     fetched_at  TEXT NOT NULL,
     expires_at  TEXT NOT NULL
 );
+
+-- Phase 33: Threat Intelligence IOC store
+CREATE TABLE IF NOT EXISTS ioc_store (
+    ioc_value       TEXT NOT NULL,
+    ioc_type        TEXT NOT NULL,
+    bare_ip         TEXT,
+    confidence      INTEGER NOT NULL DEFAULT 0,
+    first_seen      TEXT,
+    last_seen       TEXT,
+    malware_family  TEXT,
+    actor_tag       TEXT,
+    feed_source     TEXT NOT NULL,
+    ioc_status      TEXT NOT NULL DEFAULT 'active',
+    extra_json      TEXT,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    PRIMARY KEY (ioc_value, ioc_type)
+);
+CREATE INDEX IF NOT EXISTS idx_ioc_bare_ip ON ioc_store (bare_ip);
+CREATE INDEX IF NOT EXISTS idx_ioc_confidence ON ioc_store (confidence);
+
+CREATE TABLE IF NOT EXISTS ioc_hits (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_timestamp TEXT NOT NULL,
+    hostname        TEXT,
+    src_ip          TEXT,
+    dst_ip          TEXT,
+    ioc_value       TEXT NOT NULL,
+    ioc_type        TEXT NOT NULL,
+    ioc_source      TEXT NOT NULL,
+    risk_score      INTEGER NOT NULL,
+    actor_tag       TEXT,
+    malware_family  TEXT,
+    matched_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ioc_hits_score ON ioc_hits (risk_score DESC);
+CREATE INDEX IF NOT EXISTS idx_ioc_hits_matched ON ioc_hits (matched_at DESC);
 """
 
 
