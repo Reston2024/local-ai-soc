@@ -47,6 +47,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Sidebar redesigned to Claude-style — uniform muted text rgba(255,255,255,0.48), active item rgba(255,255,255,0.09) background, no per-item accent colours, no icon wrapper boxes, 230px width, #111111 background, auto-scroll active item into view via $effect.
 - 2026-04-09: Network device health dots added to sidebar — GET /health/network endpoint (TCP reachability, no auth required), Router/Firewall/GMKtec dots polling every 30s. New config vars: MONITOR_ROUTER_HOST, MONITOR_FIREWALL_HOST, MONITOR_GMKTEC_HOST (.env: 192.168.1.1:444, 192.168.1.1:444, 192.168.1.22:9200). New standalone script scripts/backfill_graph.py for offline graph rebuild.
 - 2026-04-10: Plan 33-01 complete — TIP data layer: ioc_store DDL (SQLite), IocStore CRUD class, 3 feed workers (Feodo/CISA KEV/ThreatFox), DuckDB 3-column migration (ioc_matched/ioc_confidence/ioc_actor_tag), NormalizedEvent IOC fields, Wave 0 test stubs (18 tests). 908 unit tests green.
+- 2026-04-10: Plan 33-02 complete — IOC matching pipeline: to_duckdb_row() extended to 58 columns, _INSERT_SQL updated, _apply_ioc_matching() (sync/thread-safe) + retroactive_ioc_scan() (async) added to loader.py, IocStore._record_hit() implemented, EventIngester alias created. 914 unit tests green.
 - 2026-04-10: Plan 33-03 tasks 1-2 complete — backend/api/intel.py (ioc-hits + feeds endpoints), api.ts IocHit/FeedStatus interfaces + intel.iocHits()/feeds() methods, ThreatIntelView.svelte full rewrite (feed strip, hit list, risk badges, inline expansion, empty state). All 3 intel unit tests pass, TS compiles clean. At human-verify checkpoint.
 
 ## Key Decisions
@@ -78,5 +79,8 @@ See: .planning/PROJECT.md
 - **33-01:** FeodoWorker extracts CSV fieldnames from commented header line (lstrip "# ")
 - **33-01:** ThreatFox confidence overridden to 50 regardless of feed confidence_level for scoring consistency
 - **33-01:** Intel router registered in main.py with try/except — backend/api/intel.py created by Plan 03
+- **33-02:** _apply_ioc_matching is synchronous; _record_hit called directly — safe because entire batch runs inside asyncio.to_thread()
+- **33-02:** retroactive_ioc_scan uses asyncio.to_thread() for SQLite writes — it runs on the event loop via asyncio.create_task()
+- **33-02:** EventIngester = IngestionLoader alias — backward-compatible, satisfies main.py Plan 01 wiring contract
 - **33-03:** verify_token is in backend.core.auth (not backend.core.deps) — plan pseudocode had wrong import
 - **33-03:** Svelte 5 $state<IocHit[] | null>(null) initial value distinguishes loading vs empty state
