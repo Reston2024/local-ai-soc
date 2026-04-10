@@ -34,6 +34,7 @@ from uuid import uuid4 as _uuid4
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
+from backend.services.attack.asset_store import AssetStore, _apply_asset_upsert
 from backend.services.intel.ioc_store import IocStore
 from backend.services.ollama_client import OllamaClient
 from backend.stores.chroma_store import DEFAULT_COLLECTION
@@ -272,10 +273,12 @@ class IngestionLoader:
         stores: Stores,
         ollama_client: OllamaClient,
         ioc_store: IocStore | None = None,
+        asset_store: AssetStore | None = None,
     ) -> None:
         self._stores = stores
         self._ollama = ollama_client
         self._ioc_store: IocStore | None = ioc_store
+        self._asset_store: AssetStore | None = asset_store
 
     # ------------------------------------------------------------------
     # Public API
@@ -438,13 +441,22 @@ class IngestionLoader:
         # Ensure normalisation
         events = [normalize_event(e) for e in events]
 
-        # Phase 33: IOC matching (after normalize, before deduplication)
-        # Runs the synchronous check in a thread to avoid blocking the event loop.
-        if self._ioc_store is not None:
-            ioc_store_ref = self._ioc_store
+        # Phase 33: IOC matching + Phase 34: asset upsert
+        # Both are synchronous helpers called inside a single asyncio.to_thread block.
+        ioc_store_ref = self._ioc_store
+        asset_store_ref = self._asset_store
+
+        if ioc_store_ref is not None or asset_store_ref is not None:
 
             def _apply_ioc_batch(evts: list[NormalizedEvent]) -> list[NormalizedEvent]:
-                return [_apply_ioc_matching(e, ioc_store_ref) for e in evts]
+                result: list[NormalizedEvent] = []
+                for e in evts:
+                    if ioc_store_ref is not None:
+                        e = _apply_ioc_matching(e, ioc_store_ref)
+                    if asset_store_ref is not None:
+                        _apply_asset_upsert(e, asset_store_ref)
+                    result.append(e)
+                return result
 
             events = await asyncio.to_thread(_apply_ioc_batch, events)
 
