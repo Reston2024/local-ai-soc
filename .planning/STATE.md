@@ -33,6 +33,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Phase 36 (Zeek Full Telemetry) added to ROADMAP — blocked on managed switch purchase
 - 2026-04-09: Architecture decision — Ubuntu box is dumb pipe only (no AI). Evidence archive + normalization pipeline added to Phase 31.
 - 2026-04-09: Hardware purchased — 2TB external drive (Ubuntu evidence archive) + Netgear GS308E managed switch (SPAN port for Phase 36). Phase 36 status: blocked → planned/in-transit. See ADR-034.
+- 2026-04-10: Netgear GS308E switch arrived and configured — green LAN port 1 mirrored to port 5 (GMKtec/Ubuntu). SPAN port active. Phase 36 status: in-transit → READY. Zeek can now capture all LAN traffic.
 - 2026-04-09: Phase 31 P31-T12 added — beta Zeek telemetry chips in EventsView (disabled, Phase 36 preview). Plan 31-03 updated.
 - 2026-04-09: Plan 31-02 complete — EvidenceArchiver (gzip chain-of-custody) + Ubuntu ECS normalization FastAPI server + systemd units. All 3 unit tests pass, 876 total unit tests green.
 - 2026-04-09: Plan 31-03 complete — UBUNTU_NORMALIZER_URL setting, Ubuntu NDJSON poll in MalcolmCollector, api.ts event_type param, EventsView filter chips (7 active + 8 Zeek beta). 882 unit tests green.
