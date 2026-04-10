@@ -1214,7 +1214,7 @@ discovered when running against real Malcolm telemetry:
 - P33-T16: Wire ThreatIntelView.svelte — real TIP console: feed status dashboard (last sync, IOC count, health), IOC search with faceted filters (type/actor/malware/TLP/status), IOC detail panel (all enrichment data, risk score, relationship graph using Cytoscape.js), manual IOC add form with TLP selector, retrohunt queue status
 - P33-T17: Add IOC enrichment panel to EventsView, DetectionsView, InvestigationView — when an event has ioc_matched=True, show inline enrichment card: risk score (colour-coded), actor tag, malware family, AbuseIPDB score, geo/ASN, PassiveDNS count, VirusTotal detection count
 
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 33-01-PLAN.md — Data layer: ioc_store DDL + IocStore class + 3 feed workers + DuckDB migration + confidence decay
