@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 34-asset-inventory (plan 04 tasks 1-2 complete, checkpoint)
-status: In-progress (plan 04 awaiting human-verify checkpoint)
+current_phase: 34-asset-inventory (COMPLETE — all 4 plans done)
+status: Complete — phase 35 next
 last_updated: "2026-04-10T11:38:00.000Z"
 progress:
   total_phases: 37
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 34-asset-inventory (plan 02 complete)
-**Previous phase:** 33-real-threat-intelligence (COMPLETE — 2026-04-10)
-**Status:** In-progress (plan 03 next)
+**Current phase:** 35-soc-completeness (plan 01 next)
+**Previous phase:** 34-asset-inventory (COMPLETE — 2026-04-10)
+**Status:** In-progress (phase 35 next)
 
 ## Session Log
 
@@ -55,6 +55,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 34-02 complete — AssetStore SQLite CRUD (assets table, ON CONFLICT upsert), _classify_ip() RFC1918+loopback→internal, _apply_asset_upsert() in loader.py to_thread block. Wave 0 stubs (7 tests). 929 total unit tests green.
 - 2026-04-10: Plan 34-03 complete — backend/api/assets.py (3 endpoints), backend/api/attack.py (coverage + actor-matches), AttackStore.list_techniques_by_tactic(), bootstrap_attack_data() STIX task, all wired in main.py. 938 unit tests green.
 - 2026-04-10: Plan 34-04 tasks 1-2 complete — api.ts Asset/TacticCoverage/ActorMatch interfaces + api.assets/api.attack groups, AssetsView full rewrite (IP-centric table + inline OSINT detail), AttackCoverageView new file (14-column ATT&CK heatmap), App.svelte routed + ATT&CK Coverage nav item. Paused at Task 3 human-verify checkpoint.
+- 2026-04-10: Plan 34-04 complete — Task 3 checkpoint approved. Post-verify fixes applied: ThreatIntelView relative import path, ThreatIntelView error state, MapView Leaflet CSS + invalidateSize(), Caddy /health* glob + OSM CSP headers. Phase 34 COMPLETE. Requirements P34-T09 satisfied.
 
 ## Key Decisions
 
