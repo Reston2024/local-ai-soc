@@ -121,6 +121,7 @@
   let triageResult = $state<TriageResult | null>(null)
   let triageRunning = $state(false)
   let triagePanelOpen = $state(true)
+  let triageError = $state<string | null>(null)
 
   async function loadTriage() {
     try {
@@ -137,9 +138,12 @@
 
   async function runTriageNow() {
     triageRunning = true
+    triageError = null
     try {
       await api.triage.run()
       await loadTriage()
+    } catch (e) {
+      triageError = String(e)
     } finally {
       triageRunning = false
     }
@@ -173,7 +177,9 @@
     </div>
     {#if triagePanelOpen}
       <div class="triage-body">
-        {#if triageResult}
+        {#if triageError}
+          <span class="triage-err">{triageError}</span>
+        {:else if triageResult}
           <div class="triage-summary">
             <strong>{triageResult.severity_summary}</strong>
             <span class="triage-meta">
@@ -475,6 +481,11 @@
   .triage-empty {
     font-size: 12px;
     color: var(--text-muted);
+  }
+
+  .triage-err {
+    font-size: 12px;
+    color: var(--severity-high, #f97316);
   }
 
   .btn-sm {
