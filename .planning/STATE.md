@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 35-soc-completeness (plan 03 next)
-status: In-progress (phase 35, plans 01-02 complete)
-last_updated: "2026-04-10T18:51:32.586Z"
+status: completed
+last_updated: "2026-04-10T18:53:05.815Z"
 progress:
   total_phases: 37
   completed_phases: 33
   total_plans: 178
-  completed_plans: 180
+  completed_plans: 181
 ---
 
 # Session State
@@ -56,6 +56,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 34-03 complete — backend/api/assets.py (3 endpoints), backend/api/attack.py (coverage + actor-matches), AttackStore.list_techniques_by_tactic(), bootstrap_attack_data() STIX task, all wired in main.py. 938 unit tests green.
 - 2026-04-10: Plan 34-04 tasks 1-2 complete — api.ts Asset/TacticCoverage/ActorMatch interfaces + api.assets/api.attack groups, AssetsView full rewrite (IP-centric table + inline OSINT detail), AttackCoverageView new file (14-column ATT&CK heatmap), App.svelte routed + ATT&CK Coverage nav item. Paused at Task 3 human-verify checkpoint.
 - 2026-04-10: Plan 34-04 complete — Task 3 checkpoint approved. Post-verify fixes applied: ThreatIntelView relative import path, ThreatIntelView error state, MapView Leaflet CSS + invalidateSize(), Caddy /health* glob + OSM CSP headers. Phase 34 COMPLETE. Requirements P34-T09 satisfied.
+- 2026-04-10: Plan 35-01 complete — explain.py structured early-return when investigation={}, _fetch_playbook_rows wired into timeline, 3 Zeek ECS field-map entries (dns.query.name, http.user_agent, tls.client.ja3), ZEEK_CHIPS enabled, 4 Intelligence nav items lose beta tag. 9 new unit tests, 953 total green.
 - 2026-04-10: Plan 35-02 complete — triage_results SQLite DDL table + triaged_at idempotent migration + SQLiteStore.save_triage_result() and get_latest_triage() methods. 6 unit tests pass, 953 total unit tests green. Requirement P35-T08 satisfied.
 
 ## Key Decisions
@@ -101,6 +102,9 @@ See: .planning/PROJECT.md
 - **34-03:** actor-matches queries detection_techniques via attack_store._conn (shared SQLite connection — avoids extra app.state lookups)
 - **34-03:** MITRE_TACTICS imported from backend.api.analytics — no duplication in attack.py
 - **34-03:** bootstrap_attack_data is module-level async fn, not nested in lifespan, for testability and readability
+- **35-01:** explain.py returns structured ExplainResponse on empty investigation — not exception; Ollama not called
+- **35-01:** _fetch_playbook_rows is module-level with safe fallback when playbook_runs table absent
+- **35-01:** ZEEK_CHIPS fully active — managed switch SPAN port confirmed active, FIELD_MAP_VERSION bumped 20→21
 - **35-02:** triage_results uses run_id TEXT PRIMARY KEY — INSERT OR REPLACE enables idempotent saves
 - **35-02:** triaged_at migration follows existing try/except pattern — backward-compatible idempotent ALTER TABLE
 - **35-02:** get_latest_triage orders by created_at DESC ISO-8601 string sort — no ROWID dependency
