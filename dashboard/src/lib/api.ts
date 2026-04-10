@@ -203,6 +203,43 @@ export interface TrendDataPoint {
 export type TrendsResponse = Record<string, TrendDataPoint[]>
 
 // ---------------------------------------------------------------------------
+// Phase 34 — Asset Inventory + ATT&CK Coverage interfaces
+// ---------------------------------------------------------------------------
+
+export interface Asset {
+  ip: string
+  hostname: string | null
+  tag: "internal" | "external"
+  risk_score: number
+  last_seen: string
+  first_seen: string
+  alert_count: number
+}
+
+export interface TacticCoverage {
+  tactic: string
+  tactic_short: string
+  total_techniques: number
+  covered_count: number
+  techniques: Array<{
+    tech_id: string
+    name: string
+    covered: boolean
+    rule_titles: string[]
+  }>
+}
+
+export interface ActorMatch {
+  name: string
+  aliases: string[]
+  group_id: string
+  overlap_pct: number
+  confidence: "High" | "Medium" | "Low"
+  matched_count: number
+  total_count: number
+}
+
+// ---------------------------------------------------------------------------
 // Phase 33 — Threat Intelligence interfaces
 // ---------------------------------------------------------------------------
 
@@ -767,6 +804,28 @@ export const api = {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
+  },
+
+  assets: {
+    list: (limit = 200): Promise<Asset[]> =>
+      request<Asset[]>(`/api/assets?limit=${limit}`),
+
+    get: (ip: string): Promise<Asset> =>
+      request<Asset>(`/api/assets/${encodeURIComponent(ip)}`),
+
+    tag: (ip: string, tag: string): Promise<void> =>
+      request<void>(`/api/assets/${encodeURIComponent(ip)}/tag`, {
+        method: 'POST',
+        body: JSON.stringify({ tag }),
+      }),
+  },
+
+  attack: {
+    coverage: (): Promise<TacticCoverage[]> =>
+      request<TacticCoverage[]>('/api/attack/coverage'),
+
+    actorMatches: (): Promise<ActorMatch[]> =>
+      request<ActorMatch[]>('/api/attack/actor-matches'),
   },
 }
 
