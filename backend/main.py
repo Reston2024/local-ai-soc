@@ -57,6 +57,8 @@ from backend.api.graph import router as graph_router  # noqa: E402
 from backend.api.health import router as health_router  # noqa: E402
 from backend.api.ingest import router as ingest_router  # noqa: E402
 from backend.api.query import router as query_router  # noqa: E402
+from backend.services.attack.asset_store import AssetStore  # noqa: E402
+from backend.services.attack.attack_store import AttackStore  # noqa: E402
 from backend.services.intel.feed_sync import CisaKevWorker, FeodoWorker, ThreatFoxWorker  # noqa: E402
 from backend.services.intel.ioc_store import IocStore  # noqa: E402
 from backend.services.ollama_client import OllamaClient  # noqa: E402
@@ -247,6 +249,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # When Plan 02 creates EventIngester with ioc_store param, this wiring is already here.
     app.state._ioc_store_for_ingester = ioc_store  # Accessed by ingest.py route handlers
 
+    # 7b. Phase 34: Asset inventory + ATT&CK stores (share SQLite connection)
+    asset_store = AssetStore(sqlite_store._conn)
+    app.state.asset_store = asset_store
+    log.info("AssetStore initialised (Phase 34)")
+
+    attack_store = AttackStore(sqlite_store._conn)
+    app.state.attack_store = attack_store
+    log.info("AttackStore initialised (Phase 34)")
+
+    # Launch STIX bootstrap as a background task (non-blocking, idempotent)
+    asyncio.ensure_future(bootstrap_attack_data(attack_store))
+    log.info("ATT&CK STIX bootstrap task scheduled (Phase 34)")
+
     # 8. Conditional osquery live telemetry collector
     osquery_task: asyncio.Task | None = None
     if settings.OSQUERY_ENABLED:
@@ -406,6 +421,44 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await ollama.close()
 
     log.info("AI-SOC-Brain shutdown complete")
+
+
+# ---------------------------------------------------------------------------
+# Phase 34: ATT&CK STIX bootstrap
+# ---------------------------------------------------------------------------
+
+_STIX_URL = (
+    "https://raw.githubusercontent.com/mitre-attack/attack-stix-data"
+    "/master/enterprise-attack/enterprise-attack.json"
+)
+
+
+async def bootstrap_attack_data(attack_store: "AttackStore") -> None:
+    """
+    Download and parse MITRE ATT&CK STIX bundle at startup.
+
+    Skips download if techniques are already seeded (idempotent).
+    Failures are non-fatal — logged as warnings only.
+    """
+    count = await asyncio.to_thread(attack_store.technique_count)
+    if count > 0:
+        log.info(
+            "ATT&CK data already seeded (%d techniques) — skipping download", count
+        )
+        return
+    try:
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            log.info("Downloading ATT&CK STIX bundle from GitHub...")
+            resp = await client.get(_STIX_URL, timeout=60.0)
+            resp.raise_for_status()
+            bundle = resp.json()
+        await asyncio.to_thread(attack_store.bootstrap_from_objects, bundle["objects"])
+        count = await asyncio.to_thread(attack_store.technique_count)
+        log.info("ATT&CK bootstrap complete: %d techniques loaded", count)
+    except Exception as exc:
+        log.warning("ATT&CK STIX bootstrap failed (non-fatal): %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -662,6 +715,20 @@ def create_app() -> FastAPI:
         log.info("Intel router mounted at /api/intel")
     except Exception as exc:
         log.warning("Intel router not available: %s", exc)
+
+    try:
+        from backend.api.assets import router as assets_router
+        app.include_router(assets_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Assets router registered at /api/assets")
+    except Exception as exc:
+        log.warning("Assets router failed to load: %s", exc)
+
+    try:
+        from backend.api.attack import router as attack_router
+        app.include_router(attack_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Attack router registered at /api/attack")
+    except Exception as exc:
+        log.warning("Attack router failed to load: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
