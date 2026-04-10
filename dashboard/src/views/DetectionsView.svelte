@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { api, type Detection, type KpiSnapshot } from '../lib/api.ts'
+  import { api, type Detection, type KpiSnapshot, type TriageResult } from '../lib/api.ts'
 
   let {
     onInvestigate,
@@ -117,12 +117,80 @@
     if (!loading) lastUpdated = kpis ? new Date(kpis.computed_at) : new Date()
   })
 
+  // ── Triage panel ──
+  let triageResult = $state<TriageResult | null>(null)
+  let triageRunning = $state(false)
+  let triagePanelOpen = $state(true)
+
+  async function loadTriage() {
+    try {
+      const { result } = await api.triage.latest()
+      triageResult = result
+    } catch { /* triage fetch failure is non-critical */ }
+  }
+
+  $effect(() => {
+    loadTriage()
+    const interval = setInterval(loadTriage, 15_000)
+    return () => clearInterval(interval)
+  })
+
+  async function runTriageNow() {
+    triageRunning = true
+    try {
+      await api.triage.run()
+      await loadTriage()
+    } finally {
+      triageRunning = false
+    }
+  }
+
   function fmtUpdated(d: Date) {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   }
 </script>
 
 <div class="view">
+  <!-- ── Triage panel ── -->
+  <div class="triage-panel">
+    <div class="triage-header" role="button" tabindex="0"
+      onclick={() => triagePanelOpen = !triagePanelOpen}
+      onkeydown={(e) => e.key === 'Enter' && (triagePanelOpen = !triagePanelOpen)}
+    >
+      <span class="triage-title">
+        AI Triage
+        {#if triageRunning}<span class="triage-running">— Analyzing…</span>{/if}
+      </span>
+      {#if triageRunning}<span class="triage-spinner"></span>{/if}
+      <button
+        class="btn btn-sm"
+        onclick={(e) => { e.stopPropagation(); runTriageNow() }}
+        disabled={triageRunning}
+      >
+        Run Triage Now
+      </button>
+      <span class="collapse-icon">{triagePanelOpen ? '▲' : '▼'}</span>
+    </div>
+    {#if triagePanelOpen}
+      <div class="triage-body">
+        {#if triageResult}
+          <div class="triage-summary">
+            <strong>{triageResult.severity_summary}</strong>
+            <span class="triage-meta">
+              {triageResult.detection_count} detections
+              · {triageResult.model_name}
+              · {triageResult.created_at}
+            </span>
+          </div>
+        {:else}
+          <span class="triage-empty">
+            No triage results yet. Click "Run Triage Now" to analyze detections.
+          </span>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
   <!-- ── Operational KPI bar ── -->
   <div class="kpi-bar">
     <!-- Severity pills -->
@@ -337,6 +405,83 @@
 
 <style>
   .view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+  /* ── Triage panel ── */
+  .triage-panel {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,212,255,0.03);
+  }
+
+  .triage-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 18px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .triage-header:hover { background: rgba(255,255,255,0.02); }
+
+  .triage-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .triage-running {
+    font-weight: 400;
+    color: var(--accent-cyan, #00d4ff);
+    font-size: 12px;
+  }
+
+  .triage-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent-cyan, #00d4ff);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  .collapse-icon {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .triage-body {
+    padding: 4px 18px 10px;
+  }
+
+  .triage-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .triage-summary strong {
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .triage-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .triage-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .btn-sm {
+    font-size: 11px;
+    padding: 3px 10px;
+    height: 26px;
+  }
 
   /* ── KPI bar ── */
   .kpi-bar {

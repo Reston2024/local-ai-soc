@@ -19,13 +19,14 @@
   import SettingsView from './views/SettingsView.svelte'
   import MapView from './views/MapView.svelte'
   import AttackCoverageView from './views/AttackCoverageView.svelte'
+  import OverviewView from './views/OverviewView.svelte'
 
   type View =
-    | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
+    | 'overview' | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
     | 'recommendations' | 'settings' | 'map' | 'attack-coverage'
 
-  let currentView = $state<View>('detections')
+  let currentView = $state<View>('overview')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
   let investigatingId = $state<string>('')
 
@@ -126,6 +127,7 @@
     {
       label: 'Monitor',
       items: [
+        { id: 'overview',     label: 'Overview',      color: '' },
         { id: 'detections',   label: 'Detections',   color: '' },
         { id: 'events',       label: 'Events',        color: '' },
         { id: 'assets',       label: 'Assets',        color: '' },
@@ -227,7 +229,9 @@
               onclick={() => { currentView = item.id }}
             >
               <span class="nav-icon">
-                {#if item.id === 'detections'}
+                {#if item.id === 'overview'}
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="2" width="5" height="3" rx="1" fill="currentColor" opacity="0.6"/><rect x="9" y="7" width="5" height="7" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
+                {:else if item.id === 'detections'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M9 1.5L3.5 9H7.5L7 14.5L12.5 7H8.5L9 1.5Z" fill="currentColor"/></svg>
                 {:else if item.id === 'investigation'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.6"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -282,7 +286,9 @@
 
   <!-- Main content -->
   <main class="main-content">
-    {#if currentView === 'detections'}
+    {#if currentView === 'overview'}
+      <OverviewView healthStatus={healthStatus} networkDevices={networkDevices} />
+    {:else if currentView === 'detections'}
       <DetectionsView onInvestigate={handleInvestigate} onPostureUpdate={handlePostureUpdate} />
     {:else if currentView === 'investigation'}
       <InvestigationView
