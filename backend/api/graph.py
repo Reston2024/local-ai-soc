@@ -471,8 +471,8 @@ async def backfill_graph(
 
     stores = request.app.state.stores
 
-    # Build query
-    sql = """SELECT event_id, timestamp, source_type, event_type,
+    # Build query — include ingested_at so NormalizedEvent validates
+    sql = """SELECT event_id, timestamp, ingested_at, source_type, event_type,
                     hostname, username, user_domain,
                     process_name, process_id, process_executable,
                     parent_process_id, parent_process_name,
@@ -491,7 +491,7 @@ async def backfill_graph(
     rows = await stores.duckdb.fetch_all(sql, params if params else None)
 
     cols = [
-        "event_id", "timestamp", "source_type", "event_type",
+        "event_id", "timestamp", "ingested_at", "source_type", "event_type",
         "hostname", "username", "user_domain",
         "process_name", "process_id", "process_executable",
         "parent_process_id", "parent_process_name",
@@ -505,14 +505,17 @@ async def backfill_graph(
     entity_upserts = 0
     edge_inserts = 0
 
-    def _process_batch(batch: list[tuple]) -> tuple[int, int]:
+    def _process_batch(batch: list[tuple]) -> tuple[int, int, str | None]:
         eu = 0
         ei = 0
+        first_error: str | None = None
         for row in batch:
             d = dict(zip(cols, row))
             try:
                 ev = NormalizedEvent(**d)
-            except Exception:
+            except Exception as exc:
+                if first_error is None:
+                    first_error = f"{type(exc).__name__}: {exc}"
                 continue
             entities, edges = extract_entities_and_edges(ev)
             pe, pg = extract_perimeter_entities(ev)
@@ -530,25 +533,30 @@ async def backfill_graph(
                     edge.get("properties", {}),
                 )
                 ei += 1
-        return eu, ei
+        return eu, ei, first_error
 
     # Process in chunks to avoid long blocking calls
     chunk = 500
+    first_err: str | None = None
     for i in range(0, len(rows), chunk):
-        eu, ei = await asyncio.to_thread(_process_batch, rows[i:i + chunk])
+        eu, ei, err = await asyncio.to_thread(_process_batch, rows[i:i + chunk])
         entity_upserts += eu
         edge_inserts += ei
+        if err and first_err is None:
+            first_err = err
 
     log.info(
         "Graph backfill complete",
         events_processed=len(rows),
         entity_upserts=entity_upserts,
         edge_inserts=edge_inserts,
+        first_error=first_err,
     )
     return JSONResponse({
         "events_processed": len(rows),
         "entity_upserts": entity_upserts,
         "edge_inserts": edge_inserts,
+        "first_error": first_err,
     })
 
 
