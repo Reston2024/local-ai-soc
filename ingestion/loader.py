@@ -34,6 +34,7 @@ from uuid import uuid4 as _uuid4
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
+from backend.services.intel.ioc_store import IocStore
 from backend.services.ollama_client import OllamaClient
 from backend.stores.chroma_store import DEFAULT_COLLECTION
 from ingestion.entity_extractor import extract_entities_and_edges, extract_perimeter_entities
@@ -92,6 +93,107 @@ INSERT OR IGNORE INTO normalized_events (
 """
 
 _EXISTS_SQL = "SELECT 1 FROM normalized_events WHERE event_id = ? LIMIT 1"
+
+
+# ---------------------------------------------------------------------------
+# Phase 33: IOC matching helpers
+# ---------------------------------------------------------------------------
+
+
+def _apply_ioc_matching(event: NormalizedEvent, ioc_store: IocStore) -> NormalizedEvent:
+    """Check event src_ip/dst_ip against ioc_store. Mutates and returns event.
+
+    THREADING NOTE: This is a synchronous function. It is safe to call ioc_store._record_hit()
+    directly here (no asyncio.to_thread wrapper needed) because ingest_events() itself is
+    dispatched via asyncio.to_thread() in the caller. _apply_ioc_matching() therefore runs
+    inside a thread pool worker, not on the event loop thread. Direct synchronous SQLite
+    writes from here are safe and consistent with CLAUDE.md's write-queue pattern.
+    """
+    matched, confidence, actor_tag = ioc_store.check_ioc_match(event.src_ip, event.dst_ip)
+    if matched:
+        event.ioc_matched = True
+        event.ioc_confidence = confidence
+        event.ioc_actor_tag = actor_tag
+        # _record_hit is synchronous — safe to call directly here because this function
+        # is only ever called from within asyncio.to_thread() context (see note above).
+        ioc_store._record_hit(
+            event_timestamp=str(event.timestamp),
+            hostname=event.hostname,
+            src_ip=event.src_ip,
+            dst_ip=event.dst_ip,
+            ioc_value=event.src_ip or event.dst_ip or "",
+            ioc_type="ip",
+            ioc_source=actor_tag or "unknown",
+            risk_score=confidence,
+            actor_tag=actor_tag,
+            malware_family=None,
+        )
+    return event
+
+
+async def retroactive_ioc_scan(
+    ioc_value: str,
+    ioc_type: str,
+    bare_ip: str | None,
+    confidence: int,
+    ioc_store: IocStore,
+    duckdb_store: Any,
+) -> int:
+    """Scan normalized_events from the last 30 days for events matching the given IOC.
+
+    Called after each successful feed sync upsert (for new IOCs only).
+    Updates ioc_matched in DuckDB and records hits in ioc_hits SQLite table.
+
+    NOTE: This is an async function running on the event loop. asyncio.to_thread()
+    wrappers are correct and required — retroactive scans are called via
+    asyncio.create_task() from async context (unlike _apply_ioc_matching which is sync-in-thread).
+
+    Returns:
+        Count of DuckDB rows updated.
+    """
+    lookup_ip = bare_ip or ioc_value
+    rows = await duckdb_store.fetch_all(
+        "SELECT event_id, src_ip, dst_ip, hostname, timestamp FROM normalized_events "
+        "WHERE timestamp >= now() - INTERVAL '30 days' "
+        "AND (src_ip = ? OR dst_ip = ?) LIMIT 1000",
+        [lookup_ip, lookup_ip],
+    )
+    count = 0
+    for row in rows:
+        # Support both dict-like (real DuckDB) and tuple (test mock) row access
+        if hasattr(row, "__getitem__") and not isinstance(row, (list, tuple)):
+            event_id = row["event_id"]
+            row_hostname = row.get("hostname")
+            row_src_ip = row.get("src_ip")
+            row_dst_ip = row.get("dst_ip")
+            row_timestamp = row.get("timestamp")
+        else:
+            # Tuple: (event_id, src_ip, dst_ip, ...)
+            event_id = row[0]
+            row_src_ip = row[1] if len(row) > 1 else None
+            row_dst_ip = row[2] if len(row) > 2 else None
+            row_hostname = row[3] if len(row) > 3 else None
+            row_timestamp = row[4] if len(row) > 4 else None
+        await asyncio.to_thread(
+            duckdb_store.execute_write,
+            "UPDATE normalized_events SET ioc_matched=TRUE, ioc_confidence=? WHERE event_id=?",
+            [confidence, event_id],
+        )
+        await asyncio.to_thread(
+            ioc_store._record_hit,
+            str(row_timestamp or ""),
+            row_hostname,
+            row_src_ip,
+            row_dst_ip,
+            ioc_value,
+            ioc_type,
+            "retroactive",
+            confidence,
+            None,
+            None,
+        )
+        count += 1
+    return count
 
 
 @dataclass
@@ -165,9 +267,15 @@ class IngestionLoader:
         ollama_client: For generating text embeddings (non-fatal if offline).
     """
 
-    def __init__(self, stores: Stores, ollama_client: OllamaClient) -> None:
+    def __init__(
+        self,
+        stores: Stores,
+        ollama_client: OllamaClient,
+        ioc_store: IocStore | None = None,
+    ) -> None:
         self._stores = stores
         self._ollama = ollama_client
+        self._ioc_store: IocStore | None = ioc_store
 
     # ------------------------------------------------------------------
     # Public API
@@ -329,6 +437,16 @@ class IngestionLoader:
 
         # Ensure normalisation
         events = [normalize_event(e) for e in events]
+
+        # Phase 33: IOC matching (after normalize, before deduplication)
+        # Runs the synchronous check in a thread to avoid blocking the event loop.
+        if self._ioc_store is not None:
+            ioc_store_ref = self._ioc_store
+
+            def _apply_ioc_batch(evts: list[NormalizedEvent]) -> list[NormalizedEvent]:
+                return [_apply_ioc_matching(e, ioc_store_ref) for e in evts]
+
+            events = await asyncio.to_thread(_apply_ioc_batch, events)
 
         # Step 1: Deduplicate against DuckDB
         new_events = await self._deduplicate(events)
@@ -590,3 +708,13 @@ class IngestionLoader:
             errors.append(msg)
 
         return edges_created, errors
+
+
+# ---------------------------------------------------------------------------
+# EventIngester — alias for IngestionLoader with ioc_store parameter
+# ---------------------------------------------------------------------------
+
+#: EventIngester is the Phase 33 name for the IngestionLoader.
+#: It accepts an optional ioc_store parameter (added to IngestionLoader.__init__)
+#: for at-ingest IOC matching. Use it anywhere you need IOC-aware ingestion.
+EventIngester = IngestionLoader

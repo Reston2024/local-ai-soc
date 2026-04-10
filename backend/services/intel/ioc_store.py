@@ -236,6 +236,39 @@ class IocStore:
         self._conn.commit()
 
     # ------------------------------------------------------------------
+    # Record hit
+    # ------------------------------------------------------------------
+
+    def _record_hit(
+        self,
+        event_timestamp: str,
+        hostname: Optional[str],
+        src_ip: Optional[str],
+        dst_ip: Optional[str],
+        ioc_value: str,
+        ioc_type: str,
+        ioc_source: str,
+        risk_score: int,
+        actor_tag: Optional[str],
+        malware_family: Optional[str],
+    ) -> None:
+        """INSERT a row into the ioc_hits table. Synchronous — call via asyncio.to_thread when needed."""
+        now = _now_iso()
+        self._conn.execute(
+            """
+            INSERT INTO ioc_hits
+                (event_timestamp, hostname, src_ip, dst_ip,
+                 ioc_value, ioc_type, ioc_source, risk_score,
+                 actor_tag, malware_family, matched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (event_timestamp, hostname, src_ip, dst_ip,
+             ioc_value, ioc_type, ioc_source, risk_score,
+             actor_tag, malware_family, now),
+        )
+        self._conn.commit()
+
+    # ------------------------------------------------------------------
     # List hits
     # ------------------------------------------------------------------
 

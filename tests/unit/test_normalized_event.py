@@ -15,7 +15,7 @@ from backend.models.event import OCSF_CLASS_UID_MAP, NormalizedEvent
 # --- Phase 31: new EVE protocol fields ---
 
 def test_new_fields_in_duckdb_row():
-    """to_duckdb_row() returns 55-element tuple; new fields at positions 35-54."""
+    """to_duckdb_row() returns 58-element tuple; new fields at positions 35-54, IOC fields at 55-57."""
     event = NormalizedEvent(
         event_id="test-31",
         timestamp=datetime.now(timezone.utc),
@@ -23,9 +23,12 @@ def test_new_fields_in_duckdb_row():
         dns_query="evil.com",
     )
     row = event.to_duckdb_row()
-    assert len(row) == 55
+    assert len(row) == 58
     assert row[35] == "evil.com"   # dns_query
     assert row[47] is None          # file_md5
+    assert row[55] is False         # ioc_matched (defaults False)
+    assert row[56] is None          # ioc_confidence
+    assert row[57] is None          # ioc_actor_tag
 
 
 def test_ocsf_new_types():
