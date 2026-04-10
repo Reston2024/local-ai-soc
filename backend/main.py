@@ -262,6 +262,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     asyncio.ensure_future(bootstrap_attack_data(attack_store))
     log.info("ATT&CK STIX bootstrap task scheduled (Phase 34)")
 
+    # 7c. Phase 35: Auto-triage background worker (60s poll)
+    try:
+        from backend.api.triage import _auto_triage_loop
+        asyncio.ensure_future(_auto_triage_loop(app))
+        log.info("Auto-triage worker started (60s poll)")
+    except Exception as exc:
+        log.warning("Auto-triage worker failed to start: %s", exc)
+
     # 8. Conditional osquery live telemetry collector
     osquery_task: asyncio.Task | None = None
     if settings.OSQUERY_ENABLED:
@@ -729,6 +737,13 @@ def create_app() -> FastAPI:
         log.info("Attack router registered at /api/attack")
     except Exception as exc:
         log.warning("Attack router failed to load: %s", exc)
+
+    try:
+        from backend.api.triage import router as triage_router
+        app.include_router(triage_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Triage router mounted at /api/triage")
+    except ImportError as exc:
+        log.warning("Triage router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
