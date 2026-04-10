@@ -18,11 +18,12 @@
   import RecommendationsView from './views/RecommendationsView.svelte'
   import SettingsView from './views/SettingsView.svelte'
   import MapView from './views/MapView.svelte'
+  import AttackCoverageView from './views/AttackCoverageView.svelte'
 
   type View =
     | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
-    | 'recommendations' | 'settings' | 'map'
+    | 'recommendations' | 'settings' | 'map' | 'attack-coverage'
 
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -141,9 +142,10 @@
     {
       label: 'Intelligence',
       items: [
-        { id: 'intel',    label: 'Threat Intel', color: '', beta: true },
-        { id: 'hunting',  label: 'Hunting',      color: '', beta: true },
-        { id: 'map',      label: 'Threat Map',   color: '', beta: true },
+        { id: 'intel',            label: 'Threat Intel',    color: '', beta: true },
+        { id: 'attack-coverage',  label: 'ATT&CK Coverage', color: '', beta: true },
+        { id: 'hunting',          label: 'Hunting',         color: '', beta: true },
+        { id: 'map',              label: 'Threat Map',      color: '', beta: true },
       ],
     },
     {
@@ -239,6 +241,8 @@
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 14V9M8 14V5M12 14V2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
                 {:else if item.id === 'intel'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 1 1 0 12A6 6 0 0 1 8 2Z" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                {:else if item.id === 'attack-coverage'}
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.4"/></svg>
                 {:else if item.id === 'hunting'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7.5" cy="7.5" r="5" stroke="currentColor" stroke-width="1.4"/><line x1="7.5" y1="2.5" x2="7.5" y2="4.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7.5" y1="10.5" x2="7.5" y2="12.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="2.5" y1="7.5" x2="4.5" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10.5" y1="7.5" x2="12.5" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
                 {:else if item.id === 'map'}
@@ -315,6 +319,8 @@
       <SettingsView />
     {:else if currentView === 'map'}
       <MapView />
+    {:else if currentView === 'attack-coverage'}
+      <AttackCoverageView />
     {/if}
   </main>
 </div>

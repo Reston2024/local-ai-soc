@@ -1,91 +1,72 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
-  import { api, type HealthResponse } from '../lib/api.ts'
+  import { api, type Asset, type OsintResult } from '../lib/api.ts'
 
-  // Coverage categories derived from live entity graph data
-  let entityCounts = $state<Record<string, number>>({})
-  let sourceCounts = $state<Record<string, number>>({})
-  let healthData = $state<HealthResponse | null>(null)
+  let assets = $state<Asset[] | null>(null)
+  let expandedIp = $state<string | null>(null)
+  let expandedData = $state<{
+    events: any[] | null
+    detections: any[] | null
+    osint: OsintResult | null
+    osintError: string | null
+  } | null>(null)
   let loading = $state(true)
   let error = $state<string | null>(null)
 
-  // Helper: map /api/health component status to online/offline/unknown
-  function componentOnline(name: string): boolean {
-    if (!healthData) return false
-    // Check direct component name match, then partial match
-    const comp = healthData.components[name] ?? healthData.components[Object.keys(healthData.components).find(k => k.toLowerCase().includes(name.toLowerCase())) ?? '']
-    return comp?.status === 'healthy' || comp?.status === 'ok'
+  function isPrivateIp(ip: string): boolean {
+    return /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.)/.test(ip)
   }
 
-  // Overall pipeline health: true if healthData.status is healthy
-  function pipelineOnline(): boolean {
-    return healthData?.status === 'healthy'
+  function riskClass(score: number): string {
+    if (score >= 70) return 'risk-high'
+    if (score >= 30) return 'risk-medium'
+    return 'risk-low'
   }
 
-  // Derived coverage categories (computed from real entity types)
-  let coverageCategories = $derived([
-    { label: 'Endpoints/Hosts', monitored: entityCounts['host'] ?? 0, total: entityCounts['host'] ?? 0, color: '#00d4ff' },
-    { label: 'Users/Accounts',  monitored: entityCounts['user'] ?? 0, total: entityCounts['user'] ?? 0, color: '#3b82f6' },
-    { label: 'Processes',       monitored: entityCounts['process'] ?? 0, total: entityCounts['process'] ?? 0, color: '#22c55e' },
-    { label: 'Files',           monitored: entityCounts['file'] ?? 0, total: entityCounts['file'] ?? 0, color: '#a78bfa' },
-    { label: 'Network',         monitored: entityCounts['network'] ?? 0, total: entityCounts['network'] ?? 0, color: '#f97316' },
-  ])
-
-  // Ingestion sources: status from /api/health (pipeline up/down) + event count from /api/events
-  // Status logic: if pipeline is offline -> 'error'; if events > 0 -> 'active'; else -> 'ready'
-  let ingestionSources = $derived([
-    { name: 'Windows EVTX',      status: !pipelineOnline() ? 'error' : (sourceCounts['evtx'] ?? 0) > 0 ? 'active' : 'ready', events: sourceCounts['evtx'] ?? 0 },
-    { name: 'CSV / Syslog',      status: !pipelineOnline() ? 'error' : (sourceCounts['csv'] ?? 0) > 0 ? 'active' : 'ready',  events: sourceCounts['csv'] ?? 0 },
-    { name: 'osquery',           status: !pipelineOnline() ? 'error' : (sourceCounts['osquery'] ?? 0) > 0 ? 'active' : 'ready', events: sourceCounts['osquery'] ?? 0 },
-    { name: 'JSON / NDJSON',     status: !pipelineOnline() ? 'error' : ((sourceCounts['ndjson'] ?? 0) + (sourceCounts['json'] ?? 0)) > 0 ? 'active' : 'ready', events: (sourceCounts['ndjson'] ?? 0) + (sourceCounts['json'] ?? 0) },
-    { name: 'HF SIEM Seed',      status: !pipelineOnline() ? 'error' : (sourceCounts['hf_siem_seed'] ?? 0) > 0 ? 'active' : 'ready', events: sourceCounts['hf_siem_seed'] ?? 0 },
-    { name: 'Cloud (AWS/Azure)', status: 'planned', events: 0 },
-  ])
-
-  const statusColor: Record<string, string> = {
-    ready:   '#22c55e',
-    active:  '#00d4ff',
-    planned: '#4a5d7a',
-    error:   '#ef4444',
-  }
-
-  async function loadAssets() {
-    loading = true
-    error = null
+  function formatDate(iso: string): string {
     try {
-      // 1. /api/health — pipeline operational status (satisfies P13-T07: source health)
-      //    HealthResponse.status: 'healthy'|'degraded'|'unhealthy'
-      //    HealthResponse.components: Record<name, { status, detail? }>
-      healthData = await api.health()
-
-      // 2. /api/graph/entities — entity type counts for coverage grid
-      //    api.graph.entities accepts params?: { type?: string; limit?: number }
-      //    Confirmed in api.ts lines 143-148 — no signature change needed.
-      const graphRes = await api.graph.entities({ limit: 1000 })
-      const counts: Record<string, number> = {}
-      for (const entity of graphRes.entities) {
-        const t = (entity.type ?? entity.entity_type ?? 'unknown').toLowerCase()
-        counts[t] = (counts[t] ?? 0) + 1
-      }
-      entityCounts = counts
-
-      // 3. /api/events — event counts grouped by source_type (volume per source)
-      //    Fetch a representative sample; source counts are approximate for large datasets.
-      const eventsRes = await api.events.list({ limit: 500 })
-      const sCounts: Record<string, number> = {}
-      for (const ev of eventsRes.events) {
-        const st = (ev.source_type ?? 'unknown').toLowerCase()
-        sCounts[st] = (sCounts[st] ?? 0) + 1
-      }
-      sourceCounts = sCounts
-    } catch (e) {
-      error = String(e)
-    } finally {
-      loading = false
+      const d = new Date(iso)
+      return d.toISOString().replace('T', ' ').substring(0, 16)
+    } catch {
+      return iso
     }
   }
 
-  onMount(loadAssets)
+  async function toggleExpand(ip: string) {
+    if (expandedIp === ip) {
+      expandedIp = null
+      expandedData = null
+      return
+    }
+    expandedIp = ip
+    expandedData = { events: null, detections: null, osint: null, osintError: null }
+
+    const results = await Promise.allSettled([
+      api.assets.get(ip),
+      isPrivateIp(ip) ? Promise.resolve(null) : api.osint.get(ip),
+    ])
+
+    const assetDetail = results[0].status === 'fulfilled' ? results[0].value : null
+    const osintResult = results[1].status === 'fulfilled' ? results[1].value : null
+    const osintErr = results[1].status === 'rejected'
+      ? (results[1].reason?.message ?? 'OSINT fetch failed')
+      : null
+
+    expandedData = {
+      events: assetDetail ? [assetDetail] : [],
+      detections: [],
+      osint: osintResult,
+      osintError: isPrivateIp(ip) ? null : osintErr,
+    }
+  }
+
+  $effect(() => {
+    loading = true
+    error = null
+    api.assets.list()
+      .then(data => { assets = data })
+      .catch(e => { error = String(e) })
+      .finally(() => { loading = false })
+  })
 </script>
 
 <div class="view">
@@ -97,58 +78,130 @@
         <rect x="2" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/>
         <rect x="9" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/>
       </svg>
-      <h1>Assets &amp; Coverage</h1>
+      <h1>Assets</h1>
     </div>
-    <button class="btn" disabled>Discover Assets</button>
   </div>
 
   <div class="content">
+    {#if loading}
+      <div class="loading-state">Loading assets…</div>
+    {:else if error}
+      <div class="error-state">{error}</div>
+    {:else if assets === null || assets.length === 0}
+      <div class="empty-state">No assets found. Ingest events to populate asset inventory.</div>
+    {:else}
+      <table class="assets-table">
+        <thead>
+          <tr>
+            <th>Hostname / IP</th>
+            <th>Tag</th>
+            <th>Risk Score</th>
+            <th>Last Seen</th>
+            <th>Alerts</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each assets as asset}
+            <tr
+              class="asset-row {expandedIp === asset.ip ? 'expanded' : ''}"
+              onclick={() => toggleExpand(asset.ip)}
+            >
+              <td class="host-cell">
+                <span class="hostname">{asset.hostname ?? asset.ip}</span>
+                {#if asset.hostname && asset.hostname !== asset.ip}
+                  <span class="ip-secondary">{asset.ip}</span>
+                {/if}
+              </td>
+              <td>
+                <span class="tag-chip tag-{asset.tag}">{asset.tag}</span>
+              </td>
+              <td>
+                <span class="risk-badge {riskClass(asset.risk_score)}">{asset.risk_score}</span>
+              </td>
+              <td class="mono">{formatDate(asset.last_seen)}</td>
+              <td class="alert-count {asset.alert_count > 0 ? 'has-alerts' : ''}">{asset.alert_count}</td>
+            </tr>
+            {#if expandedIp === asset.ip}
+              <tr class="detail-row">
+                <td colspan="5">
+                  <div class="detail-panel">
+                    <!-- Event Timeline -->
+                    <div class="detail-block">
+                      <div class="detail-block-title">Event Timeline</div>
+                      {#if expandedData === null}
+                        <div class="detail-loading">Loading…</div>
+                      {:else if expandedData.events && expandedData.events.length > 0}
+                        <div class="timeline-info">
+                          <span class="detail-label">First seen:</span>
+                          <span class="mono">{formatDate(asset.first_seen)}</span>
+                          <span class="sep">|</span>
+                          <span class="detail-label">Last seen:</span>
+                          <span class="mono">{formatDate(asset.last_seen)}</span>
+                          <span class="sep">|</span>
+                          <span class="detail-label">Alerts:</span>
+                          <span>{asset.alert_count}</span>
+                        </div>
+                      {:else}
+                        <div class="detail-empty">No timeline data available.</div>
+                      {/if}
+                    </div>
 
-    <!-- Coverage summary -->
-    <div class="section-title">Coverage by Asset Type</div>
-    <div class="coverage-grid">
-      {#each coverageCategories as cat}
-        <div class="coverage-card">
-          <div class="cov-header">
-            <span class="cov-label">{cat.label}</span>
-            <span class="cov-ratio" style="color: {cat.color}">
-              {cat.monitored}/{cat.total}
-            </span>
-          </div>
-          <div class="cov-bar-bg">
-            <div
-              class="cov-bar-fill"
-              style="width: {cat.total > 0 ? Math.round(cat.monitored / cat.total * 100) : 0}%; background: {cat.color}"
-            ></div>
-          </div>
-          <span class="cov-pct">
-            {cat.total > 0 ? Math.round(cat.monitored / cat.total * 100) : 0}% monitored
-          </span>
-        </div>
-      {/each}
-    </div>
+                    <!-- Associated Detections -->
+                    <div class="detail-block">
+                      <div class="detail-block-title">Associated Detections</div>
+                      {#if expandedData === null}
+                        <div class="detail-loading">Loading…</div>
+                      {:else if expandedData.detections && expandedData.detections.length > 0}
+                        {#each expandedData.detections as det}
+                          <div class="detection-row">{det.rule_name ?? det.id}</div>
+                        {/each}
+                      {:else}
+                        <div class="detail-empty">No detections linked to this asset.</div>
+                      {/if}
+                    </div>
 
-    <!-- Ingestion sources -->
-    <div class="section-title" style="margin-top: 8px">Ingestion Sources</div>
-    <div class="source-list">
-      {#each ingestionSources as src}
-        <div class="source-row">
-          <span class="src-dot" style="background: {statusColor[src.status]}; box-shadow: 0 0 5px {statusColor[src.status]}"></span>
-          <span class="src-name">{src.name}</span>
-          <span class="src-events">{src.events > 0 ? src.events.toLocaleString() + ' events' : '—'}</span>
-          <span class="src-status" style="color: {statusColor[src.status]}">{src.status}</span>
-        </div>
-      {/each}
-    </div>
-
-    <div class="roadmap-note">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="flex-shrink:0; color:var(--accent-cyan)">
-        <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.5"/>
-        <line x1="8" y1="7" x2="8" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <circle cx="8" cy="5" r="0.8" fill="currentColor"/>
-      </svg>
-      Showing live data: entity graph + ingestion pipeline health.
-    </div>
+                    <!-- OSINT Enrichment -->
+                    <div class="detail-block">
+                      <div class="detail-block-title">OSINT Enrichment</div>
+                      {#if isPrivateIp(asset.ip)}
+                        <div class="detail-empty osint-internal">Internal asset — no OSINT enrichment</div>
+                      {:else if expandedData === null}
+                        <div class="detail-loading">Loading…</div>
+                      {:else if expandedData.osintError}
+                        <div class="detail-empty">{expandedData.osintError}</div>
+                      {:else if expandedData.osint}
+                        <div class="osint-grid">
+                          {#if expandedData.osint.geo}
+                            <span class="detail-label">Country:</span>
+                            <span>{expandedData.osint.geo.country_name ?? '—'}</span>
+                            <span class="detail-label">ASN:</span>
+                            <span>{expandedData.osint.geo.autonomous_system_organization ?? '—'}</span>
+                          {/if}
+                          {#if expandedData.osint.abuseipdb}
+                            <span class="detail-label">Abuse Score:</span>
+                            <span>{expandedData.osint.abuseipdb.abuseConfidenceScore ?? '—'}</span>
+                          {/if}
+                          {#if expandedData.osint.virustotal}
+                            <span class="detail-label">VT Malicious:</span>
+                            <span>{expandedData.osint.virustotal.malicious ?? '—'}</span>
+                          {/if}
+                          {#if expandedData.osint.shodan?.open_ports && expandedData.osint.shodan.open_ports.length > 0}
+                            <span class="detail-label">Open Ports:</span>
+                            <span class="mono">{expandedData.osint.shodan.open_ports.join(', ')}</span>
+                          {/if}
+                        </div>
+                      {:else}
+                        <div class="detail-empty">No OSINT data available.</div>
+                      {/if}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {/if}
+          {/each}
+        </tbody>
+      </table>
+    {/if}
   </div>
 </div>
 
@@ -157,62 +210,126 @@
 
   .view-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
     background: var(--bg-secondary); flex-shrink: 0;
   }
   .header-left { display: flex; align-items: center; gap: 10px; }
   h1 { font-size: 15px; font-weight: 600; }
 
-  .content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .content { flex: 1; overflow-y: auto; }
 
-  .section-title {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.8px;
-    text-transform: uppercase; color: var(--text-muted);
+  .loading-state,
+  .error-state,
+  .empty-state {
+    padding: 40px 24px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  .error-state { color: #ef4444; }
+
+  /* Table */
+  .assets-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
   }
 
-  .coverage-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;
+  .assets-table thead th {
+    padding: 8px 14px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
 
-  .coverage-card {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-md); padding: 14px;
-    display: flex; flex-direction: column; gap: 8px;
+  .assets-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-secondary);
+    vertical-align: middle;
   }
 
-  .cov-header { display: flex; align-items: center; justify-content: space-between; }
-  .cov-label { font-size: 12px; font-weight: 600; }
-  .cov-ratio { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-
-  .cov-bar-bg {
-    height: 3px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden;
+  .asset-row {
+    cursor: pointer;
+    background: #1a1a1a;
+    transition: background 0.1s;
   }
-  .cov-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+  .asset-row:hover { background: rgba(255,255,255,0.04); }
+  .asset-row.expanded { background: rgba(255,255,255,0.06); }
 
-  .cov-pct { font-size: 11px; color: var(--text-muted); }
+  /* Host cell */
+  .host-cell { display: flex; flex-direction: column; gap: 2px; }
+  .hostname { font-weight: 600; color: var(--text-primary); font-size: 13px; }
+  .ip-secondary { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-muted); }
 
-  .source-list { display: flex; flex-direction: column; gap: 4px; }
-
-  .source-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px; background: var(--bg-card);
-    border: 1px solid var(--border); border-radius: var(--radius-md);
-    transition: border-color 0.15s;
+  /* Tag chips */
+  .tag-chip {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10.5px; font-weight: 600; text-transform: capitalize; letter-spacing: 0.3px;
   }
-  .source-row:hover { border-color: var(--border-hover); }
+  .tag-internal { background: rgba(34,197,94,0.15); color: #22c55e; }
+  .tag-external { background: rgba(249,115,22,0.15); color: #f97316; }
 
-  .src-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .src-name { font-size: 13px; font-weight: 500; flex: 1; }
-  .src-events { font-size: 12px; color: var(--text-muted); font-family: var(--font-mono); }
-  .src-status {
-    font-size: 10px; font-weight: 700; text-transform: capitalize;
-    letter-spacing: 0.3px; min-width: 52px; text-align: right;
+  /* Risk badge */
+  .risk-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .risk-high   { background: rgba(239,68,68,0.15);  color: #ef4444; }
+  .risk-medium { background: rgba(234,179,8,0.15);  color: #eab308; }
+  .risk-low    { background: rgba(34,197,94,0.12);  color: #22c55e; }
+
+  /* Alert count */
+  .alert-count { font-variant-numeric: tabular-nums; }
+  .alert-count.has-alerts { color: #f97316; font-weight: 700; }
+
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; }
+
+  /* Detail row */
+  .detail-row td { padding: 0; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+
+  .detail-panel {
+    display: flex; gap: 0;
+    background: #1a1a1a;
+    border-left: 2px solid rgba(56,189,248,0.3);
   }
 
-  .roadmap-note {
-    display: flex; align-items: flex-start; gap: 8px;
-    background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15);
-    border-radius: var(--radius-md); padding: 12px 14px;
-    font-size: 12px; color: var(--text-secondary); line-height: 1.6; max-width: 560px;
+  .detail-block {
+    flex: 1; padding: 14px 16px;
+    border-right: 1px solid var(--border);
   }
+  .detail-block:last-child { border-right: none; }
+
+  .detail-block-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 8px;
+  }
+
+  .detail-loading,
+  .detail-empty { font-size: 12px; color: var(--text-muted); font-style: italic; }
+  .osint-internal { color: rgba(56,189,248,0.6); font-style: normal; }
+
+  .timeline-info {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px;
+  }
+  .detail-label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+  .sep { color: var(--border); }
+
+  .detection-row {
+    padding: 3px 0; font-size: 12px; color: var(--text-secondary);
+  }
+
+  .osint-grid {
+    display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 12px;
+  }
+  .osint-grid .detail-label { white-space: nowrap; }
 </style>
