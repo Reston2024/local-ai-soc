@@ -203,6 +203,32 @@ export interface TrendDataPoint {
 export type TrendsResponse = Record<string, TrendDataPoint[]>
 
 // ---------------------------------------------------------------------------
+// Phase 33 — Threat Intelligence interfaces
+// ---------------------------------------------------------------------------
+
+export interface IocHit {
+  id: number;
+  event_timestamp: string;
+  hostname: string | null;
+  src_ip: string | null;
+  dst_ip: string | null;
+  ioc_value: string;
+  ioc_type: string;
+  ioc_source: string;
+  risk_score: number;
+  actor_tag: string | null;
+  malware_family: string | null;
+  matched_at: string;
+}
+
+export interface FeedStatus {
+  feed: string;        // "feodo" | "cisa_kev" | "threatfox"
+  last_sync: string | null;
+  ioc_count: number;
+  status: 'ok' | 'stale' | 'never' | 'error';
+}
+
+// ---------------------------------------------------------------------------
 // Phase 32 — Hunting + OSINT interfaces
 // ---------------------------------------------------------------------------
 
@@ -724,6 +750,23 @@ export const api = {
   osint: {
     get: (ip: string) =>
       request<OsintResult>(`/api/osint/${ip}`, { headers: authHeaders() }),
+  },
+
+  intel: {
+    iocHits: async (limit = 200): Promise<IocHit[]> => {
+      const res = await fetch(`${BASE}/api/intel/ioc-hits?limit=${limit}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    feeds: async (): Promise<FeedStatus[]> => {
+      const res = await fetch(`${BASE}/api/intel/feeds`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
   },
 }
 
