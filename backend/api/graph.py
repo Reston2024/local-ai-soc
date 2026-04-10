@@ -449,6 +449,109 @@ async def get_investigation_graph(
 # ---------------------------------------------------------------------------
 
 
+@router.post("/backfill", status_code=200)
+async def backfill_graph(
+    request: Request,
+    limit: int = Query(default=20000, le=100000),
+    source_type: Optional[str] = Query(default=None),
+) -> JSONResponse:
+    """
+    POST /graph/backfill
+
+    Re-process existing DuckDB normalized_events through entity_extractor and
+    upsert the resulting entities/edges into SQLite.  Use after clearing stale
+    fixture data or when graph is out of sync with ingested events.
+
+    Query params:
+      limit       — max events to process (default 20000, max 100000)
+      source_type — optional filter (e.g. suricata_eve, ipfire_syslog)
+    """
+    from ingestion.entity_extractor import extract_entities_and_edges, extract_perimeter_entities
+    from backend.models.event import NormalizedEvent
+
+    stores = request.app.state.stores
+
+    # Build query
+    sql = """SELECT event_id, timestamp, source_type, event_type,
+                    hostname, username, user_domain,
+                    process_name, process_id, process_executable,
+                    parent_process_id, parent_process_name,
+                    command_line, file_path, file_hash_sha256,
+                    src_ip, src_port, dst_ip, dst_port,
+                    network_protocol, network_direction,
+                    domain, severity, attack_technique, attack_tactic,
+                    case_id, tags, event_outcome
+             FROM normalized_events"""
+    params: list = []
+    if source_type:
+        sql += " WHERE source_type = ?"
+        params.append(source_type)
+    sql += f" ORDER BY timestamp DESC LIMIT {int(limit)}"
+
+    rows = await stores.duckdb.fetch_all(sql, params if params else None)
+
+    cols = [
+        "event_id", "timestamp", "source_type", "event_type",
+        "hostname", "username", "user_domain",
+        "process_name", "process_id", "process_executable",
+        "parent_process_id", "parent_process_name",
+        "command_line", "file_path", "file_hash_sha256",
+        "src_ip", "src_port", "dst_ip", "dst_port",
+        "network_protocol", "network_direction",
+        "domain", "severity", "attack_technique", "attack_tactic",
+        "case_id", "tags", "event_outcome",
+    ]
+
+    entity_upserts = 0
+    edge_inserts = 0
+
+    def _process_batch(batch: list[tuple]) -> tuple[int, int]:
+        eu = 0
+        ei = 0
+        for row in batch:
+            d = dict(zip(cols, row))
+            try:
+                ev = NormalizedEvent(**d)
+            except Exception:
+                continue
+            entities, edges = extract_entities_and_edges(ev)
+            pe, pg = extract_perimeter_entities(ev)
+            for ent in entities + pe:
+                stores.sqlite.upsert_entity(
+                    ent["id"], ent["type"], ent["name"],
+                    ent.get("attributes", {}), ent.get("case_id"),
+                )
+                eu += 1
+            for edge in edges + pg:
+                stores.sqlite.insert_edge(
+                    edge["source_type"], edge["source_id"],
+                    edge["edge_type"],
+                    edge["target_type"], edge["target_id"],
+                    edge.get("properties", {}),
+                )
+                ei += 1
+        return eu, ei
+
+    # Process in chunks to avoid long blocking calls
+    chunk = 500
+    for i in range(0, len(rows), chunk):
+        eu, ei = await asyncio.to_thread(_process_batch, rows[i:i + chunk])
+        entity_upserts += eu
+        edge_inserts += ei
+
+    log.info(
+        "Graph backfill complete",
+        events_processed=len(rows),
+        entity_upserts=entity_upserts,
+        edge_inserts=edge_inserts,
+    )
+    return JSONResponse({
+        "events_processed": len(rows),
+        "entity_upserts": entity_upserts,
+        "edge_inserts": edge_inserts,
+    })
+
+
 @router.delete("/entity/{entity_id}", status_code=200)
 async def delete_entity(entity_id: str, request: Request) -> JSONResponse:
     """
