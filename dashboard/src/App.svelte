@@ -142,10 +142,10 @@
     {
       label: 'Intelligence',
       items: [
-        { id: 'intel',            label: 'Threat Intel',    color: '', beta: true },
-        { id: 'attack-coverage',  label: 'ATT&CK Coverage', color: '', beta: true },
-        { id: 'hunting',          label: 'Hunting',         color: '', beta: true },
-        { id: 'map',              label: 'Threat Map',      color: '', beta: true },
+        { id: 'intel',            label: 'Threat Intel',    color: '' },
+        { id: 'attack-coverage',  label: 'ATT&CK Coverage', color: '' },
+        { id: 'hunting',          label: 'Hunting',         color: '' },
+        { id: 'map',              label: 'Threat Map',      color: '' },
       ],
     },
     {

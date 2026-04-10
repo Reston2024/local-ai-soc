@@ -110,9 +110,8 @@
     <span class="chip-divider" title="Zeek telemetry — available once managed switch SPAN port is configured">Phase 36</span>
     {#each ZEEK_CHIPS as chip}
       <button
-        class="chip chip-beta"
-        disabled
-        title="Zeek {chip.label} logs — Phase 36 (managed switch in transit)"
+        class="chip"
+        title="Zeek {chip.label} logs"
       >
         {chip.label}
       </button>

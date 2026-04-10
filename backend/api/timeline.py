@@ -153,8 +153,23 @@ def merge_and_sort_timeline(
             raw_id=str(edge_id),
         ))
 
-    # playbook_rows intentionally unused — deferred to future phase.
-    # When playbook_runs table is implemented, add a loop here similar to edge_rows above.
+    # --- Playbook runs (from SQLite playbook_runs JOIN playbooks) ---
+    for pr in playbook_rows:
+        pb_name = pr.get("playbook_name") or pr.get("name") or "Unknown Playbook"
+        status = pr.get("status") or "unknown"
+        ts_pb = pr.get("started_at") or ""
+        run_id = pr.get("run_id") or ""
+        items.append(TimelineItem(
+            item_id=f"pb-{run_id}",
+            item_type="playbook",
+            timestamp=str(ts_pb),
+            title=f"Playbook: {pb_name} — {status}",
+            severity=None,
+            attack_technique=None,
+            attack_tactic=None,
+            entity_labels=[],
+            raw_id=str(run_id),
+        ))
 
     items.sort(key=lambda x: x.timestamp)
     return items
@@ -174,6 +189,25 @@ def _get_entity_names_from_detections(detection_rows: list[dict]) -> list[str]:
             if val and isinstance(val, str):
                 names.add(val)
     return list(names)
+
+
+def _fetch_playbook_rows(conn, inv_id: str) -> list[dict]:
+    """Fetch playbook run rows for an investigation from SQLite playbook_runs JOIN playbooks."""
+    try:
+        rows = conn.execute(
+            """SELECT pr.run_id, pr.playbook_id, pr.investigation_id, pr.status,
+                      pr.started_at, pr.completed_at, p.name AS playbook_name
+               FROM playbook_runs pr
+               JOIN playbooks p ON p.playbook_id = pr.playbook_id
+               WHERE pr.investigation_id = ?
+               ORDER BY pr.started_at ASC""",
+            (inv_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as exc:
+        # Table may not exist — safe fallback (playbook_runs is optional)
+        log.debug("playbook_runs query skipped: %s", exc)
+        return []
 
 
 def _get_edge_rows_sync(sqlite_store, entity_names: list[str]) -> list[dict]:
@@ -291,9 +325,10 @@ async def get_investigation_timeline(
         _get_edge_rows_sync, stores.sqlite, entity_names
     )
 
-    # playbook_rows: deferred to future phase — always empty in Phase 14.
-    # When playbook_runs table is implemented, add its fetch here.
-    playbook_rows: list[dict] = []
+    # Fetch playbook runs from SQLite (safe fallback if table absent or empty)
+    playbook_rows: list[dict] = await asyncio.to_thread(
+        _fetch_playbook_rows, stores.sqlite._conn, investigation_id
+    )
 
     items = merge_and_sort_timeline(event_rows, detection_rows, edge_rows, playbook_rows)
     return JSONResponse({
