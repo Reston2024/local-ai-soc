@@ -58,6 +58,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 34-04 complete — Task 3 checkpoint approved. Post-verify fixes applied: ThreatIntelView relative import path, ThreatIntelView error state, MapView Leaflet CSS + invalidateSize(), Caddy /health* glob + OSM CSP headers. Phase 34 COMPLETE. Requirements P34-T09 satisfied.
 - 2026-04-10: Plan 35-01 complete — explain.py structured early-return when investigation={}, _fetch_playbook_rows wired into timeline, 3 Zeek ECS field-map entries (dns.query.name, http.user_agent, tls.client.ja3), ZEEK_CHIPS enabled, 4 Intelligence nav items lose beta tag. 9 new unit tests, 953 total green.
 - 2026-04-10: Plan 35-02 complete — triage_results SQLite DDL table + triaged_at idempotent migration + SQLiteStore.save_triage_result() and get_latest_triage() methods. 6 unit tests pass, 953 total unit tests green. Requirement P35-T08 satisfied.
+- 2026-04-10: Plan 35-04 tasks 1-2 complete — GET /api/telemetry/summary (DuckDB+SQLite 24h rollup), OverviewView.svelte (EVE bar chart, 4 scorecards, health, triage, top rules, 60s refresh), triage panel in DetectionsView (15s poll, Run Triage Now), App.svelte defaults to overview. 4 unit tests pass, 962 other tests green. Paused at Task 3 human-verify checkpoint.
 - 2026-04-10: Plan 35-03 complete — backend/api/triage.py (POST /api/triage/run + GET /api/triage/latest + _run_triage() + _auto_triage_loop()), main.py wiring (router + 60s worker task), 7 unit tests (4 API + 3 worker). 962 total unit tests green. Requirements P35-T09, P35-T10 satisfied.
 
 ## Key Decisions
