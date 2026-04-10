@@ -20,7 +20,7 @@ from __future__ import annotations
 # Version identifier for this field map — updated whenever the mapping changes.
 # Used by detection provenance records so analysts can reconstruct which
 # field translations were active when a Sigma rule fired.
-FIELD_MAP_VERSION: str = "20"
+FIELD_MAP_VERSION: str = "21"
 
 # Sigma field name → normalized_events DuckDB column
 SIGMA_FIELD_MAP: dict[str, str] = {
@@ -104,6 +104,10 @@ SIGMA_FIELD_MAP: dict[str, str] = {
     "file.hash.sha256":       "file_hash_sha256",
     "network.protocol":       "network_protocol",
     "dns.question.name":      "domain",
+    # Zeek / ECS field aliases
+    "dns.query.name":         "dns_query",
+    "http.user_agent":        "http_user_agent",
+    "tls.client.ja3":         "tls_ja3",
     # ------------------------------------------------------------------
     # New ECS column mappings (Windows Sigma field names)
     # ------------------------------------------------------------------

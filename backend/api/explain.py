@@ -46,6 +46,15 @@ async def _run_explanation(request: Request, body: ExplainRequest) -> ExplainRes
     elif body.detection_id:
         investigation = await _assemble_investigation(request, body.detection_id)
 
+    if not investigation:
+        det_id = body.detection_id or "unknown"
+        return ExplainResponse(
+            what_happened=f"No investigation context found for detection_id: {det_id}",
+            why_it_matters="Unable to retrieve evidence context.",
+            recommended_next_steps="Verify the detection ID exists and events have been ingested.",
+            evidence_context="",
+        )
+
     evidence_context = build_evidence_context(investigation)
 
     # Access OllamaClient via request.app.state.ollama — confirmed pattern from research audit.
