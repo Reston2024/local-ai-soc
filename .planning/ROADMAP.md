@@ -1067,7 +1067,7 @@ Plans:
 *Phase 30 added: 2026-04-08 (Final Security and Human Sign-off — milestone gap closure)*
 
 ## Phase 31: Malcolm Real Telemetry + Evidence Archive
-**Status:** planned
+**Status:** COMPLETE — 2026-04-09
 **Added:** 2026-04-09
 **Revised:** 2026-04-09 — Zeek normalizers deferred to Phase 36 (no Zeek data without SPAN port). Focus on 235K EVE events currently ignored + Ubuntu data pipeline + forensic evidence archive.
 **Goal:** (1) Expand Malcolm collector to poll ALL 5 Suricata EVE types (TLS, DNS, fileinfo, anomaly are in OpenSearch but not collected — 235K events ignored). (2) Add raw evidence archive to Ubuntu external drive with SHA256 chain of custody. (3) Add Ubuntu normalization pipeline (ECS NDJSON endpoint, desktop polls every 60s). (4) EventsView filter chips. No Zeek — requires SPAN port hardware (Phase 36).
@@ -1088,9 +1088,9 @@ Plans:
 **Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 31-01-PLAN.md — EVE schema expansion: 20 new fields, 4 normalizers, 5-type poll loop
-- [ ] 31-02-PLAN.md — Ubuntu EvidenceArchiver + normalization FastAPI server + systemd units
-- [ ] 31-03-PLAN.md — Ubuntu poll setting, EventsView filter chips
+- [x] 31-01-PLAN.md — EVE schema expansion: 20 new fields, 4 normalizers, 5-type poll loop
+- [x] 31-02-PLAN.md — Ubuntu EvidenceArchiver + normalization FastAPI server + systemd units
+- [x] 31-03-PLAN.md — Ubuntu poll setting, EventsView filter chips
 
 - P31-T12: Add beta/coming-soon Zeek log type chips to EventsView — grayed-out, non-clickable chips for Connection | HTTP | SSL | SMB | Auth | SSH | SMTP | DHCP with "Phase 36 — SPAN port in transit" tooltip. No API calls. Real SOC UX pattern: shows analysts what telemetry arrives when SPAN is configured.
 
@@ -1099,7 +1099,7 @@ Plans:
 *Phase 31 revised: 2026-04-09 (Real telemetry only — no theater, no Zeek without hardware)*
 
 ## Phase 32: Real Threat Hunting + OSINT Enrichment + Threat Map
-**Status:** planned
+**Status:** COMPLETE — 2026-04-09
 **Added:** 2026-04-09
 **Revised:** 2026-04-09 — Added passive OSINT enrichment pipeline and IP threat trace map.
 **Goal:** Replace the completely disabled HuntingView with a working threat hunting engine. NL→SQL hunt queries against real telemetry. Passive OSINT enrichment (WHOIS, AbuseIPDB, VirusTotal, Shodan read-only) for every threat IP — no active scanning. IP threat trace map: geo-IP world map showing source IPs from detections, click-through to associated events.
@@ -1122,10 +1122,31 @@ Plans:
 **Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 32-01-PLAN.md — Hunt engine backend: NL→SQL, SQL validation, SQLite hunts schema, FastAPI endpoints
-- [ ] 32-02-PLAN.md — OSINT enrichment service: WHOIS/AbuseIPDB/MaxMind/VT/Shodan + GET /api/osint/{ip}
-- [ ] 32-03-PLAN.md — HuntingView wire-up: results table, OSINT panel, preset cards, hunt history
-- [ ] 32-04-PLAN.md — MapView threat map: Leaflet + OSM tiles, severity markers, OSINT panel, nav item
+- [x] 32-01-PLAN.md — Hunt engine backend: NL→SQL, SQL validation, SQLite hunts schema, FastAPI endpoints
+- [x] 32-02-PLAN.md — OSINT enrichment service: WHOIS/AbuseIPDB/MaxMind/VT/Shodan + GET /api/osint/{ip}
+- [x] 32-03-PLAN.md — HuntingView wire-up: results table, OSINT panel, preset cards, hunt history
+- [x] 32-04-PLAN.md — MapView threat map: Leaflet + OSM tiles, severity markers, OSINT panel, nav item
+
+### Post-Phase Operational Fixes (2026-04-09)
+
+The following fixes were applied after phase verification to address live-data issues
+discovered when running against real Malcolm telemetry:
+
+- **Evidence timelines:** `get_investigation_timeline()` now resolves `investigation_id` as a
+  detection primary key first (via `matched_event_ids`), eliminating empty timelines.
+- **Attack graph fixture data:** Cleared all fixture entities (ndjson/windows_event/osquery
+  source types). Added `POST /api/graph/backfill` endpoint to rebuild entity graph from DuckDB.
+  Backfilled 17,896 real Malcolm Suricata events → 20 unique entities (1 sensor host + 19
+  external IPs) and 17,896 edges. Standalone script: `scripts/backfill_graph.py`.
+- **Executive reports empty:** Wired real DuckDB queries into `generate_executive_report()`
+  (total_events, severity_breakdown, top_hostnames, top_event_types, top_src_ips).
+- **ChromaDB remote init crash:** `HttpClient()` now wrapped in try/except with graceful
+  fallback to local `PersistentClient` when remote Chroma is unreachable.
+- **Sidebar UX:** Redesigned to Claude-style — uniform muted text, no per-item accent colours,
+  active item uses subtle background highlight, auto-scroll active nav item into view.
+- **Network device health:** `GET /health/network` endpoint added (TCP reachability, unauthenticated).
+  Three config vars: `MONITOR_ROUTER_HOST`, `MONITOR_FIREWALL_HOST`, `MONITOR_GMKTEC_HOST`.
+  Sidebar shows coloured dots (green/red) for Router, Firewall, GMKtec, polled every 30s.
 
 *Phase 32 revised: 2026-04-09 (OSINT enrichment + IP threat trace map added — passive/legal only)*
 

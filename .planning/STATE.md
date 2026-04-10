@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 32-real-threat-hunting
-current_plan: 32-04 (complete)
-status: executing
-last_updated: "2026-04-09T10:24:00.000Z"
+current_phase: 33-threat-intelligence
+current_plan: (not started)
+status: pending
+last_updated: "2026-04-09T22:00:00.000Z"
 progress:
   total_phases: 37
-  completed_phases: 31
-  total_plans: 167
-  completed_plans: 172
+  completed_phases: 32
+  total_plans: 171
+  completed_plans: 176
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 32-real-threat-hunting
-**Current plan:** 32-04 (complete)
-**Status:** In progress
+**Current phase:** 33-threat-intelligence (next)
+**Previous phase:** 32-real-threat-hunting (COMPLETE — 2026-04-09)
+**Status:** Phase 32 complete. Ready to begin Phase 33.
 
 ## Session Log
 
@@ -42,6 +42,10 @@ See: .planning/PROJECT.md
 - 2026-04-09: Plan 32-02 complete — Passive OSINT enrichment service (WHOIS/AbuseIPDB/GeoLite2/VirusTotal/Shodan), 24h SQLite cache, GET /api/osint/{ip}, rate limiters. 899 unit tests green.
 - 2026-04-09: Plan 32-03 complete — HuntingView.svelte fully wired: NL query input, results table with severity badges, per-row OSINT enrichment panel, 6 preset hunt cards, hunt history replay. All Phase 32 frontend work complete.
 - 2026-04-09: Plan 32-04 complete — MapView.svelte: Leaflet.js world map with detection IP markers, severity colouring, OSINT side panel, OSM attribution, 60s auto-refresh. "Threat Map" nav item added to Intelligence group.
+- 2026-04-09: Phase 32 VERIFICATION.md passed — 11/11 must-haves verified. Phase 32 complete.
+- 2026-04-09: Post-phase-32 operational fixes committed: (1) Evidence timelines were empty — fixed get_investigation_timeline() to resolve investigation_id as detection primary key first, falling back to matched_event_ids. (2) Attack graph showed fixture data — cleared all fixture entities (ndjson/windows_event/osquery sources), added POST /api/graph/backfill endpoint, backfilled 17,896 real Malcolm Suricata events producing 20 entities (1 sensor host + 19 real external IPs) and 17,896 edges. (3) Executive reports were empty — wired real DuckDB queries into generate_executive_report() (total_events, severity_breakdown, top_hostnames, top_event_types, top_src_ips). (4) ChromaDB remote init crash — wrapped HttpClient() in try/except with graceful fallback to local PersistentClient.
+- 2026-04-09: Sidebar redesigned to Claude-style — uniform muted text rgba(255,255,255,0.48), active item rgba(255,255,255,0.09) background, no per-item accent colours, no icon wrapper boxes, 230px width, #111111 background, auto-scroll active item into view via $effect.
+- 2026-04-09: Network device health dots added to sidebar — GET /health/network endpoint (TCP reachability, no auth required), Router/Firewall/GMKtec dots polling every 30s. New config vars: MONITOR_ROUTER_HOST, MONITOR_FIREWALL_HOST, MONITOR_GMKTEC_HOST (.env: 192.168.1.1:444, 192.168.1.1:444, 192.168.1.22:9200). New standalone script scripts/backfill_graph.py for offline graph rebuild.
 
 ## Key Decisions
 
