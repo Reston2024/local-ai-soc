@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 34-asset-inventory (plan 02 complete)
-status: In-progress (plan 03 next)
-last_updated: "2026-04-10T12:18:00.000Z"
+current_phase: 34-asset-inventory (plan 03 complete)
+status: In-progress (plan 04 next)
+last_updated: "2026-04-10T11:25:12.991Z"
 progress:
   total_phases: 37
   completed_phases: 32
@@ -53,6 +53,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Phase 34 context complete — 4 gray areas discussed. Scope: asset inventory (T07-T09) + ATT&CK tagging/heatmap (T01-T04) + actor matching (T03). Campaign/Diamond/UEBA (T05,T06,T10,T11) deferred to Phase 35. ATT&CK heatmap: simplified 14-col grid, heat scale, own view, inline tactic drill-down. Assets: hostname+risk+last seen+alert count row, event timeline+detections+OSINT detail panel, RFC1918=internal tag.
 - 2026-04-10: Plan 34-01 complete — AttackStore SQLite CRUD (technique/group/group_technique/detection_techniques), STIX bootstrap parser, Sigma tag extractor (pySigma namespace+name split), actor_matches() top-3 with confidence labels, detection-time ATT&CK tagging in matcher.py. 11 ATT&CK unit tests pass, 925 total unit tests green.
 - 2026-04-10: Plan 34-02 complete — AssetStore SQLite CRUD (assets table, ON CONFLICT upsert), _classify_ip() RFC1918+loopback→internal, _apply_asset_upsert() in loader.py to_thread block. Wave 0 stubs (7 tests). 929 total unit tests green.
+- 2026-04-10: Plan 34-03 complete — backend/api/assets.py (3 endpoints), backend/api/attack.py (coverage + actor-matches), AttackStore.list_techniques_by_tactic(), bootstrap_attack_data() STIX task, all wired in main.py. 938 unit tests green.
 
 ## Key Decisions
 
@@ -93,3 +94,7 @@ See: .planning/PROJECT.md
 - **34-01:** actor_matches() overlap formula = |input ∩ group_techs| / |group_techs| (recall-style); groups with 0 techniques skipped to avoid division-by-zero
 - **34-02:** detections table lacks src_ip/dst_ip columns — alert_count and risk_score returned as 0 until schema extended
 - **34-02:** asset_store param optional in IngestionLoader; single to_thread block handles both IOC matching and asset upsert per event
+- **34-03:** {ip:path} path parameter used for IPv4 addresses in assets.py (dots in path segments need path converter)
+- **34-03:** actor-matches queries detection_techniques via attack_store._conn (shared SQLite connection — avoids extra app.state lookups)
+- **34-03:** MITRE_TACTICS imported from backend.api.analytics — no duplication in attack.py
+- **34-03:** bootstrap_attack_data is module-level async fn, not nested in lifespan, for testability and readability
