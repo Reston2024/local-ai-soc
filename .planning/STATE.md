@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 33-real-threat-intelligence (all 3 plans complete — human-verify approved)
+current_phase: 34-mitre-attack-actor-asset (context complete — ready to plan)
 status: planning
-last_updated: "2026-04-10T07:17:46.652Z"
+last_updated: "2026-04-10T09:00:00.000Z"
 progress:
   total_phases: 37
   completed_phases: 32
@@ -50,6 +50,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 33-02 complete — IOC matching pipeline: to_duckdb_row() extended to 58 columns, _INSERT_SQL updated, _apply_ioc_matching() (sync/thread-safe) + retroactive_ioc_scan() (async) added to loader.py, IocStore._record_hit() implemented, EventIngester alias created. 914 unit tests green.
 - 2026-04-10: Plan 33-03 tasks 1-2 complete — backend/api/intel.py (ioc-hits + feeds endpoints), api.ts IocHit/FeedStatus interfaces + intel.iocHits()/feeds() methods, ThreatIntelView.svelte full rewrite (feed strip, hit list, risk badges, inline expansion, empty state). All 3 intel unit tests pass, TS compiles clean. At human-verify checkpoint.
 - 2026-04-10: Plan 33-03 complete — human-verify checkpoint approved (3/3 unit tests green, TypeScript clean). All Phase 33 code plans done. Requirements P33-T09, P33-T10, P33-T16 satisfied.
+- 2026-04-10: Phase 34 context complete — 4 gray areas discussed. Scope: asset inventory (T07-T09) + ATT&CK tagging/heatmap (T01-T04) + actor matching (T03). Campaign/Diamond/UEBA (T05,T06,T10,T11) deferred to Phase 35. ATT&CK heatmap: simplified 14-col grid, heat scale, own view, inline tactic drill-down. Assets: hostname+risk+last seen+alert count row, event timeline+detections+OSINT detail panel, RFC1918=internal tag.
 
 ## Key Decisions
 
