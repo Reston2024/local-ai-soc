@@ -243,6 +243,10 @@ _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
     ("http_uri",             "TEXT"),
     ("http_status_code",     "INTEGER"),
     ("http_user_agent",      "TEXT"),
+    # Phase 33: IOC matching columns
+    ("ioc_matched",          "BOOLEAN DEFAULT FALSE"),
+    ("ioc_confidence",       "INTEGER"),
+    ("ioc_actor_tag",        "TEXT"),
 ]
 
 

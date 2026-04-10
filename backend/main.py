@@ -57,6 +57,8 @@ from backend.api.graph import router as graph_router  # noqa: E402
 from backend.api.health import router as health_router  # noqa: E402
 from backend.api.ingest import router as ingest_router  # noqa: E402
 from backend.api.query import router as query_router  # noqa: E402
+from backend.services.intel.feed_sync import CisaKevWorker, FeodoWorker, ThreatFoxWorker  # noqa: E402
+from backend.services.intel.ioc_store import IocStore  # noqa: E402
 from backend.services.ollama_client import OllamaClient  # noqa: E402
 from backend.services.metrics_service import MetricsService  # noqa: E402
 from backend.stores.chroma_store import ChromaStore  # noqa: E402
@@ -224,6 +226,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.stores = stores
     app.state.ollama = ollama
 
+    # 7a. Phase 33: Threat Intelligence — IocStore + feed workers
+    ioc_store = IocStore(sqlite_store._conn)
+    feodo_worker = FeodoWorker(ioc_store, sqlite_store._conn, duckdb_store=duckdb_store)
+    cisa_kev_worker = CisaKevWorker(ioc_store, sqlite_store._conn, duckdb_store=duckdb_store)
+    threatfox_worker = ThreatFoxWorker(ioc_store, sqlite_store._conn, duckdb_store=duckdb_store)
+
+    # Register feed workers as asyncio background tasks (run immediately on event loop)
+    asyncio.ensure_future(feodo_worker.run())
+    asyncio.ensure_future(cisa_kev_worker.run())
+    asyncio.ensure_future(threatfox_worker.run())
+
+    # Store ioc_store on app.state for use by the intel API router
+    app.state.ioc_store = ioc_store
+    log.info("Phase 33 feed workers registered (Feodo, CISA KEV, ThreatFox)")
+
+    # CRITICAL (P33-T06): Wire ioc_store into EventIngester so at-ingest IOC matching
+    # is active in production. EventIngester is added in Plan 02 (ingestion/loader.py).
+    # This reference is here (not in Plan 02) to consolidate all main.py edits in Plan 01.
+    # When Plan 02 creates EventIngester with ioc_store param, this wiring is already here.
+    app.state._ioc_store_for_ingester = ioc_store  # Accessed by ingest.py route handlers
+
     # 8. Conditional osquery live telemetry collector
     osquery_task: asyncio.Task | None = None
     if settings.OSQUERY_ENABLED:
@@ -320,8 +343,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         id="daily_kpi_snapshot",
         replace_existing=True,
     )
+    # Phase 33: Add daily IOC confidence decay job (5 min after midnight, staggered)
+    _daily_snapshot_scheduler.add_job(
+        ioc_store.decay_confidence,
+        "cron",
+        hour=0,
+        minute=5,
+        id="daily_ioc_decay",
+        replace_existing=True,
+    )
     _daily_snapshot_scheduler.start()
-    log.info("Daily KPI snapshot scheduler started")
+    log.info("Daily KPI snapshot scheduler started (incl. IOC decay at 00:05)")
 
     log.info("All stores and services initialised — ready to serve requests")
 
@@ -623,6 +655,13 @@ def create_app() -> FastAPI:
         log.info("OSINT router mounted at /api/osint")
     except Exception as exc:
         log.warning("OSINT router not available: %s", exc)
+
+    try:
+        from backend.api import intel as intel_api
+        app.include_router(intel_api.router, prefix="/api/intel", tags=["intel"])
+        log.info("Intel router mounted at /api/intel")
+    except Exception as exc:
+        log.warning("Intel router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
