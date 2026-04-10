@@ -203,6 +203,37 @@ export interface TrendDataPoint {
 export type TrendsResponse = Record<string, TrendDataPoint[]>
 
 // ---------------------------------------------------------------------------
+// Phase 35 — Overview dashboard + triage interfaces
+// ---------------------------------------------------------------------------
+
+export interface TelemetrySummary {
+  event_type_counts: Record<string, number>
+  total_events: number
+  total_detections: number
+  ioc_matches: number
+  assets_count: number
+  top_rules: Array<{ rule_name: string; severity: string; count: number }>
+}
+
+export interface TriageResult {
+  run_id: string
+  severity_summary: string
+  result_text: string
+  detection_count: number
+  model_name: string
+  created_at: string
+}
+
+export interface TriageRunResult {
+  run_id?: string
+  severity_summary?: string
+  detection_count: number
+  model_name?: string
+  created_at?: string
+  message?: string
+}
+
+// ---------------------------------------------------------------------------
 // Phase 34 — Asset Inventory + ATT&CK Coverage interfaces
 // ---------------------------------------------------------------------------
 
@@ -826,6 +857,18 @@ export const api = {
 
     actorMatches: (): Promise<ActorMatch[]> =>
       request<ActorMatch[]>('/api/attack/actor-matches'),
+  },
+
+  telemetry: {
+    summary: (): Promise<TelemetrySummary> =>
+      request<TelemetrySummary>('/api/telemetry/summary'),
+  },
+
+  triage: {
+    latest: (): Promise<{ result: TriageResult | null }> =>
+      request<{ result: TriageResult | null }>('/api/triage/latest'),
+    run: (): Promise<TriageRunResult> =>
+      request<TriageRunResult>('/api/triage/run', { method: 'POST' }),
   },
 }
 
