@@ -138,7 +138,7 @@ class NormalizedEvent(BaseModel):
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
 
-        Column order (55 elements total):
+        Column order (58 elements total):
             [0]  event_id
             [1]  timestamp
             [2]  ingested_at
@@ -196,6 +196,10 @@ class NormalizedEvent(BaseModel):
             [52] http_uri
             [53] http_status_code
             [54] http_user_agent
+            --- Phase 33: IOC matching fields ---
+            [55] ioc_matched
+            [56] ioc_confidence
+            [57] ioc_actor_tag
         """
         def _ts(v: Union[datetime, str, None]) -> Optional[str]:
             if v is None:
@@ -261,6 +265,10 @@ class NormalizedEvent(BaseModel):
             self.http_uri,
             self.http_status_code,
             self.http_user_agent,
+            # Phase 33: IOC matching fields (positions 55-57)
+            self.ioc_matched if self.ioc_matched is not None else False,
+            self.ioc_confidence,
+            self.ioc_actor_tag,
         )
 
     def to_embedding_text(self) -> str:

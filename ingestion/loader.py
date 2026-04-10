@@ -70,7 +70,8 @@ INSERT OR IGNORE INTO normalized_events (
     dns_query, dns_query_type, dns_rcode, dns_answers, dns_ttl,
     tls_version, tls_ja3, tls_ja3s, tls_sni, tls_cipher, tls_cert_subject, tls_validation_status,
     file_md5, file_sha256_eve, file_mime_type, file_size_bytes,
-    http_method, http_uri, http_status_code, http_user_agent
+    http_method, http_uri, http_status_code, http_user_agent,
+    ioc_matched, ioc_confidence, ioc_actor_tag
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -85,7 +86,8 @@ INSERT OR IGNORE INTO normalized_events (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
-    ?, ?, ?, ?
+    ?, ?, ?, ?,
+    ?, ?, ?
 )
 """
 
