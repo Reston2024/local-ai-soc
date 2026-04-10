@@ -290,6 +290,26 @@ class AttackStore:
         return results[:3]
 
     # ------------------------------------------------------------------
+    # Coverage query
+    # ------------------------------------------------------------------
+
+    def list_techniques_by_tactic(self, tactic: str) -> list[dict[str, Any]]:
+        """
+        Return all technique rows for a given tactic slug.
+
+        Args:
+            tactic: e.g. "execution", "persistence" — matches tactic column exactly.
+
+        Returns:
+            List of dicts with keys: tech_id, name.
+        """
+        cursor = self._conn.execute(
+            "SELECT tech_id, name FROM attack_techniques WHERE tactic = ? ORDER BY tech_id",
+            (tactic,),
+        )
+        return [{"tech_id": row[0], "name": row[1]} for row in cursor.fetchall()]
+
+    # ------------------------------------------------------------------
     # Detection technique tagging
     # ------------------------------------------------------------------
 
