@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type IocHit, type FeedStatus } from '$lib/api'
+  import { api, type IocHit, type FeedStatus } from '../lib/api.ts'
 
   let hits = $state<IocHit[] | null>(null)
   let feeds = $state<FeedStatus[]>([])
