@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 33-threat-intelligence
-current_plan: (not started)
-status: pending
-last_updated: "2026-04-09T22:00:00.000Z"
+current_phase: 33-real-threat-intelligence
+current_plan: 01 (complete)
+status: in-progress
+last_updated: "2026-04-10T06:35:00.000Z"
 progress:
   total_phases: 37
   completed_phases: 32
-  total_plans: 171
-  completed_plans: 176
+  total_plans: 170
+  completed_plans: 174
 ---
 
 # Session State
@@ -22,9 +22,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 33-threat-intelligence (next)
+**Current phase:** 33-real-threat-intelligence (in progress — plan 01 complete)
 **Previous phase:** 32-real-threat-hunting (COMPLETE — 2026-04-09)
-**Status:** Phase 32 complete. Ready to begin Phase 33.
+**Status:** Phase 33 plan 01 complete. Ready for Wave 2 (plans 02+03 run in parallel).
 
 ## Session Log
 
@@ -46,6 +46,7 @@ See: .planning/PROJECT.md
 - 2026-04-09: Post-phase-32 operational fixes committed: (1) Evidence timelines were empty — fixed get_investigation_timeline() to resolve investigation_id as detection primary key first, falling back to matched_event_ids. (2) Attack graph showed fixture data — cleared all fixture entities (ndjson/windows_event/osquery sources), added POST /api/graph/backfill endpoint, backfilled 17,896 real Malcolm Suricata events producing 20 entities (1 sensor host + 19 real external IPs) and 17,896 edges. (3) Executive reports were empty — wired real DuckDB queries into generate_executive_report() (total_events, severity_breakdown, top_hostnames, top_event_types, top_src_ips). (4) ChromaDB remote init crash — wrapped HttpClient() in try/except with graceful fallback to local PersistentClient.
 - 2026-04-09: Sidebar redesigned to Claude-style — uniform muted text rgba(255,255,255,0.48), active item rgba(255,255,255,0.09) background, no per-item accent colours, no icon wrapper boxes, 230px width, #111111 background, auto-scroll active item into view via $effect.
 - 2026-04-09: Network device health dots added to sidebar — GET /health/network endpoint (TCP reachability, no auth required), Router/Firewall/GMKtec dots polling every 30s. New config vars: MONITOR_ROUTER_HOST, MONITOR_FIREWALL_HOST, MONITOR_GMKTEC_HOST (.env: 192.168.1.1:444, 192.168.1.1:444, 192.168.1.22:9200). New standalone script scripts/backfill_graph.py for offline graph rebuild.
+- 2026-04-10: Plan 33-01 complete — TIP data layer: ioc_store DDL (SQLite), IocStore CRUD class, 3 feed workers (Feodo/CISA KEV/ThreatFox), DuckDB 3-column migration (ioc_matched/ioc_confidence/ioc_actor_tag), NormalizedEvent IOC fields, Wave 0 test stubs (18 tests). 908 unit tests green.
 
 ## Key Decisions
 
@@ -71,3 +72,8 @@ See: .planning/PROJECT.md
 - **32-04:** api.detections.list() used (not api.detect.list() from plan pseudocode) — matches actual api.ts client
 - **32-04:** Detection interface extended with src_ip and created_at — required for map marker data extraction
 - **32-04:** Threat Map in Intelligence nav group with BETA tag; dynamic Leaflet import in onMount avoids SSR issues
+- **33-01:** IocStore wraps sqlite3.Connection directly (not SQLiteStore) for in-memory testability
+- **33-01:** decay_confidence uses max(0, confidence-1) per daily call — approximates 5pts/week, floor=0 guaranteed
+- **33-01:** FeodoWorker extracts CSV fieldnames from commented header line (lstrip "# ")
+- **33-01:** ThreatFox confidence overridden to 50 regardless of feed confidence_level for scoring consistency
+- **33-01:** Intel router registered in main.py with try/except — backend/api/intel.py created by Plan 03
