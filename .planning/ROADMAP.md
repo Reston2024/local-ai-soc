@@ -1214,7 +1214,14 @@ discovered when running against real Malcolm telemetry:
 - P33-T16: Wire ThreatIntelView.svelte — real TIP console: feed status dashboard (last sync, IOC count, health), IOC search with faceted filters (type/actor/malware/TLP/status), IOC detail panel (all enrichment data, risk score, relationship graph using Cytoscape.js), manual IOC add form with TLP selector, retrohunt queue status
 - P33-T17: Add IOC enrichment panel to EventsView, DetectionsView, InvestigationView — when an event has ioc_matched=True, show inline enrichment card: risk score (colour-coded), actor tag, malware family, AbuseIPDB score, geo/ASN, PassiveDNS count, VirusTotal detection count
 
-**Plans:** 0 plans
+**Plans:** 3 plans
+
+Plans:
+- [ ] 33-01-PLAN.md — Data layer: ioc_store DDL + IocStore class + 3 feed workers + DuckDB migration + confidence decay
+- [ ] 33-02-PLAN.md — IOC matching pipeline: at-ingest hook in loader.py + retroactive scan + ioc_hits recording
+- [ ] 33-03-PLAN.md — API endpoints (GET /api/intel/ioc-hits, GET /api/intel/feeds) + ThreatIntelView rewrite
+
+*Phase 33 scoped: 2026-04-09 — 3 feeds only (Feodo, CISA KEV, ThreatFox CSV). TAXII/MISP/OTX/enrichment panels deferred to Phase 34.*
 
 *Phase 33 revised: 2026-04-09 — Commercial-grade TIP. Feature parity with Elastic Security TI and Microsoft Sentinel TI blade. All sources free.*
 
