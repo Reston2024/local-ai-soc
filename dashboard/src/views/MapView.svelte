@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte'
   import { api } from '../lib/api.ts'
   import type { OsintResult, Detection } from '../lib/api.ts'
+  import 'leaflet/dist/leaflet.css'
 
   let mapContainer: HTMLDivElement
   // Module-level typed variables — set once in onMount
@@ -95,9 +96,8 @@
   }
 
   onMount(async () => {
-    // Dynamic import — avoids SSR and ensures DOM is ready
+    // Dynamic import of Leaflet module — CSS is imported statically above
     const leafletModule = await import('leaflet')
-    await import('leaflet/dist/leaflet.css')
     L = leafletModule.default
 
     map = L.map(mapContainer, { center: [20, 10], zoom: 2, zoomControl: true })

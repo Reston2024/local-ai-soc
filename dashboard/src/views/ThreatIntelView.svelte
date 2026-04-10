@@ -4,6 +4,7 @@
   let hits = $state<IocHit[] | null>(null)
   let feeds = $state<FeedStatus[]>([])
   let expandedId = $state<number | null>(null)
+  let error = $state<string | null>(null)
 
   function toggleExpand(id: number) {
     expandedId = expandedId === id ? null : id
@@ -52,8 +53,10 @@
   }
 
   $effect(() => {
-    api.intel.feeds().then(data => { feeds = data }).catch(console.error)
-    api.intel.iocHits().then(data => { hits = data }).catch(console.error)
+    error = null
+    Promise.all([api.intel.feeds(), api.intel.iocHits()])
+      .then(([f, h]) => { feeds = f; hits = h })
+      .catch(e => { error = String(e); hits = [] })
   })
 </script>
 
@@ -86,7 +89,9 @@
 
   <!-- Hit list / empty state -->
   <div class="content">
-    {#if hits === null}
+    {#if error}
+      <div class="loading-state" style="color:#ef4444">Error: {error}</div>
+    {:else if hits === null}
       <div class="loading-state">Loading…</div>
     {:else if hits.length === 0}
       <div class="empty-state">
