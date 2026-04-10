@@ -52,6 +52,14 @@
     currentView = 'playbooks'
   }
 
+  // Scroll active nav item into view whenever currentView changes
+  $effect(() => {
+    const _view = currentView  // track dependency
+    requestAnimationFrame(() => {
+      document.querySelector('.nav-item.active')?.scrollIntoView({ block: 'nearest' })
+    })
+  })
+
   function handlePostureUpdate(score: number) {
     postureScore = score
   }
