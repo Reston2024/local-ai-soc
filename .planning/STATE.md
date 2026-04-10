@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 35-soc-completeness (plan 03 next)
+current_phase: 35-soc-completeness (plan 04 next)
 status: completed
-last_updated: "2026-04-10T18:53:05.815Z"
+last_updated: "2026-04-10T18:58:32.137Z"
 progress:
   total_phases: 37
   completed_phases: 33
   total_plans: 178
-  completed_plans: 181
+  completed_plans: 182
 ---
 
 # Session State
@@ -58,6 +58,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 34-04 complete — Task 3 checkpoint approved. Post-verify fixes applied: ThreatIntelView relative import path, ThreatIntelView error state, MapView Leaflet CSS + invalidateSize(), Caddy /health* glob + OSM CSP headers. Phase 34 COMPLETE. Requirements P34-T09 satisfied.
 - 2026-04-10: Plan 35-01 complete — explain.py structured early-return when investigation={}, _fetch_playbook_rows wired into timeline, 3 Zeek ECS field-map entries (dns.query.name, http.user_agent, tls.client.ja3), ZEEK_CHIPS enabled, 4 Intelligence nav items lose beta tag. 9 new unit tests, 953 total green.
 - 2026-04-10: Plan 35-02 complete — triage_results SQLite DDL table + triaged_at idempotent migration + SQLiteStore.save_triage_result() and get_latest_triage() methods. 6 unit tests pass, 953 total unit tests green. Requirement P35-T08 satisfied.
+- 2026-04-10: Plan 35-03 complete — backend/api/triage.py (POST /api/triage/run + GET /api/triage/latest + _run_triage() + _auto_triage_loop()), main.py wiring (router + 60s worker task), 7 unit tests (4 API + 3 worker). 962 total unit tests green. Requirements P35-T09, P35-T10 satisfied.
 
 ## Key Decisions
 
@@ -108,3 +109,7 @@ See: .planning/PROJECT.md
 - **35-02:** triage_results uses run_id TEXT PRIMARY KEY — INSERT OR REPLACE enables idempotent saves
 - **35-02:** triaged_at migration follows existing try/except pattern — backward-compatible idempotent ALTER TABLE
 - **35-02:** get_latest_triage orders by created_at DESC ISO-8601 string sort — no ROWID dependency
+- **35-03:** _run_triage() decoupled from HTTP layer — both endpoint and background worker call it identically (no HTTP overhead in worker)
+- **35-03:** severity_summary derived from first non-empty LLM response line (max 200 chars) — simple fast parse, no regex failures
+- **35-03:** Triage router and _auto_triage_loop worker both wrapped in try/except in main.py — graceful degradation if import fails
+- **35-03:** Model name read with getattr(ollama_client, 'model', 'ollama') — fallback if client has no .model attribute

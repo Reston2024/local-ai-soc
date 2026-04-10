@@ -1307,7 +1307,7 @@ Plans:
 - P35-T09: Implement POST /api/triage/run — pulls unanalyzed DetectionRecords from SQLite (triaged_at IS NULL), builds prompt via prompts/triage.build_prompt(), calls OllamaClient.generate(), stores result with full provenance, marks detections as triaged. Returns triage_id + severity_summary. Requires auth (verify_token).
 - P35-T10: Wire automated triage background worker — asyncio task in main.py lifespan that polls for unanalyzed detections every 60s and calls POST /api/triage/run internally. Dashboard surfaces latest triage result in a Triage panel (non-blocking — analyst can still query manually). This closes the gap: the AI now analyzes detections automatically without analyst initiation.
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [ ] 35-01-PLAN.md — Broken flow fixes + quick wins: explain.py early return, playbook timeline, ZEEK chips, BETA badge removal, field_map Zeek entries (Wave 1)
