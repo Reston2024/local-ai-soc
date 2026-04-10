@@ -17,12 +17,14 @@ Response schema:
 """
 
 import asyncio
+import socket
 from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
+from backend.core.config import settings
 from backend.core.logging import get_logger
 
 log = get_logger(__name__)
@@ -75,6 +77,53 @@ async def _check_sqlite(request: Request) -> dict[str, Any]:
     except Exception as exc:
         log.error("Health check failed for sqlite: %s", str(exc))
         return {"status": "error", "detail": "component unavailable"}
+
+
+def _tcp_check(host: str, port: int, timeout: float = 2.0) -> bool:
+    """Return True if TCP connection to host:port succeeds within timeout."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+@router.get("/health/network")
+async def network_health() -> JSONResponse:
+    """
+    GET /health/network
+
+    TCP reachability check for configured network devices.
+    Returns status for router, firewall, and GMKtec (Malcolm box).
+    Devices with empty host config are omitted from the response.
+
+    No auth required — used by the dashboard sidebar on page load.
+    """
+    devices: dict[str, dict[str, Any]] = {}
+
+    checks: list[tuple[str, str]] = []
+    for label, host_port in (
+        ("router",   settings.MONITOR_ROUTER_HOST),
+        ("firewall", settings.MONITOR_FIREWALL_HOST),
+        ("gmktec",   settings.MONITOR_GMKTEC_HOST),
+    ):
+        if not host_port:
+            continue
+        try:
+            host, port_str = host_port.rsplit(":", 1)
+            checks.append((label, host, int(port_str)))
+        except ValueError:
+            devices[label] = {"status": "error", "detail": "bad config"}
+
+    async def _check(label: str, host: str, port: int) -> tuple[str, dict]:
+        ok = await asyncio.to_thread(_tcp_check, host, port)
+        return label, {"status": "up" if ok else "down", "host": host, "port": port}
+
+    results = await asyncio.gather(*[_check(l, h, p) for l, h, p in checks])
+    for label, info in results:
+        devices[label] = info
+
+    return JSONResponse(content={"devices": devices, "timestamp": datetime.now(tz=timezone.utc).isoformat()})
 
 
 @router.get("/health")

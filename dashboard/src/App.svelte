@@ -27,6 +27,10 @@
   let currentView = $state<View>('detections')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
   let investigatingId = $state<string>('')
+
+  type DeviceStatus = 'up' | 'down' | 'unknown'
+  type NetworkDevices = { router?: DeviceStatus; firewall?: DeviceStatus; gmktec?: DeviceStatus }
+  let networkDevices = $state<NetworkDevices>({})
   let graphFocusEntityId = $state<string>('')
   let postureScore = $state(100) // 0–100; updated once detections load
 
@@ -64,6 +68,20 @@
     postureScore = score
   }
 
+  async function refreshNetworkHealth() {
+    try {
+      const res = await fetch('/health/network')
+      if (res.ok) {
+        const data = await res.json()
+        const devs: NetworkDevices = {}
+        for (const [k, v] of Object.entries(data.devices ?? {})) {
+          devs[k as keyof NetworkDevices] = (v as any).status === 'up' ? 'up' : 'down'
+        }
+        networkDevices = devs
+      }
+    } catch { /* ignore — dots stay unknown */ }
+  }
+
   onMount(async () => {
     try {
       const h = await api.health()
@@ -71,6 +89,7 @@
     } catch {
       healthStatus = 'unhealthy'
     }
+    refreshNetworkHealth()
     setInterval(async () => {
       try {
         const h = await api.health()
@@ -79,6 +98,7 @@
         healthStatus = 'unhealthy'
       }
     }, 30_000)
+    setInterval(refreshNetworkHealth, 30_000)
   })
 
   // Posture: green ≥ 80, amber 50–79, red < 50
@@ -165,6 +185,24 @@
         title="Backend: {healthStatus}"
       ></span>
     </div>
+
+    <!-- Network device status -->
+    {#if Object.keys(networkDevices).length > 0}
+      <div class="device-strip">
+        {#each [['router','Router'],['firewall','Firewall'],['gmktec','GMKtec']] as [key, label]}
+          {#if networkDevices[key as keyof NetworkDevices] !== undefined}
+            <span class="device-item" title="{label}: {networkDevices[key as keyof NetworkDevices]}">
+              <span
+                class="device-dot"
+                class:up={networkDevices[key as keyof NetworkDevices] === 'up'}
+                class:down={networkDevices[key as keyof NetworkDevices] === 'down'}
+              ></span>
+              <span class="device-label">{label}</span>
+            </span>
+          {/if}
+        {/each}
+      </div>
+    {/if}
 
     <!-- Posture strip -->
     <div class="posture-strip">
@@ -328,6 +366,38 @@
     flex-shrink: 0;
     transition: background 0.4s;
     opacity: 0.85;
+  }
+
+  /* ── Device status strip ── */
+  .device-strip {
+    display: flex;
+    gap: 12px;
+    padding: 0 14px 10px;
+    flex-shrink: 0;
+  }
+
+  .device-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: default;
+  }
+
+  .device-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    flex-shrink: 0;
+    transition: background 0.4s;
+  }
+
+  .device-dot.up   { background: #22c55e; }
+  .device-dot.down { background: #ef4444; }
+
+  .device-label {
+    font-size: 10.5px;
+    color: rgba(255,255,255,0.35);
   }
 
   /* ── Posture strip ── */

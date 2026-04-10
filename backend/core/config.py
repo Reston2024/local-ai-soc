@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     SHODAN_API_KEY: str = ""
     GEOIP_DB_PATH: str = "data/GeoLite2-City.mmdb"
 
+    # Network device monitoring — TCP reachability checks shown in dashboard sidebar
+    # Each value is "host:port". Empty string = disabled (dot hidden).
+    MONITOR_ROUTER_HOST: str = ""       # e.g. "192.168.0.1:80"
+    MONITOR_FIREWALL_HOST: str = ""     # e.g. "192.168.1.1:444"
+    MONITOR_GMKTEC_HOST: str = ""       # e.g. "192.168.1.22:9200"
+
     # ChromaDB — remote HTTP client (preferred) vs local PersistentClient (fallback)
     # Set CHROMA_URL to point at a remote Chroma server (e.g. http://192.168.1.22:8200).
     # Leave empty to use local PersistentClient at DATA_DIR/chroma.
