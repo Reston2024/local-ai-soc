@@ -61,6 +61,7 @@ def _get_loader(request: Request) -> IngestionLoader:
     return IngestionLoader(
         stores=request.app.state.stores,
         ollama_client=request.app.state.ollama,
+        ioc_store=getattr(request.app.state, "ioc_store", None),
     )
 
 
@@ -209,11 +210,12 @@ async def _run_ingestion_job(
     job_id: str,
     stores: Any,
     ollama: Any,
+    ioc_store: Any = None,
 ) -> None:
     """Background task that runs the full ingestion pipeline for an uploaded file."""
     from ingestion.loader import IngestionLoader, _set_job
 
-    loader = IngestionLoader(stores=stores, ollama_client=ollama)
+    loader = IngestionLoader(stores=stores, ollama_client=ollama, ioc_store=ioc_store)
     try:
         result = await loader.ingest_file(file_path, case_id=case_id, job_id=job_id)
         log.info(
@@ -295,6 +297,7 @@ async def upload_file(
         job_id=job_id,
         stores=request.app.state.stores,
         ollama=request.app.state.ollama,
+        ioc_store=getattr(request.app.state, "ioc_store", None),
     )
 
     return JSONResponse(
