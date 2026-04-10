@@ -52,6 +52,7 @@ from sigma.rule import SigmaRule
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
 from backend.models.event import DetectionRecord
+from backend.services.attack.attack_store import extract_attack_techniques_from_rule
 from detections.field_map import FIELD_MAP_VERSION, INTEGER_COLUMNS, SIGMA_FIELD_MAP
 
 log = get_logger(__name__)
@@ -260,6 +261,7 @@ class SigmaMatcher:
         self._rules: list[SigmaRule] = []
         self._rule_sql_cache: dict[str, str | None] = {}  # rule id → WHERE clause
         self._rule_yaml: dict[str, str] = {}  # str(rule.id) → original YAML text
+        self._detection_techniques: dict[str, list[str]] = {}  # detection_id → [tech_ids]
 
     # ------------------------------------------------------------------
     # Rule loading
@@ -666,8 +668,9 @@ class SigmaMatcher:
 
         detections: list[DetectionRecord] = []
         # Group all matching events into a single DetectionRecord per rule match
+        detection_id = str(uuid4())
         detection = DetectionRecord(
-            id=str(uuid4()),
+            id=detection_id,
             rule_id=rule_id,
             rule_name=rule_name,
             severity=severity,
@@ -679,6 +682,11 @@ class SigmaMatcher:
             created_at=datetime.now(tz=timezone.utc),
         )
         detections.append(detection)
+
+        # Cache ATT&CK technique IDs for this detection (used in save_detections)
+        tech_ids = extract_attack_techniques_from_rule(rule)
+        if tech_ids:
+            self._detection_techniques[detection_id] = tech_ids
 
         log.info(
             "Sigma rule matched",
@@ -790,6 +798,23 @@ class SigmaMatcher:
                         case_id=det.case_id,
                     )
                     saved += 1
+                    # Write ATT&CK technique tags to detection_techniques table
+                    tech_ids = self._detection_techniques.pop(det.id, [])
+                    if tech_ids:
+                        conn = self.stores.sqlite._conn
+                        for tid in tech_ids:
+                            try:
+                                conn.execute(
+                                    "INSERT OR IGNORE INTO detection_techniques "
+                                    "(detection_id, tech_id) VALUES (?, ?)",
+                                    (det.id, tid),
+                                )
+                            except Exception:
+                                pass  # Table may not exist yet (bootstrapped by AttackStore)
+                        try:
+                            conn.commit()
+                        except Exception:
+                            pass
                 except Exception as exc:
                     log.warning(
                         "Failed to save detection",
