@@ -17,7 +17,16 @@ class Report(BaseModel):
     """Persisted report record stored in SQLite."""
 
     id: str
-    type: Literal["investigation", "executive"]
+    type: Literal[
+        "investigation",
+        "executive",
+        "template_session_log",
+        "template_incident",
+        "template_playbook_log",
+        "template_pir",
+        "template_ti_bulletin",
+        "template_severity_ref",
+    ]
     title: str
     subject_id: Optional[str] = None
     period_start: Optional[str] = None
