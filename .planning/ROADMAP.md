@@ -1318,9 +1318,9 @@ Plans:
 *Phase 35 revised: 2026-04-09 (Auto-triage added — AI analyzes detections without analyst prompting)*
 
 ## Phase 36: Zeek Full Telemetry
-**Status:** planned — hardware in transit
+**Status:** planned — hardware arrived, SPAN port active
 **Added:** 2026-04-09
-**Hardware status:** Netgear GS308E managed switch purchased 2026-04-09. Not yet arrived. Malcolm's Zeek containers currently produce zero logs — will produce full telemetry once SPAN port is mirroring traffic to Malcolm's capture interface.
+**Hardware status:** Netgear GS308E managed switch arrived and configured 2026-04-10. LAN port 1 mirrored to port 5 (GMKtec/Ubuntu). SPAN port active — Malcolm's Zeek containers will produce full telemetry once confirmed in OpenSearch.
 **Goal:** Once a managed switch is installed with SPAN mirroring to Malcolm's capture interface, expand Malcolm collector to all 40+ Zeek log types. Implement normalizers for: conn, dns, http, ssl, x509, files, notice, weird, dhcp, ssh, smtp, rdp, smb_mapping, smb_files, software, kerberos, ntlm, ftp, sip, socks, tunnel, pe, known_hosts, known_services, intel, signatures, and ICS protocols if present. Full NormalizedEvent expansion. DuckDB migration. EventsView chip expansion.
 
 ### Requirements
@@ -1340,4 +1340,4 @@ Plans:
 **Plans:** 0 plans
 **Activation:** Start this phase only after confirming Zeek logs are flowing in Malcolm OpenSearch.
 
-*Phase 36 added: 2026-04-09. Hardware purchased 2026-04-09 (Netgear GS308E, arriving). Activate once SPAN port is configured and Zeek logs confirmed flowing in Malcolm OpenSearch.*
+*Phase 36 added: 2026-04-09. Hardware arrived 2026-04-10 (Netgear GS308E). SPAN port configured: port 1 → port 5 (GMKtec/Ubuntu). Activate once Zeek logs confirmed flowing in Malcolm OpenSearch (P36-T01).*
