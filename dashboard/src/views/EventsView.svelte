@@ -22,16 +22,20 @@
   ]
   let selectedChip = $state('')   // '' = All
 
-  // Phase 36 Zeek chips — disabled until SPAN port is configured (managed switch in transit)
+  // Phase 36 Zeek chips — SPAN port active (Netgear GS308E configured)
   const ZEEK_CHIPS = [
-    { label: 'Connection', value: 'conn' },
-    { label: 'HTTP',       value: 'http' },
-    { label: 'SSL',        value: 'ssl' },
-    { label: 'SMB',        value: 'smb' },
-    { label: 'Auth',       value: 'auth' },
-    { label: 'SSH',        value: 'ssh' },
-    { label: 'SMTP',       value: 'smtp' },
-    { label: 'DHCP',       value: 'dhcp' },
+    { label: 'Connection',  value: 'conn' },
+    { label: 'HTTP',        value: 'http' },
+    { label: 'SSL',         value: 'ssl' },
+    { label: 'SSH',         value: 'ssh' },
+    { label: 'SMB',         value: 'smb_files' },
+    { label: 'Kerberos',    value: 'kerberos_tgs_request' },
+    { label: 'NTLM',        value: 'ntlm_auth' },
+    { label: 'RDP',         value: 'rdp' },
+    { label: 'DHCP',        value: 'dhcp' },
+    { label: 'SMTP',        value: 'smtp' },
+    { label: 'Weird',       value: 'weird' },
+    { label: 'Notice',      value: 'notice' },
   ]
 
   async function load() {
@@ -107,7 +111,7 @@
         {chip.label}
       </button>
     {/each}
-    <span class="chip-divider" title="Zeek telemetry — available once managed switch SPAN port is configured">Phase 36</span>
+    <span class="chip-divider" title="Zeek NSM telemetry — SPAN port active">Zeek</span>
     {#each ZEEK_CHIPS as chip}
       <button
         class="chip {selectedChip === chip.value ? 'chip-active' : ''}"
