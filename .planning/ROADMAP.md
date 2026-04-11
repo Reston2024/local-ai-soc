@@ -1344,4 +1344,19 @@ Plans:
 - [ ] 36-02-PLAN.md — Remaining 21 Zeek normalizers (http/ssl/x509/files/notice/kerberos/ntlm/ssh/smb/rdp/dce_rpc/dhcp/dns/software/known/sip/ftp/smtp/socks/tunnel/pe)
 - [ ] 36-03-PLAN.md — EventsView chip fixes, Sigma field_map Phase 36 additions, smoke test docs
 
+## Phase 37: Analyst Report Templates
+**Status:** pending context
+**Added:** 2026-04-11
+**Goal:** Add six pre-populated analyst report templates (Session Log, Security Incident Report, Playbook Execution Log, Post-Incident Review, Threat Intelligence Bulletin, Severity & Confidence Reference) to the Reports section of the dashboard. Each template pre-fills from live SOC Brain data (DuckDB event counts, SQLite detection/investigation/playbook records, TIP IOCs, git hash, triage results) and downloads as PDF. Templates live in a new "Templates" tab within the existing ReportsView.
+
+### Requirements
+- P37-T01: Session Log template — pre-filled with today's ingest stats (DuckDB event count, timespan, source types), git commit hash, current triage result summary, and blank analyst fields (session type, errors, notes)
+- P37-T02: Security Incident Report template — pre-filled from an investigation case (case title, affected assets, detection timeline, IOCs from TIP, triage audit trail, ATT&CK techniques); triggered from investigation case selector
+- P37-T03: Playbook Execution Log template — pre-filled from a playbook_runs record (playbook name/version, trigger alert, steps with outputs, gate results, LLM audit trail)
+- P37-T04: Post-Incident Review template — pre-filled from a closed investigation case (incident summary, timeline phases, detection engineering outcome, corrective actions); triggered from case selector
+- P37-T05: Threat Intelligence Bulletin template — pre-filled with selected IOC cluster from TIP (IOC table, actor match from AttackStore, ATT&CK TTPs, internal relevance from assets); analyst selects IOC set or actor
+- P37-T06: Severity & Confidence Reference — static reference card, always current (no data pre-fill); reflects current known open gaps from PROJECT.md; downloadable as PDF
+- P37-T07: Templates tab in ReportsView — list of 6 template cards, each with description and "Generate" button; date/case selectors where needed; PDF download after generation
+- P37-T08: backend/api/report_templates.py — 6 POST endpoints generating HTML → PDF via WeasyPrint, same pattern as existing reports.py; store generated templates in SQLite reports table with type="template_*"
+
 *Phase 36 added: 2026-04-09. Hardware arrived 2026-04-10 (Netgear GS308E). SPAN port configured: port 1 → port 5 (GMKtec/Ubuntu). Activate once Zeek logs confirmed flowing in Malcolm OpenSearch (P36-T01).*
