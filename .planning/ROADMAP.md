@@ -1369,16 +1369,23 @@ Plans:
 *Phase 36 added: 2026-04-09. Hardware arrived 2026-04-10 (Netgear GS308E). SPAN port configured: port 1 → port 5 (GMKtec/Ubuntu). Activate once Zeek logs confirmed flowing in Malcolm OpenSearch (P36-T01).*
 
 ## Phase 38: CISA Playbook Content
-**Status:** TODO
+**Status:** IN PROGRESS
 **Added:** 2026-04-11
-**Goal:** Replace/augment the 5 generic NIST starter playbooks with structured CISA Federal IR response flows for the most common SOC incident classes. Each playbook maps directly to ATT&CK TTPs, includes analyst decision gates, escalation paths, and containment actions — giving analysts real procedural guidance when working cases.
+**Goal:** Replace all 5 NIST starter playbooks with CISA-derived response flows for 4 incident classes (Phishing/BEC, Ransomware, Credential/Account Compromise, Malware/Intrusion). Enrich PlaybookStep with ATT&CK technique IDs, severity-based escalation gates, SLA timers, and containment actions. Update PlaybooksView to surface all new fields.
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 38-01-PLAN.md — Wave 0: test stubs for model, seed, and CISA content (P38-T01..T05)
+- [ ] 38-02-PLAN.md — Backend: PlaybookStep model extension, CISA BUILTIN_PLAYBOOKS, seed strategy, SQLite migrations
+- [ ] 38-03-PLAN.md — Frontend: source badges, technique chips, escalation banner, containment dropdown, suggest CTA, deep-link (P38-T02,T03,T04,T06)
 
 ### Requirements
 - P38-T01: Ingest and parse CISA Federal IR Playbook response phases (phishing, malware, ransomware, credential abuse, unauthorized access)
 - P38-T02: Map each CISA playbook step to ATT&CK technique IDs where applicable
-- P38-T03: Add escalation logic to playbook steps (severity thresholds → escalate vs contain)
+- P38-T03: Add escalation logic to playbook steps (severity thresholds to escalate vs contain)
 - P38-T04: Add containment action fields to PlaybookStep model
-- P38-T05: Seed new CISA-derived playbooks into SQLite on startup (replace/supplement NIST starters)
+- P38-T05: Seed new CISA-derived playbooks into SQLite on startup (replace NIST starters)
 - P38-T06: Update PlaybooksView to show ATT&CK technique badges per step and containment action labels
 
 ## Phase 39: MITRE CAR Analytics Integration
