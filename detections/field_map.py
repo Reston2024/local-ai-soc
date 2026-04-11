@@ -20,7 +20,7 @@ from __future__ import annotations
 # Version identifier for this field map — updated whenever the mapping changes.
 # Used by detection provenance records so analysts can reconstruct which
 # field translations were active when a Sigma rule fired.
-FIELD_MAP_VERSION: str = "21"
+FIELD_MAP_VERSION: str = "22"
 
 # Sigma field name → normalized_events DuckDB column
 SIGMA_FIELD_MAP: dict[str, str] = {
@@ -108,6 +108,24 @@ SIGMA_FIELD_MAP: dict[str, str] = {
     "dns.query.name":         "dns_query",
     "http.user_agent":        "http_user_agent",
     "tls.client.ja3":         "tls_ja3",
+    # Phase 36: Zeek full telemetry field mappings
+    "zeek.conn.state":              "conn_state",
+    "zeek.conn.duration":           "conn_duration",
+    "zeek.conn.orig_bytes":         "conn_orig_bytes",
+    "zeek.conn.resp_bytes":         "conn_resp_bytes",
+    "zeek.weird.name":              "zeek_weird_name",
+    "zeek.notice.note":             "zeek_notice_note",
+    "zeek.notice.msg":              "zeek_notice_msg",
+    "zeek.ssh.auth_success":        "ssh_auth_success",
+    "zeek.ssh.version":             "ssh_version",
+    "zeek.kerberos.client":         "kerberos_client",
+    "zeek.kerberos.service":        "kerberos_service",
+    "zeek.ntlm.username":           "ntlm_username",
+    "zeek.ntlm.domain":             "ntlm_domain",
+    "zeek.smb_mapping.path":        "smb_path",
+    "zeek.smb_files.action":        "smb_action",
+    "zeek.rdp.security_protocol":   "rdp_security_protocol",
+    "zeek.rdp.cookie":              "rdp_cookie",
     # ------------------------------------------------------------------
     # New ECS column mappings (Windows Sigma field names)
     # ------------------------------------------------------------------
@@ -123,4 +141,8 @@ INTEGER_COLUMNS: frozenset[str] = frozenset({
     "parent_process_id",
     "src_port",
     "dst_port",
+    # Phase 36: Zeek integer columns
+    "conn_orig_bytes",
+    "conn_resp_bytes",
+    "ssh_version",
 })
