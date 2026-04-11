@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 37-analyst-report-templates — Plan 02 complete
-status: in-progress
-last_updated: "2026-04-11T11:00:00.000Z"
+current_phase: 37-analyst-report-templates — Plan 03 complete
+status: completed
+last_updated: "2026-04-11T11:50:00.000Z"
 progress:
   total_phases: 38
-  completed_phases: 35
+  completed_phases: 36
   total_plans: 184
-  completed_plans: 188
+  completed_plans: 189
 ---
 
 # Session State
@@ -66,6 +66,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Phase 36 COMPLETE — 36-VERIFICATION.md passed (6/6 must-haves). All 12 requirements satisfied (P36-T12 deferred as runtime integration check, SPAN confirmed live with 412,158 docs). 989 unit tests green. NormalizedEvent 75 columns, 25 Zeek normalizers, FIELD_MAP_VERSION=22 with 17 Zeek ECS mappings, 12 ZEEK_CHIPS active in EventsView.
 - 2026-04-11: Plan 37-01 complete — Report.type Literal widened to 8 types, backend/api/report_templates.py created (6 HTML builders: session_log/incident/playbook_log/pir/ti_bulletin/severity_ref + 3 POST endpoints + GET /template/meta), report_templates_router registered in main.py. 996 unit tests green.
 - 2026-04-11: Plan 37-02 complete — PIR/TI Bulletin/Severity Ref POST endpoints added to report_templates.py. _fetch_ti_data() uses fuzzy actor_tag LIKE for IOCs + stix_group_id JOIN for techniques. pydantic.BaseModel import added. All 7 report template tests pass, 996 total unit tests green. Requirements P37-T04, P37-T05, P37-T06 satisfied.
+- 2026-04-11: Plan 37-03 complete — Report.type widened to string, TemplateMeta interface + api.reports.templateMeta()/generateTemplate() added to api.ts, ReportsView 5th Templates tab with 2x3 card grid (6 cards), App.svelte handleGenerateReport() + Generate Report shortcut on InvestigationView panel, PlaybooksView onGenerateReport prop + btn-shortcut on active run. 996 unit tests green. Requirements P37-T07, P37-T08 satisfied. Phase 37 COMPLETE.
 
 ## Key Decisions
 
@@ -134,3 +135,6 @@ See: .planning/PROJECT.md
 - **37-02:** pydantic.BaseModel import added to report_templates.py (Plan 37-01 had no POST bodies, so import was omitted)
 - **37-01:** Blank template always valid: all 3 POST endpoints return 201 when subject (case/run) not found — never raise HTTPException for missing data
 - **37-01:** GET /template/meta returns case_list and run_list alongside scalar counts for single-round-trip frontend dropdown population
+- **37-03:** Card 6 (Severity Ref): single Download PDF button fires generate + window.open in one click — no Generate-to-Download swap state
+- **37-03:** Generate Report shortcut in App.svelte wraps InvestigationView in flex column with header bar — InvestigationView.svelte untouched
+- **37-03:** cardGenerating / cardLastReport dictionaries keyed by type string enable per-card independent generate/download state
