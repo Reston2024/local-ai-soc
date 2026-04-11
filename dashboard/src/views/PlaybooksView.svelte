@@ -4,9 +4,13 @@
 
   let {
     investigationId = '',
+    activeInvestigationId = '',
+    triggerTechnique = '',
     onGenerateReport = undefined,
   }: {
     investigationId?: string
+    activeInvestigationId?: string
+    triggerTechnique?: string
     onGenerateReport?: (opts: { runId: string }) => void
   } = $props()
 
@@ -22,15 +26,41 @@
   let isSubmitting = $state(false)
   let errorMsg = $state('')
 
+  // Phase 38: escalation acknowledgment state (resets when run changes)
+  let acknowledgedSteps = $state<Set<number>>(new Set())
+  $effect(() => {
+    if (activeRun) acknowledgedSteps = new Set()
+  })
+
+  // Phase 38: containment action state for step completion
+  let selectedContainment = $state<string>('')
+
   const currentStepNumber = $derived(
     activeRun && activePlaybook
       ? (activeRun.steps_completed.length + 1)
       : 0
   )
 
+  // Severity rank for escalation gate
+  const SEVERITY_RANK: Record<string, number> = {
+    critical: 4, high: 3, medium: 2, low: 1, informational: 0
+  }
+
   // Load playbooks on mount
   $effect(() => {
     loadLibrary()
+  })
+
+  // Phase 38: deep-link scroll effect when triggerTechnique changes
+  $effect(() => {
+    if (!activeRun || !activePlaybook || !triggerTechnique) return
+    const matchingStep = activePlaybook.steps.find(s =>
+      s.attack_techniques?.includes(triggerTechnique)
+    )
+    if (matchingStep) {
+      const el = document.getElementById(`step-${matchingStep.step_number}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
   })
 
   async function loadLibrary() {
@@ -54,6 +84,7 @@
       activeRun = run
       activePlaybook = playbook
       stepNote = ''
+      selectedContainment = ''
     } catch (e: any) {
       errorMsg = e.message
     }
@@ -71,10 +102,26 @@
       )
       activeRun = updated
       stepNote = ''
+      selectedContainment = ''
     } catch (e: any) {
       errorMsg = e.message
     } finally {
       isSubmitting = false
+    }
+  }
+
+  // Phase 38: handle escalation acknowledgment with optional PATCH to set active_case_id
+  async function handleAcknowledgeEscalation(stepNumber: number) {
+    acknowledgedSteps = new Set([...acknowledgedSteps, stepNumber])
+    if (activeRun && activeInvestigationId) {
+      try {
+        await api.playbookRuns.patchRun(activeRun.run_id, {
+          active_case_id: activeInvestigationId,
+        })
+      } catch {
+        // Non-fatal: local acknowledgment state already updated
+        // Case association will retry on next acknowledge
+      }
     }
   }
 
@@ -94,6 +141,7 @@
     activePlaybook = null
     stepNote = ''
     errorMsg = ''
+    selectedContainment = ''
   }
 
   function fmtTs(ts: string): string {
@@ -176,7 +224,13 @@
             <div class="pb-card">
               <div class="pb-top">
                 <div class="pb-left">
-                  <span class="pb-name">{pb.name}</span>
+                  <div class="pb-name-row">
+                    <span class="pb-name">{pb.name}</span>
+                    <!-- Phase 38: source badge -->
+                    <span class="source-badge source-{pb.source ?? 'custom'}">
+                      {(pb.source ?? 'custom').toUpperCase()}
+                    </span>
+                  </div>
                   <span class="pb-version">v{pb.version}{pb.is_builtin ? ' · Built-in' : ''}</span>
                   <p class="pb-desc">{pb.description}</p>
                   <div class="pb-triggers">
@@ -214,6 +268,15 @@
 
       {#if activeRun.status === 'completed'}
         <div class="completed-banner">Run Completed — all {activePlaybook?.steps.length} steps finished</div>
+        <!-- Phase 38: PDF prompt on run completion -->
+        <div class="completion-actions">
+          <p class="pdf-prompt">
+            Generate Playbook Execution Log PDF?
+            <button class="btn-shortcut" onclick={() => onGenerateReport?.({ runId: activeRun!.run_id })}>
+              Generate Report
+            </button>
+          </p>
+        </div>
       {:else if activeRun.status === 'cancelled'}
         <div class="cancelled-banner">Run Cancelled</div>
       {/if}
@@ -223,7 +286,7 @@
           {@const result = activeRun.steps_completed.find(s => s.step_number === step.step_number)}
           {@const isCurrent = step.step_number === currentStepNumber && activeRun.status === 'running'}
 
-          <div class="step-row {result ? 'done' : isCurrent ? 'current' : 'future'}">
+          <div id="step-{step.step_number}" class="step-row {result ? 'done' : isCurrent ? 'current' : 'future'}">
             <div class="step-circle" style={stepCircleStyle(step.step_number)}>
               {#if result}
                 &#10003;
@@ -238,12 +301,41 @@
                 {#if result}
                   <span class="outcome-badge outcome-{result.outcome}">{result.outcome.toUpperCase()}</span>
                 {/if}
+                <!-- Phase 38: SLA badge -->
+                {#if step.time_sla_minutes}
+                  <span class="sla-badge">{step.time_sla_minutes}min SLA</span>
+                {/if}
               </div>
 
               <p class="step-desc">{step.description}</p>
 
               {#if step.evidence_prompt}
                 <p class="evidence-hint"><em>Evidence hint: {step.evidence_prompt}</em></p>
+              {/if}
+
+              <!-- Phase 38: ATT&CK technique chips -->
+              {#if step.attack_techniques?.length}
+                <div class="technique-chips">
+                  {#each step.attack_techniques as tech}
+                    <a
+                      href="https://attack.mitre.org/techniques/{tech.replace('.', '/')}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="technique-chip"
+                    >{tech}</a>
+                  {/each}
+                </div>
+              {/if}
+
+              <!-- Phase 38: Escalation banner on current step -->
+              {#if isCurrent && step.escalation_threshold && !acknowledgedSteps.has(step.step_number)}
+                <div class="escalation-banner">
+                  <span>Escalation Required — severity meets threshold.
+                    Notify {step.escalation_role ?? 'management'} before proceeding.</span>
+                  <button class="btn-acknowledge" onclick={() => handleAcknowledgeEscalation(step.step_number)}>
+                    Acknowledge
+                  </button>
+                </div>
               {/if}
 
               {#if result}
@@ -253,6 +345,19 @@
                 {/if}
                 <p class="audit-ts">{fmtTs(result.completed_at)}</p>
               {:else if isCurrent}
+                <!-- Phase 38: Containment action dropdown -->
+                {#if step.containment_actions?.length}
+                  <div class="containment-section">
+                    <label for="containment-select">Containment action taken:</label>
+                    <select id="containment-select" bind:value={selectedContainment}>
+                      <option value="">— select if applicable —</option>
+                      {#each step.containment_actions as action}
+                        <option value={action}>{action.replace(/_/g, ' ')}</option>
+                      {/each}
+                    </select>
+                  </div>
+                {/if}
+
                 <!-- Active step controls -->
                 <textarea
                   class="step-note-input"
@@ -264,14 +369,14 @@
                 <div class="step-btns">
                   <button
                     class="btn-confirm"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (step.escalation_threshold != null && !acknowledgedSteps.has(step.step_number))}
                     onclick={() => advanceStep('confirmed')}
                   >
                     Confirm
                   </button>
                   <button
                     class="btn-skip"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || (step.escalation_threshold != null && !acknowledgedSteps.has(step.step_number))}
                     onclick={() => advanceStep('skipped')}
                   >
                     Skip
@@ -336,6 +441,7 @@
   .pb-top { display: flex; align-items: flex-start; gap: 12px; }
   .pb-left { flex: 1; display: flex; flex-direction: column; gap: 4px; }
   .pb-meta { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .pb-name-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .pb-name { font-size: 14px; font-weight: 600; }
   .pb-version { font-size: 11px; color: var(--text-secondary); }
   .pb-desc { font-size: 12px; color: var(--text-secondary); margin: 2px 0; line-height: 1.5; }
@@ -392,6 +498,10 @@
     padding: 10px 16px; border-radius: var(--radius-md); text-align: center;
     flex-shrink: 0;
   }
+
+  /* Phase 38: completion actions (PDF prompt) */
+  .completion-actions { display: flex; flex-direction: column; align-items: center; }
+  .pdf-prompt { color: rgba(255,255,255,0.6); font-size: 13px; margin-top: 12px; display: flex; align-items: center; gap: 8px; }
 
   .step-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -465,4 +575,26 @@
     font-family: var(--font-sans);
   }
   .btn-shortcut:hover { background: rgba(251,191,36,0.25); }
+
+  /* Phase 38: Source badges */
+  .source-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+  .source-cisa { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+  .source-custom { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+
+  /* Phase 38: ATT&CK technique chips — violet pill, same as DetectionsView */
+  .technique-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .technique-chip { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.4); color: rgba(167,139,250,0.9); text-decoration: none; cursor: pointer; }
+  .technique-chip:hover { background: rgba(167,139,250,0.25); }
+
+  /* Phase 38: SLA badge */
+  .sla-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.12); }
+
+  /* Phase 38: Escalation banner — amber inline */
+  .escalation-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; padding: 10px 14px; background: rgba(245,158,11,0.10); border-left: 3px solid #f59e0b; border-radius: 0 6px 6px 0; font-size: 13px; color: #fbbf24; }
+  .btn-acknowledge { padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(245,158,11,0.5); background: rgba(245,158,11,0.15); color: #f59e0b; cursor: pointer; font-size: 12px; white-space: nowrap; }
+  .btn-acknowledge:hover { background: rgba(245,158,11,0.25); }
+
+  /* Phase 38: Containment dropdown */
+  .containment-section { margin-top: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,0.6); }
+  .containment-section select { background: var(--bg-secondary); border: 1px solid var(--border); color: rgba(255,255,255,0.8); padding: 4px 8px; border-radius: 6px; font-size: 13px; }
 </style>

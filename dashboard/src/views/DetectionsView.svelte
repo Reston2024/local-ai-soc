@@ -1,13 +1,15 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { api, type Detection, type KpiSnapshot, type TriageResult } from '../lib/api.ts'
+  import { api, type Detection, type KpiSnapshot, type TriageResult, type Playbook } from '../lib/api.ts'
 
   let {
     onInvestigate,
     onPostureUpdate,
+    onSuggestPlaybook,
   }: {
     onInvestigate?: (id: string) => void
     onPostureUpdate?: (score: number) => void
+    onSuggestPlaybook?: (pb: Playbook, detectionId: string, technique: string) => void
   } = $props()
 
   let detections = $state<Detection[]>([])
@@ -151,6 +153,22 @@
 
   function fmtUpdated(d: Date) {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  }
+
+  // Phase 38: Suggested playbook CTA
+  let availablePlaybooks = $state<Playbook[]>([])
+  $effect(() => {
+    api.playbooks.list().then(r => { availablePlaybooks = r.playbooks }).catch(() => {})
+  })
+
+  function suggestPlaybook(detection: Detection): Playbook | null {
+    if (!detection.attack_technique) return null
+    return availablePlaybooks.find(pb =>
+      pb.trigger_conditions.some(tc =>
+        tc === detection.attack_technique ||
+        tc.toLowerCase() === (detection.attack_technique ?? '').toLowerCase()
+      )
+    ) ?? null
   }
 </script>
 
@@ -390,7 +408,7 @@
                 {/if}
               </td>
               <td class="event-count">{getEventCount(d)}</td>
-              <td>
+              <td class="actions-cell">
                 {#if onInvestigate}
                   <button
                     class="btn-investigate"
@@ -399,6 +417,18 @@
                   >
                     Investigate →
                   </button>
+                {/if}
+                <!-- Phase 38: Suggested playbook CTA -->
+                {#if onSuggestPlaybook}
+                  {@const suggested = suggestPlaybook(d)}
+                  {#if suggested}
+                    <p class="suggest-cta">
+                      Suggested: <button class="suggest-link"
+                        onclick={() => onSuggestPlaybook!(suggested, getDetectionId(d), d.attack_technique ?? '')}>
+                        {suggested.name}
+                      </button>
+                    </p>
+                  {/if}
                 {/if}
               </td>
             </tr>
@@ -734,4 +764,10 @@
     font-size: 13px;
     flex-shrink: 0;
   }
+
+  /* Phase 38: suggested playbook CTA */
+  .actions-cell { vertical-align: top; }
+  .suggest-cta { font-size: 11px; color: rgba(255,255,255,0.5); margin: 4px 0 0; }
+  .suggest-link { background: none; border: none; color: #60a5fa; cursor: pointer; text-decoration: underline; font-size: 11px; padding: 0; }
+  .suggest-link:hover { color: #93c5fd; }
 </style>
