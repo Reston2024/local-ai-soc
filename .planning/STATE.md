@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 37-analyst-report-templates — Plan 01 complete
+current_phase: 37-analyst-report-templates — Plan 02 complete
 status: in-progress
-last_updated: "2026-04-11T10:58:00.000Z"
+last_updated: "2026-04-11T11:00:00.000Z"
 progress:
   total_phases: 38
-  completed_phases: 36
+  completed_phases: 35
   total_plans: 184
   completed_plans: 188
 ---
@@ -65,6 +65,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 36-03 tasks 1-2 complete — ZEEK_CHIPS fixed (12 correct event_type values, removed broken 'auth'/'smb', added kerberos_tgs_request/ntlm_auth/rdp/weird/notice, divider says 'Zeek'), field_map.py updated (17 Zeek ECS mappings, FIELD_MAP_VERSION=22, INTEGER_COLUMNS+conn_orig_bytes/conn_resp_bytes/ssh_version). 50 matcher+zeek_fields tests green. Paused at Task 3 human-action checkpoint (DuckDB smoke test requires live Malcolm traffic).
 - 2026-04-10: Phase 36 COMPLETE — 36-VERIFICATION.md passed (6/6 must-haves). All 12 requirements satisfied (P36-T12 deferred as runtime integration check, SPAN confirmed live with 412,158 docs). 989 unit tests green. NormalizedEvent 75 columns, 25 Zeek normalizers, FIELD_MAP_VERSION=22 with 17 Zeek ECS mappings, 12 ZEEK_CHIPS active in EventsView.
 - 2026-04-11: Plan 37-01 complete — Report.type Literal widened to 8 types, backend/api/report_templates.py created (6 HTML builders: session_log/incident/playbook_log/pir/ti_bulletin/severity_ref + 3 POST endpoints + GET /template/meta), report_templates_router registered in main.py. 996 unit tests green.
+- 2026-04-11: Plan 37-02 complete — PIR/TI Bulletin/Severity Ref POST endpoints added to report_templates.py. _fetch_ti_data() uses fuzzy actor_tag LIKE for IOCs + stix_group_id JOIN for techniques. pydantic.BaseModel import added. All 7 report template tests pass, 996 total unit tests green. Requirements P37-T04, P37-T05, P37-T06 satisfied.
 
 ## Key Decisions
 
@@ -128,5 +129,8 @@ See: .planning/PROJECT.md
 - **36-02:** Dispatch loop pattern (list of 4-tuples) is DRY — all 21 types share identical ingest+count logic
 - **37-01:** report_templates router uses prefix=/api/reports (same as reports.py) — FastAPI merges routes correctly since template sub-paths are distinct
 - **37-01:** _ti_bulletin_html embeds "Threat Intelligence Bulletin" in meta paragraph so test assertion works regardless of title parameter value
+- **37-02:** TI bulletin uses _TiBulletinRequest Pydantic model with actor_name='' default — blank bulletin when no actor specified; JSON body parsed manually for flexibility
+- **37-02:** PIR fetches ATT&CK techniques via detection_techniques JOIN filtered by investigation_id subquery (not case_id) to match the schema design
+- **37-02:** pydantic.BaseModel import added to report_templates.py (Plan 37-01 had no POST bodies, so import was omitted)
 - **37-01:** Blank template always valid: all 3 POST endpoints return 201 when subject (case/run) not found — never raise HTTPException for missing data
 - **37-01:** GET /template/meta returns case_list and run_list alongside scalar counts for single-round-trip frontend dropdown population

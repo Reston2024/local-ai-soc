@@ -1347,7 +1347,7 @@ Plans:
 ## Phase 37: Analyst Report Templates
 **Status:** planned
 **Added:** 2026-04-11
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 **Goal:** Add six pre-populated analyst report templates (Session Log, Security Incident Report, Playbook Execution Log, Post-Incident Review, Threat Intelligence Bulletin, Severity & Confidence Reference) to the Reports section of the dashboard. Each template pre-fills from live SOC Brain data (DuckDB event counts, SQLite detection/investigation/playbook records, TIP IOCs, git hash, triage results) and downloads as PDF. Templates live in a new "Templates" tab within the existing ReportsView.
 
 ### Requirements
