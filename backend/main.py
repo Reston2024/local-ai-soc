@@ -648,6 +648,13 @@ def create_app() -> FastAPI:
         log.warning("reports router not available: %s", exc)
 
     try:
+        from backend.api.report_templates import router as report_templates_router
+        app.include_router(report_templates_router, dependencies=[Depends(verify_token)])
+        log.info("report_templates router mounted at /api/reports (templates)")
+    except ImportError as exc:
+        log.warning("report_templates router not available: %s", exc)
+
+    try:
         from backend.api.analytics import router as analytics_router
         app.include_router(analytics_router, dependencies=[Depends(verify_token)])
         log.info("analytics router mounted at /api/analytics")
