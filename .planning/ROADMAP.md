@@ -1373,7 +1373,7 @@ Plans:
 **Added:** 2026-04-11
 **Goal:** Replace all 5 NIST starter playbooks with CISA-derived response flows for 4 incident classes (Phishing/BEC, Ransomware, Credential/Account Compromise, Malware/Intrusion). Enrich PlaybookStep with ATT&CK technique IDs, severity-based escalation gates, SLA timers, and containment actions. Update PlaybooksView to surface all new fields.
 
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 38-01-PLAN.md — Wave 0: test stubs for model, seed, and CISA content (P38-T01..T05)
