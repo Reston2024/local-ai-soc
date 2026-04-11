@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 38-cisa-playbook-content (IN PROGRESS — Plans 01-02 complete)
-status: completed
-last_updated: "2026-04-11T21:43:13.706Z"
+current_phase: 38-cisa-playbook-content (IN PROGRESS — Plans 01-03 complete)
+status: in_progress
+last_updated: "2026-04-11T21:51:54Z"
 progress:
   total_phases: 41
-  completed_phases: 36
+  completed_phases: 37
   total_plans: 187
-  completed_plans: 191
+  completed_plans: 193
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — COMPLETE
-**Current phase:** 38-cisa-playbook-content (IN PROGRESS — Plan 01 complete)
+**Current phase:** 38-cisa-playbook-content (IN PROGRESS — Plans 01-03 complete)
 **Previous phase:** 37-analyst-report-templates — COMPLETE
-**Status:** Phase 38 started. Plan 38-01 complete — 14 TDD Wave 0 stubs created (11 FAIL RED, 3 vacuously pass). Plans 02 and 03 pending.
+**Status:** Phase 38: Plans 01-03 complete. Plan 38-03 done — Phase 38 CISA playbook frontend UI complete. Source badges, technique chips, escalation banners, containment dropdown, suggest CTA, deep-link navigation, PDF prompt, backend PATCH route. 1012 unit tests green.
 
 ## Session Log
 
@@ -69,6 +69,7 @@ See: .planning/PROJECT.md
 - 2026-04-11: Plan 37-02 complete — PIR/TI Bulletin/Severity Ref POST endpoints added to report_templates.py. _fetch_ti_data() uses fuzzy actor_tag LIKE for IOCs + stix_group_id JOIN for techniques. pydantic.BaseModel import added. All 7 report template tests pass, 996 total unit tests green. Requirements P37-T04, P37-T05, P37-T06 satisfied.
 - 2026-04-11: Plan 37-03 complete — Report.type widened to string, TemplateMeta interface + api.reports.templateMeta()/generateTemplate() added to api.ts, ReportsView 5th Templates tab with 2x3 card grid (6 cards), App.svelte handleGenerateReport() + Generate Report shortcut on InvestigationView panel, PlaybooksView onGenerateReport prop + btn-shortcut on active run. 996 unit tests green. Requirements P37-T07, P37-T08 satisfied. Phase 37 COMPLETE.
 - 2026-04-11: Plan 38-02 complete — PlaybookStep extended with 5 CISA enrichment fields (attack_techniques, escalation_threshold, escalation_role, time_sla_minutes, containment_actions), PlaybookRunAdvance gains containment_action, 3 idempotent ALTER TABLE migrations (source/escalation_acknowledged/active_case_id), create_playbook() updated for source column. 5 NIST starters replaced with 4 CISA IR playbooks (Phishing/BEC, Ransomware, Credential Compromise, Malware/Intrusion). seed_builtin_playbooks() uses replace-not-supplement strategy. 1012 unit tests green. Requirements P38-T01, P38-T02, P38-T03, P38-T04, P38-T05 satisfied.
+- 2026-04-11: Plan 38-03 complete — CISA playbook frontend UI: source badges (amber CISA / blue Custom), ATT&CK technique chips (violet pill, MITRE links), escalation inline banner (amber, Acknowledge calls PATCH to set active_case_id), containment dropdown, deep-link scroll, PDF prompt on completion, DetectionsView suggest CTA with onSuggestPlaybook callback, App.svelte handleSuggestPlaybook + triggerTechnique state. PATCH /api/playbook-runs/{run_id} backend route added. 1012 unit tests green. Requirements P38-T02, P38-T03, P38-T04, P38-T06 satisfied.
 
 ## Key Decisions
 
@@ -146,3 +147,6 @@ See: .planning/PROJECT.md
 - **38-02:** create_playbook() extended to include source column in INSERT SQL — prevents source=NULL for CISA playbooks after ALTER TABLE migration
 - **38-02:** Seed strategy: UPDATE source='nist' WHERE is_builtin=1 AND source='custom', DELETE WHERE source='nist', INSERT CISA if count==0 (idempotent replace-not-supplement)
 - **38-02:** test_builtin_playbooks.py updated to CISA content assertions — old NIST names/count auto-fixed as Rule 1 deviation
+- **38-03:** SQLiteStore has no execute_write method (DuckDB-only pattern) — PATCH route uses asyncio.to_thread with nested _set_case_id function calling _conn.execute() + commit() directly
+- **38-03:** PATCH /api/playbook-runs/{run_id} registered before /{run_id}/cancel in FastAPI router — correct route specificity ordering
+- **38-03:** Suggest CTA placed in Actions table column — DetectionsView uses table rows (not expandable panels), keeps layout consistent
