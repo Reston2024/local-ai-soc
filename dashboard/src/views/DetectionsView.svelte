@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { api, type Detection, type KpiSnapshot, type TriageResult, type Playbook } from '../lib/api.ts'
+  import { api, type Detection, type KpiSnapshot, type TriageResult, type Playbook, type CARAnalytic } from '../lib/api.ts'
 
   let {
     onInvestigate,
@@ -15,6 +15,7 @@
   let detections = $state<Detection[]>([])
   let total = $state(0)
   let loading = $state(true)
+  let expandedId = $state<string | null>(null)
   let runningDetection = $state(false)
   let error = $state<string | null>(null)
   let severityFilter = $state('')
@@ -378,7 +379,11 @@
         </thead>
         <tbody>
           {#each detections as d}
-            <tr>
+            <tr
+              onclick={() => { const id = d.id ?? d.rule_id ?? ''; expandedId = expandedId === id ? null : id }}
+              style="cursor: pointer;"
+              class:row-expanded={expandedId === (d.id ?? d.rule_id ?? '')}
+            >
               <td class="mono ts">{fmtTime(d.fired_at)}</td>
               <td class="rule-name">
                 {d.rule_name}
@@ -409,6 +414,7 @@
               </td>
               <td class="event-count">{getEventCount(d)}</td>
               <td class="actions-cell">
+                <span class="expand-chevron" title="Toggle CAR analytics">{expandedId === (d.id ?? d.rule_id ?? '') ? '▾' : '▸'}</span>
                 {#if onInvestigate}
                   <button
                     class="btn-investigate"
@@ -432,6 +438,41 @@
                 {/if}
               </td>
             </tr>
+            {#if expandedId === (d.id ?? d.rule_id ?? '')}
+              <tr class="car-panel-row">
+                <td colspan="99" class="car-panel-cell">
+                  {#if d.car_analytics && d.car_analytics.length > 0}
+                    <div class="car-panel">
+                      {#each d.car_analytics as analytic (analytic.analytic_id + analytic.technique_id)}
+                        <div class="car-card">
+                          <div class="car-card-header">
+                            <code class="car-id-badge">{analytic.analytic_id}</code>
+                            <span class="car-title">{analytic.title}</span>
+                            <span class="car-coverage coverage-{analytic.coverage_level.toLowerCase()}">{analytic.coverage_level}</span>
+                            <a href="https://car.mitre.org/analytics/{analytic.analytic_id}/" target="_blank" rel="noopener noreferrer" class="car-link">CAR ↗</a>
+                            <a href="https://attack.mitre.org/techniques/{analytic.technique_id}/" target="_blank" rel="noopener noreferrer" class="car-link">ATT&CK ↗</a>
+                          </div>
+                          {#if analytic.description}
+                            <p class="car-description">{analytic.description}</p>
+                          {/if}
+                          {#if analytic.log_sources}
+                            <div class="car-meta"><span class="car-label">Log Sources:</span> {analytic.log_sources}</div>
+                          {/if}
+                          {#if analytic.analyst_notes}
+                            <div class="car-meta"><span class="car-label">Analyst Notes:</span> {analytic.analyst_notes}</div>
+                          {/if}
+                          {#if analytic.pseudocode}
+                            <pre class="car-pseudocode">{analytic.pseudocode}</pre>
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
+                  {:else}
+                    <p class="car-no-analytics">No CAR analytics available for {d.attack_technique ?? 'this detection'}.</p>
+                  {/if}
+                </td>
+              </tr>
+            {/if}
           {/each}
         </tbody>
       </table>
@@ -770,4 +811,26 @@
   .suggest-cta { font-size: 11px; color: rgba(255,255,255,0.5); margin: 4px 0 0; }
   .suggest-link { background: none; border: none; color: #60a5fa; cursor: pointer; text-decoration: underline; font-size: 11px; padding: 0; }
   .suggest-link:hover { color: #93c5fd; }
+
+  /* Phase 39: CAR analytics panel */
+  .expand-chevron { margin-right: 6px; font-size: 0.75rem; color: rgba(255,255,255,0.48); }
+  .row-expanded { background: rgba(255,255,255,0.04); }
+  .car-panel-row td { padding: 0; }
+  .car-panel-cell { padding: 8px 16px 16px 32px !important; background: rgba(0,0,0,0.25); }
+  .car-panel { display: flex; flex-direction: column; gap: 12px; }
+  .car-card { border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px; background: rgba(255,255,255,0.02); }
+  .car-card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .car-id-badge { font-family: monospace; font-size: 0.75rem; background: rgba(99,102,241,0.15); color: #a5b4fc; padding: 2px 6px; border-radius: 4px; }
+  .car-title { font-weight: 500; font-size: 0.875rem; color: rgba(255,255,255,0.87); flex: 1; }
+  .car-coverage { font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .coverage-low { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .coverage-moderate { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .coverage-high { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .car-link { font-size: 0.75rem; color: rgba(99,130,246,0.8); text-decoration: none; }
+  .car-link:hover { text-decoration: underline; }
+  .car-description { font-size: 0.8rem; color: rgba(255,255,255,0.65); margin: 0 0 8px; line-height: 1.5; }
+  .car-meta { font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-bottom: 4px; }
+  .car-label { color: rgba(255,255,255,0.45); font-weight: 500; }
+  .car-pseudocode { font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.4); color: #a5b4fc; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre; margin: 8px 0 0; max-height: 200px; overflow-y: auto; }
+  .car-no-analytics { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin: 0; padding: 8px 0; }
 </style>

@@ -30,6 +30,22 @@ export interface EventsListResponse {
   has_next: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Phase 39 — MITRE CAR Analytics interface
+// ---------------------------------------------------------------------------
+
+export interface CARAnalytic {
+  analytic_id: string
+  technique_id: string
+  title: string
+  description: string
+  log_sources: string
+  analyst_notes: string
+  pseudocode: string
+  coverage_level: string
+  platforms: string
+}
+
 export interface Detection {
   id: string
   detection_id?: string
@@ -45,6 +61,7 @@ export interface Detection {
   attack_tactic?: string
   explanation?: string
   details?: Record<string, unknown>
+  car_analytics?: CARAnalytic[] | null
 }
 
 export interface GraphEntity {
