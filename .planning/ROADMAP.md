@@ -1367,3 +1367,41 @@ Plans:
 - [ ] 37-03-PLAN.md -- Frontend Templates tab (2x3 card grid, Generate-to-Download, shortcut buttons)
 
 *Phase 36 added: 2026-04-09. Hardware arrived 2026-04-10 (Netgear GS308E). SPAN port configured: port 1 → port 5 (GMKtec/Ubuntu). Activate once Zeek logs confirmed flowing in Malcolm OpenSearch (P36-T01).*
+
+## Phase 38: CISA Playbook Content
+**Status:** TODO
+**Added:** 2026-04-11
+**Goal:** Replace/augment the 5 generic NIST starter playbooks with structured CISA Federal IR response flows for the most common SOC incident classes. Each playbook maps directly to ATT&CK TTPs, includes analyst decision gates, escalation paths, and containment actions — giving analysts real procedural guidance when working cases.
+
+### Requirements
+- P38-T01: Ingest and parse CISA Federal IR Playbook response phases (phishing, malware, ransomware, credential abuse, unauthorized access)
+- P38-T02: Map each CISA playbook step to ATT&CK technique IDs where applicable
+- P38-T03: Add escalation logic to playbook steps (severity thresholds → escalate vs contain)
+- P38-T04: Add containment action fields to PlaybookStep model
+- P38-T05: Seed new CISA-derived playbooks into SQLite on startup (replace/supplement NIST starters)
+- P38-T06: Update PlaybooksView to show ATT&CK technique badges per step and containment action labels
+
+## Phase 39: MITRE CAR Analytics Integration
+**Status:** TODO
+**Added:** 2026-04-11
+**Goal:** Integrate MITRE Cyber Analytics Repository (CAR) analytics as enrichment data for the detection triage workflow. When a Sigma rule fires, surface the matching CAR analytic (detection rationale, log-source requirements, triage guidance) alongside the detection so analysts have validated reasoning rather than just an alert.
+
+### Requirements
+- P39-T01: Ingest CAR analytics catalog (JSON/YAML) into a new DuckDB table
+- P39-T02: Map Sigma rule ATT&CK technique IDs to CAR analytic IDs at detection time
+- P39-T03: Enrich GET /api/detect response with matched CAR analytic (rationale, log sources, analyst guidance)
+- P39-T04: Update DetectionsView to show CAR analytic panel when analytic is available
+- P39-T05: Add CAR analytic link to investigation evidence panel
+
+## Phase 40: Atomic Red Team Validation
+**Status:** TODO
+**Added:** 2026-04-11
+**Goal:** Integrate Atomic Red Team test catalog so analysts can run ATT&CK-mapped atomic tests against the local network and immediately see whether the SOC Brain detects them. Closes the loop between threat simulation and detection validation — confirms Sigma rules fire, triage logic runs, and the investigation pipeline produces real output for real behaviors.
+
+### Requirements
+- P40-T01: Ingest Atomic Red Team test catalog (atomics YAML) into DuckDB
+- P40-T02: Add GET /api/atomics endpoint returning ATT&CK-mapped test catalog
+- P40-T03: Add AtomicsView tab to dashboard — browse tests by technique, see detection coverage status
+- P40-T04: Add "Run Atomic" button that generates the PowerShell invocation command for the selected test
+- P40-T05: Add POST /api/atomics/validate — after running a test, check whether matching events/detections appeared in DuckDB within a time window; return pass/fail with evidence
+- P40-T06: Detection coverage badge per ATT&CK technique — green (atomic confirmed detection), yellow (rule exists, not validated), red (no coverage)
