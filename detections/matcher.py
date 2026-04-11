@@ -815,6 +815,31 @@ class SigmaMatcher:
                             conn.commit()
                         except Exception:
                             pass
+                    # Phase 39: CAR analytics enrichment
+                    attack_tech = det.attack_technique
+                    if attack_tech and hasattr(self, 'stores') and hasattr(self.stores, 'sqlite'):
+                        try:
+                            import json as _json
+                            _conn = self.stores.sqlite._conn
+                            _parent_id = attack_tech.split(".")[0].upper()
+                            _rows = _conn.execute(
+                                """SELECT analytic_id, technique_id, title, description,
+                                          log_sources, analyst_notes, pseudocode,
+                                          coverage_level, platforms
+                                   FROM car_analytics
+                                   WHERE technique_id = ?
+                                   ORDER BY analytic_id ASC""",
+                                (_parent_id,),
+                            ).fetchall()
+                            if _rows:
+                                _car_json = _json.dumps([dict(r) for r in _rows])
+                                _conn.execute(
+                                    "UPDATE detections SET car_analytics = ? WHERE id = ?",
+                                    (_car_json, det.id),
+                                )
+                                _conn.commit()
+                        except Exception as _exc:
+                            log.debug("CAR lookup failed for %s: %s", attack_tech, _exc)
                 except Exception as exc:
                     log.warning(
                         "Failed to save detection",

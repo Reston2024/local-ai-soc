@@ -309,6 +309,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     asyncio.ensure_future(bootstrap_attack_data(attack_store))
     log.info("ATT&CK STIX bootstrap task scheduled (Phase 34)")
 
+    # 7d. Phase 39: CAR Analytics store
+    from backend.services.car.car_store import CARStore, seed_car_analytics
+    car_store = CARStore(sqlite_store._conn)
+    app.state.car_store = car_store
+    log.info("CARStore initialised (Phase 39)")
+    asyncio.ensure_future(seed_car_analytics(car_store))
+    log.info("CAR analytics seed task scheduled (Phase 39)")
+
     # 7c. Phase 35: Auto-triage background worker (60s poll)
     try:
         from backend.api.triage import _auto_triage_loop
@@ -377,7 +385,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             from ingestion.jobs.malcolm_collector import MalcolmCollector as _MCCollector
             from ingestion.loader import IngestionLoader as _MCLoader
-            _mc_loader = _MCLoader(stores=stores, ollama_client=ollama)
+            _mc_loader = _MCLoader(stores=stores, ollama_client=ollama, asset_store=asset_store)
             _mc_collector = _MCCollector(
                 loader=_mc_loader,
                 sqlite_store=sqlite_store,

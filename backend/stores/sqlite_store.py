@@ -414,6 +414,15 @@ class SQLiteStore:
             )
         except Exception:
             pass  # column already exists — idempotent
+
+        # Phase 39 migration — CAR analytics enrichment column on detections
+        try:
+            self._conn.execute(
+                "ALTER TABLE detections ADD COLUMN car_analytics TEXT"
+            )
+            self._conn.commit()
+        except Exception:
+            pass  # column already exists — idempotent
         self._conn.commit()
 
         # Graph schema version seeding (Phase 26)
