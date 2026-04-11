@@ -58,6 +58,17 @@
     currentView = 'playbooks'
   }
 
+  let reportsInitialTab = $state('')
+  let reportsInitialCaseId = $state('')
+  let reportsInitialRunId = $state('')
+
+  function handleGenerateReport(opts: { caseId?: string; runId?: string } = {}) {
+    reportsInitialTab = 'templates'
+    reportsInitialCaseId = opts.caseId ?? ''
+    reportsInitialRunId = opts.runId ?? ''
+    currentView = 'reports'
+  }
+
   // Scroll active nav item into view whenever currentView changes
   $effect(() => {
     const _view = currentView  // track dependency
@@ -291,11 +302,19 @@
     {:else if currentView === 'detections'}
       <DetectionsView onInvestigate={handleInvestigate} onPostureUpdate={handlePostureUpdate} />
     {:else if currentView === 'investigation'}
-      <InvestigationView
-        investigationId={investigatingId}
-        onOpenInGraph={handleOpenInGraph}
-        onRunPlaybook={handleRunPlaybook}
-      />
+      <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div style="display:flex;justify-content:flex-end;padding:6px 16px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg-secondary);">
+          <button
+            style="font-size:11px;padding:4px 10px;border-radius:4px;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);cursor:pointer;"
+            onclick={() => handleGenerateReport({ caseId: investigatingId })}
+          >Generate Report</button>
+        </div>
+        <InvestigationView
+          investigationId={investigatingId}
+          onOpenInGraph={handleOpenInGraph}
+          onRunPlaybook={handleRunPlaybook}
+        />
+      </div>
     {:else if currentView === 'events'}
       <EventsView />
     {:else if currentView === 'graph'}
@@ -312,9 +331,9 @@
     {:else if currentView === 'hunting'}
       <HuntingView />
     {:else if currentView === 'playbooks'}
-      <PlaybooksView investigationId={playbookInvestigationId} />
+      <PlaybooksView investigationId={playbookInvestigationId} onGenerateReport={handleGenerateReport} />
     {:else if currentView === 'reports'}
-      <ReportsView />
+      <ReportsView initialTab={reportsInitialTab} initialCaseId={reportsInitialCaseId} initialRunId={reportsInitialRunId} />
     {:else if currentView === 'assets'}
       <AssetsView />
     {:else if currentView === 'provenance'}

@@ -1,9 +1,17 @@
 <script lang="ts">
   import { api, getDownloadUrl } from '../lib/api.ts'
-  import type { Report, MitreCoverageResponse, TrendsResponse } from '../lib/api.ts'
+  import type { Report, MitreCoverageResponse, TrendsResponse, TemplateMeta } from '../lib/api.ts'
   import * as d3 from 'd3'
 
-  let activeTab = $state<'reports' | 'mitre' | 'trends' | 'compliance'>('reports')
+  let {
+    initialTab = '',
+    initialCaseId = '',
+    initialRunId = '',
+  }: { initialTab?: string; initialCaseId?: string; initialRunId?: string } = $props()
+
+  let activeTab = $state<'reports' | 'mitre' | 'trends' | 'compliance' | 'templates'>(
+    (initialTab as any) || 'reports'
+  )
 
   // Reports tab
   let reports = $state<Report[]>([])
@@ -28,10 +36,21 @@
   let complianceFramework = $state<'nist-csf' | 'thehive'>('nist-csf')
   let complianceDownloading = $state(false)
 
+  // Templates tab
+  let templateMeta = $state<TemplateMeta | null>(null)
+  let templateMetaLoading = $state(false)
+  let templateMetaError = $state('')
+  let cardGenerating = $state<Record<string, boolean>>({})
+  let cardLastReport = $state<Record<string, Report | null>>({})
+  let selectedCaseId = $state(initialCaseId)
+  let selectedRunId = $state(initialRunId)
+  let selectedActorName = $state('')
+
   $effect(() => {
     if (activeTab === 'reports' && reports.length === 0 && !reportsLoading) loadReports()
     if (activeTab === 'mitre' && !mitreCoverage && !mitreLoading) loadMitre()
     if (activeTab === 'trends' && !trendsData && !trendsLoading) loadTrends()
+    if (activeTab === 'templates' && !templateMeta && !templateMetaLoading) loadTemplateMeta()
   })
 
   $effect(() => {
@@ -66,6 +85,27 @@
     try { trendsData = await api.analytics.trends({ metric: 'mttd,mttr,alert_volume', days: 30 }) }
     catch (e: any) { trendsError = e.message }
     finally { trendsLoading = false }
+  }
+
+  async function loadTemplateMeta() {
+    templateMetaLoading = true; templateMetaError = ''
+    try { templateMeta = await api.reports.templateMeta() }
+    catch (e: any) { templateMetaError = e.message }
+    finally { templateMetaLoading = false }
+  }
+
+  async function generateTemplate(type: string, params?: Record<string, string>) {
+    cardGenerating = { ...cardGenerating, [type]: true }
+    try {
+      const report = await api.reports.generateTemplate(type, params)
+      cardLastReport = { ...cardLastReport, [type]: report }
+      // refresh reports list so generated template appears there
+      reports = []
+    } catch (e: any) {
+      templateMetaError = e.message
+    } finally {
+      cardGenerating = { ...cardGenerating, [type]: false }
+    }
   }
 
   function renderTrendsChart() {
@@ -122,6 +162,16 @@
   function openPdf(reportId: string) {
     window.open(api.reports.pdfUrl(reportId), '_blank')
   }
+
+  function humanizeType(type: string): string {
+    return type.replace(/^template_/, '').replace(/_/g, ' ')
+  }
+
+  function typeBadgeClass(type: string): string {
+    if (type === 'investigation') return 'badge-investigation'
+    if (type === 'executive') return 'badge-executive'
+    return 'badge-template'
+  }
 </script>
 
 <div class="view">
@@ -133,8 +183,10 @@
   </div>
 
   <div class="tab-bar">
-    {#each [['reports','Reports'], ['mitre','ATT&CK Coverage'], ['trends','Trends'], ['compliance','Compliance Export']] as [id, label]}
-      <button class="tab-btn" class:active={activeTab === id} onclick={() => activeTab = id as 'reports' | 'mitre' | 'trends' | 'compliance'}>{label}</button>
+    {#each [['reports','Reports'], ['mitre','ATT&CK Coverage'], ['trends','Trends'], ['compliance','Compliance Export'], ['templates','Templates']] as [id, label]}
+      <button class="tab-btn" class:active={activeTab === id}
+        onclick={() => activeTab = id as 'reports' | 'mitre' | 'trends' | 'compliance' | 'templates'}
+      >{label}</button>
     {/each}
   </div>
 
@@ -165,7 +217,7 @@
               {#each reports as r}
                 <tr>
                   <td>{r.title}</td>
-                  <td><span class="badge badge-{r.type}">{r.type}</span></td>
+                  <td><span class="badge {typeBadgeClass(r.type)}">{humanizeType(r.type)}</span></td>
                   <td class="muted">{new Date(r.created_at).toLocaleString()}</td>
                   <td><button class="btn btn-sm" onclick={() => openPdf(r.id)}>PDF</button></td>
                 </tr>
@@ -245,6 +297,213 @@
         </div>
       </div>
     {/if}
+
+    {#if activeTab === 'templates'}
+      {#if templateMetaLoading}
+        <p class="muted">Loading template data…</p>
+      {:else if templateMetaError}
+        <p class="error">{templateMetaError}</p>
+      {:else}
+        <div class="template-grid">
+
+          <!-- Card 1: Session Log -->
+          <div class="template-card">
+            <div class="card-header">
+              <h3>Session Log</h3>
+              <span class="data-badge">24h rolling window</span>
+            </div>
+            <p class="card-desc">Daily operational record covering the last 24 hours of SOC activity.</p>
+            <div class="card-actions">
+              {#if cardLastReport['template_session_log']}
+                <a class="btn btn-primary"
+                  href={api.reports.pdfUrl(cardLastReport['template_session_log']!.id)}
+                  target="_blank">Download PDF</a>
+                <button class="btn btn-secondary"
+                  onclick={() => generateTemplate('template_session_log')}
+                  disabled={cardGenerating['template_session_log']}>
+                  {cardGenerating['template_session_log'] ? 'Generating…' : 'Re-generate'}
+                </button>
+              {:else}
+                <button class="btn btn-primary"
+                  onclick={() => generateTemplate('template_session_log')}
+                  disabled={cardGenerating['template_session_log']}>
+                  {cardGenerating['template_session_log'] ? 'Generating…' : 'Generate'}
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Card 2: Security Incident Report -->
+          <div class="template-card">
+            <div class="card-header">
+              <h3>Security Incident Report</h3>
+              <span class="data-badge">{templateMeta?.investigations ?? 0} investigations available</span>
+            </div>
+            <p class="card-desc">Formal IR record tied to an investigation case.</p>
+            {#if templateMeta && templateMeta.case_list.length > 0}
+              <select class="card-select" bind:value={selectedCaseId}>
+                <option value="">— select case —</option>
+                {#each templateMeta.case_list as c}
+                  <option value={c.case_id}>{c.title || c.case_id.slice(0,12)}</option>
+                {/each}
+              </select>
+            {/if}
+            <div class="card-actions">
+              {#if cardLastReport['template_incident']}
+                <a class="btn btn-primary"
+                  href={api.reports.pdfUrl(cardLastReport['template_incident']!.id)}
+                  target="_blank">Download PDF</a>
+                <button class="btn btn-secondary"
+                  onclick={() => generateTemplate('template_incident', { case_id: selectedCaseId })}
+                  disabled={cardGenerating['template_incident']}>
+                  {cardGenerating['template_incident'] ? 'Generating…' : 'Re-generate'}
+                </button>
+              {:else}
+                <button class="btn btn-primary"
+                  onclick={() => generateTemplate('template_incident', { case_id: selectedCaseId })}
+                  disabled={cardGenerating['template_incident']}>
+                  {cardGenerating['template_incident'] ? 'Generating…' : 'Generate'}
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Card 3: Playbook Execution Log -->
+          <div class="template-card">
+            <div class="card-header">
+              <h3>Playbook Execution Log</h3>
+              <span class="data-badge">{templateMeta?.playbook_runs ?? 0} runs available</span>
+            </div>
+            <p class="card-desc">Step-by-step playbook run audit trail.</p>
+            {#if templateMeta && templateMeta.run_list.length > 0}
+              <select class="card-select" bind:value={selectedRunId}>
+                <option value="">— select run —</option>
+                {#each templateMeta.run_list as r}
+                  <option value={r.run_id}>{r.playbook_id} · {r.status} · {new Date(r.started_at).toLocaleDateString()}</option>
+                {/each}
+              </select>
+            {/if}
+            <div class="card-actions">
+              {#if cardLastReport['template_playbook_log']}
+                <a class="btn btn-primary"
+                  href={api.reports.pdfUrl(cardLastReport['template_playbook_log']!.id)}
+                  target="_blank">Download PDF</a>
+                <button class="btn btn-secondary"
+                  onclick={() => generateTemplate('template_playbook_log', { run_id: selectedRunId })}
+                  disabled={cardGenerating['template_playbook_log']}>
+                  {cardGenerating['template_playbook_log'] ? 'Generating…' : 'Re-generate'}
+                </button>
+              {:else}
+                <button class="btn btn-primary"
+                  onclick={() => generateTemplate('template_playbook_log', { run_id: selectedRunId })}
+                  disabled={cardGenerating['template_playbook_log']}>
+                  {cardGenerating['template_playbook_log'] ? 'Generating…' : 'Generate'}
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Card 4: Post-Incident Review -->
+          <div class="template-card">
+            <div class="card-header">
+              <h3>Post-Incident Review</h3>
+              <span class="data-badge">{templateMeta?.closed_cases ?? 0} closed cases</span>
+            </div>
+            <p class="card-desc">Closed-case retrospective analysis.</p>
+            {#if templateMeta}
+              {@const closedCases = templateMeta.case_list.filter(c => c.case_status === 'closed')}
+              {#if closedCases.length > 0}
+                <select class="card-select" bind:value={selectedCaseId}>
+                  <option value="">— select closed case —</option>
+                  {#each closedCases as c}
+                    <option value={c.case_id}>{c.title || c.case_id.slice(0,12)}</option>
+                  {/each}
+                </select>
+              {/if}
+            {/if}
+            <div class="card-actions">
+              {#if cardLastReport['template_pir']}
+                <a class="btn btn-primary"
+                  href={api.reports.pdfUrl(cardLastReport['template_pir']!.id)}
+                  target="_blank">Download PDF</a>
+                <button class="btn btn-secondary"
+                  onclick={() => generateTemplate('template_pir', { case_id: selectedCaseId })}
+                  disabled={cardGenerating['template_pir']}>
+                  {cardGenerating['template_pir'] ? 'Generating…' : 'Re-generate'}
+                </button>
+              {:else}
+                <button class="btn btn-primary"
+                  onclick={() => generateTemplate('template_pir', { case_id: selectedCaseId })}
+                  disabled={cardGenerating['template_pir']}>
+                  {cardGenerating['template_pir'] ? 'Generating…' : 'Generate'}
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Card 5: Threat Intelligence Bulletin -->
+          <div class="template-card">
+            <div class="card-header">
+              <h3>Threat Intelligence Bulletin</h3>
+              <span class="data-badge">{templateMeta?.actors ?? 0} actors loaded</span>
+            </div>
+            <p class="card-desc">Actor-focused TTP + IOC bulletin.</p>
+            {#if templateMeta && templateMeta.actor_list.length > 0}
+              <select class="card-select" bind:value={selectedActorName}>
+                <option value="">— select actor —</option>
+                {#each templateMeta.actor_list as a}
+                  <option value={a.name}>{a.name}</option>
+                {/each}
+              </select>
+            {:else}
+              <input class="card-select" type="text" placeholder="Actor name…" bind:value={selectedActorName} />
+            {/if}
+            <div class="card-actions">
+              {#if cardLastReport['template_ti_bulletin']}
+                <a class="btn btn-primary"
+                  href={api.reports.pdfUrl(cardLastReport['template_ti_bulletin']!.id)}
+                  target="_blank">Download PDF</a>
+                <button class="btn btn-secondary"
+                  onclick={() => generateTemplate('template_ti_bulletin', { actor_name: selectedActorName })}
+                  disabled={cardGenerating['template_ti_bulletin']}>
+                  {cardGenerating['template_ti_bulletin'] ? 'Generating…' : 'Re-generate'}
+                </button>
+              {:else}
+                <button class="btn btn-primary"
+                  onclick={() => generateTemplate('template_ti_bulletin', { actor_name: selectedActorName })}
+                  disabled={cardGenerating['template_ti_bulletin']}>
+                  {cardGenerating['template_ti_bulletin'] ? 'Generating…' : 'Generate'}
+                </button>
+              {/if}
+            </div>
+          </div>
+
+          <!-- Card 6: Severity & Confidence Reference — single Download PDF button, no swap state -->
+          <div class="template-card">
+            <div class="card-header">
+              <h3>Severity &amp; Confidence Reference</h3>
+              <span class="data-badge">static reference card</span>
+            </div>
+            <p class="card-desc">Static SOC reference card for severity and confidence scoring.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary"
+                onclick={async () => {
+                  cardGenerating = { ...cardGenerating, template_severity_ref: true }
+                  try {
+                    const report = await api.reports.generateTemplate('template_severity_ref')
+                    window.open(api.reports.pdfUrl(report.id), '_blank')
+                  } catch (e: any) { templateMetaError = e.message }
+                  finally { cardGenerating = { ...cardGenerating, template_severity_ref: false } }
+                }}
+                disabled={cardGenerating['template_severity_ref']}>
+                {cardGenerating['template_severity_ref'] ? 'Generating…' : 'Download PDF'}
+              </button>
+            </div>
+          </div>
+
+        </div>
+      {/if}
+    {/if}
   </div>
 </div>
 
@@ -285,6 +544,7 @@
   .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
   .badge-investigation { background: rgba(251,191,36,0.2); color: #fbbf24; }
   .badge-executive { background: rgba(59,130,246,0.2); color: #60a5fa; }
+  .badge-template { background: rgba(167,139,250,0.2); color: #a78bfa; }
   .btn { font-size: 13px; padding: 6px 14px; border-radius: var(--radius-md, 4px); border: 1px solid var(--border); cursor: pointer; background: var(--bg-secondary); color: inherit; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn-primary { background: #fbbf24; color: #111; border-color: #fbbf24; font-weight: 600; }
@@ -295,4 +555,17 @@
   .chart-note { font-size: 11px; margin-top: 8px; }
   .framework-desc { margin-top: 12px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md, 4px); }
   .framework-desc p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+  /* Template grid */
+  .template-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .template-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .template-grid { grid-template-columns: 1fr; } }
+  .template-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .template-card .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 0; }
+  .template-card .card-header h3 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .data-badge { font-size: 11px; background: rgba(251,191,36,0.15); color: #fbbf24; border-radius: 4px; padding: 2px 6px; white-space: nowrap; flex-shrink: 0; }
+  .card-desc { font-size: 12px; color: var(--text-secondary); margin: 0; line-height: 1.4; }
+  .card-select { width: 100%; background: var(--bg-primary); border: 1px solid var(--border); color: var(--text-primary); padding: 5px 8px; border-radius: 4px; font-size: 12px; }
+  .card-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: auto; }
+  .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); font-size: 12px; padding: 5px 12px; }
+  .btn-secondary:hover { color: var(--text-primary); }
 </style>

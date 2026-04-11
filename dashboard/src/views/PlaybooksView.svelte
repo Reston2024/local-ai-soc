@@ -4,8 +4,10 @@
 
   let {
     investigationId = '',
+    onGenerateReport = undefined,
   }: {
     investigationId?: string
+    onGenerateReport?: (opts: { runId: string }) => void
   } = $props()
 
   // --- Library mode state ---
@@ -131,6 +133,11 @@
 
     <div class="header-right">
       {#if activeRun && activePlaybook}
+        {#if onGenerateReport}
+          <button class="btn-shortcut" onclick={() => onGenerateReport!({ runId: activeRun!.run_id })}>
+            Generate Report
+          </button>
+        {/if}
         {#if activeRun.status === 'running'}
           <button class="btn-danger" onclick={cancelRun}>Cancel Run</button>
         {/if}
@@ -450,4 +457,12 @@
 
   .muted { color: var(--text-secondary); font-size: 13px; padding: 20px; text-align: center; }
   .error-text { color: #f87171; font-size: 13px; padding: 1rem; }
+
+  .btn-shortcut {
+    font-size: 11px; padding: 4px 10px; border-radius: 4px;
+    background: rgba(251,191,36,0.15); color: #fbbf24;
+    border: 1px solid rgba(251,191,36,0.3); cursor: pointer;
+    font-family: var(--font-sans);
+  }
+  .btn-shortcut:hover { background: rgba(251,191,36,0.25); }
 </style>
