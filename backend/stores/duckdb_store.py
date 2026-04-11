@@ -247,6 +247,24 @@ _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
     ("ioc_matched",          "BOOLEAN DEFAULT FALSE"),
     ("ioc_confidence",       "INTEGER"),
     ("ioc_actor_tag",        "TEXT"),
+    # Phase 36: Zeek full telemetry columns
+    ("conn_state",             "TEXT"),
+    ("conn_duration",          "FLOAT"),
+    ("conn_orig_bytes",        "INTEGER"),
+    ("conn_resp_bytes",        "INTEGER"),
+    ("zeek_notice_note",       "TEXT"),
+    ("zeek_notice_msg",        "TEXT"),
+    ("zeek_weird_name",        "TEXT"),
+    ("ssh_auth_success",       "BOOLEAN"),
+    ("ssh_version",            "INTEGER"),
+    ("kerberos_client",        "TEXT"),
+    ("kerberos_service",       "TEXT"),
+    ("ntlm_domain",            "TEXT"),
+    ("ntlm_username",          "TEXT"),
+    ("smb_path",               "TEXT"),
+    ("smb_action",             "TEXT"),
+    ("rdp_cookie",             "TEXT"),
+    ("rdp_security_protocol",  "TEXT"),
 ]
 
 

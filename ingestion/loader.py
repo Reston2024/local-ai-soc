@@ -73,7 +73,14 @@ INSERT OR IGNORE INTO normalized_events (
     tls_version, tls_ja3, tls_ja3s, tls_sni, tls_cipher, tls_cert_subject, tls_validation_status,
     file_md5, file_sha256_eve, file_mime_type, file_size_bytes,
     http_method, http_uri, http_status_code, http_user_agent,
-    ioc_matched, ioc_confidence, ioc_actor_tag
+    ioc_matched, ioc_confidence, ioc_actor_tag,
+    conn_state, conn_duration, conn_orig_bytes, conn_resp_bytes,
+    zeek_notice_note, zeek_notice_msg, zeek_weird_name,
+    ssh_auth_success, ssh_version,
+    kerberos_client, kerberos_service,
+    ntlm_domain, ntlm_username,
+    smb_path, smb_action,
+    rdp_cookie, rdp_security_protocol
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -89,7 +96,14 @@ INSERT OR IGNORE INTO normalized_events (
     ?, ?, ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
     ?, ?, ?, ?,
-    ?, ?, ?
+    ?, ?, ?,
+    ?, ?, ?, ?,
+    ?, ?, ?,
+    ?, ?,
+    ?, ?,
+    ?, ?,
+    ?, ?,
+    ?, ?
 )
 """
 

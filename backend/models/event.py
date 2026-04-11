@@ -60,6 +60,30 @@ OCSF_CLASS_UID_MAP: dict[str, int] = {
     # File System Activity (1001) — EVE fileinfo
     "file_transfer": 1001,
     # dns_query: 4003 already present above
+    # Zeek telemetry types added Phase 36
+    "conn":              4001,
+    "http":              4002,
+    "ssl":               4001,
+    "x509":              4001,
+    "files":             1001,
+    "notice":            2001,
+    "weird":             2001,
+    "ssh":               3002,
+    "smb_mapping":       4001,
+    "smb_files":         1001,
+    "rdp":               3002,
+    "dce_rpc":           4001,
+    "dhcp":              4001,
+    "software":          5001,
+    "known_host":        5001,
+    "known_service":     5001,
+    "intel":             2001,
+    "sip":               4001,
+    "ftp":               4001,
+    "smtp":              4002,
+    "socks":             4001,
+    "tunnel":            4001,
+    "pe":                1001,
 }
 
 
@@ -134,11 +158,29 @@ class NormalizedEvent(BaseModel):
     ioc_matched: Optional[bool] = False
     ioc_confidence: Optional[int] = None
     ioc_actor_tag: Optional[str] = None
+    # Phase 36: Zeek full telemetry fields (positions 58-74 in to_duckdb_row)
+    conn_state: Optional[str] = None            # [58] zeek.conn.state
+    conn_duration: Optional[float] = None       # [59] event.duration / network.duration
+    conn_orig_bytes: Optional[int] = None       # [60] source.bytes (originator)
+    conn_resp_bytes: Optional[int] = None       # [61] destination.bytes (responder)
+    zeek_notice_note: Optional[str] = None      # [62] zeek.notice.note
+    zeek_notice_msg: Optional[str] = None       # [63] zeek.notice.msg
+    zeek_weird_name: Optional[str] = None       # [64] zeek.weird.name
+    ssh_auth_success: Optional[bool] = None     # [65] zeek.ssh.auth_success
+    ssh_version: Optional[int] = None           # [66] zeek.ssh.version
+    kerberos_client: Optional[str] = None       # [67] zeek.kerberos.client
+    kerberos_service: Optional[str] = None      # [68] zeek.kerberos.service
+    ntlm_domain: Optional[str] = None           # [69] zeek.ntlm.domain
+    ntlm_username: Optional[str] = None         # [70] zeek.ntlm.username
+    smb_path: Optional[str] = None              # [71] zeek.smb_mapping.path
+    smb_action: Optional[str] = None            # [72] zeek.smb_files.action
+    rdp_cookie: Optional[str] = None            # [73] zeek.rdp.cookie
+    rdp_security_protocol: Optional[str] = None # [74] zeek.rdp.security_protocol
 
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
 
-        Column order (58 elements total):
+        Column order (75 elements total):
             [0]  event_id
             [1]  timestamp
             [2]  ingested_at
@@ -200,6 +242,24 @@ class NormalizedEvent(BaseModel):
             [55] ioc_matched
             [56] ioc_confidence
             [57] ioc_actor_tag
+            --- Phase 36: Zeek full telemetry fields ---
+            [58] conn_state
+            [59] conn_duration
+            [60] conn_orig_bytes
+            [61] conn_resp_bytes
+            [62] zeek_notice_note
+            [63] zeek_notice_msg
+            [64] zeek_weird_name
+            [65] ssh_auth_success
+            [66] ssh_version
+            [67] kerberos_client
+            [68] kerberos_service
+            [69] ntlm_domain
+            [70] ntlm_username
+            [71] smb_path
+            [72] smb_action
+            [73] rdp_cookie
+            [74] rdp_security_protocol
         """
         def _ts(v: Union[datetime, str, None]) -> Optional[str]:
             if v is None:
@@ -269,6 +329,24 @@ class NormalizedEvent(BaseModel):
             self.ioc_matched if self.ioc_matched is not None else False,
             self.ioc_confidence,
             self.ioc_actor_tag,
+            # Phase 36: Zeek full telemetry fields (positions 58-74)
+            self.conn_state,
+            self.conn_duration,
+            self.conn_orig_bytes,
+            self.conn_resp_bytes,
+            self.zeek_notice_note,
+            self.zeek_notice_msg,
+            self.zeek_weird_name,
+            self.ssh_auth_success,
+            self.ssh_version,
+            self.kerberos_client,
+            self.kerberos_service,
+            self.ntlm_domain,
+            self.ntlm_username,
+            self.smb_path,
+            self.smb_action,
+            self.rdp_cookie,
+            self.rdp_security_protocol,
         )
 
     def to_embedding_text(self) -> str:
