@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 39-mitre-car-analytics-integration (IN PROGRESS — Plan 03 complete)
-status: in-progress
-last_updated: "2026-04-11T23:28:10.215Z"
+current_phase: 39-mitre-car-analytics-integration (IN PROGRESS — Plan 04 complete)
+status: executing
+last_updated: "2026-04-11T23:38:00.000Z"
 progress:
   total_phases: 41
-  completed_phases: 37
+  completed_phases: 38
   total_plans: 191
-  completed_plans: 195
+  completed_plans: 196
 ---
 
 # Session State
@@ -72,10 +72,14 @@ See: .planning/PROJECT.md
 - 2026-04-11: Plan 37-02 complete — PIR/TI Bulletin/Severity Ref POST endpoints added to report_templates.py. _fetch_ti_data() uses fuzzy actor_tag LIKE for IOCs + stix_group_id JOIN for techniques. pydantic.BaseModel import added. All 7 report template tests pass, 996 total unit tests green. Requirements P37-T04, P37-T05, P37-T06 satisfied.
 - 2026-04-11: Plan 37-03 complete — Report.type widened to string, TemplateMeta interface + api.reports.templateMeta()/generateTemplate() added to api.ts, ReportsView 5th Templates tab with 2x3 card grid (6 cards), App.svelte handleGenerateReport() + Generate Report shortcut on InvestigationView panel, PlaybooksView onGenerateReport prop + btn-shortcut on active run. 996 unit tests green. Requirements P37-T07, P37-T08 satisfied. Phase 37 COMPLETE.
 - 2026-04-11: Plan 38-02 complete — PlaybookStep extended with 5 CISA enrichment fields (attack_techniques, escalation_threshold, escalation_role, time_sla_minutes, containment_actions), PlaybookRunAdvance gains containment_action, 3 idempotent ALTER TABLE migrations (source/escalation_acknowledged/active_case_id), create_playbook() updated for source column. 5 NIST starters replaced with 4 CISA IR playbooks (Phishing/BEC, Ransomware, Credential Compromise, Malware/Intrusion). seed_builtin_playbooks() uses replace-not-supplement strategy. 1012 unit tests green. Requirements P38-T01, P38-T02, P38-T03, P38-T04, P38-T05 satisfied.
+- 2026-04-11: Plan 39-04 complete — CARAnalytic TypeScript interface in api.ts, Detection.car_analytics field, DetectionsView expandable row (▸/▾ chevron, inline CAR card panel, stacked cards for multiple analytics, no-analytics message), InvestigationView CAR Analytics section (loads via api.investigate, shown when car_analytics non-empty). TypeScript check clean (0 new errors). Requirements P39-T04, P39-T05 satisfied.
 - 2026-04-11: Plan 38-03 complete — CISA playbook frontend UI: source badges (amber CISA / blue Custom), ATT&CK technique chips (violet pill, MITRE links), escalation inline banner (amber, Acknowledge calls PATCH to set active_case_id), containment dropdown, deep-link scroll, PDF prompt on completion, DetectionsView suggest CTA with onSuggestPlaybook callback, App.svelte handleSuggestPlaybook + triggerTechnique state. PATCH /api/playbook-runs/{run_id} backend route added. 1012 unit tests green. Requirements P38-T02, P38-T03, P38-T04, P38-T06 satisfied.
 
 ## Key Decisions
 
+- **39-04:** loadInvestigation() in InvestigationView calls api.investigate(investigationId) — keeps CAR section self-sufficient without prop drilling or App.svelte changes
+- **39-04:** expandedId keyed on d.id ?? d.rule_id ?? '' — consistent with existing getDetectionId() helper in DetectionsView
+- **39-04:** CAR card CSS car-* classes duplicated in DetectionsView and InvestigationView — Svelte component scoping makes duplication idiomatic; no shared stylesheet exists
 - **39-03:** car_analytics parsing in detect.py uses None fallback on exception — distinguishes malformed data from absent data (consistent with plan spec)
 - **39-03:** CAR lookup uses attack_technique.split('.')[0].upper() to strip subtechnique suffix before querying car_analytics.technique_id (T1059.001 → T1059)
 - **39-03:** Silent except in investigate.py CAR lookup — missing table (fresh install before seed) logs at DEBUG, returns []
