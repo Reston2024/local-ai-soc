@@ -209,7 +209,7 @@ async def test_poll_all_eve_types():
     with patch.object(collector, "_fetch_index", new=AsyncMock(return_value=[])) as mock_fetch:
         await collector._poll_and_ingest()
 
-    # Check all 8 cursor keys were used (6 original + 2 Phase 36 Zeek conn/weird)
+    # Check all cursor keys were used (6 original + 2 Phase 36-01 conn/weird + 21 Phase 36-02)
     call_cursor_keys = [call.args[1] for call in mock_fetch.call_args_list]
     expected_keys = {
         "malcolm.alerts.last_timestamp",
@@ -220,9 +220,33 @@ async def test_poll_all_eve_types():
         "malcolm.syslog.last_timestamp",
         "malcolm.zeek_conn.last_timestamp",
         "malcolm.zeek_weird.last_timestamp",
+        # Phase 36-02: 21 additional Zeek log types
+        "malcolm.zeek_http.last_timestamp",
+        "malcolm.zeek_ssl.last_timestamp",
+        "malcolm.zeek_x509.last_timestamp",
+        "malcolm.zeek_files.last_timestamp",
+        "malcolm.zeek_notice.last_timestamp",
+        "malcolm.zeek_kerberos.last_timestamp",
+        "malcolm.zeek_ntlm.last_timestamp",
+        "malcolm.zeek_ssh.last_timestamp",
+        "malcolm.zeek_smb_mapping.last_timestamp",
+        "malcolm.zeek_smb_files.last_timestamp",
+        "malcolm.zeek_rdp.last_timestamp",
+        "malcolm.zeek_dce_rpc.last_timestamp",
+        "malcolm.zeek_dhcp.last_timestamp",
+        "malcolm.zeek_dns_zeek.last_timestamp",
+        "malcolm.zeek_software.last_timestamp",
+        "malcolm.zeek_known_hosts.last_timestamp",
+        "malcolm.zeek_known_services.last_timestamp",
+        "malcolm.zeek_sip.last_timestamp",
+        "malcolm.zeek_ftp.last_timestamp",
+        "malcolm.zeek_smtp.last_timestamp",
+        "malcolm.zeek_socks.last_timestamp",
+        "malcolm.zeek_tunnel.last_timestamp",
+        "malcolm.zeek_pe.last_timestamp",
     }
     assert set(call_cursor_keys) == expected_keys
-    assert mock_fetch.call_count == 8
+    assert mock_fetch.call_count == len(expected_keys)
 
 
 # --- Phase 31 Plan 03: Ubuntu normalizer poll ---

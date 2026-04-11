@@ -59,6 +59,30 @@ class MalcolmCollector:
         self._anomaly_ingested: int = 0
         self._conn_ingested: int = 0
         self._weird_ingested: int = 0
+        # Phase 36-02: new Zeek log type counters
+        self._http_ingested: int = 0
+        self._ssl_ingested: int = 0
+        self._x509_ingested: int = 0
+        self._files_ingested: int = 0
+        self._notice_ingested: int = 0
+        self._kerberos_ingested: int = 0
+        self._ntlm_ingested: int = 0
+        self._ssh_ingested: int = 0
+        self._smb_mapping_ingested: int = 0
+        self._smb_files_ingested: int = 0
+        self._rdp_ingested: int = 0
+        self._dce_rpc_ingested: int = 0
+        self._dhcp_ingested: int = 0
+        self._dns_zeek_ingested: int = 0
+        self._software_ingested: int = 0
+        self._known_host_ingested: int = 0
+        self._known_service_ingested: int = 0
+        self._sip_ingested: int = 0
+        self._ftp_ingested: int = 0
+        self._smtp_ingested: int = 0
+        self._socks_ingested: int = 0
+        self._tunnel_ingested: int = 0
+        self._pe_ingested: int = 0
 
     # ------------------------------------------------------------------
     # HTTP helpers (synchronous — run in asyncio.to_thread)
@@ -642,6 +666,595 @@ class MalcolmCollector:
             zeek_weird_name=str(weird_name) if weird_name else None,
         )
 
+    # ------------------------------------------------------------------
+    # Phase 36-02: Zeek normalizers — HTTP/SSL/x509/files/notice
+    # ------------------------------------------------------------------
+
+    def _normalize_http(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        http_obj = (doc.get("http") or {})
+        req_obj = http_obj.get("request") or {}
+        resp_obj = http_obj.get("response") or {}
+        url_obj = doc.get("url") or {}
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="http", severity="info",
+            detection_source="zeek_http",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            http_method=req_obj.get("method") or doc.get("zeek.http.method"),
+            http_uri=url_obj.get("original") or doc.get("url.original"),
+            http_status_code=int(c) if (c := resp_obj.get("status_code") or doc.get("zeek.http.status_code")) else None,
+            http_user_agent=(doc.get("user_agent") or {}).get("original") or doc.get("user_agent.original"),
+            domain=(doc.get("destination") or {}).get("domain") or (url_obj.get("domain")),
+        )
+
+    def _normalize_ssl(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        tls_obj = doc.get("tls") or {}
+        zeek_ssl = (doc.get("zeek") or {}).get("ssl") or {}
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="ssl", severity="info",
+            detection_source="zeek_ssl",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            tls_version=tls_obj.get("version") or zeek_ssl.get("version"),
+            tls_ja3=(tls_obj.get("client") or {}).get("ja3") or doc.get("tls.client.ja3"),
+            tls_sni=zeek_ssl.get("server_name") or doc.get("zeek.ssl.server_name") or (tls_obj.get("client") or {}).get("server_name"),
+            tls_cert_subject=(tls_obj.get("server") or {}).get("subject") or zeek_ssl.get("subject"),
+        )
+
+    def _normalize_x509(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_x509 = (doc.get("zeek") or {}).get("x509") or {}
+        cert_obj = (doc.get("tls") or {}).get("server") or {}
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="x509", severity="info",
+            detection_source="zeek_x509",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            tls_cert_subject=zeek_x509.get("subject") or cert_obj.get("subject") or doc.get("zeek.x509.subject"),
+        )
+
+    def _normalize_files(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        file_obj = doc.get("file") or {}
+        zeek_files = (doc.get("zeek") or {}).get("files") or {}
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="files", severity="info",
+            detection_source="zeek_files",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            file_md5=(file_obj.get("hash") or {}).get("md5") or zeek_files.get("md5"),
+            file_sha256_eve=(file_obj.get("hash") or {}).get("sha256"),
+            file_mime_type=file_obj.get("mime_type") or zeek_files.get("mime_type"),
+            file_size_bytes=int(s) if (s := file_obj.get("size") or zeek_files.get("total_bytes")) else None,
+            file_path=file_obj.get("name") or zeek_files.get("filename"),
+        )
+
+    def _normalize_notice(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_notice = (doc.get("zeek") or {}).get("notice") or {}
+        note = zeek_notice.get("note") or doc.get("zeek.notice.note")
+        msg = zeek_notice.get("msg") or doc.get("zeek.notice.msg")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="notice", severity="high",
+            detection_source="zeek_notice",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            zeek_notice_note=str(note) if note else None,
+            zeek_notice_msg=str(msg) if msg else None,
+        )
+
+    # ------------------------------------------------------------------
+    # Phase 36-02: Zeek normalizers — kerberos/ntlm/ssh
+    # ------------------------------------------------------------------
+
+    def _normalize_kerberos(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_krb = (doc.get("zeek") or {}).get("kerberos") or {}
+        krb_client = zeek_krb.get("client") or doc.get("zeek.kerberos.client")
+        krb_service = zeek_krb.get("service") or doc.get("zeek.kerberos.service")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="kerberos_tgs_request", severity="info",
+            detection_source="zeek_kerberos",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            username=str(krb_client).split("@")[0] if krb_client else None,
+            kerberos_client=str(krb_client) if krb_client else None,
+            kerberos_service=str(krb_service) if krb_service else None,
+        )
+
+    def _normalize_ntlm(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_ntlm = (doc.get("zeek") or {}).get("ntlm") or {}
+        ntlm_user = zeek_ntlm.get("username") or doc.get("zeek.ntlm.username")
+        ntlm_dom = zeek_ntlm.get("domain") or doc.get("zeek.ntlm.domain")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="ntlm_auth", severity="info",
+            detection_source="zeek_ntlm",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            username=str(ntlm_user) if ntlm_user else None,
+            ntlm_username=str(ntlm_user) if ntlm_user else None,
+            ntlm_domain=str(ntlm_dom) if ntlm_dom else None,
+        )
+
+    def _normalize_ssh(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_ssh = (doc.get("zeek") or {}).get("ssh") or {}
+        auth_success = zeek_ssh.get("auth_success")
+        if auth_success is None:
+            auth_success = doc.get("zeek.ssh.auth_success")
+        ssh_ver = zeek_ssh.get("version") or doc.get("zeek.ssh.version")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="ssh", severity="info",
+            detection_source="zeek_ssh",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            ssh_auth_success=bool(auth_success) if auth_success is not None else None,
+            ssh_version=int(ssh_ver) if ssh_ver is not None else None,
+        )
+
+    # ------------------------------------------------------------------
+    # Phase 36-02: Zeek normalizers — lateral movement (smb/rdp/dce_rpc)
+    # ------------------------------------------------------------------
+
+    def _normalize_smb_mapping(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_smb = (doc.get("zeek") or {}).get("smb_mapping") or {}
+        smb_path_val = zeek_smb.get("path") or doc.get("zeek.smb_mapping.path")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="smb_mapping", severity="info",
+            detection_source="zeek_smb_mapping",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            smb_path=str(smb_path_val) if smb_path_val else None,
+        )
+
+    def _normalize_smb_files(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_smb = (doc.get("zeek") or {}).get("smb_files") or {}
+        action = zeek_smb.get("action") or doc.get("zeek.smb_files.action")
+        fname = zeek_smb.get("name") or doc.get("zeek.smb_files.name")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="smb_files", severity="info",
+            detection_source="zeek_smb_files",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            smb_action=str(action) if action else None,
+            smb_path=str(fname) if fname else None,
+        )
+
+    def _normalize_rdp(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_rdp = (doc.get("zeek") or {}).get("rdp") or {}
+        cookie = zeek_rdp.get("cookie") or doc.get("zeek.rdp.cookie")
+        sec_proto = zeek_rdp.get("security_protocol") or doc.get("zeek.rdp.security_protocol")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="rdp", severity="info",
+            detection_source="zeek_rdp",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            rdp_cookie=str(cookie) if cookie else None,
+            rdp_security_protocol=str(sec_proto) if sec_proto else None,
+        )
+
+    def _normalize_dce_rpc(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_rpc = (doc.get("zeek") or {}).get("dce_rpc") or {}
+        endpoint = zeek_rpc.get("endpoint") or doc.get("zeek.dce_rpc.endpoint")
+        operation = zeek_rpc.get("operation") or doc.get("zeek.dce_rpc.operation")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="dce_rpc", severity="info",
+            detection_source="zeek_dce_rpc",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            file_path=f"{endpoint}/{operation}" if endpoint and operation else (endpoint or operation),
+        )
+
+    # ------------------------------------------------------------------
+    # Phase 36-02: Zeek normalizers — infrastructure (dhcp/dns/software/known)
+    # ------------------------------------------------------------------
+
+    def _normalize_dhcp(self, doc: dict) -> NormalizedEvent | None:
+        # DHCP may have src_ip 0.0.0.0 (broadcast) — use assigned_ip or client_addr as fallback
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or (doc.get("zeek") or {}).get("dhcp", {}).get("client_addr")
+            or doc.get("zeek.dhcp.client_addr")
+            or "0.0.0.0"
+        )
+        zeek_dhcp = (doc.get("zeek") or {}).get("dhcp") or {}
+        assigned = zeek_dhcp.get("assigned_ip") or doc.get("zeek.dhcp.assigned_ip")
+        dhcp_host = zeek_dhcp.get("hostname") or doc.get("zeek.dhcp.hostname")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="dhcp", severity="info",
+            detection_source="zeek_dhcp",
+            hostname=str(dhcp_host) if dhcp_host else ((doc.get("observer") or {}).get("hostname") or "malcolm"),
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str(assigned) if assigned else None,
+        )
+
+    def _normalize_dns_zeek(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        dns_obj = doc.get("dns") or {}
+        zeek_dns = (doc.get("zeek") or {}).get("dns") or {}
+        query = (dns_obj.get("question") or {}).get("name") or zeek_dns.get("query") or doc.get("zeek.dns.query")
+        qtype = (dns_obj.get("question") or {}).get("type") or zeek_dns.get("qtype_name")
+        rcode = dns_obj.get("response_code") or zeek_dns.get("rcode_name")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="dns_query", severity="info",
+            detection_source="zeek_dns",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            dns_query=str(query) if query else None,
+            dns_query_type=str(qtype) if qtype else None,
+            dns_rcode=str(rcode) if rcode else None,
+            domain=str(query) if query else None,
+        )
+
+    def _normalize_software(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_sw = (doc.get("zeek") or {}).get("software") or {}
+        sw_name = zeek_sw.get("name") or doc.get("zeek.software.name")
+        sw_ver = zeek_sw.get("version") or doc.get("zeek.software.version")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="software", severity="info",
+            detection_source="zeek_software",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            process_name=f"{sw_name}/{sw_ver}" if sw_name and sw_ver else sw_name,
+        )
+
+    def _normalize_known_host(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or doc.get("src_ip")
+            or doc.get("zeek.known_hosts.host")
+            or (doc.get("zeek") or {}).get("known_hosts", {}).get("host")
+        )
+        if not src_ip:
+            return None
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="known_host", severity="info",
+            detection_source="zeek_known_hosts",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+        )
+
+    def _normalize_known_service(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or doc.get("src_ip")
+            or (doc.get("zeek") or {}).get("known_services", {}).get("host")
+        )
+        if not src_ip:
+            return None
+        zeek_ks = (doc.get("zeek") or {}).get("known_services") or {}
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="known_service", severity="info",
+            detection_source="zeek_known_services",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_port=int(p) if (p := zeek_ks.get("port_num") or doc.get("zeek.known_services.port_num")) else None,
+            network_protocol=str(zeek_ks.get("port_proto") or "").lower() or None,
+        )
+
+    # ------------------------------------------------------------------
+    # Phase 36-02: Zeek normalizers — application layer (sip/ftp/smtp/socks/tunnel/pe)
+    # ------------------------------------------------------------------
+
+    def _normalize_sip(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_sip = (doc.get("zeek") or {}).get("sip") or {}
+        method = zeek_sip.get("method") or doc.get("zeek.sip.method")
+        uri = zeek_sip.get("uri") or doc.get("zeek.sip.uri")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="sip", severity="info",
+            detection_source="zeek_sip",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            http_method=str(method) if method else None,
+            url=str(uri) if uri else None,
+        )
+
+    def _normalize_ftp(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_ftp = (doc.get("zeek") or {}).get("ftp") or {}
+        cmd = zeek_ftp.get("command") or doc.get("zeek.ftp.command")
+        reply = zeek_ftp.get("reply_code") or doc.get("zeek.ftp.reply_code")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="ftp", severity="info",
+            detection_source="zeek_ftp",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            command_line=f"{cmd} ({reply})" if cmd else None,
+            http_status_code=int(reply) if reply else None,
+        )
+
+    def _normalize_smtp(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_smtp = (doc.get("zeek") or {}).get("smtp") or {}
+        smtp_from = zeek_smtp.get("from") or doc.get("zeek.smtp.from")
+        smtp_subject = zeek_smtp.get("subject") or doc.get("zeek.smtp.subject")
+        smtp_to_raw = zeek_smtp.get("to") or doc.get("zeek.smtp.to")
+        smtp_to = json.dumps(smtp_to_raw) if isinstance(smtp_to_raw, list) else str(smtp_to_raw) if smtp_to_raw else None
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="smtp", severity="info",
+            detection_source="zeek_smtp",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            username=str(smtp_from) if smtp_from else None,
+            tags=smtp_to,
+            file_path=str(smtp_subject) if smtp_subject else None,
+        )
+
+    def _normalize_socks(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="socks", severity="info",
+            detection_source="zeek_socks",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+        )
+
+    def _normalize_tunnel(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_tunnel = (doc.get("zeek") or {}).get("tunnel") or {}
+        tunnel_type = zeek_tunnel.get("type") or doc.get("zeek.tunnel.type")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="tunnel", severity="info",
+            detection_source="zeek_tunnel",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            network_protocol=str(tunnel_type) if tunnel_type else None,
+        )
+
+    def _normalize_pe(self, doc: dict) -> NormalizedEvent | None:
+        src_ip = (doc.get("source") or {}).get("ip") or doc.get("src_ip")
+        if not src_ip:
+            return None
+        zeek_pe = (doc.get("zeek") or {}).get("pe") or {}
+        is_packed = zeek_pe.get("is_packed") or doc.get("zeek.pe.is_packed")
+        compile_ts = zeek_pe.get("compile_ts") or doc.get("zeek.pe.compile_ts")
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+        sev = "high" if is_packed else "info"
+        return NormalizedEvent(
+            event_id=str(uuid4()), timestamp=ts, ingested_at=datetime.now(timezone.utc),
+            source_type="zeek", event_type="pe", severity=sev,
+            detection_source="zeek_pe",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            tags=f"compile_ts:{compile_ts}" if compile_ts else None,
+        )
+
     async def _poll_ubuntu_normalizer(self) -> list[NormalizedEvent]:
         """
         Poll Ubuntu normalization server for new NDJSON events.
@@ -843,6 +1456,42 @@ class MalcolmCollector:
                 await self._loader.ingest_events(weird_batch)
                 self._weird_ingested += len(weird_batch)
 
+            # --- Phase 36-02: remaining 21 Zeek log types ---
+            for log_type, cursor_suffix, normalizer_fn, counter_attr in [
+                ("http",          "http",          self._normalize_http,          "_http_ingested"),
+                ("ssl",           "ssl",           self._normalize_ssl,           "_ssl_ingested"),
+                ("x509",          "x509",          self._normalize_x509,          "_x509_ingested"),
+                ("files",         "files",         self._normalize_files,         "_files_ingested"),
+                ("notice",        "notice",        self._normalize_notice,        "_notice_ingested"),
+                ("kerberos",      "kerberos",      self._normalize_kerberos,      "_kerberos_ingested"),
+                ("ntlm",          "ntlm",          self._normalize_ntlm,          "_ntlm_ingested"),
+                ("ssh",           "ssh",           self._normalize_ssh,           "_ssh_ingested"),
+                ("smb_mapping",   "smb_mapping",   self._normalize_smb_mapping,   "_smb_mapping_ingested"),
+                ("smb_files",     "smb_files",     self._normalize_smb_files,     "_smb_files_ingested"),
+                ("rdp",           "rdp",           self._normalize_rdp,           "_rdp_ingested"),
+                ("dce_rpc",       "dce_rpc",       self._normalize_dce_rpc,       "_dce_rpc_ingested"),
+                ("dhcp",          "dhcp",          self._normalize_dhcp,          "_dhcp_ingested"),
+                ("dns",           "dns_zeek",      self._normalize_dns_zeek,      "_dns_zeek_ingested"),
+                ("software",      "software",      self._normalize_software,      "_software_ingested"),
+                ("known_host",    "known_hosts",   self._normalize_known_host,    "_known_host_ingested"),
+                ("known_service", "known_services", self._normalize_known_service, "_known_service_ingested"),
+                ("sip",           "sip",           self._normalize_sip,           "_sip_ingested"),
+                ("ftp",           "ftp",           self._normalize_ftp,           "_ftp_ingested"),
+                ("smtp",          "smtp",          self._normalize_smtp,          "_smtp_ingested"),
+                ("socks",         "socks",         self._normalize_socks,         "_socks_ingested"),
+                ("tunnel",        "tunnel",        self._normalize_tunnel,        "_tunnel_ingested"),
+                ("pe",            "pe",            self._normalize_pe,            "_pe_ingested"),
+            ]:
+                hits = await self._fetch_index(
+                    "arkime_sessions3-*",
+                    f"malcolm.zeek_{cursor_suffix}.last_timestamp",
+                    event_type_filter=log_type,
+                )
+                batch = [e for h in hits if (e := normalizer_fn(h.get("_source", {})))]
+                if batch and self._loader:
+                    await self._loader.ingest_events(batch)
+                    setattr(self, counter_attr, getattr(self, counter_attr) + len(batch))
+
             # --- Ubuntu normalization pipeline ---
             ubuntu_events = await self._poll_ubuntu_normalizer()
             if ubuntu_events and self._loader is not None:
@@ -894,4 +1543,27 @@ class MalcolmCollector:
             "ubuntu_ingested": self._ubuntu_ingested,
             "conn_ingested": self._conn_ingested,
             "weird_ingested": self._weird_ingested,
+            "http_ingested": self._http_ingested,
+            "ssl_ingested": self._ssl_ingested,
+            "x509_ingested": self._x509_ingested,
+            "files_ingested": self._files_ingested,
+            "notice_ingested": self._notice_ingested,
+            "kerberos_ingested": self._kerberos_ingested,
+            "ntlm_ingested": self._ntlm_ingested,
+            "ssh_ingested": self._ssh_ingested,
+            "smb_mapping_ingested": self._smb_mapping_ingested,
+            "smb_files_ingested": self._smb_files_ingested,
+            "rdp_ingested": self._rdp_ingested,
+            "dce_rpc_ingested": self._dce_rpc_ingested,
+            "dhcp_ingested": self._dhcp_ingested,
+            "dns_zeek_ingested": self._dns_zeek_ingested,
+            "software_ingested": self._software_ingested,
+            "known_host_ingested": self._known_host_ingested,
+            "known_service_ingested": self._known_service_ingested,
+            "sip_ingested": self._sip_ingested,
+            "ftp_ingested": self._ftp_ingested,
+            "smtp_ingested": self._smtp_ingested,
+            "socks_ingested": self._socks_ingested,
+            "tunnel_ingested": self._tunnel_ingested,
+            "pe_ingested": self._pe_ingested,
         }
