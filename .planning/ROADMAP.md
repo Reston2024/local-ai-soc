@@ -1337,7 +1337,11 @@ Plans:
 - P36-T11: Update Sigma field_map.py to cover all new Zeek fields
 - P36-T12: End-to-end smoke test — verify all 15+ Zeek log types appear in DuckDB
 
-**Plans:** 0 plans
-**Activation:** Start this phase only after confirming Zeek logs are flowing in Malcolm OpenSearch.
+**Plans:** 3 plans
+
+Plans:
+- [ ] 36-01-PLAN.md — NormalizedEvent expansion (17 new columns) + conn/weird normalizers + Wave 0 test stubs
+- [ ] 36-02-PLAN.md — Remaining 21 Zeek normalizers (http/ssl/x509/files/notice/kerberos/ntlm/ssh/smb/rdp/dce_rpc/dhcp/dns/software/known/sip/ftp/smtp/socks/tunnel/pe)
+- [ ] 36-03-PLAN.md — EventsView chip fixes, Sigma field_map Phase 36 additions, smoke test docs
 
 *Phase 36 added: 2026-04-09. Hardware arrived 2026-04-10 (Netgear GS308E). SPAN port configured: port 1 → port 5 (GMKtec/Ubuntu). Activate once Zeek logs confirmed flowing in Malcolm OpenSearch (P36-T01).*
