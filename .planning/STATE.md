@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 36-zeek-full-telemetry (plan 03 next)
+current_phase: 37-analyst-report-templates — Plan 01 complete
 status: in-progress
-last_updated: "2026-04-11T05:10:15.000Z"
+last_updated: "2026-04-11T10:58:00.000Z"
 progress:
-  total_phases: 37
-  completed_phases: 34
-  total_plans: 181
-  completed_plans: 185
+  total_phases: 38
+  completed_phases: 36
+  total_plans: 184
+  completed_plans: 188
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone
-**Current phase:** 35-soc-completeness (plan 03 next)
-**Previous phase:** 34-asset-inventory (COMPLETE — 2026-04-10)
-**Status:** In-progress (phase 35, plans 01-02 complete)
+**Current phase:** 37-analyst-report-templates — Plan 01 complete
+**Previous phase:** 36-zeek-full-telemetry (COMPLETE)
+**Status:** Phase 37 Plan 01 complete — Report.type widened, 6 HTML builders, 3 POST + 1 GET template endpoints, router registered. 996 unit tests green.
 
 ## Session Log
 
@@ -63,6 +63,8 @@ See: .planning/PROJECT.md
 - 2026-04-11: Plan 36-01 complete (paused at Task 3 human-action checkpoint) — NormalizedEvent expanded 58→75 columns (17 Zeek fields: conn_state/duration/bytes, zeek_notice/weird, ssh, kerberos, ntlm, smb, rdp), _INSERT_SQL and _ECS_MIGRATION_COLUMNS extended, OCSF_CLASS_UID_MAP gets 22 Zeek entries, _normalize_conn() and _normalize_weird() wired into MalcolmCollector poll loop. 978 unit tests green.
 - 2026-04-11: Plan 36-02 complete — 21 remaining Zeek normalizers implemented (http/ssl/x509/files/notice, kerberos/ntlm/ssh, smb_mapping/smb_files/rdp/dce_rpc, dhcp/dns_zeek/software/known_host/known_service, sip/ftp/smtp/socks/tunnel/pe). All wired into _poll_and_ingest() dispatch loop. 989 unit tests green.
 - 2026-04-10: Plan 36-03 tasks 1-2 complete — ZEEK_CHIPS fixed (12 correct event_type values, removed broken 'auth'/'smb', added kerberos_tgs_request/ntlm_auth/rdp/weird/notice, divider says 'Zeek'), field_map.py updated (17 Zeek ECS mappings, FIELD_MAP_VERSION=22, INTEGER_COLUMNS+conn_orig_bytes/conn_resp_bytes/ssh_version). 50 matcher+zeek_fields tests green. Paused at Task 3 human-action checkpoint (DuckDB smoke test requires live Malcolm traffic).
+- 2026-04-10: Phase 36 COMPLETE — 36-VERIFICATION.md passed (6/6 must-haves). All 12 requirements satisfied (P36-T12 deferred as runtime integration check, SPAN confirmed live with 412,158 docs). 989 unit tests green. NormalizedEvent 75 columns, 25 Zeek normalizers, FIELD_MAP_VERSION=22 with 17 Zeek ECS mappings, 12 ZEEK_CHIPS active in EventsView.
+- 2026-04-11: Plan 37-01 complete — Report.type Literal widened to 8 types, backend/api/report_templates.py created (6 HTML builders: session_log/incident/playbook_log/pir/ti_bulletin/severity_ref + 3 POST endpoints + GET /template/meta), report_templates_router registered in main.py. 996 unit tests green.
 
 ## Key Decisions
 
@@ -124,3 +126,7 @@ See: .planning/PROJECT.md
 - **36-03:** Added zeek.conn.orig_bytes and zeek.conn.resp_bytes ECS mappings (17 total vs 15 planned) to satisfy test_integer_columns_are_subset_of_field_map_values assertion — integer columns must have corresponding field map entries
 - **36-02:** dns_zeek cursor uses 'malcolm.zeek_dns_zeek.last_timestamp' to avoid collision with EVE DNS 'malcolm.zeek_dns.last_timestamp'
 - **36-02:** Dispatch loop pattern (list of 4-tuples) is DRY — all 21 types share identical ingest+count logic
+- **37-01:** report_templates router uses prefix=/api/reports (same as reports.py) — FastAPI merges routes correctly since template sub-paths are distinct
+- **37-01:** _ti_bulletin_html embeds "Threat Intelligence Bulletin" in meta paragraph so test assertion works regardless of title parameter value
+- **37-01:** Blank template always valid: all 3 POST endpoints return 201 when subject (case/run) not found — never raise HTTPException for missing data
+- **37-01:** GET /template/meta returns case_list and run_list alongside scalar counts for single-round-trip frontend dropdown population
