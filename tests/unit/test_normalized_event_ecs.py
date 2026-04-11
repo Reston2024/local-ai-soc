@@ -139,7 +139,7 @@ def test_to_duckdb_row_includes_new_fields():
         network_direction="inbound",
     )
     row = event.to_duckdb_row()
-    assert len(row) == 58             # Phase 33: expanded from 55 to 58 columns (IOC fields)
+    assert len(row) == 75             # Phase 36: expanded from 58 to 75 columns (Zeek fields)
     assert row[29] == 4001            # ocsf_class_uid
     assert row[30] == "failure"       # event_outcome
     assert row[31] == "WORKGROUP"     # user_domain

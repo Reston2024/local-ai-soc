@@ -57,6 +57,8 @@ class MalcolmCollector:
         self._dns_ingested: int = 0
         self._fileinfo_ingested: int = 0
         self._anomaly_ingested: int = 0
+        self._conn_ingested: int = 0
+        self._weird_ingested: int = 0
 
     # ------------------------------------------------------------------
     # HTTP helpers (synchronous — run in asyncio.to_thread)
@@ -537,6 +539,109 @@ class MalcolmCollector:
             dst_port=int(dst_port_raw) if dst_port_raw else None,
         )
 
+    def _normalize_conn(self, doc: dict) -> NormalizedEvent | None:
+        """Normalize a Zeek conn log document to NormalizedEvent.
+
+        Returns None if src_ip cannot be extracted.
+        Uses triple-fallback field access: nested -> dotted flat -> Arkime flat.
+        """
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or doc.get("src_ip")
+            or doc.get("srcip")
+        )
+        if not src_ip:
+            return None
+
+        network_obj = doc.get("network") or {}
+        zeek_conn = (doc.get("zeek") or {}).get("conn") or {}
+
+        conn_state = (
+            zeek_conn.get("state")
+            or doc.get("zeek.conn.state")
+            or network_obj.get("state")
+        )
+        duration_raw = (
+            network_obj.get("duration")
+            or (doc.get("event") or {}).get("duration")
+        )
+        orig_bytes = (
+            (doc.get("source") or {}).get("bytes")
+            or network_obj.get("bytes")
+        )
+        resp_bytes = (doc.get("destination") or {}).get("bytes")
+
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+
+        return NormalizedEvent(
+            event_id=str(uuid4()),
+            timestamp=ts,
+            ingested_at=datetime.now(timezone.utc),
+            source_type="zeek",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            event_type="conn",
+            severity="info",
+            detection_source="zeek_conn",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or doc.get("dst_ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            network_protocol=str(network_obj.get("transport") or "").lower() or None,
+            conn_state=str(conn_state) if conn_state else None,
+            conn_duration=float(duration_raw) if duration_raw is not None else None,
+            conn_orig_bytes=int(orig_bytes) if orig_bytes is not None else None,
+            conn_resp_bytes=int(resp_bytes) if resp_bytes is not None else None,
+        )
+
+    def _normalize_weird(self, doc: dict) -> NormalizedEvent | None:
+        """Normalize a Zeek weird log document to NormalizedEvent.
+
+        Returns None if src_ip cannot be extracted.
+        Always severity='high' -- weird events indicate unexpected protocol behavior.
+        """
+        src_ip = (
+            (doc.get("source") or {}).get("ip")
+            or doc.get("src_ip")
+            or doc.get("srcip")
+        )
+        if not src_ip:
+            return None
+
+        zeek_weird = (doc.get("zeek") or {}).get("weird") or {}
+        weird_name = (
+            zeek_weird.get("name")
+            or doc.get("zeek.weird.name")
+            or doc.get("weird_name")
+        )
+
+        raw_ts = doc.get("@timestamp", "")
+        try:
+            ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            ts = datetime.now(timezone.utc)
+
+        return NormalizedEvent(
+            event_id=str(uuid4()),
+            timestamp=ts,
+            ingested_at=datetime.now(timezone.utc),
+            source_type="zeek",
+            hostname=(doc.get("observer") or {}).get("hostname") or "malcolm",
+            event_type="weird",
+            severity="high",
+            detection_source="zeek_weird",
+            raw_event=json.dumps(doc)[:8192],
+            src_ip=str(src_ip),
+            dst_ip=str((doc.get("destination") or {}).get("ip") or "") or None,
+            src_port=int(p) if (p := (doc.get("source") or {}).get("port")) else None,
+            dst_port=int(p) if (p := (doc.get("destination") or {}).get("port")) else None,
+            zeek_weird_name=str(weird_name) if weird_name else None,
+        )
+
     async def _poll_ubuntu_normalizer(self) -> list[NormalizedEvent]:
         """
         Poll Ubuntu normalization server for new NDJSON events.
@@ -716,6 +821,28 @@ class MalcolmCollector:
                 await self._loader.ingest_events(anomaly_batch)
                 self._anomaly_ingested += len(anomaly_batch)
 
+            # --- Zeek conn logs ---
+            conn_hits = await self._fetch_index(
+                "arkime_sessions3-*",
+                "malcolm.zeek_conn.last_timestamp",
+                event_type_filter="conn",
+            )
+            conn_batch = [e for h in conn_hits if (e := self._normalize_conn(h.get("_source", {})))]
+            if conn_batch and self._loader:
+                await self._loader.ingest_events(conn_batch)
+                self._conn_ingested += len(conn_batch)
+
+            # --- Zeek weird logs (always high severity) ---
+            weird_hits = await self._fetch_index(
+                "arkime_sessions3-*",
+                "malcolm.zeek_weird.last_timestamp",
+                event_type_filter="weird",
+            )
+            weird_batch = [e for h in weird_hits if (e := self._normalize_weird(h.get("_source", {})))]
+            if weird_batch and self._loader:
+                await self._loader.ingest_events(weird_batch)
+                self._weird_ingested += len(weird_batch)
+
             # --- Ubuntu normalization pipeline ---
             ubuntu_events = await self._poll_ubuntu_normalizer()
             if ubuntu_events and self._loader is not None:
@@ -765,4 +892,6 @@ class MalcolmCollector:
             "fileinfo_ingested": self._fileinfo_ingested,
             "anomaly_ingested": self._anomaly_ingested,
             "ubuntu_ingested": self._ubuntu_ingested,
+            "conn_ingested": self._conn_ingested,
+            "weird_ingested": self._weird_ingested,
         }

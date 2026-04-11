@@ -209,7 +209,7 @@ async def test_poll_all_eve_types():
     with patch.object(collector, "_fetch_index", new=AsyncMock(return_value=[])) as mock_fetch:
         await collector._poll_and_ingest()
 
-    # Check all 6 cursor keys were used
+    # Check all 8 cursor keys were used (6 original + 2 Phase 36 Zeek conn/weird)
     call_cursor_keys = [call.args[1] for call in mock_fetch.call_args_list]
     expected_keys = {
         "malcolm.alerts.last_timestamp",
@@ -218,9 +218,11 @@ async def test_poll_all_eve_types():
         "malcolm.fileinfo.last_timestamp",
         "malcolm.anomaly.last_timestamp",
         "malcolm.syslog.last_timestamp",
+        "malcolm.zeek_conn.last_timestamp",
+        "malcolm.zeek_weird.last_timestamp",
     }
     assert set(call_cursor_keys) == expected_keys
-    assert mock_fetch.call_count == 6
+    assert mock_fetch.call_count == 8
 
 
 # --- Phase 31 Plan 03: Ubuntu normalizer poll ---
