@@ -305,7 +305,7 @@ class DuckDBStore:
         self._write_conn: duckdb.DuckDBPyConnection = duckdb.connect(self._db_path)
         # E5-02: disable COPY TO / httpfs / remote reads to prevent SQL-based exfiltration.
         self._write_conn.execute("SET enable_external_access = false")
-        self._write_queue: asyncio.Queue[_WriteOp] = asyncio.Queue()
+        self._write_queue: asyncio.Queue[_WriteOp] = asyncio.Queue(maxsize=10000)  # D-34: backpressure cap
         self._worker_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 
         log.info("DuckDB store initialised", db_path=self._db_path)

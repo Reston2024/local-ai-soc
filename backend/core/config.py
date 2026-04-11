@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     MALCOLM_ENABLED: bool = False  # Default OFF — set True in .env when Malcolm is on LAN
     MALCOLM_OPENSEARCH_URL: str = "https://192.168.1.22:9200"
     MALCOLM_OPENSEARCH_USER: str = "malcolm_internal"
-    MALCOLM_OPENSEARCH_PASS: str = "AzZqIn8B6AS1RuX0K8NbbzJZuYaTDARks9Tu"
+    MALCOLM_OPENSEARCH_PASS: str = ""  # Set MALCOLM_OPENSEARCH_PASS in .env — never hardcode
     MALCOLM_OPENSEARCH_VERIFY_SSL: bool = False  # Intentional — Malcolm uses self-signed TLS
     MALCOLM_POLL_INTERVAL: int = 30  # seconds between OpenSearch polls
 

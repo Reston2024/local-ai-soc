@@ -68,6 +68,13 @@ class ChromaStore:
                 settings=ChromaSettings(anonymized_telemetry=False),
             )
             log.info("Chroma store initialised (local)", chroma_dir=chroma_dir)
+        # D-20: expose mode for /health observability
+        self._mode = "remote" if remote_ok else "local_fallback"
+
+    @property
+    def mode(self) -> str:
+        """Return 'remote' or 'local_fallback' — surfaced in /health."""
+        return self._mode
 
     # ------------------------------------------------------------------
     # Collection management

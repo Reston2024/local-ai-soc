@@ -17,8 +17,11 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import date
 from pathlib import Path
 from typing import AsyncIterator, Optional
+
+import duckdb
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -76,7 +79,6 @@ _daily_snapshot_scheduler: Optional[AsyncIOScheduler] = None
 
 async def _take_daily_kpi_snapshot(stores) -> None:
     """Compute and upsert today's KPI snapshot. Called by APScheduler at midnight."""
-    from datetime import date
     try:
         svc = MetricsService(stores)
         snap = await svc.compute_all_kpis()
@@ -104,6 +106,51 @@ async def _take_daily_kpi_snapshot(stores) -> None:
         log.info("Daily KPI snapshot upserted", date=today)
     except Exception as exc:
         log.warning("Daily KPI snapshot failed: %s", exc)
+
+
+def _export_events_parquet_sync(db_path: str, backup_path: str) -> None:
+    """R-15: Export all events to Parquet using a dedicated read connection.
+
+    Opens a separate read-only DuckDB connection (external_access enabled, read-only)
+    to write the export. This is intentional — the backup job is a controlled,
+    local-only write to a known path, distinct from the E5-02 exfiltration threat.
+    """
+    conn = duckdb.connect(db_path, read_only=True)
+    try:
+        conn.execute(f"COPY (SELECT * FROM events) TO '{backup_path}' (FORMAT PARQUET)")
+    finally:
+        conn.close()
+
+
+async def _daily_parquet_backup(stores, data_dir: str) -> None:
+    """R-15: Write a daily Parquet snapshot of the events table to data/backups/."""
+    backup_dir = Path(data_dir) / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    today = date.today().isoformat()
+    backup_path = str(backup_dir / f"events_{today}.parquet")
+    db_path = stores.duckdb._db_path
+    try:
+        await asyncio.to_thread(_export_events_parquet_sync, db_path, backup_path)
+        log.info("Daily Parquet backup complete", path=backup_path)
+    except Exception as exc:
+        log.warning("Daily Parquet backup failed: %s", exc)
+
+
+async def _purge_old_events(stores, retention_days: int = 90) -> None:
+    """R-13: Delete events older than retention_days from DuckDB.
+
+    Runs daily at 00:10 via APScheduler. Default retention: 90 days.
+    The DELETE is issued through the write queue to honour the single-writer pattern.
+    """
+    cutoff_sql = f"CURRENT_TIMESTAMP - INTERVAL '{retention_days} days'"
+    try:
+        deleted = await stores.duckdb.execute_write(
+            f"DELETE FROM events WHERE timestamp < {cutoff_sql}",
+            [],
+        )
+        log.info("Event retention purge complete", retention_days=retention_days)
+    except Exception as exc:
+        log.warning("Event retention purge failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -375,8 +422,30 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         id="daily_ioc_decay",
         replace_existing=True,
     )
+    # R-13: 90-day DuckDB event retention purge (10 min after midnight, staggered)
+    _daily_snapshot_scheduler.add_job(
+        _purge_old_events,
+        "cron",
+        hour=0,
+        minute=10,
+        args=[stores],
+        id="daily_event_retention",
+        replace_existing=True,
+    )
+    # R-15: Daily Parquet export backup (15 min after midnight, staggered)
+    _daily_snapshot_scheduler.add_job(
+        _daily_parquet_backup,
+        "cron",
+        hour=0,
+        minute=15,
+        args=[stores, settings.DATA_DIR],
+        id="daily_parquet_backup",
+        replace_existing=True,
+    )
     _daily_snapshot_scheduler.start()
-    log.info("Daily KPI snapshot scheduler started (incl. IOC decay at 00:05)")
+    log.info(
+        "Scheduler started: KPI@00:00, IOC decay@00:05, retention purge@00:10, Parquet backup@00:15"
+    )
 
     log.info("All stores and services initialised — ready to serve requests")
 

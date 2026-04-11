@@ -10,11 +10,44 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, field_validator
 
 from prompts.triage import build_prompt
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/triage", tags=["triage"])
+
+
+class _TriageResult(BaseModel):
+    """D-43: Validates triage output fields before persisting to SQLite."""
+
+    run_id: str
+    severity_summary: str
+    result_text: str
+    detection_count: int
+    model_name: str
+    created_at: str
+
+    @field_validator("run_id")
+    @classmethod
+    def _run_id_nonempty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("run_id must not be empty")
+        return v
+
+    @field_validator("severity_summary", "result_text", "model_name")
+    @classmethod
+    def _str_nonempty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("field must not be empty")
+        return v
+
+    @field_validator("detection_count")
+    @classmethod
+    def _count_nonneg(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("detection_count must be >= 0")
+        return v
 
 
 @router.post("/run")
@@ -78,14 +111,16 @@ async def _run_triage(app) -> dict:
     run_id = str(uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
 
-    result_dict = {
-        "run_id": run_id,
-        "severity_summary": severity_summary,
-        "result_text": result_text,
-        "detection_count": len(detections),
-        "model_name": model_name,
-        "created_at": created_at,
-    }
+    # D-43: validate triage output before persisting
+    result_obj = _TriageResult(
+        run_id=run_id,
+        severity_summary=severity_summary,
+        result_text=result_text,
+        detection_count=len(detections),
+        model_name=model_name,
+        created_at=created_at,
+    )
+    result_dict = result_obj.model_dump()
 
     # Save result
     await asyncio.to_thread(stores.sqlite.save_triage_result, result_dict)

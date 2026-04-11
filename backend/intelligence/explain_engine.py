@@ -5,6 +5,21 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+_MAX_FIELD_LEN = 500
+_CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _sanitize(value: object) -> str:
+    """Strip control chars and truncate event field values before LLM interpolation.
+
+    R-12: Prevents prompt injection via hostile event field content.
+    """
+    s = str(value)
+    s = _CTRL_RE.sub("", s)          # strip ASCII control chars (keep \t \n)
+    if len(s) > _MAX_FIELD_LEN:
+        s = s[:_MAX_FIELD_LEN] + " [truncated]"
+    return s
+
 _SYSTEM_PROMPT = (
     "You are a cybersecurity analyst assistant. "
     "CRITICAL: You MUST only use the evidence provided below. "
@@ -23,10 +38,10 @@ def build_evidence_context(investigation: dict, max_events: int = 10) -> str:
     detection = investigation.get("detection") or {}
     if detection:
         lines.append(
-            f"DETECTION: {detection.get('rule_name', 'Unknown')} | "
-            f"severity={detection.get('severity', 'info')} | "
-            f"technique={detection.get('attack_technique', 'N/A')} | "
-            f"tactic={detection.get('attack_tactic', 'N/A')}"
+            f"DETECTION: {_sanitize(detection.get('rule_name', 'Unknown'))} | "
+            f"severity={_sanitize(detection.get('severity', 'info'))} | "
+            f"technique={_sanitize(detection.get('attack_technique', 'N/A'))} | "
+            f"tactic={_sanitize(detection.get('attack_tactic', 'N/A'))}"
         )
 
     # 2. Top N events by severity (most severe first)
@@ -38,11 +53,11 @@ def build_evidence_context(investigation: dict, max_events: int = 10) -> str:
     )[:max_events]
     for evt in sorted_events:
         lines.append(
-            f"EVENT: {evt.get('timestamp', '?')} | "
-            f"{evt.get('event_type', '?')} | "
-            f"process={evt.get('process_name', '?')} | "
-            f"host={evt.get('hostname', '?')} | "
-            f"technique={evt.get('attack_technique', 'N/A')}"
+            f"EVENT: {_sanitize(evt.get('timestamp', '?'))} | "
+            f"{_sanitize(evt.get('event_type', '?'))} | "
+            f"process={_sanitize(evt.get('process_name', '?'))} | "
+            f"host={_sanitize(evt.get('hostname', '?'))} | "
+            f"technique={_sanitize(evt.get('attack_technique', 'N/A'))}"
         )
 
     # 3. Unique MITRE techniques

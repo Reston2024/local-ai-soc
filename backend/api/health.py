@@ -62,7 +62,7 @@ async def _check_chroma(request: Request) -> dict[str, Any]:
     try:
         stores = request.app.state.stores
         collections = await stores.chroma.list_collections_async()
-        return {"status": "ok", "collections": collections}
+        return {"status": "ok", "collections": collections, "mode": stores.chroma.mode}
     except Exception as exc:
         log.error("Health check failed for chroma: %s", str(exc))
         return {"status": "error", "detail": "component unavailable"}
