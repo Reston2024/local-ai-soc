@@ -362,8 +362,8 @@
   .sidebar {
     width: 230px;
     flex-shrink: 0;
-    background: #111111;
-    border-right: 1px solid rgba(255,255,255,0.06);
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -479,7 +479,7 @@
 
   .nav-scroll::-webkit-scrollbar { width: 3px; }
   .nav-scroll::-webkit-scrollbar-track { background: transparent; }
-  .nav-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+  .nav-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
   .nav-group {
     margin-bottom: 4px;
@@ -515,13 +515,13 @@
   }
 
   .nav-item:hover {
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.78);
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .nav-item.active {
-    background: rgba(255,255,255,0.09);
-    color: rgba(255,255,255,0.95);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
     font-weight: 500;
   }
 
@@ -556,7 +556,7 @@
   /* ── Footer ── */
   .sidebar-footer {
     padding: 10px 14px;
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
