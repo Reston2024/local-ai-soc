@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 38-cisa-playbook-content
-status: in_progress
-last_updated: "2026-04-11T15:30:00.000Z"
+current_phase: 38-cisa-playbook-content (IN PROGRESS — Plans 01-02 complete)
+status: completed
+last_updated: "2026-04-11T21:43:13.706Z"
 progress:
-  total_phases: 38
-  completed_phases: 37
-  total_plans: 192
-  completed_plans: 190
+  total_phases: 41
+  completed_phases: 36
+  total_plans: 187
+  completed_plans: 191
 ---
 
 # Session State
@@ -68,6 +68,7 @@ See: .planning/PROJECT.md
 - 2026-04-11: Plan 37-01 complete — Report.type Literal widened to 8 types, backend/api/report_templates.py created (6 HTML builders: session_log/incident/playbook_log/pir/ti_bulletin/severity_ref + 3 POST endpoints + GET /template/meta), report_templates_router registered in main.py. 996 unit tests green.
 - 2026-04-11: Plan 37-02 complete — PIR/TI Bulletin/Severity Ref POST endpoints added to report_templates.py. _fetch_ti_data() uses fuzzy actor_tag LIKE for IOCs + stix_group_id JOIN for techniques. pydantic.BaseModel import added. All 7 report template tests pass, 996 total unit tests green. Requirements P37-T04, P37-T05, P37-T06 satisfied.
 - 2026-04-11: Plan 37-03 complete — Report.type widened to string, TemplateMeta interface + api.reports.templateMeta()/generateTemplate() added to api.ts, ReportsView 5th Templates tab with 2x3 card grid (6 cards), App.svelte handleGenerateReport() + Generate Report shortcut on InvestigationView panel, PlaybooksView onGenerateReport prop + btn-shortcut on active run. 996 unit tests green. Requirements P37-T07, P37-T08 satisfied. Phase 37 COMPLETE.
+- 2026-04-11: Plan 38-02 complete — PlaybookStep extended with 5 CISA enrichment fields (attack_techniques, escalation_threshold, escalation_role, time_sla_minutes, containment_actions), PlaybookRunAdvance gains containment_action, 3 idempotent ALTER TABLE migrations (source/escalation_acknowledged/active_case_id), create_playbook() updated for source column. 5 NIST starters replaced with 4 CISA IR playbooks (Phishing/BEC, Ransomware, Credential Compromise, Malware/Intrusion). seed_builtin_playbooks() uses replace-not-supplement strategy. 1012 unit tests green. Requirements P38-T01, P38-T02, P38-T03, P38-T04, P38-T05 satisfied.
 
 ## Key Decisions
 
@@ -141,3 +142,7 @@ See: .planning/PROJECT.md
 - **37-03:** cardGenerating / cardLastReport dictionaries keyed by type string enable per-card independent generate/download state
 - **38-01:** test_playbooks_seed.py tests BUILTIN_PLAYBOOKS data directly (not seeding function) — avoids async SQLite complexity in Wave 0 stubs while still defining the CISA replacement contract
 - **38-01:** 3 of 14 stubs pass vacuously (escalation_fields, containment_actions_vocab, is_builtin_true) — correct since they test content quality, not field presence; will become meaningful assertions when CISA data lands
+- **38-02:** PlaybookStep new fields stored in existing JSON blob column — zero SQLite column migration needed for step fields
+- **38-02:** create_playbook() extended to include source column in INSERT SQL — prevents source=NULL for CISA playbooks after ALTER TABLE migration
+- **38-02:** Seed strategy: UPDATE source='nist' WHERE is_builtin=1 AND source='custom', DELETE WHERE source='nist', INSERT CISA if count==0 (idempotent replace-not-supplement)
+- **38-02:** test_builtin_playbooks.py updated to CISA content assertions — old NIST names/count auto-fixed as Rule 1 deviation
