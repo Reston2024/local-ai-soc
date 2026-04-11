@@ -1,5 +1,7 @@
 """
-Unit tests for built-in NIST IR playbooks and seed_builtin_playbooks().
+Unit tests for built-in CISA IR playbooks and seed_builtin_playbooks().
+
+Updated in Phase 38: NIST starters replaced with 4 CISA playbooks.
 """
 
 import pytest
@@ -14,12 +16,16 @@ def store(tmp_path):
 
 
 class TestBuiltinPlaybooksData:
-    def test_exactly_five_playbooks(self):
-        assert len(BUILTIN_PLAYBOOKS) == 5
+    def test_exactly_four_playbooks(self):
+        assert len(BUILTIN_PLAYBOOKS) == 4
 
     def test_all_marked_as_builtin(self):
         for pb in BUILTIN_PLAYBOOKS:
             assert pb["is_builtin"] is True, f"{pb['name']} missing is_builtin=True"
+
+    def test_all_have_source_cisa(self):
+        for pb in BUILTIN_PLAYBOOKS:
+            assert pb.get("source") == "cisa", f"{pb['name']} missing source=cisa"
 
     def test_all_have_required_fields(self):
         required = {"name", "description", "trigger_conditions", "steps", "version"}
@@ -29,8 +35,8 @@ class TestBuiltinPlaybooksData:
 
     def test_all_have_steps(self):
         for pb in BUILTIN_PLAYBOOKS:
-            assert len(pb["steps"]) >= 5, (
-                f"{pb['name']} has only {len(pb['steps'])} steps (expected >= 5)"
+            assert len(pb["steps"]) >= 6, (
+                f"{pb['name']} has only {len(pb['steps'])} steps (expected >= 6)"
             )
 
     def test_all_have_trigger_conditions(self):
@@ -58,11 +64,10 @@ class TestBuiltinPlaybooksData:
     def test_known_playbook_names(self):
         names = {pb["name"] for pb in BUILTIN_PLAYBOOKS}
         expected = {
-            "Phishing Initial Triage",
-            "Lateral Movement Investigation",
-            "Privilege Escalation Response",
-            "Data Exfiltration Containment",
-            "Malware Isolation",
+            "Phishing / BEC Response",
+            "Ransomware Response",
+            "Credential / Account Compromise Response",
+            "Malware / Intrusion Response",
         }
         assert names == expected
 
@@ -72,14 +77,14 @@ class TestBuiltinPlaybooksData:
 
 
 class TestSeedBuiltinPlaybooks:
-    def test_seed_inserts_five_playbooks(self, store):
+    def test_seed_inserts_four_cisa_playbooks(self, store):
         import asyncio
         from backend.api.playbooks import seed_builtin_playbooks
 
         asyncio.run(seed_builtin_playbooks(store))
         playbooks = store.get_playbooks()
         builtin = [pb for pb in playbooks if pb["is_builtin"]]
-        assert len(builtin) == 5
+        assert len(builtin) == 4
 
     def test_seed_is_idempotent(self, store):
         import asyncio
@@ -91,7 +96,7 @@ class TestSeedBuiltinPlaybooks:
 
         playbooks = store.get_playbooks()
         builtin = [pb for pb in playbooks if pb["is_builtin"]]
-        assert len(builtin) == 5  # not 10
+        assert len(builtin) == 4  # not 8
 
     def test_seeded_playbooks_have_correct_names(self, store):
         import asyncio
@@ -100,8 +105,8 @@ class TestSeedBuiltinPlaybooks:
         asyncio.run(seed_builtin_playbooks(store))
         playbooks = store.get_playbooks()
         names = {pb["name"] for pb in playbooks}
-        assert "Phishing Initial Triage" in names
-        assert "Malware Isolation" in names
+        assert "Phishing / BEC Response" in names
+        assert "Ransomware Response" in names
 
     def test_seeded_playbooks_have_deserialized_steps(self, store):
         import asyncio
@@ -112,3 +117,13 @@ class TestSeedBuiltinPlaybooks:
         for pb in playbooks:
             assert isinstance(pb["steps"], list)
             assert isinstance(pb["trigger_conditions"], list)
+
+    def test_seeded_playbooks_have_source_cisa(self, store):
+        import asyncio
+        from backend.api.playbooks import seed_builtin_playbooks
+
+        asyncio.run(seed_builtin_playbooks(store))
+        playbooks = store.get_playbooks()
+        builtin = [pb for pb in playbooks if pb["is_builtin"]]
+        for pb in builtin:
+            assert pb.get("source") == "cisa", f"{pb['name']} source is not 'cisa'"

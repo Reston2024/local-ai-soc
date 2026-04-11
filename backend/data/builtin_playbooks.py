@@ -1,492 +1,765 @@
 """
-Built-in NIST SP 800-61r3 IR starter playbooks.
+Built-in CISA Federal IR Playbooks (Phase 38).
 
-These are seeded into the SQLite database on first startup via
-seed_builtin_playbooks() in backend/api/playbooks.py.
+These replace the 5 NIST SP 800-61r3 IR starter playbooks with 4 CISA-derived
+incident response flows covering the primary federal IR incident classes.
 
-Five playbooks cover the major NIST IR phases:
-1. Phishing Initial Triage
-2. Lateral Movement Investigation
-3. Privilege Escalation Response
-4. Data Exfiltration Containment
-5. Malware Isolation
+Source: CISA Federal Government Cybersecurity Incident and Vulnerability Response
+Playbooks (November 2021), CISA Phishing Response Playbook, CISA Ransomware Guide
+(September 2020, updated 2023).
+
+Seeded into the SQLite database on first startup via seed_builtin_playbooks()
+in backend/api/playbooks.py. The seed function replaces NIST starters (source='nist')
+with these CISA playbooks (source='cisa') — idempotent across restarts.
+
+Four playbooks cover:
+1. Phishing / BEC Response
+2. Ransomware Response
+3. Credential / Account Compromise Response
+4. Malware / Intrusion Response
 """
 
 BUILTIN_PLAYBOOKS: list[dict] = [
     {
-        "name": "Phishing Initial Triage",
+        "name": "Phishing / BEC Response",
         "description": (
-            "NIST IR Phase: Detection & Analysis + Containment. "
-            "Covers initial response to suspected phishing incidents including "
-            "user account identification, evidence collection, and credential remediation."
+            "CISA Federal IR Playbook: Detection, Analysis, and Containment phase for "
+            "phishing and business email compromise (BEC) incidents. Covers mailbox "
+            "identification, header/URL evidence collection, credential and session "
+            "revocation, sender blocking, and CISA reporting."
         ),
-        "trigger_conditions": ["phishing", "suspicious email", "credential harvesting"],
+        "trigger_conditions": [
+            "phishing",
+            "BEC",
+            "business email compromise",
+            "T1566",
+            "T1598",
+            "T1534",
+        ],
         "steps": [
             {
                 "step_number": 1,
-                "title": "Identify affected user accounts",
+                "title": "Verify report and identify affected mailboxes",
                 "description": (
-                    "Determine which user accounts received or interacted with the "
-                    "suspected phishing message. Check email gateway logs and user reports."
+                    "Confirm the phishing report is valid and identify all mailboxes "
+                    "that received or interacted with the suspicious message. Check "
+                    "email gateway logs, user reports, and security alert queues to "
+                    "enumerate affected accounts and determine whether any user opened "
+                    "attachments or followed embedded links."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "List all affected user accounts (UPNs), timestamps of receipt, "
-                    "and whether the user clicked any links or opened attachments."
+                    "List all affected mailboxes (UPNs), message delivery timestamps, "
+                    "and whether each user opened attachments or clicked links."
                 ),
+                "attack_techniques": ["T1566.001", "T1566.002"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 2,
-                "title": "Collect email headers and links as evidence",
+                "title": "Collect email headers, URLs, and attachment hashes",
                 "description": (
-                    "Retrieve full email headers, sender IP, DMARC/DKIM/SPF results, "
-                    "and extract all embedded URLs and attachment hashes."
+                    "Retrieve full email headers including originating IP, DMARC/DKIM/SPF "
+                    "disposition, and extract all embedded URLs and attachment SHA256 hashes. "
+                    "Submit suspicious URLs and file hashes to threat intelligence platforms "
+                    "to determine campaign attribution and payload classification."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Record: sender address, originating IP, subject line, "
-                    "URL list, attachment SHA256 hashes, and DMARC disposition."
+                    "Record: sender address, originating IP, subject line, all embedded URLs, "
+                    "attachment SHA256 hashes, DMARC disposition, SPF/DKIM result."
                 ),
+                "attack_techniques": ["T1566.001", "T1598"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 3,
-                "title": "Check for credential use post-receipt (auth logs)",
+                "title": "Check authentication logs for credential use post-delivery",
                 "description": (
-                    "Search authentication logs for logins from affected accounts "
-                    "after the phishing email delivery timestamp, including impossible "
-                    "travel or unusual source IPs."
+                    "Search authentication logs for any logins from affected accounts "
+                    "after the phishing message delivery timestamp. Look for impossible "
+                    "travel, unfamiliar source IPs, new device registrations, MFA bypass "
+                    "attempts, or unusual service access patterns indicating credential "
+                    "compromise."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "List any authentication events after email receipt: timestamp, "
-                    "source IP, country, success/failure, MFA status."
+                    "List authentication events after email delivery: timestamp, source IP, "
+                    "country, success/failure, MFA status, device, service accessed."
                 ),
+                "attack_techniques": ["T1078", "T1110"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 4,
-                "title": "Search for lateral movement from affected account",
+                "title": "Search for OAuth app grants and mail forwarding rules (BEC indicator)",
                 "description": (
-                    "Investigate whether the compromised account was used to access "
-                    "other hosts, services, or accounts via remote desktop, "
-                    "PsExec, WMI, or other lateral movement techniques."
+                    "Investigate whether the attacker established persistence via OAuth "
+                    "application grants or mail forwarding rules — key BEC indicators. "
+                    "Review inbox rules, email delegation, and OAuth consent grants for "
+                    "all affected accounts. Unusual app consents or forwarding to external "
+                    "addresses indicate business email compromise."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Document any remote connections, service executions, or "
-                    "authentication events originating from the affected account "
-                    "after initial compromise."
+                    "List any inbox forwarding rules (destination, creation time), OAuth "
+                    "app consents (app name, permissions, granted-by), email delegation "
+                    "changes discovered on affected accounts."
                 ),
+                "attack_techniques": ["T1114", "T1534"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 5,
-                "title": "Notify user and reset credentials if compromise confirmed",
+                "title": "Reset credentials and revoke sessions if compromise confirmed",
                 "description": (
-                    "If credential compromise is confirmed, immediately reset the "
-                    "affected account password, revoke active sessions, and notify "
-                    "the user and their manager."
+                    "If credential compromise is confirmed, immediately reset affected "
+                    "account passwords, revoke all active sessions and refresh tokens, "
+                    "and force MFA re-enrollment. If OAuth app grants are malicious, "
+                    "revoke them. Notify the affected user and their manager of the "
+                    "compromise and required password change."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Record: credential reset timestamp, sessions revoked, "
-                    "MFA re-enrollment status, notification sent to user."
+                    "Record: credential reset timestamp, sessions revoked, OAuth app grants "
+                    "revoked, MFA re-enrollment status, notification sent (user + manager)."
                 ),
+                "attack_techniques": ["T1078", "T1531"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 30,
+                "containment_actions": ["reset_credentials", "notify_management"],
             },
             {
                 "step_number": 6,
-                "title": "Close or escalate with findings",
+                "title": "Block sender domain/IP and submit phishing URLs to CISA",
                 "description": (
-                    "Document final determination: false positive, contained incident, "
-                    "or active breach requiring escalation. Update the case with "
-                    "IOCs and lessons learned."
+                    "Block the identified sender domain and originating IP at the email "
+                    "gateway and perimeter firewall. Submit phishing URLs and indicators "
+                    "to CISA (report@cisa.dhs.gov) per federal reporting requirements. "
+                    "Quarantine or remove phishing messages from all affected mailboxes."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Final determination (FP/contained/breach), IOC list, "
-                    "escalation decision with justification."
+                    "Domains/IPs blocked (rule IDs, timestamp), phishing URLs submitted to "
+                    "CISA (submission ticket/confirmation), messages quarantined (count)."
                 ),
+                "attack_techniques": ["T1566"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["block_domain", "block_ip"],
+            },
+            {
+                "step_number": 7,
+                "title": "Notify affected users and document incident",
+                "description": (
+                    "Notify all users who received the phishing message with guidance "
+                    "on what actions to take (change passwords, report suspicious activity). "
+                    "Document the complete incident timeline, IOCs discovered, containment "
+                    "actions taken, and lessons learned. Close or escalate based on scope."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "User notification sent (timestamp, channel), complete IOC list, "
+                    "incident timeline summary, lessons learned, final determination "
+                    "(false positive / contained / breach requiring escalation)."
+                ),
+                "attack_techniques": ["T1566"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 60,
+                "containment_actions": ["notify_management"],
             },
         ],
-        "version": "1.0",
+        "version": "2.0",
         "is_builtin": True,
+        "source": "cisa",
     },
     {
-        "name": "Lateral Movement Investigation",
+        "name": "Ransomware Response",
         "description": (
-            "NIST IR Phase: Analysis + Containment. "
-            "Investigates suspected lateral movement including pass-the-hash, "
-            "remote service execution, and credential relay attacks."
+            "CISA Ransomware Guide: Immediate response to ransomware and destructive "
+            "encryption events. Prioritises volatile evidence collection, host isolation, "
+            "lateral movement containment, backup assessment, and mandatory federal "
+            "notification to CISA and executive leadership."
         ),
         "trigger_conditions": [
-            "lateral movement",
-            "pass-the-hash",
-            "remote service execution",
-            "T1021",
+            "ransomware",
+            "encryption",
+            "T1486",
+            "T1490",
+            "ransom note",
+            "T1059",
         ],
         "steps": [
             {
                 "step_number": 1,
-                "title": "Identify source host and compromised account",
+                "title": "Identify patient-zero host and initial infection vector",
                 "description": (
-                    "Determine the originating host and account used to initiate "
-                    "the lateral movement. Review Sigma detections and event logs "
-                    "for authentication anomalies."
+                    "Determine the first host affected (patient zero) and the initial "
+                    "infection vector — phishing, exposed RDP/VPN (T1133), or exploited "
+                    "public-facing application (T1190). Review endpoint detection alerts, "
+                    "network flow logs, and email gateway records to establish the initial "
+                    "access chain before isolation degrades evidence."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Source hostname, IP, compromised account name, "
-                    "initial detection timestamp and alert name."
+                    "Patient-zero hostname and IP, infection vector (phishing/RDP/exploit), "
+                    "earliest malicious activity timestamp, Sigma/EDR alert IDs."
                 ),
+                "attack_techniques": ["T1566", "T1190", "T1133"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 2,
-                "title": "Map all remote connections from source in investigation timeline",
+                "title": "Collect volatile evidence before isolation",
                 "description": (
-                    "Enumerate all remote authentication events (RDP, SMB, WinRM, "
-                    "PsExec) originating from the source host and account within "
-                    "the investigation timeframe."
+                    "Before isolating any host, capture volatile evidence that will be "
+                    "lost after reboot or network disconnect: running process list, active "
+                    "network connections, loaded kernel modules, and if feasible, a memory "
+                    "dump of the ransomware process. This evidence is critical for malware "
+                    "family identification and decryption key recovery research."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Timeline of remote connections: target hostname, IP, "
-                    "protocol, timestamp, account used, success/failure."
+                    "Process list snapshot (with PIDs and parent PIDs), active network "
+                    "connections (remote IPs/ports), memory dump path and SHA256 if captured, "
+                    "collection timestamp and method."
                 ),
+                "attack_techniques": ["T1057", "T1049"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 3,
-                "title": "Check for credential dumping artifacts on source host",
+                "title": "Isolate affected hosts from network immediately",
                 "description": (
-                    "Examine process execution logs on the source host for "
-                    "credential dumping tools (Mimikatz, ProcDump on LSASS, "
-                    "reg save HKLM\\SAM, etc.)."
+                    "Immediately isolate all confirmed ransomware-infected hosts to prevent "
+                    "further encryption spread. Use EDR network isolation, VLAN segmentation, "
+                    "or physical disconnection. Engage your IR team. Time is critical — "
+                    "ransomware propagates via SMB/RPC and can encrypt network shares "
+                    "within minutes of initial execution."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Process executions matching credential dumping patterns: "
-                    "process name, command line, parent process, timestamp."
+                    "Hosts isolated (hostname, IP, method, timestamp, EDR isolation ID), "
+                    "IR team engaged (name, contact time), isolation approval chain."
                 ),
+                "attack_techniques": ["T1486"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 15,
+                "containment_actions": ["isolate_host", "engage_ir_team"],
             },
             {
                 "step_number": 4,
-                "title": "Identify all destination hosts reached",
+                "title": "Disable SMB/RPC laterally — block internal propagation",
                 "description": (
-                    "Compile the complete list of hosts accessed via lateral movement "
-                    "to determine the full scope of the compromise."
+                    "Block SMB (port 445) and RPC traffic between network segments at the "
+                    "firewall or managed switch level to prevent ransomware lateral movement "
+                    "via file share encryption or remote service execution (EternalBlue/WannaCry "
+                    "pattern). Disable admin shares (ADMIN$, C$) on all uninfected hosts "
+                    "as a compensating control."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Complete list of destination hosts: hostname, IP, "
-                    "access time, technique used, actions performed."
+                    "Firewall rules added (rule IDs, ports blocked, segments affected), "
+                    "admin shares disabled (scope), timestamp, approver name."
                 ),
+                "attack_techniques": ["T1021.002", "T1210"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 15,
+                "containment_actions": ["block_ip", "isolate_host"],
             },
             {
                 "step_number": 5,
-                "title": "Contain affected hosts and reset credentials",
+                "title": "Determine scope: enumerate all encrypted file shares and hosts",
                 "description": (
-                    "Isolate compromised hosts from the network, reset all "
-                    "affected account credentials, and revoke Kerberos tickets "
-                    "as appropriate."
+                    "Enumerate the full scope of the incident: identify all hosts with "
+                    "encrypted files, affected network shares, and the total volume of "
+                    "encrypted data. Check for ransom note files (.txt/.html) to identify "
+                    "the ransomware family and any decryption negotiation instructions."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Hosts isolated (timestamp, method), credentials reset, "
-                    "krbtgt reset if domain-wide compromise suspected."
+                    "List of all affected hosts (count), encrypted file shares (paths, "
+                    "estimated file count), ransomware family (from ransom note or TI), "
+                    "estimated total data volume encrypted."
                 ),
-            },
-        ],
-        "version": "1.0",
-        "is_builtin": True,
-    },
-    {
-        "name": "Privilege Escalation Response",
-        "description": (
-            "NIST IR Phase: Analysis + Eradication. "
-            "Handles confirmed or suspected privilege escalation including "
-            "UAC bypass, token impersonation, and exploitation of privileged services."
-        ),
-        "trigger_conditions": [
-            "privilege escalation",
-            "UAC bypass",
-            "T1548",
-            "token impersonation",
-        ],
-        "steps": [
-            {
-                "step_number": 1,
-                "title": "Identify the escalation event and affected account",
-                "description": (
-                    "Determine the exact escalation event: which account was "
-                    "escalated, to what privilege level, by what mechanism, "
-                    "and on which host."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Account name before/after escalation, privilege level gained, "
-                    "host, timestamp, MITRE technique ID."
-                ),
-            },
-            {
-                "step_number": 2,
-                "title": "Collect process tree and parent-child evidence",
-                "description": (
-                    "Capture the full process tree around the escalation event: "
-                    "parent process, escalated process, command line, and any "
-                    "child processes spawned under elevated privileges."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Process tree: PID, parent PID, process name, command line, "
-                    "user context, start time for all involved processes."
-                ),
-            },
-            {
-                "step_number": 3,
-                "title": "Check persistence mechanisms installed post-escalation",
-                "description": (
-                    "Search for persistence artifacts that may have been installed "
-                    "after privilege escalation: scheduled tasks, registry run keys, "
-                    "services, WMI subscriptions."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "List any new scheduled tasks, registry run keys, services, "
-                    "or WMI subscriptions created after the escalation timestamp."
-                ),
-            },
-            {
-                "step_number": 4,
-                "title": "Revoke elevated tokens and sessions",
-                "description": (
-                    "Terminate the escalated session, revoke elevated tokens, "
-                    "and if domain admin was obtained, initiate KRBTGT rotation."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Sessions terminated, tokens revoked, KRBTGT rotation initiated "
-                    "if applicable. Timestamp of each action."
-                ),
-            },
-            {
-                "step_number": 5,
-                "title": "Patch or remediate escalation vector",
-                "description": (
-                    "Identify and close the escalation vector: apply missing patch, "
-                    "correct misconfiguration, restrict vulnerable service, "
-                    "or add compensating control."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Escalation vector description, remediation applied "
-                    "(patch KB, config change, ACL update), completion timestamp."
-                ),
-            },
-        ],
-        "version": "1.0",
-        "is_builtin": True,
-    },
-    {
-        "name": "Data Exfiltration Containment",
-        "description": (
-            "NIST IR Phase: Containment + Eradication + Recovery. "
-            "Responds to suspected data exfiltration including C2 beacon callbacks, "
-            "large outbound uploads, and archive staging."
-        ),
-        "trigger_conditions": [
-            "data exfiltration",
-            "large upload",
-            "T1041",
-            "T1048",
-            "C2",
-        ],
-        "steps": [
-            {
-                "step_number": 1,
-                "title": "Identify exfiltration destination (IP/domain)",
-                "description": (
-                    "Determine the destination IP, domain, or URL that data "
-                    "is being sent to. Cross-reference with threat intelligence "
-                    "for known C2 infrastructure."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Destination IP(s), domain(s), port(s), protocol(s), "
-                    "threat intel classification (known C2/benign/unknown)."
-                ),
-            },
-            {
-                "step_number": 2,
-                "title": "Quantify data volume and file types involved",
-                "description": (
-                    "Estimate the volume of data exfiltrated and identify what "
-                    "types of files or data were involved (credentials, PII, "
-                    "intellectual property, configuration files)."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Estimated data volume (bytes/MB), file types, "
-                    "classification level, data owner, timeframe of exfiltration."
-                ),
-            },
-            {
-                "step_number": 3,
-                "title": "Check for staging directory or archive creation",
-                "description": (
-                    "Search for evidence of data staging: temporary directories, "
-                    "zip/rar archives, or encrypted archives created before "
-                    "the outbound transfer."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Staging directory path, archive filenames, creation timestamps, "
-                    "contents if accessible."
-                ),
-            },
-            {
-                "step_number": 4,
-                "title": "Block destination at network level — document action for analyst",
-                "description": (
-                    "Block the identified exfiltration destination at the firewall "
-                    "or proxy. This is a containment action — document thoroughly "
-                    "before making changes."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Firewall/proxy rule added: destination blocked, rule ID, "
-                    "timestamp, approver name."
-                ),
-            },
-            {
-                "step_number": 5,
-                "title": "Identify data owner and initiate breach assessment",
-                "description": (
-                    "Identify the owner of the exfiltrated data and initiate a "
-                    "formal breach assessment to determine notification obligations "
-                    "under applicable regulations (GDPR, HIPAA, etc.)."
-                ),
-                "requires_approval": True,
-                "evidence_prompt": (
-                    "Data owner name/department, regulatory framework applicable, "
-                    "breach notification decision and rationale."
-                ),
+                "attack_techniques": ["T1486"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 6,
-                "title": "Preserve forensic artifacts and document timeline",
+                "title": "Assess backup availability and integrity",
                 "description": (
-                    "Capture all relevant forensic artifacts before any remediation "
-                    "that could destroy evidence. Document a complete timeline "
-                    "of the exfiltration."
+                    "Determine whether clean backups exist and have not been compromised. "
+                    "Ransomware operators frequently target backup systems before triggering "
+                    "encryption (T1490 — Inhibit System Recovery). Verify offline/immutable "
+                    "backup availability, confirm backup integrity via hash verification, "
+                    "and estimate recovery time objectives (RTO) for critical systems."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Artifacts preserved (network capture, endpoint image, log exports), "
-                    "chain of custody, complete exfiltration timeline."
+                    "Backup systems checked (NAS/cloud/tape), last known-good backup date, "
+                    "backup integrity verification result, evidence of backup tampering, "
+                    "RTO estimate for critical systems."
                 ),
+                "attack_techniques": ["T1490"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence", "notify_management"],
+            },
+            {
+                "step_number": 7,
+                "title": "Notify CISA, legal, and executive leadership",
+                "description": (
+                    "Federal agencies must notify CISA within 1 hour of confirming a "
+                    "ransomware incident. Notify CISA via report@cisa.dhs.gov or the "
+                    "24/7 hotline (888-282-0870). Simultaneously notify general counsel, "
+                    "the CISO, and executive leadership. Do not pay the ransom without "
+                    "legal and executive approval — payment does not guarantee decryption."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "CISA notification sent (ticket number, timestamp, reporter name), "
+                    "legal counsel notified (name, timestamp), executive notification "
+                    "chain (names, timestamps), ransom payment decision documented."
+                ),
+                "attack_techniques": ["T1486"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 30,
+                "containment_actions": ["notify_management", "engage_ir_team"],
+            },
+            {
+                "step_number": 8,
+                "title": "Eradicate and recover from clean backups or known-good snapshot",
+                "description": (
+                    "Once scope is determined and notifications are complete, begin "
+                    "eradication. Rebuild infected hosts from clean images rather than "
+                    "attempting in-place cleaning — ransomware often installs rootkits or "
+                    "backdoors alongside the encryptor. Restore data from known-good "
+                    "offline backups. Verify restored systems before reconnecting to "
+                    "the network."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Hosts rebuilt (count, method — fresh image vs clean restore), "
+                    "data restored from backup (source date, verification hash), "
+                    "restored systems security-verified before reconnect (method, timestamp)."
+                ),
+                "attack_techniques": ["T1486"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 240,
+                "containment_actions": ["isolate_host"],
             },
         ],
-        "version": "1.0",
+        "version": "2.0",
         "is_builtin": True,
+        "source": "cisa",
     },
     {
-        "name": "Malware Isolation",
+        "name": "Credential / Account Compromise Response",
         "description": (
-            "NIST IR Phase: Containment + Eradication. "
-            "Handles confirmed malware presence including ransomware, backdoors, "
-            "and droppers — prioritising volatile evidence collection before isolation."
+            "CISA Federal IR Playbook: Response to confirmed or suspected credential "
+            "and account compromise including impossible travel, credential dumping, "
+            "token abuse, and account takeover. Covers audit, session revocation, "
+            "credential reset, and persistence removal."
+        ),
+        "trigger_conditions": [
+            "credential compromise",
+            "account takeover",
+            "T1078",
+            "T1110",
+            "T1003",
+            "impossible travel",
+        ],
+        "steps": [
+            {
+                "step_number": 1,
+                "title": "Confirm compromise and identify affected accounts and access vector",
+                "description": (
+                    "Verify the compromise is genuine (not a false positive from VPN or "
+                    "travel). Identify all affected accounts, determine the initial access "
+                    "vector (phishing credential harvest, brute force, VPN exploitation, "
+                    "or insider), and establish the earliest known malicious authentication "
+                    "event timestamp to bound the investigation scope."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Affected account(s) (UPN/username), initial access vector, earliest "
+                    "malicious auth timestamp, source IP/country, confirmation method "
+                    "(impossible travel / velocity / TI match / user report)."
+                ),
+                "attack_techniques": ["T1078", "T1133"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
+            },
+            {
+                "step_number": 2,
+                "title": "Audit recent activity: impossible travel, anomalous logins, MFA bypasses",
+                "description": (
+                    "Review the complete authentication history for affected accounts "
+                    "across all services (on-prem AD, Azure AD, SaaS apps). Flag impossible "
+                    "travel events, logins from new devices, MFA bypass (authenticator "
+                    "fatigue, SIM swap, OTP phishing), and unusual service access. "
+                    "Determine whether access was privileged."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Authentication log review period, anomalous events found (timestamp, "
+                    "source IP, country, service), MFA bypass indicators, privileged "
+                    "access observed (admin roles, service accounts accessed)."
+                ),
+                "attack_techniques": ["T1078", "T1556"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
+            },
+            {
+                "step_number": 3,
+                "title": "Check for credential dumping artifacts on associated hosts",
+                "description": (
+                    "Search endpoint telemetry on hosts accessed by the compromised account "
+                    "for credential dumping tools and techniques: Mimikatz/sekurlsa, ProcDump "
+                    "targeting LSASS, reg save of SAM/SYSTEM/SECURITY hives, NTDS.dit access, "
+                    "or DCSync activity. Evidence of credential dumping expands the scope "
+                    "to a full credential compromise across the environment."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Process executions matching credential dumping patterns (process name, "
+                    "command line, parent, PID, timestamp), LSASS access events, registry "
+                    "hive exports, DCSync activity in domain controller event logs."
+                ),
+                "attack_techniques": ["T1003", "T1552"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
+            },
+            {
+                "step_number": 4,
+                "title": "Revoke all active sessions and invalidate tokens",
+                "description": (
+                    "Immediately revoke all active sessions, OAuth tokens, SAML assertions, "
+                    "and Kerberos TGTs for affected accounts. For domain-wide compromise, "
+                    "initiate KRBTGT account rotation (double rotation required). Revoke "
+                    "any API keys or service credentials that may have been exposed. "
+                    "This containment action must be completed before password reset "
+                    "to prevent re-authentication on compromised sessions."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Sessions revoked (service, count, timestamp), OAuth tokens invalidated "
+                    "(apps, count), KRBTGT rotation status (single/double), Kerberos TGTs "
+                    "invalidated, API keys rotated (services, count)."
+                ),
+                "attack_techniques": ["T1550", "T1134"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 30,
+                "containment_actions": ["reset_credentials", "notify_management"],
+            },
+            {
+                "step_number": 5,
+                "title": "Reset passwords and force MFA re-enrollment",
+                "description": (
+                    "Reset passwords for all affected accounts using a secure out-of-band "
+                    "channel (not the compromised email account). Force MFA re-enrollment "
+                    "to ensure the attacker's registered MFA device is replaced. For service "
+                    "accounts, rotate all associated secrets and certificates. Verify the "
+                    "new credentials work correctly before closing the containment step."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Accounts with passwords reset (UPN, timestamp, reset method), MFA "
+                    "re-enrollment completed (count, method), service account secrets "
+                    "rotated (service names), verification of new credentials successful."
+                ),
+                "attack_techniques": ["T1078"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["reset_credentials"],
+            },
+            {
+                "step_number": 6,
+                "title": "Search for persistence mechanisms established under compromised account",
+                "description": (
+                    "Investigate whether the attacker installed persistence under the "
+                    "compromised account: new local/domain admin accounts, scheduled tasks, "
+                    "SSH authorized keys, WMI event subscriptions, or registry run keys. "
+                    "Check for new service principal names (SPNs) added for Kerberoasting, "
+                    "group membership changes, and unusual application registrations."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "New accounts created (names, timestamps, created-by), scheduled tasks "
+                    "added (name, command, user context), registry persistence (key, value), "
+                    "group membership changes, new SPNs registered, app registrations created."
+                ),
+                "attack_techniques": ["T1098", "T1136", "T1053"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence", "isolate_host"],
+            },
+            {
+                "step_number": 7,
+                "title": "Review and revoke excessive permissions granted post-compromise",
+                "description": (
+                    "Audit permissions and group memberships modified after the initial "
+                    "compromise timestamp. Revoke any excessive permissions granted to the "
+                    "compromised account or new accounts created by the attacker. Review "
+                    "cloud IAM roles, Azure AD app permissions, and on-prem privileged "
+                    "group membership for unauthorized changes."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Permission changes reviewed (services/directories checked), excessive "
+                    "permissions revoked (account, permission, revocation timestamp), "
+                    "cloud IAM roles reviewed, privileged group membership restored "
+                    "to baseline."
+                ),
+                "attack_techniques": ["T1098", "T1078.004"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 60,
+                "containment_actions": ["notify_management"],
+            },
+        ],
+        "version": "2.0",
+        "is_builtin": True,
+        "source": "cisa",
+    },
+    {
+        "name": "Malware / Intrusion Response",
+        "description": (
+            "CISA Federal IR Playbook: Response to confirmed malware infection and "
+            "network intrusion including backdoors, C2 beaconing, and dropper execution. "
+            "Prioritises artifact identification, TI correlation, C2 blocking, and host "
+            "isolation before forensic preservation."
         ),
         "trigger_conditions": [
             "malware",
-            "ransomware",
+            "intrusion",
             "backdoor",
+            "C2",
             "T1059",
             "T1105",
+            "T1071",
+            "T1055",
         ],
         "steps": [
             {
                 "step_number": 1,
-                "title": "Hash and document the malware artifact",
+                "title": "Identify malware artifact: hash, path, and digital signature",
                 "description": (
-                    "Compute SHA256 hash of the malware artifact and collect "
-                    "full file metadata: path, size, timestamps (created/modified/accessed), "
-                    "digital signature status."
+                    "Locate the malware artifact on the affected host and collect full "
+                    "file metadata: absolute path, SHA256 hash, file size, created/modified/ "
+                    "accessed timestamps, digital signature status (signed/unsigned/invalid), "
+                    "and originating process. This is the anchor for all subsequent TI "
+                    "lookups and scope determination."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "SHA256 hash, file path, file size, created/modified/accessed "
-                    "timestamps, digital signature (signed/unsigned/invalid)."
+                    "SHA256 hash, full file path, file size, created/modified/accessed "
+                    "timestamps (MACE), digital signature (signer CN or unsigned), "
+                    "process that dropped or executed the artifact (PID, parent, command line)."
                 ),
+                "attack_techniques": ["T1204", "T1059"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 2,
-                "title": "Check for known IOC matches in detection context",
+                "title": "Cross-reference with TI feeds and MITRE to identify malware family",
                 "description": (
-                    "Cross-reference the malware hash, C2 domains/IPs, and process "
-                    "indicators against threat intelligence feeds and MITRE ATT&CK "
-                    "to identify the malware family."
+                    "Submit the malware hash, C2 domains/IPs, and behavioral indicators "
+                    "to threat intelligence platforms (VirusTotal, MITRE ATT&CK, internal "
+                    "TI feeds) to identify the malware family, associated threat actor, "
+                    "and known TTPs. Malware family identification drives the IOC expansion "
+                    "and scope assessment in subsequent steps."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "TI feed matches, known malware family name, "
-                    "associated MITRE techniques, confidence level."
+                    "TI lookup results (platforms queried, hits/misses), malware family "
+                    "identification (confidence level), associated threat actor (if known), "
+                    "related IOCs from TI (hashes, domains, IPs, registry keys)."
                 ),
+                "attack_techniques": ["T1071", "T1105"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 3,
-                "title": "Identify all hosts running the same process/file",
+                "title": "Identify all hosts running the same binary or showing the same network IOCs",
                 "description": (
-                    "Search across the environment for other hosts executing the "
-                    "same binary (by hash), same process name, or same command-line "
-                    "pattern to determine spread."
+                    "Scan the environment for other hosts executing the same binary (by "
+                    "SHA256), same process name with matching command-line patterns, or "
+                    "communicating with the same C2 infrastructure. Use EDR hunt queries "
+                    "and network flow logs to determine the full scope of the intrusion "
+                    "before containment to avoid incomplete isolation."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Complete list of affected hosts: hostname, IP, "
-                    "first seen timestamp, process details."
+                    "Hunt query used, total hosts found with matching indicators (list: "
+                    "hostname, IP, first-seen timestamp), network flow matches (source "
+                    "hosts communicating with C2 IPs/domains), scope assessment summary."
                 ),
+                "attack_techniques": ["T1059", "T1071"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 4,
-                "title": "Collect volatile memory artifacts before isolation",
+                "title": "Identify C2 infrastructure: beacon destination IPs and domains",
                 "description": (
-                    "Before isolating the host, capture volatile evidence: "
-                    "running process list, network connections, memory dump "
-                    "of the malicious process if feasible."
+                    "Identify all command-and-control (C2) destinations the malware "
+                    "communicates with. Analyse network flows, DNS queries, and SSL/TLS "
+                    "certificate metadata for beaconing patterns. Document beacon interval, "
+                    "jitter, protocol, and data volumes. Correlate with threat intelligence "
+                    "to confirm C2 attribution and identify any multi-stage infrastructure."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Process list snapshot, active network connections, "
-                    "memory dump path/hash if captured, timestamp."
+                    "C2 IPs and domains (full list), protocols used (HTTP/HTTPS/DNS/TCP), "
+                    "beacon interval and jitter, TLS certificate details (issuer, CN, "
+                    "SHA256), TI classification of C2 infrastructure."
                 ),
+                "attack_techniques": ["T1071", "T1095"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
             },
             {
                 "step_number": 5,
-                "title": "Isolate affected host(s) — document action",
+                "title": "Block C2 destinations at network perimeter",
                 "description": (
-                    "Isolate the infected host(s) from the network to prevent "
-                    "further spread. Use EDR isolation, VLAN segmentation, "
-                    "or physical disconnection as appropriate."
+                    "Block all identified C2 IPs and domains at the firewall, DNS resolver, "
+                    "and web proxy before host isolation to cut attacker access while "
+                    "preserving the ability to observe additional beaconing from undetected "
+                    "infected hosts. Ensure blocks are logged for later analysis of blocked "
+                    "connection attempts that reveal additional infected hosts."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Host(s) isolated: hostname, IP, isolation method, "
-                    "timestamp, approver, EDR isolation ID if applicable."
+                    "Firewall rules added (C2 IPs blocked, rule IDs, timestamp), DNS "
+                    "sinkhole/block entries (domains blocked), proxy block entries, "
+                    "post-block connection attempts observed (additional hosts identified)."
                 ),
+                "attack_techniques": ["T1071"],
+                "escalation_threshold": "high",
+                "escalation_role": "SOC Manager",
+                "time_sla_minutes": 30,
+                "containment_actions": ["block_ip", "block_domain"],
             },
             {
                 "step_number": 6,
-                "title": "Preserve disk image reference for forensics",
+                "title": "Collect volatile forensics before isolation",
                 "description": (
-                    "Preserve a forensic disk image or reference snapshot for "
-                    "post-incident analysis. Document chain of custody and "
-                    "storage location."
+                    "Before isolating infected hosts from the network, capture volatile "
+                    "forensic evidence: running process list with full command lines, "
+                    "active network connections showing live C2 sessions, loaded DLLs "
+                    "and injected code regions, and if feasible, a memory dump of the "
+                    "malicious process for offline analysis and potential IOC extraction."
                 ),
                 "requires_approval": True,
                 "evidence_prompt": (
-                    "Disk image location, hash (SHA256), acquisition tool, "
-                    "chain of custody custodian, storage path."
+                    "Process list snapshot (PID, parent PID, path, command line, start time), "
+                    "network connections at capture time (remote IPs, ports, state), "
+                    "memory dump path/SHA256 and acquisition method, DLL injection evidence."
                 ),
+                "attack_techniques": ["T1057", "T1049"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 30,
+                "containment_actions": ["preserve_evidence"],
+            },
+            {
+                "step_number": 7,
+                "title": "Isolate infected hosts and disable lateral movement vectors",
+                "description": (
+                    "Isolate all confirmed infected hosts using EDR network isolation, "
+                    "VLAN segmentation, or firewall ACLs. Disable or restrict lateral "
+                    "movement vectors: disable WMI remote execution, restrict RDP/SMB "
+                    "between segments, and disable process injection-susceptible services. "
+                    "Engage external IR team if internal capacity is insufficient."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Hosts isolated (hostname, IP, isolation method, EDR isolation ID, "
+                    "timestamp), lateral movement controls applied (SMB/RDP/WMI restrictions, "
+                    "scope), IR team engaged (firm, contact name, engagement start time)."
+                ),
+                "attack_techniques": ["T1021", "T1055"],
+                "escalation_threshold": "critical",
+                "escalation_role": "CISO",
+                "time_sla_minutes": 30,
+                "containment_actions": ["isolate_host", "engage_ir_team"],
+            },
+            {
+                "step_number": 8,
+                "title": "Preserve forensic disk image and document chain of custody",
+                "description": (
+                    "Preserve a forensic disk image of each isolated infected host before "
+                    "any remediation that could alter evidence. Use forensic acquisition "
+                    "tools (FTK Imager, dd with hash verification) and document chain of "
+                    "custody. Store images in the evidence archive per agency retention "
+                    "policy. This image is required for malware analysis, legal proceedings, "
+                    "and post-incident reporting."
+                ),
+                "requires_approval": True,
+                "evidence_prompt": (
+                    "Disk image acquisition: tool used, image path, SHA256 hash, "
+                    "acquisition start/end time, chain of custody custodian name, "
+                    "storage location and retention period."
+                ),
+                "attack_techniques": ["T1204"],
+                "escalation_threshold": None,
+                "escalation_role": None,
+                "time_sla_minutes": 60,
+                "containment_actions": ["preserve_evidence"],
             },
         ],
-        "version": "1.0",
+        "version": "2.0",
         "is_builtin": True,
+        "source": "cisa",
     },
 ]

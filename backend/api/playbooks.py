@@ -59,30 +59,43 @@ def utcnow_iso() -> str:
 
 async def seed_builtin_playbooks(sqlite_store: SQLiteStore) -> None:
     """
-    Seed the 5 built-in NIST IR playbooks if not already present.
+    Replace NIST IR starter playbooks with CISA-derived playbooks on startup.
 
-    Idempotent: checks for any is_builtin=1 row before inserting.
+    Strategy (Phase 38 — replace-not-supplement):
+      1. Tag existing builtin rows as source='nist' (ALTER TABLE DEFAULT is 'custom').
+      2. Delete all rows where source='nist'.
+      3. Skip INSERT if CISA builtins already seeded (idempotent).
+      4. Insert 4 CISA playbooks (source='cisa').
+
+    Returns 404 for playbook runs that reference deleted NIST playbook IDs —
+    old runs remain as historical records but cannot be advanced.
+
     Called from main.py lifespan after sqlite_store is initialised.
     """
 
     def _seed(store: SQLiteStore) -> int:
+        # Step 1: Tag existing NIST builtins (source DEFAULT was 'custom' before migration)
+        store._conn.execute(
+            "UPDATE playbooks SET source = 'nist' WHERE is_builtin = 1 AND source = 'custom'"
+        )
+        store._conn.commit()
+        # Step 2: Delete old NIST builtins
+        store._conn.execute(
+            "DELETE FROM playbooks WHERE is_builtin = 1 AND source = 'nist'"
+        )
+        store._conn.commit()
+        # Step 3: Check if CISA builtins already seeded
         existing = store._conn.execute(
-            "SELECT COUNT(*) FROM playbooks WHERE is_builtin = 1"
+            "SELECT COUNT(*) FROM playbooks WHERE is_builtin = 1 AND source = 'cisa'"
         ).fetchone()[0]
         if existing > 0:
-            log.info(
-                "Built-in playbooks already seeded",
-                count=existing,
-            )
+            log.info("CISA built-in playbooks already seeded", count=existing)
             return 0
-
-        inserted = 0
+        # Step 4: Insert CISA playbooks
         for pb_data in BUILTIN_PLAYBOOKS:
             store.create_playbook(pb_data)
-            inserted += 1
-
-        log.info("Built-in playbooks seeded", count=inserted)
-        return inserted
+        log.info("CISA built-in playbooks seeded", count=len(BUILTIN_PLAYBOOKS))
+        return len(BUILTIN_PLAYBOOKS)
 
     count = await asyncio.to_thread(_seed, sqlite_store)
     if count > 0:
