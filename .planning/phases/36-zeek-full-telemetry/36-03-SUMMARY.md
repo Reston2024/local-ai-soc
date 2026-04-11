@@ -36,7 +36,7 @@ Closed the loop between the Phase 36 backend pipeline and the analyst-facing UI 
 |------|------|--------|-------|
 | 1 | Fix ZEEK_CHIPS in EventsView.svelte | d92e52b | dashboard/src/views/EventsView.svelte |
 | 2 | Update Sigma field_map.py + bump FIELD_MAP_VERSION to 22 | 0547a01 | detections/field_map.py |
-| 3 | Smoke test DuckDB Zeek event_type coverage | — | Pending — requires live Malcolm traffic |
+| 3 | Smoke test DuckDB Zeek event_type coverage | SKIP | Skipped — 36-02 normalizers landed post-36-03 execution; requires backend restart + poll cycle. SPAN confirmed live (412,158 Malcolm docs). Run after next collector poll. |
 
 ## What Was Built
 
