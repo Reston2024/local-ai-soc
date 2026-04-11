@@ -1,6 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api.ts'
-  import type { TimelineItem, ChatHistoryMessage } from '../lib/api.ts'
+  import type { TimelineItem, ChatHistoryMessage, CARAnalytic } from '../lib/api.ts'
 
   let {
     investigationId = '',
@@ -11,6 +11,9 @@
     onOpenInGraph?: (entityId: string) => void
     onRunPlaybook?: (investigationId: string) => void
   } = $props()
+
+  // Investigation result — holds car_analytics from POST /api/investigate
+  let investigationResult = $state<{ car_analytics?: CARAnalytic[]; detection?: { attack_technique?: string } } | null>(null)
 
   // Timeline state
   let timelineItems = $state<TimelineItem[]>([])
@@ -24,12 +27,20 @@
   let streamingContent = $state('')  // current assistant response being streamed
   let abortController = $state<AbortController | null>(null)
 
-  // Load timeline + chat history when investigationId changes
+  // Load timeline + chat history + investigation result when investigationId changes
   $effect(() => {
     if (!investigationId) return
     loadTimeline()
     loadChatHistory()
+    loadInvestigation()
   })
+
+  async function loadInvestigation() {
+    try {
+      const res = await api.investigate(investigationId)
+      investigationResult = res
+    } catch { /* investigation fetch failure is non-critical — CAR section simply won't appear */ }
+  }
 
   async function loadTimeline() {
     timelineLoading = true
@@ -145,6 +156,35 @@
           </div>
         {/each}
       </div>
+    {/if}
+
+    {#if investigationResult?.car_analytics && investigationResult.car_analytics.length > 0}
+      <section class="inv-section car-analytics-section">
+        <h3 class="inv-section-title">CAR Analytics</h3>
+        <p class="inv-section-subtitle">MITRE Cyber Analytics Repository — validated detection guidance for {investigationResult.detection?.attack_technique ?? 'this technique'}</p>
+        <div class="car-panel">
+          {#each investigationResult.car_analytics as analytic (analytic.analytic_id + analytic.technique_id)}
+            <div class="car-card">
+              <div class="car-card-header">
+                <code class="car-id-badge">{analytic.analytic_id}</code>
+                <span class="car-title">{analytic.title}</span>
+                <span class="car-coverage coverage-{analytic.coverage_level.toLowerCase()}">{analytic.coverage_level}</span>
+                <a href="https://car.mitre.org/analytics/{analytic.analytic_id}/" target="_blank" rel="noopener noreferrer" class="car-link">CAR ↗</a>
+                <a href="https://attack.mitre.org/techniques/{analytic.technique_id}/" target="_blank" rel="noopener noreferrer" class="car-link">ATT&CK ↗</a>
+              </div>
+              {#if analytic.description}
+                <p class="car-description">{analytic.description}</p>
+              {/if}
+              {#if analytic.log_sources}
+                <div class="car-meta"><span class="car-label">Log Sources:</span> {analytic.log_sources}</div>
+              {/if}
+              {#if analytic.pseudocode}
+                <pre class="car-pseudocode">{analytic.pseudocode}</pre>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </section>
     {/if}
   </div>
 
@@ -371,4 +411,25 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .btn-run-playbook:disabled { opacity: 0.4; cursor: not-allowed; }
 .muted { color: var(--muted, #8899aa); font-size: 0.85rem; padding: 1rem; }
 .error { color: #f87171; font-size: 0.85rem; padding: 1rem; }
+
+/* Phase 39: CAR Analytics section */
+.inv-section { margin: 16px; margin-top: 0; }
+.car-analytics-section { padding-top: 8px; border-top: 1px solid var(--border, #2d3a52); }
+.inv-section-title { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.87); margin: 0 0 4px; }
+.inv-section-subtitle { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin: 0 0 12px; }
+.car-panel { display: flex; flex-direction: column; gap: 12px; }
+.car-card { border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 12px; background: rgba(255,255,255,0.02); }
+.car-card-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.car-id-badge { font-family: monospace; font-size: 0.75rem; background: rgba(99,102,241,0.15); color: #a5b4fc; padding: 2px 6px; border-radius: 4px; }
+.car-title { font-weight: 500; font-size: 0.875rem; color: rgba(255,255,255,0.87); flex: 1; }
+.car-coverage { font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.coverage-low { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.coverage-moderate { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.coverage-high { background: rgba(34,197,94,0.15); color: #4ade80; }
+.car-link { font-size: 0.75rem; color: rgba(99,130,246,0.8); text-decoration: none; }
+.car-link:hover { text-decoration: underline; }
+.car-description { font-size: 0.8rem; color: rgba(255,255,255,0.65); margin: 0 0 8px; line-height: 1.5; }
+.car-meta { font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-bottom: 4px; }
+.car-label { color: rgba(255,255,255,0.45); font-weight: 500; }
+.car-pseudocode { font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.4); color: #a5b4fc; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre; margin: 8px 0 0; max-height: 200px; overflow-y: auto; }
 </style>
