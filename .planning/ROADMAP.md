@@ -1337,7 +1337,7 @@ Plans:
 - P36-T11: Update Sigma field_map.py to cover all new Zeek fields
 - P36-T12: End-to-end smoke test — verify all 15+ Zeek log types appear in DuckDB
 
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 36-01-PLAN.md — NormalizedEvent expansion (17 new columns) + conn/weird normalizers + Wave 0 test stubs

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 35-soc-completeness (plan 03 next)
-status: completed
-last_updated: "2026-04-11T05:10:15.858Z"
+current_phase: 36-zeek-full-telemetry (plan 02 next)
+status: in-progress
+last_updated: "2026-04-11T05:10:15.000Z"
 progress:
   total_phases: 37
   completed_phases: 34
   total_plans: 181
-  completed_plans: 184
+  completed_plans: 185
 ---
 
 # Session State
@@ -60,6 +60,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 35-02 complete — triage_results SQLite DDL table + triaged_at idempotent migration + SQLiteStore.save_triage_result() and get_latest_triage() methods. 6 unit tests pass, 953 total unit tests green. Requirement P35-T08 satisfied.
 - 2026-04-10: Plan 35-04 tasks 1-2 complete — GET /api/telemetry/summary (DuckDB+SQLite 24h rollup), OverviewView.svelte (EVE bar chart, 4 scorecards, health, triage, top rules, 60s refresh), triage panel in DetectionsView (15s poll, Run Triage Now), App.svelte defaults to overview. 4 unit tests pass, 962 other tests green. Paused at Task 3 human-verify checkpoint.
 - 2026-04-10: Plan 35-03 complete — backend/api/triage.py (POST /api/triage/run + GET /api/triage/latest + _run_triage() + _auto_triage_loop()), main.py wiring (router + 60s worker task), 7 unit tests (4 API + 3 worker). 962 total unit tests green. Requirements P35-T09, P35-T10 satisfied.
+- 2026-04-11: Plan 36-01 complete (paused at Task 3 human-action checkpoint) — NormalizedEvent expanded 58→75 columns (17 Zeek fields: conn_state/duration/bytes, zeek_notice/weird, ssh, kerberos, ntlm, smb, rdp), _INSERT_SQL and _ECS_MIGRATION_COLUMNS extended, OCSF_CLASS_UID_MAP gets 22 Zeek entries, _normalize_conn() and _normalize_weird() wired into MalcolmCollector poll loop. 978 unit tests green.
 - 2026-04-10: Plan 36-03 tasks 1-2 complete — ZEEK_CHIPS fixed (12 correct event_type values, removed broken 'auth'/'smb', added kerberos_tgs_request/ntlm_auth/rdp/weird/notice, divider says 'Zeek'), field_map.py updated (17 Zeek ECS mappings, FIELD_MAP_VERSION=22, INTEGER_COLUMNS+conn_orig_bytes/conn_resp_bytes/ssh_version). 50 matcher+zeek_fields tests green. Paused at Task 3 human-action checkpoint (DuckDB smoke test requires live Malcolm traffic).
 
 ## Key Decisions
@@ -115,4 +116,8 @@ See: .planning/PROJECT.md
 - **35-03:** severity_summary derived from first non-empty LLM response line (max 200 chars) — simple fast parse, no regex failures
 - **35-03:** Triage router and _auto_triage_loop worker both wrapped in try/except in main.py — graceful degradation if import fails
 - **35-03:** Model name read with getattr(ollama_client, 'model', 'ollama') — fallback if client has no .model attribute
+- **36-01:** Triple-fallback field access for all Zeek normalizers: nested dict -> dotted flat key -> Arkime flat key (mandatory pattern)
+- **36-01:** conn_orig_bytes uses source.bytes OR network.bytes as total fallback (Arkime may not split bytes by direction)
+- **36-01:** All 17 Zeek columns added in single plan to prevent INSERT_SQL/to_duckdb_row desync (learned from prior phases)
+- **36-01:** _normalize_weird always severity=high — unexpected protocol behavior is always immediately actionable
 - **36-03:** Added zeek.conn.orig_bytes and zeek.conn.resp_bytes ECS mappings (17 total vs 15 planned) to satisfy test_integer_columns_are_subset_of_field_map_values assertion — integer columns must have corresponding field map entries
