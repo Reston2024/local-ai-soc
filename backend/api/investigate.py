@@ -80,6 +80,7 @@ async def start_investigation(request: Request) -> JSONResponse:
         "techniques": [],
         "entity_clusters": [],
         "summary": "",
+        "car_analytics": [],    # Phase 39: CAR enrichment for investigation evidence
     }
 
     # -----------------------------------------------------------------------
@@ -92,6 +93,28 @@ async def start_investigation(request: Request) -> JSONResponse:
         detection = await asyncio.to_thread(stores.sqlite.get_detection, detection_id)
         if detection:
             result["detection"] = detection
+
+            # Phase 39: CAR analytics enrichment for investigation evidence panel
+            attack_tech = detection.get("attack_technique")
+            if attack_tech:
+                try:
+                    parent_id = attack_tech.split(".")[0].upper()
+                    car_rows = await asyncio.to_thread(
+                        lambda: stores.sqlite._conn.execute(
+                            """SELECT analytic_id, technique_id, title, description,
+                                      log_sources, analyst_notes, pseudocode,
+                                      coverage_level, platforms
+                               FROM car_analytics
+                               WHERE technique_id = ?
+                               ORDER BY analytic_id ASC""",
+                            (parent_id,),
+                        ).fetchall()
+                    )
+                    result["car_analytics"] = [dict(r) for r in car_rows]
+                except Exception as _exc:
+                    log.debug("investigate: CAR lookup failed — %s", _exc)
+                    result["car_analytics"] = []
+
             matched_ids: list[str] = detection.get("matched_event_ids") or []
             if matched_ids:
                 placeholders = ",".join(["?" for _ in matched_ids])
