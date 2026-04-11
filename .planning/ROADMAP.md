@@ -1393,7 +1393,7 @@ Plans:
 **Added:** 2026-04-11
 **Goal:** Integrate MITRE Cyber Analytics Repository (CAR) analytics as enrichment data for the detection triage workflow. When a Sigma rule fires, surface the matching CAR analytic (detection rationale, log-source requirements, triage guidance) alongside the detection so analysts have validated reasoning rather than just an alert.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 39-01-PLAN.md — Wave 0 TDD stubs: car_analytics.json bundle + 8 RED test stubs for CARStore
