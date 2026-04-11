@@ -95,6 +95,12 @@ async def list_detections(
                     d["matched_event_ids"] = _json.loads(d["matched_event_ids"])
                 except Exception:
                     pass
+            # Phase 39: parse car_analytics JSON blob → list
+            if d.get("car_analytics"):
+                try:
+                    d["car_analytics"] = _json.loads(d["car_analytics"])
+                except Exception:
+                    d["car_analytics"] = None
             result.append(d)
         return result
 
