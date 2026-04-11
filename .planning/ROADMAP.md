@@ -1389,12 +1389,20 @@ Plans:
 - P38-T06: Update PlaybooksView to show ATT&CK technique badges per step and containment action labels
 
 ## Phase 39: MITRE CAR Analytics Integration
-**Status:** TODO
+**Status:** IN PLANNING
 **Added:** 2026-04-11
 **Goal:** Integrate MITRE Cyber Analytics Repository (CAR) analytics as enrichment data for the detection triage workflow. When a Sigma rule fires, surface the matching CAR analytic (detection rationale, log-source requirements, triage guidance) alongside the detection so analysts have validated reasoning rather than just an alert.
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 39-01-PLAN.md — Wave 0 TDD stubs: car_analytics.json bundle + 8 RED test stubs for CARStore
+- [ ] 39-02-PLAN.md — Wave 1: CARStore implementation + startup seed + detections migration + matcher.py CAR lookup
+- [ ] 39-03-PLAN.md — Wave 2: detect.py car_analytics JSON parsing + investigate.py CAR analytics section
+- [ ] 39-04-PLAN.md — Wave 3: Frontend CARAnalytic interface + DetectionsView expandable row + InvestigationView CAR panel + human verify
+
 ### Requirements
-- P39-T01: Ingest CAR analytics catalog (JSON/YAML) into a new DuckDB table
+- P39-T01: Ingest CAR analytics catalog into a new SQLite table (per user decision — not DuckDB)
 - P39-T02: Map Sigma rule ATT&CK technique IDs to CAR analytic IDs at detection time
 - P39-T03: Enrich GET /api/detect response with matched CAR analytic (rationale, log sources, analyst guidance)
 - P39-T04: Update DetectionsView to show CAR analytic panel when analytic is available
