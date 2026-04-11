@@ -1345,8 +1345,9 @@ Plans:
 - [ ] 36-03-PLAN.md — EventsView chip fixes, Sigma field_map Phase 36 additions, smoke test docs
 
 ## Phase 37: Analyst Report Templates
-**Status:** pending context
+**Status:** planned
 **Added:** 2026-04-11
+**Plans:** 3 plans
 **Goal:** Add six pre-populated analyst report templates (Session Log, Security Incident Report, Playbook Execution Log, Post-Incident Review, Threat Intelligence Bulletin, Severity & Confidence Reference) to the Reports section of the dashboard. Each template pre-fills from live SOC Brain data (DuckDB event counts, SQLite detection/investigation/playbook records, TIP IOCs, git hash, triage results) and downloads as PDF. Templates live in a new "Templates" tab within the existing ReportsView.
 
 ### Requirements
@@ -1358,5 +1359,11 @@ Plans:
 - P37-T06: Severity & Confidence Reference — static reference card, always current (no data pre-fill); reflects current known open gaps from PROJECT.md; downloadable as PDF
 - P37-T07: Templates tab in ReportsView — list of 6 template cards, each with description and "Generate" button; date/case selectors where needed; PDF download after generation
 - P37-T08: backend/api/report_templates.py — 6 POST endpoints generating HTML → PDF via WeasyPrint, same pattern as existing reports.py; store generated templates in SQLite reports table with type="template_*"
+
+
+Plans:
+- [ ] 37-01-PLAN.md -- Wave 0 test stubs + Report.type widening + Session Log / Incident Report / Playbook Log endpoints
+- [ ] 37-02-PLAN.md -- PIR + TI Bulletin + Severity Reference endpoints (all 6 HTML builders complete)
+- [ ] 37-03-PLAN.md -- Frontend Templates tab (2x3 card grid, Generate-to-Download, shortcut buttons)
 
 *Phase 36 added: 2026-04-09. Hardware arrived 2026-04-10 (Netgear GS308E). SPAN port configured: port 1 → port 5 (GMKtec/Ubuntu). Activate once Zeek logs confirmed flowing in Malcolm OpenSearch (P36-T01).*
