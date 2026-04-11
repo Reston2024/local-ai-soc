@@ -67,7 +67,7 @@ async def telemetry_summary(request: Request) -> JSONResponse:
         type_rows = await stores.duckdb.fetch_all(
             """SELECT event_type, COUNT(*) AS cnt
                FROM normalized_events
-               WHERE timestamp > datetime('now', '-1 day')
+               WHERE timestamp > NOW() - INTERVAL 1 DAY
                GROUP BY event_type ORDER BY cnt DESC"""
         )
         event_type_counts = {r[0] or "unknown": int(r[1]) for r in type_rows}
@@ -75,7 +75,7 @@ async def telemetry_summary(request: Request) -> JSONResponse:
 
         ioc_rows = await stores.duckdb.fetch_all(
             """SELECT COUNT(*) FROM normalized_events
-               WHERE timestamp > datetime('now', '-1 day') AND ioc_matched = true"""
+               WHERE timestamp > NOW() - INTERVAL 1 DAY AND ioc_matched = true"""
         )
         ioc_matches = int(ioc_rows[0][0]) if ioc_rows else 0
     except Exception as exc:

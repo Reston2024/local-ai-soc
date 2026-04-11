@@ -347,11 +347,11 @@ async def get_investigation_summary(alert_id: str, request: Request):
     )
 
     try:
-        import os
-
         import httpx
-        ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-        model = os.getenv("OLLAMA_MODEL", "qwen3:14b")
+
+        from backend.core.config import settings as _settings
+        ollama_host = _settings.OLLAMA_HOST
+        model = _settings.OLLAMA_MODEL
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
                 f"{ollama_host}/api/generate",

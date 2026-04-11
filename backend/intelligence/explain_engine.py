@@ -101,14 +101,15 @@ def _parse_explanation_sections(raw_text: str) -> dict[str, str]:
 async def generate_explanation(
     investigation: dict,
     ollama_client: Any,
-    model: str = "qwen3:14b",
+    model: str | None = None,
 ) -> dict[str, str]:
     """Generate a three-section explanation grounded in evidence.
 
     Args:
         investigation: The investigation result dict (from /api/investigate or assembled dict).
         ollama_client: An OllamaClient instance.
-        model: Ollama model to use (default: qwen3:14b per user decision).
+        model: Ollama model to use. Defaults to None, which uses ollama_client.model (the
+               configured OLLAMA_MODEL from settings). Pass an explicit string to override.
 
     Returns:
         Dict with keys: what_happened, why_it_matters, recommended_next_steps.
@@ -126,10 +127,12 @@ async def generate_explanation(
         f"[List 3-5 concrete containment and investigation actions based on the evidence]"
     )
 
+    # Use the configured model if none explicitly provided. Passing model=None to
+    # OllamaClient.generate() causes it to fall back to self.model (OLLAMA_MODEL setting).
     raw_response = await ollama_client.generate(
         prompt=prompt,
         system=_SYSTEM_PROMPT,
         temperature=0.1,
-        model=model,
+        model=model,  # None → OllamaClient uses its configured self.model
     )
     return _parse_explanation_sections(raw_response or "")
