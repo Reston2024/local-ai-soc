@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 36-zeek-full-telemetry (plan 02 next)
+current_phase: 36-zeek-full-telemetry (plan 03 next)
 status: in-progress
 last_updated: "2026-04-11T05:10:15.000Z"
 progress:
@@ -61,6 +61,7 @@ See: .planning/PROJECT.md
 - 2026-04-10: Plan 35-04 tasks 1-2 complete — GET /api/telemetry/summary (DuckDB+SQLite 24h rollup), OverviewView.svelte (EVE bar chart, 4 scorecards, health, triage, top rules, 60s refresh), triage panel in DetectionsView (15s poll, Run Triage Now), App.svelte defaults to overview. 4 unit tests pass, 962 other tests green. Paused at Task 3 human-verify checkpoint.
 - 2026-04-10: Plan 35-03 complete — backend/api/triage.py (POST /api/triage/run + GET /api/triage/latest + _run_triage() + _auto_triage_loop()), main.py wiring (router + 60s worker task), 7 unit tests (4 API + 3 worker). 962 total unit tests green. Requirements P35-T09, P35-T10 satisfied.
 - 2026-04-11: Plan 36-01 complete (paused at Task 3 human-action checkpoint) — NormalizedEvent expanded 58→75 columns (17 Zeek fields: conn_state/duration/bytes, zeek_notice/weird, ssh, kerberos, ntlm, smb, rdp), _INSERT_SQL and _ECS_MIGRATION_COLUMNS extended, OCSF_CLASS_UID_MAP gets 22 Zeek entries, _normalize_conn() and _normalize_weird() wired into MalcolmCollector poll loop. 978 unit tests green.
+- 2026-04-11: Plan 36-02 complete — 21 remaining Zeek normalizers implemented (http/ssl/x509/files/notice, kerberos/ntlm/ssh, smb_mapping/smb_files/rdp/dce_rpc, dhcp/dns_zeek/software/known_host/known_service, sip/ftp/smtp/socks/tunnel/pe). All wired into _poll_and_ingest() dispatch loop. 989 unit tests green.
 - 2026-04-10: Plan 36-03 tasks 1-2 complete — ZEEK_CHIPS fixed (12 correct event_type values, removed broken 'auth'/'smb', added kerberos_tgs_request/ntlm_auth/rdp/weird/notice, divider says 'Zeek'), field_map.py updated (17 Zeek ECS mappings, FIELD_MAP_VERSION=22, INTEGER_COLUMNS+conn_orig_bytes/conn_resp_bytes/ssh_version). 50 matcher+zeek_fields tests green. Paused at Task 3 human-action checkpoint (DuckDB smoke test requires live Malcolm traffic).
 
 ## Key Decisions
@@ -121,3 +122,5 @@ See: .planning/PROJECT.md
 - **36-01:** All 17 Zeek columns added in single plan to prevent INSERT_SQL/to_duckdb_row desync (learned from prior phases)
 - **36-01:** _normalize_weird always severity=high — unexpected protocol behavior is always immediately actionable
 - **36-03:** Added zeek.conn.orig_bytes and zeek.conn.resp_bytes ECS mappings (17 total vs 15 planned) to satisfy test_integer_columns_are_subset_of_field_map_values assertion — integer columns must have corresponding field map entries
+- **36-02:** dns_zeek cursor uses 'malcolm.zeek_dns_zeek.last_timestamp' to avoid collision with EVE DNS 'malcolm.zeek_dns.last_timestamp'
+- **36-02:** Dispatch loop pattern (list of 4-tuples) is DRY — all 21 types share identical ingest+count logic
