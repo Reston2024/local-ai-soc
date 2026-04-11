@@ -173,7 +173,7 @@ export interface PlaybookRunsListResponse {
 
 export interface Report {
   id: string
-  type: 'investigation' | 'executive'
+  type: string
   title: string
   subject_id: string | null
   period_start: string | null
@@ -183,6 +183,16 @@ export interface Report {
 
 export interface ReportsListResponse {
   reports: Report[]
+}
+
+export interface TemplateMeta {
+  investigations: number
+  closed_cases: number
+  playbook_runs: number
+  actors: number
+  actor_list: Array<{ name: string; group_id: string }>
+  case_list: Array<{ case_id: string; title: string; case_status: string }>
+  run_list: Array<{ run_id: string; playbook_id: string; status: string; started_at: string }>
 }
 
 export interface MitreTechniqueEntry {
@@ -683,6 +693,23 @@ export const api = {
     /** Returns a URL for ZIP download — uses getDownloadUrl for auth token injection. */
     complianceDownloadUrl: (framework: 'nist-csf' | 'thehive') =>
       getDownloadUrl(`/api/reports/compliance?framework=${framework}`),
+
+    templateMeta: () =>
+      request<TemplateMeta>('/api/reports/template/meta'),
+
+    generateTemplate: (type: string, params?: Record<string, string>) => {
+      const typeToPath: Record<string, string> = {
+        template_session_log: '/api/reports/template/session-log',
+        template_incident: `/api/reports/template/incident/${encodeURIComponent(params?.case_id ?? '')}`,
+        template_playbook_log: `/api/reports/template/playbook-log/${encodeURIComponent(params?.run_id ?? '')}`,
+        template_pir: `/api/reports/template/pir/${encodeURIComponent(params?.case_id ?? '')}`,
+        template_ti_bulletin: '/api/reports/template/ti-bulletin',
+        template_severity_ref: '/api/reports/template/severity-ref',
+      }
+      const path = typeToPath[type] ?? '/api/reports/template/session-log'
+      const body = type === 'template_ti_bulletin' ? JSON.stringify({ actor_name: params?.actor_name ?? '' }) : undefined
+      return request<Report>(path, { method: 'POST', body })
+    },
   },
 
   analytics: {
