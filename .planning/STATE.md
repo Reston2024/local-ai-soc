@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 39-mitre-car-analytics-integration (IN PROGRESS — Plan 02 complete)
+current_phase: 39-mitre-car-analytics-integration (IN PROGRESS — Plan 03 complete)
 status: in-progress
-last_updated: "2026-04-11T23:23:51.000Z"
+last_updated: "2026-04-11T23:28:10.215Z"
 progress:
   total_phases: 41
   completed_phases: 37
   total_plans: 191
-  completed_plans: 194
+  completed_plans: 195
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — COMPLETE
-**Current phase:** 39-mitre-car-analytics-integration (IN PROGRESS — Plan 01 complete)
+**Current phase:** 39-mitre-car-analytics-integration (IN PROGRESS — Plan 03 complete)
 **Previous phase:** 38-cisa-playbook-content — COMPLETE
-**Status:** Ready to plan
+**Status:** In progress
 
 ## Session Log
 
+- 2026-04-11: Plan 39-03 complete — car_analytics TEXT blob deserialized to list in detect.py _query() (json.loads, null on error); investigate.py adds car_analytics top-level key with CAR SQLite lookup by attack_technique (subtechnique suffix stripped, silent fallback to []). 1020 unit tests green.
 - 2026-04-11: Plan 39-02 complete — CARStore class (DDL, bulk_insert, analytic_count, get_analytics_for_technique), seed_car_analytics(), car_analytics column migration on detections table, CARStore wired in main.py lifespan, CAR lookup in matcher.py _sync_save(). 1020 unit tests green.
 - 2026-04-11: Plan 39-01 complete — CAR analytics JSON bundle (158 entries, 102 YAML files) + 8 RED TDD stubs for CARStore. All stubs SKIP cleanly. 1012 existing tests unaffected.
 - 2026-04-11: Plan 38-01 complete — 14 TDD Wave 0 stubs for Phase 38 CISA playbook content. 3 test files cover PlaybookStep model extension (4 stubs), CISA seeding/NIST replacement (4 stubs), CISA content quality (6 stubs). 11 fail RED, 3 vacuously pass. 996 non-Phase-38 tests still green.
@@ -75,6 +76,9 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **39-03:** car_analytics parsing in detect.py uses None fallback on exception — distinguishes malformed data from absent data (consistent with plan spec)
+- **39-03:** CAR lookup uses attack_technique.split('.')[0].upper() to strip subtechnique suffix before querying car_analytics.technique_id (T1059.001 → T1059)
+- **39-03:** Silent except in investigate.py CAR lookup — missing table (fresh install before seed) logs at DEBUG, returns []
 - **39-02:** CARStore uses direct sqlite3.Connection param (same pattern as AttackStore) — testable without SQLiteStore wrapper
 - **39-02:** CAR lookup inline in _sync_save() (RESEARCH.md Pitfall 5 Option b) — avoids changing SigmaMatcher constructor; gracefully degrades on missing table
 - **39-02:** asyncio.ensure_future for seed_car_analytics() — fire-and-forget, matches bootstrap_attack_data pattern
