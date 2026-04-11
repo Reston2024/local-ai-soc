@@ -110,8 +110,9 @@
     <span class="chip-divider" title="Zeek telemetry — available once managed switch SPAN port is configured">Phase 36</span>
     {#each ZEEK_CHIPS as chip}
       <button
-        class="chip"
+        class="chip {selectedChip === chip.value ? 'chip-active' : ''}"
         title="Zeek {chip.label} logs"
+        onclick={() => { selectedChip = chip.value }}
       >
         {chip.label}
       </button>

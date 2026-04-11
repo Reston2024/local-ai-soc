@@ -168,8 +168,8 @@
       {#if triageRunning}<span class="triage-spinner"></span>{/if}
       <button
         class="btn btn-sm"
-        onclick={(e) => { e.stopPropagation(); runTriageNow() }}
-        disabled={triageRunning}
+        style={triageRunning ? 'cursor: wait; opacity: 0.6;' : ''}
+        onclick={(e) => { e.stopPropagation(); if (!triageRunning) runTriageNow() }}
       >
         Run Triage Now
       </button>
