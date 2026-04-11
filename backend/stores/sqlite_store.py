@@ -395,6 +395,27 @@ class SQLiteStore:
         except Exception:
             pass  # column already exists — idempotent
 
+        # Phase 38 migrations — CISA playbook source/escalation columns
+        try:
+            self._conn.execute(
+                "ALTER TABLE playbooks ADD COLUMN source TEXT NOT NULL DEFAULT 'custom'"
+            )
+        except Exception:
+            pass  # column already exists — idempotent
+        try:
+            self._conn.execute(
+                "ALTER TABLE playbook_runs ADD COLUMN escalation_acknowledged TEXT NOT NULL DEFAULT '[]'"
+            )
+        except Exception:
+            pass  # column already exists — idempotent
+        try:
+            self._conn.execute(
+                "ALTER TABLE playbook_runs ADD COLUMN active_case_id TEXT"
+            )
+        except Exception:
+            pass  # column already exists — idempotent
+        self._conn.commit()
+
         # Graph schema version seeding (Phase 26)
         # Step 1: default for pre-existing installs — INSERT OR IGNORE leaves existing untouched
         try:
@@ -1032,16 +1053,17 @@ class SQLiteStore:
         version = data.get("version", "1.0")
         name = data["name"]
         description = data.get("description", "")
+        source = data.get("source", "custom")
 
         self._conn.execute(
             """
             INSERT INTO playbooks
                 (playbook_id, name, description, trigger_conditions, steps,
-                 version, is_builtin, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 version, is_builtin, source, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (playbook_id, name, description, trigger_conditions, steps,
-             version, is_builtin, now),
+             version, is_builtin, source, now),
         )
         self._conn.commit()
         log.debug("Playbook created", playbook_id=playbook_id, name=name)

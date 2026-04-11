@@ -26,6 +26,12 @@ class PlaybookStep(BaseModel):
     description: str
     requires_approval: bool = True
     evidence_prompt: Optional[str] = None
+    # Phase 38 — CISA enrichment fields
+    attack_techniques: list[str] = []
+    escalation_threshold: Optional[Literal["critical", "high"]] = None
+    escalation_role: Optional[str] = None
+    time_sla_minutes: Optional[int] = None
+    containment_actions: list[str] = []
 
 
 class Playbook(BaseModel):
@@ -80,3 +86,4 @@ class PlaybookRunAdvance(BaseModel):
 
     analyst_note: str = ""
     outcome: Literal["confirmed", "skipped"] = "confirmed"
+    containment_action: Optional[str] = None
