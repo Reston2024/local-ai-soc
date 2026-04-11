@@ -24,6 +24,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from backend.api.reports import _render_pdf, _strip_pdf_b64
 from backend.core.logging import get_logger
@@ -1120,5 +1121,322 @@ async def generate_playbook_log_report(run_id: str, request: Request) -> JSONRes
     log.info("Playbook log report generated", report_id=report_id, run_id=run_id)
     return JSONResponse(
         content={"id": report_id, "type": "template_playbook_log", "title": title, "created_at": now_iso},
+        status_code=201,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/reports/template/pir/{case_id}
+# ---------------------------------------------------------------------------
+
+
+@router.post("/template/pir/{case_id}", status_code=201)
+async def generate_pir_report(case_id: str, request: Request) -> JSONResponse:
+    """POST /api/reports/template/pir/{case_id} — generate a Post-Incident Review report."""
+    stores = request.app.state.stores
+    now_iso = _utcnow_iso()
+
+    # Fetch case (blank if missing)
+    case: dict | None = None
+    try:
+        case = await asyncio.to_thread(stores.sqlite.get_investigation_case, case_id)
+    except Exception as exc:
+        log.warning("pir: case fetch failed", case_id=case_id, error=str(exc))
+
+    # Fetch detections
+    detections: list[dict] = []
+    try:
+        def _fetch_pir_detections(conn: Any) -> list[dict]:
+            try:
+                rows = conn.execute(
+                    "SELECT * FROM detections WHERE investigation_id = ? LIMIT 50", (case_id,)
+                ).fetchall()
+                return [dict(r) for r in rows]
+            except Exception:
+                return []
+
+        detections = await asyncio.to_thread(_fetch_pir_detections, stores.sqlite._conn)
+    except Exception as exc:
+        log.warning("pir: detections fetch failed", error=str(exc))
+
+    # Fetch ATT&CK techniques joined via detection_techniques
+    techniques: list[dict] = []
+    try:
+        def _fetch_pir_techniques(conn: Any, inv_id: str) -> list[dict]:
+            try:
+                det_ids_rows = conn.execute(
+                    "SELECT id FROM detections WHERE investigation_id = ? LIMIT 50", (inv_id,)
+                ).fetchall()
+                if not det_ids_rows:
+                    return []
+                det_ids = [r[0] for r in det_ids_rows]
+                placeholders = ",".join("?" for _ in det_ids)
+                rows = conn.execute(
+                    f"SELECT DISTINCT at.technique_id, at.name, at.tactic "
+                    f"FROM detection_techniques dt "
+                    f"JOIN attack_techniques at ON dt.technique_id = at.technique_id "
+                    f"WHERE dt.detection_id IN ({placeholders})",
+                    det_ids,
+                ).fetchall()
+                return [{"technique_id": r[0], "name": r[1], "tactic": r[2]} for r in rows]
+            except Exception:
+                return []
+
+        techniques = await asyncio.to_thread(_fetch_pir_techniques, stores.sqlite._conn, case_id)
+    except Exception as exc:
+        log.warning("pir: techniques fetch failed", error=str(exc))
+
+    # Fetch playbook runs
+    playbook_runs: list[dict] = []
+    try:
+        def _fetch_pir_runs(conn: Any, inv_id: str) -> list[dict]:
+            try:
+                rows = conn.execute(
+                    "SELECT * FROM playbook_runs WHERE investigation_id = ? ORDER BY started_at DESC",
+                    (inv_id,),
+                ).fetchall()
+                return [dict(r) for r in rows]
+            except Exception:
+                return []
+
+        playbook_runs = await asyncio.to_thread(_fetch_pir_runs, stores.sqlite._conn, case_id)
+    except Exception as exc:
+        log.warning("pir: playbook_runs fetch failed", error=str(exc))
+
+    # Latest triage
+    triage: dict | None = None
+    try:
+        triage = await asyncio.to_thread(stores.sqlite.get_latest_triage)
+    except Exception as exc:
+        log.warning("pir: get_latest_triage failed", error=str(exc))
+
+    case_title = case.get("title", case_id) if case else case_id
+    title = f"Post-Incident Review — {case_title}"
+    html = _pir_html(
+        title=title,
+        case=case,
+        detections=detections,
+        techniques=techniques,
+        playbook_runs=playbook_runs,
+        triage=triage,
+    )
+
+    pdf_bytes: bytes = await asyncio.to_thread(_render_pdf, html)
+    content_json = json.dumps({"pdf_b64": base64.b64encode(pdf_bytes).decode("ascii")})
+
+    report_id = str(uuid4())
+    await asyncio.to_thread(
+        stores.sqlite.insert_report,
+        {
+            "id": report_id,
+            "type": "template_pir",
+            "title": title,
+            "subject_id": case_id,
+            "period_start": None,
+            "period_end": None,
+            "content_json": content_json,
+            "created_at": now_iso,
+        },
+    )
+
+    log.info("PIR report generated", report_id=report_id, case_id=case_id)
+    return JSONResponse(
+        content={"id": report_id, "type": "template_pir", "title": title, "created_at": now_iso},
+        status_code=201,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/reports/template/ti-bulletin
+# ---------------------------------------------------------------------------
+
+
+class _TiBulletinRequest(BaseModel):
+    """Request body for POST /api/reports/template/ti-bulletin."""
+
+    actor_name: str = ""
+
+
+@router.post("/template/ti-bulletin", status_code=201)
+async def generate_ti_bulletin_report(
+    request: Request,
+    body: _TiBulletinRequest = _TiBulletinRequest(),
+) -> JSONResponse:
+    """
+    POST /api/reports/template/ti-bulletin
+
+    Generates a TI Bulletin pre-filled with actor TTPs, techniques, and IOCs.
+    Request body (JSON): { "actor_name": "APT28" }  (optional — blank bulletin if omitted)
+    """
+    stores = request.app.state.stores
+    now_iso = _utcnow_iso()
+
+    # Accept actor_name from JSON body
+    try:
+        req_json = await request.json()
+        actor_name = str(req_json.get("actor_name", "") or "").strip()
+    except Exception:
+        actor_name = (body.actor_name or "").strip()
+
+    def _fetch_ti_data(conn: Any, aname: str) -> dict:
+        """Fetch actor info, techniques, IOCs, and assets in one synchronous call."""
+        # Actor lookup — exact first, then fuzzy prefix
+        actor_row = None
+        try:
+            actor_row = conn.execute(
+                "SELECT * FROM attack_groups WHERE name = ?", (aname,)
+            ).fetchone()
+        except Exception:
+            pass
+        if not actor_row and aname:
+            try:
+                actor_row = conn.execute(
+                    "SELECT * FROM attack_groups WHERE LOWER(name) LIKE LOWER(?)||'%'", (aname,)
+                ).fetchone()
+            except Exception:
+                pass
+
+        # Techniques for this actor
+        group_techniques: list[dict] = []
+        if actor_row:
+            try:
+                stix_id = actor_row[0]  # stix_id is first column
+                rows = conn.execute(
+                    "SELECT at.technique_id, at.name, at.tactic "
+                    "FROM attack_group_techniques agt "
+                    "JOIN attack_techniques at ON agt.technique_id = at.technique_id "
+                    "WHERE agt.stix_group_id = ?",
+                    (stix_id,),
+                ).fetchall()
+                group_techniques = [{"technique_id": r[0], "name": r[1], "tactic": r[2]} for r in rows]
+            except Exception:
+                pass
+
+        # IOCs with fuzzy actor_tag match
+        ioc_rows: list[dict] = []
+        if aname:
+            try:
+                rows = conn.execute(
+                    "SELECT ioc_value, ioc_type, confidence, feed_source, malware_family "
+                    "FROM ioc_store "
+                    "WHERE LOWER(actor_tag) LIKE LOWER(?)||'%' AND ioc_status = 'active' "
+                    "ORDER BY confidence DESC LIMIT 100",
+                    (aname,),
+                ).fetchall()
+                ioc_rows = [
+                    {"indicator": r[0], "ioc_type": r[1], "confidence": r[2],
+                     "source_feed": r[3], "malware_family": r[4]}
+                    for r in rows
+                ]
+            except Exception:
+                pass
+
+        # Assets top 20 by risk_score
+        asset_rows: list[dict] = []
+        try:
+            rows = conn.execute(
+                "SELECT ip, hostname, tag, risk_score FROM asset_store ORDER BY risk_score DESC LIMIT 20"
+            ).fetchall()
+            asset_rows = [
+                {"ip_address": r[0], "hostname": r[1], "asset_type": r[2], "risk_score": r[3]}
+                for r in rows
+            ]
+        except Exception:
+            pass
+
+        actor_info = dict(actor_row) if actor_row else None
+        return {
+            "actor_info": actor_info,
+            "group_techniques": group_techniques,
+            "ioc_rows": ioc_rows,
+            "asset_rows": asset_rows,
+        }
+
+    ti_data = await asyncio.to_thread(_fetch_ti_data, stores.sqlite._conn, actor_name)
+
+    # Latest triage
+    triage: dict | None = None
+    try:
+        triage = await asyncio.to_thread(stores.sqlite.get_latest_triage)
+    except Exception as exc:
+        log.warning("ti-bulletin: get_latest_triage failed", error=str(exc))
+
+    actor_display = actor_name or "Unknown"
+    title = f"Threat Intelligence Bulletin — {actor_display}"
+    html = _ti_bulletin_html(
+        title=title,
+        actor_name=actor_display,
+        actor_info=ti_data["actor_info"],
+        group_techniques=ti_data["group_techniques"],
+        ioc_rows=ti_data["ioc_rows"],
+        asset_rows=ti_data["asset_rows"],
+        triage=triage,
+    )
+
+    pdf_bytes: bytes = await asyncio.to_thread(_render_pdf, html)
+    content_json = json.dumps({"pdf_b64": base64.b64encode(pdf_bytes).decode("ascii")})
+
+    report_id = str(uuid4())
+    await asyncio.to_thread(
+        stores.sqlite.insert_report,
+        {
+            "id": report_id,
+            "type": "template_ti_bulletin",
+            "title": title,
+            "subject_id": actor_name or "unknown",
+            "period_start": None,
+            "period_end": None,
+            "content_json": content_json,
+            "created_at": now_iso,
+        },
+    )
+
+    log.info("TI bulletin generated", report_id=report_id, actor_name=actor_name)
+    return JSONResponse(
+        content={"id": report_id, "type": "template_ti_bulletin", "title": title, "created_at": now_iso},
+        status_code=201,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/reports/template/severity-ref
+# ---------------------------------------------------------------------------
+
+
+@router.post("/template/severity-ref", status_code=201)
+async def generate_severity_ref_report(request: Request) -> JSONResponse:
+    """
+    POST /api/reports/template/severity-ref
+
+    Generates a static Severity & Confidence Reference Card PDF.
+    No request body. No data queries.
+    """
+    stores = request.app.state.stores
+    now_utc = datetime.now(timezone.utc)
+    now_iso = now_utc.isoformat()
+    title = f"Severity & Confidence Reference — {now_utc.strftime('%Y-%m-%d')}"
+
+    html = _severity_ref_html()
+    pdf_bytes: bytes = await asyncio.to_thread(_render_pdf, html)
+    content_json = json.dumps({"pdf_b64": base64.b64encode(pdf_bytes).decode("ascii")})
+
+    report_id = str(uuid4())
+    await asyncio.to_thread(
+        stores.sqlite.insert_report,
+        {
+            "id": report_id,
+            "type": "template_severity_ref",
+            "title": title,
+            "subject_id": None,
+            "period_start": None,
+            "period_end": None,
+            "content_json": content_json,
+            "created_at": now_iso,
+        },
+    )
+
+    log.info("Severity reference report generated", report_id=report_id)
+    return JSONResponse(
+        content={"id": report_id, "type": "template_severity_ref", "title": title, "created_at": now_iso},
         status_code=201,
     )
