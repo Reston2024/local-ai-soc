@@ -25,11 +25,12 @@ import asyncio
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 
 from backend.core.logging import get_logger
 from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
@@ -325,6 +326,45 @@ async def advance_step(
         step_n=step_n,
         outcome=body.outcome,
         new_status=new_status,
+    )
+    return JSONResponse(content=updated)
+
+
+class PlaybookRunPatch(BaseModel):
+    """Request body for PATCH /api/playbook-runs/{run_id} — partial update."""
+    active_case_id: Optional[str] = None
+
+
+@runs_router.patch("/{run_id}", response_model=None)
+async def patch_playbook_run(
+    run_id: str, body: PlaybookRunPatch, request: Request
+) -> JSONResponse:
+    """
+    PATCH /api/playbook-runs/{run_id}
+
+    Partial update for a playbook run. Currently supports setting active_case_id.
+    Returns 404 if run not found.
+    """
+    stores = request.app.state.stores
+
+    run: dict[str, Any] | None = await asyncio.to_thread(
+        stores.sqlite.get_playbook_run, run_id
+    )
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    if body.active_case_id is not None:
+        def _set_case_id(store: SQLiteStore) -> None:
+            store._conn.execute(
+                "UPDATE playbook_runs SET active_case_id = ? WHERE run_id = ?",
+                (body.active_case_id, run_id),
+            )
+            store._conn.commit()
+
+        await asyncio.to_thread(_set_case_id, stores.sqlite)
+
+    updated: dict[str, Any] | None = await asyncio.to_thread(
+        stores.sqlite.get_playbook_run, run_id
     )
     return JSONResponse(content=updated)
 

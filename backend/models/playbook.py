@@ -47,6 +47,7 @@ class Playbook(BaseModel):
     version: str = "1.0"
     created_at: str
     is_builtin: bool = False
+    source: str = "custom"  # Phase 38: 'cisa' | 'custom'
 
 
 class PlaybookCreate(BaseModel):
@@ -74,6 +75,7 @@ class PlaybookRun(BaseModel):
     completed_at: Optional[str] = None
     steps_completed: list[dict] = []
     analyst_notes: str = ""
+    active_case_id: Optional[str] = None  # Phase 38: set on escalation acknowledge
 
 
 class PlaybookRunAdvance(BaseModel):

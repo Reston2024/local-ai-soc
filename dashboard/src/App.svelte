@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import './app.css'
-  import { api } from './lib/api.ts'
+  import { api, type Playbook } from './lib/api.ts'
   import EventsView from './views/EventsView.svelte'
   import DetectionsView from './views/DetectionsView.svelte'
   import GraphView from './views/GraphView.svelte'
@@ -52,9 +52,17 @@
   }
 
   let playbookInvestigationId = $state<string>('')
+  let playbookTriggerTechnique = $state<string>('')
 
   function handleRunPlaybook(investigationId: string) {
     playbookInvestigationId = investigationId
+    playbookTriggerTechnique = ''
+    currentView = 'playbooks'
+  }
+
+  function handleSuggestPlaybook(pb: Playbook, detectionId: string, technique: string) {
+    playbookInvestigationId = detectionId
+    playbookTriggerTechnique = technique
     currentView = 'playbooks'
   }
 
@@ -300,7 +308,7 @@
     {#if currentView === 'overview'}
       <OverviewView healthStatus={healthStatus} networkDevices={networkDevices} />
     {:else if currentView === 'detections'}
-      <DetectionsView onInvestigate={handleInvestigate} onPostureUpdate={handlePostureUpdate} />
+      <DetectionsView onInvestigate={handleInvestigate} onPostureUpdate={handlePostureUpdate} onSuggestPlaybook={handleSuggestPlaybook} />
     {:else if currentView === 'investigation'}
       <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
         <div style="display:flex;justify-content:flex-end;padding:6px 16px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg-secondary);">
@@ -331,7 +339,12 @@
     {:else if currentView === 'hunting'}
       <HuntingView />
     {:else if currentView === 'playbooks'}
-      <PlaybooksView investigationId={playbookInvestigationId} onGenerateReport={handleGenerateReport} />
+      <PlaybooksView
+        investigationId={playbookInvestigationId}
+        activeInvestigationId={playbookInvestigationId}
+        triggerTechnique={playbookTriggerTechnique}
+        onGenerateReport={handleGenerateReport}
+      />
     {:else if currentView === 'reports'}
       <ReportsView initialTab={reportsInitialTab} initialCaseId={reportsInitialCaseId} initialRunId={reportsInitialRunId} />
     {:else if currentView === 'assets'}

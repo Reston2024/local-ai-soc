@@ -130,6 +130,12 @@ export interface PlaybookStep {
   description: string
   requires_approval: boolean
   evidence_prompt: string | null
+  // Phase 38 additions
+  attack_techniques: string[]
+  escalation_threshold: 'critical' | 'high' | null
+  escalation_role: string | null
+  time_sla_minutes: number | null
+  containment_actions: string[]
 }
 
 export interface Playbook {
@@ -141,6 +147,7 @@ export interface Playbook {
   version: string
   is_builtin: boolean
   created_at: string
+  source: 'cisa' | 'custom'  // Phase 38 addition
 }
 
 export interface PlaybookStepResult {
@@ -159,6 +166,7 @@ export interface PlaybookRun {
   completed_at: string | null
   steps_completed: PlaybookStepResult[]
   analyst_notes: string
+  active_case_id: string | null  // Phase 38: set on escalation acknowledge
 }
 
 export interface PlaybooksListResponse {
@@ -669,6 +677,11 @@ export const api = {
       }),
     cancel: (runId: string) =>
       request<PlaybookRun>(`/api/playbook-runs/${runId}/cancel`, { method: 'PATCH' }),
+    patchRun: (runId: string, body: { active_case_id?: string | null }) =>
+      request<PlaybookRun>(`/api/playbook-runs/${runId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
   },
 
   reports: {
