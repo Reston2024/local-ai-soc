@@ -1414,9 +1414,15 @@ Plans:
 **Goal:** Integrate Atomic Red Team test catalog so analysts can run ATT&CK-mapped atomic tests against the local network and immediately see whether the SOC Brain detects them. Closes the loop between threat simulation and detection validation — confirms Sigma rules fire, triage logic runs, and the investigation pipeline produces real output for real behaviors.
 
 ### Requirements
-- P40-T01: Ingest Atomic Red Team test catalog (atomics YAML) into DuckDB
+- P40-T01: Ingest Atomic Red Team test catalog (atomics YAML) into SQLite (storage override: consistent with all prior catalogs)
 - P40-T02: Add GET /api/atomics endpoint returning ATT&CK-mapped test catalog
 - P40-T03: Add AtomicsView tab to dashboard — browse tests by technique, see detection coverage status
 - P40-T04: Add "Run Atomic" button that generates the PowerShell invocation command for the selected test
-- P40-T05: Add POST /api/atomics/validate — after running a test, check whether matching events/detections appeared in DuckDB within a time window; return pass/fail with evidence
+- P40-T05: Add POST /api/atomics/validate — after running a test, check whether matching events/detections appeared within a 5-minute window; return pass/fail with evidence
 - P40-T06: Detection coverage badge per ATT&CK technique — green (atomic confirmed detection), yellow (rule exists, not validated), red (no coverage)
+
+### Plans
+- [ ] 40-01-PLAN.md — Wave 0: TDD stubs (test_atomics_store.py + test_atomics_api.py) + atomics.json bundle generation
+- [ ] 40-02-PLAN.md — Wave 1: AtomicsStore class + startup seed + main.py wiring + GET /api/atomics endpoint
+- [ ] 40-03-PLAN.md — Wave 2: POST /api/atomics/validate endpoint + validation_results persistence
+- [ ] 40-04-PLAN.md — Wave 3: Frontend — AtomicsView (grouped/collapsible, copy buttons, badges) + App.svelte wiring
