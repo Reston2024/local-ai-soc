@@ -1494,9 +1494,17 @@ Plans:
 - [ ] 43-04-PLAN.md — Frontend: CORR filter chip, correlation type badge, expand-to-event-IDs panel
 
 ## Phase 44: Analyst Feedback Loop
-**Status:** TODO
+**Status:** IN PROGRESS
 **Added:** 2026-04-12
-**Goal:** Make analyst approve/reject decisions feed back into detection quality. When an analyst marks a detection True Positive or False Positive, embed the event sequence in Chroma with a label, update an SGDClassifier via partial_fit(), and surface similar confirmed incidents in future investigations. Closes the learning loop — the system gets measurably better with each analyst decision.
+**Goal:** Make analyst approve/reject decisions feed back into detection quality. When an analyst marks a detection True Positive or False Positive, embed the event sequence in Chroma with a label, update a River LogisticRegression classifier via learn_one(), and surface similar confirmed incidents in future investigations. Closes the learning loop — the system gets measurably better with each analyst decision.
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 44-01-PLAN.md — Wave 0 TDD stubs: FeedbackStore and FeedbackClassifier contracts
+- [ ] 44-02-PLAN.md — Wave 1 backend: River classifier, SQLite feedback table, POST/GET feedback API, main.py wiring
+- [ ] 44-03-PLAN.md — Wave 2 metrics: KpiSnapshot 5 new fields + api.ts typed interfaces
+- [ ] 44-04-PLAN.md — Wave 3 frontend: verdict buttons (DetectionsView), similar cases (InvestigationView), feedback KPIs (OverviewView)
 
 ### Requirements
 - P44-T01: Add TP/FP verdict buttons to DetectionsView per detection row
@@ -1504,7 +1512,6 @@ Plans:
 - P44-T03: SGDClassifier.partial_fit() called on each verdict — persisted to disk between sessions
 - P44-T04: Similar incident surfacing in InvestigationView — Chroma k-NN search against confirmed cases, show top 3 matches with similarity score and verdict
 - P44-T05: Feedback stats in MetricsView — TP rate, FP rate, model accuracy trend over time
-
 ## Phase 45: Agentic Investigation
 **Status:** TODO
 **Added:** 2026-04-12
