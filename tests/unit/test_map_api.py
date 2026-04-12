@@ -14,7 +14,7 @@ pytestmark = pytest.mark.unit
 
 # Guard: skip entire module if map API not yet implemented
 try:
-    from backend.api.map import WINDOW_TO_SECONDS, detect_direction, build_map_stats
+    from backend.api.map import WINDOW_TO_SECONDS, detect_direction, build_map_stats, parse_ipsum_line
     _MAP_AVAILABLE = True
 except ImportError:
     _MAP_AVAILABLE = False
