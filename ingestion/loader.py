@@ -357,12 +357,14 @@ class IngestionLoader:
         ioc_store: IocStore | None = None,
         asset_store: AssetStore | None = None,
         anomaly_scorer: AnomalyScorer | None = None,
+        correlation_engine=None,
     ) -> None:
         self._stores = stores
         self._ollama = ollama_client
         self._ioc_store: IocStore | None = ioc_store
         self._asset_store: AssetStore | None = asset_store
         self._anomaly_scorer: AnomalyScorer | None = anomaly_scorer
+        self._correlation_engine = correlation_engine
 
     # ------------------------------------------------------------------
     # Public API
@@ -589,6 +591,19 @@ class IngestionLoader:
         edges_created, graph_errors = await self._write_graph(stored_events)
         result.edges_created = edges_created
         result.errors.extend(graph_errors)
+
+        # Step 5: Correlation detection (Phase 43)
+        if self._correlation_engine is not None:
+            try:
+                corr_detections = await self._correlation_engine.run()
+                if corr_detections:
+                    await self._correlation_engine.save_detections(corr_detections)
+                    log.debug(
+                        "Correlation detections saved",
+                        count=len(corr_detections),
+                    )
+            except Exception as exc:
+                log.warning("Correlation engine error (non-fatal)", error=str(exc))
 
         return result
 

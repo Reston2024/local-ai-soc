@@ -441,6 +441,13 @@ class SQLiteStore:
             pass  # column already exists — idempotent
         self._conn.commit()
 
+        # Phase 43 migration — entity_key for correlation engine dedup
+        try:
+            self._conn.execute("ALTER TABLE detections ADD COLUMN entity_key TEXT")
+            self._conn.commit()
+        except Exception:
+            pass  # column already exists — idempotent
+
         # Phase 41: ipsum + Tor tables (idempotent — CREATE IF NOT EXISTS)
         self._conn.execute(_IPSUM_DDL)
         self._conn.execute(_TOR_DDL)
@@ -743,6 +750,7 @@ class SQLiteStore:
         attack_tactic: Optional[str] = None,
         explanation: Optional[str] = None,
         case_id: Optional[str] = None,
+        entity_key: Optional[str] = None,
     ) -> None:
         """
         Insert a detection record.
@@ -757,19 +765,22 @@ class SQLiteStore:
             attack_tactic:      MITRE ATT&CK tactic name.
             explanation:        LLM-generated or rule-derived explanation text.
             case_id:            Associated case.
+            entity_key:         Phase 43 correlation dedup key (e.g. src_ip value).
         """
         self._conn.execute(
             """
             INSERT OR REPLACE INTO detections
                 (id, rule_id, rule_name, severity, matched_event_ids,
-                 attack_technique, attack_tactic, explanation, case_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 attack_technique, attack_tactic, explanation, case_id, created_at,
+                 entity_key)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 detection_id, rule_id, rule_name, severity,
                 json.dumps(matched_event_ids),
                 attack_technique, attack_tactic, explanation, case_id,
                 _now_iso(),
+                entity_key,
             ),
         )
         self._conn.commit()

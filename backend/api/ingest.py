@@ -63,6 +63,7 @@ def _get_loader(request: Request) -> IngestionLoader:
         ollama_client=request.app.state.ollama,
         ioc_store=getattr(request.app.state, "ioc_store", None),
         anomaly_scorer=getattr(request.app.state, "_anomaly_scorer_for_ingester", None),
+        correlation_engine=getattr(request.app.state, "_correlation_engine_for_ingester", None),
     )
 
 

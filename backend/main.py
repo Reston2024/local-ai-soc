@@ -337,6 +337,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.anomaly_scorer = None
         app.state._anomaly_scorer_for_ingester = None
 
+    # 7g. Phase 43: Correlation engine (port scan, brute force, beaconing)
+    try:
+        from detections.correlation_engine import CorrelationEngine as _CorrelationEngine
+        from pathlib import Path as _CEPath
+        _correlation_engine = _CorrelationEngine(stores=stores)
+        app.state.correlation_engine = _correlation_engine
+        app.state._correlation_engine_for_ingester = _correlation_engine
+        # Load chain definitions from YAML (stubbed until Plan 43-03 creates the file)
+        _chains_path = _CEPath(__file__).parent.parent / "detections" / "correlation_chains.yml"
+        if _chains_path.exists():
+            _chain_count = _correlation_engine.load_chains(str(_chains_path))
+            log.info("Correlation chains loaded (Phase 43)", count=_chain_count)
+        log.info("CorrelationEngine initialised (Phase 43)")
+    except Exception as exc:
+        log.warning("CorrelationEngine failed to initialise — correlation detection disabled: %s", exc)
+        app.state.correlation_engine = None
+        app.state._correlation_engine_for_ingester = None
+
     # 7c. Phase 35: Auto-triage background worker (60s poll)
     try:
         from backend.api.triage import _auto_triage_loop
