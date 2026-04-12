@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 41-threat-map-overhaul — Plan 04 complete
+current_phase: 42-streaming-behavioral-profiles — Plan 01 complete
 status: executing
-last_updated: "2026-04-12T13:17:46.000Z"
+last_updated: "2026-04-12T14:51:52.351Z"
 progress:
   total_phases: 48
-  completed_phases: 39
-  total_plans: 199
-  completed_plans: 203
+  completed_phases: 40
+  total_plans: 203
+  completed_plans: 205
 ---
 
 # Session State
@@ -22,11 +22,12 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 41-threat-map-overhaul — Plan 04 complete
-**Previous phase:** 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
-**Status:** Active — executing Phase 41
+**Previous phase:** 41-threat-map-overhaul — COMPLETE (all 4 plans done)
+**Status:** Active — executing Phase 42
 
 ## Session Log
 
+- 2026-04-12: Plan 42-01 complete — Wave 0 TDD stubs for Phase 42 anomaly scoring: test_anomaly_scorer.py (8 stubs, all SKIP) for AnomalyScorer/entity_key; test_anomaly_api.py (6 stubs: 5 SKIP + 1 RED FAIL on missing anomaly_score DuckDB column). 1044 existing tests unaffected. Contracts defined for Plans 42-02 (AnomalyScorer) and 42-03 (anomaly API + DuckDB schema).
 - 2026-04-12: Plan 41-04 complete — MapView.svelte full rewrite (581 lines): LeafletMarkerCluster, LAN node (indigo circleMarker), directional arc lines + arrowheads via leaflet-polylinedecorator, threat-signal coloring (red/orange/yellow/blue), time window buttons [1h][6h][24h][7d], header stats bar, classification side panel (CLASSIFICATION first with ip_type badge + ipsum tier). 3 npm packages installed. 1044 unit tests green. Human-verify auto-approved (auto_advance=true).
 - 2026-04-12: Plan 41-03 complete — SQLiteStore gains ipsum_blocklist/tor_exit_nodes tables + 5 classification columns on osint_cache + get_ipsum_tier/get_tor_exit/bulk_insert_ipsum/bulk_insert_tor_exits/set_classification_cache methods; OsintService gains _ipapi_is/_tor_exit_check/_refresh_tor_exit_list/_ipsum_check/_refresh_ipsum + proxy/hosting/mobile fields in _geo_ipapi; _parse_ipsum_line_local module helper avoids circular import. 1044 unit tests green.
 - 2026-04-12: Plan 41-02 complete — backend/api/map.py (WINDOW_TO_SECONDS, detect_direction, parse_ipsum_line, build_map_stats, GET /api/map/data), map router wired in main.py, TypeScript MapIpInfo/MapFlow/MapStats/MapData interfaces + api.map.getData() in api.ts. 1033 unit tests green.
@@ -85,6 +86,8 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **42-01:** test_anomaly_score_in_duckdb uses async def with start_write_worker pattern — consistent with pytest-asyncio auto mode and existing test_duckdb_store.py fixture
+- **42-01:** Per-test @_skip_api decorator for API stubs — allows test_anomaly_score_in_duckdb to run RED while 5 API stubs skip cleanly (DuckDB available; anomaly router not yet available)
 - **41-04:** Sequential await imports in onMount — Leaflet must resolve before markercluster/polylinedecorator attach; Promise.all causes "L.markerClusterGroup is not a function"
 - **41-04:** arcLayer is plain L.layerGroup (not clusterGroup) — arcs must not be clustered, only circleMarkers cluster
 - **41-04:** side-panel positioned absolute over map canvas — avoids map invalidateSize jitter from flex sibling resize
