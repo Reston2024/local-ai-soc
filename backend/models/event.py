@@ -176,6 +176,8 @@ class NormalizedEvent(BaseModel):
     smb_action: Optional[str] = None            # [72] zeek.smb_files.action
     rdp_cookie: Optional[str] = None            # [73] zeek.rdp.cookie
     rdp_security_protocol: Optional[str] = None # [74] zeek.rdp.security_protocol
+    # Phase 42: Online anomaly scoring (River HalfSpaceTrees)
+    anomaly_score: Optional[float] = None       # [75] float in [0.0, 1.0] or None
 
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
@@ -260,6 +262,8 @@ class NormalizedEvent(BaseModel):
             [72] smb_action
             [73] rdp_cookie
             [74] rdp_security_protocol
+            --- Phase 42: anomaly scoring ---
+            [75] anomaly_score
         """
         def _ts(v: Union[datetime, str, None]) -> Optional[str]:
             if v is None:
@@ -347,6 +351,8 @@ class NormalizedEvent(BaseModel):
             self.smb_action,
             self.rdp_cookie,
             self.rdp_security_protocol,
+            # Phase 42: anomaly scoring (position 75)
+            self.anomaly_score,
         )
 
     def to_embedding_text(self) -> str:
