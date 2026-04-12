@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 39-mitre-car-analytics-integration (IN PROGRESS — Plan 03 complete)
+current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 01 complete)
 status: planning
-last_updated: "2026-04-12T03:42:16.524Z"
+last_updated: "2026-04-12T08:30:00.000Z"
 progress:
   total_phases: 41
   completed_phases: 38
-  total_plans: 191
-  completed_plans: 196
+  total_plans: 195
+  completed_plans: 197
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — COMPLETE
-**Current phase:** 39-mitre-car-analytics-integration (IN PROGRESS — Plan 03 complete)
-**Previous phase:** 38-cisa-playbook-content — COMPLETE
+**Current phase:** 40-atomic-red-team-validation (IN PROGRESS — Plan 01 complete)
+**Previous phase:** 39-mitre-car-analytics-integration — COMPLETE
 **Status:** Ready to plan
 
 ## Session Log
 
+- 2026-04-12: Plan 40-01 complete — Wave 0 TDD stubs (8 SKIP) for AtomicsStore + atomics API, ART atomics.json bundle generated (1773 entries, 328 techniques). #{variable} markers preserved. 1020 unit tests green.
 - 2026-04-11: Plan 39-03 complete — car_analytics TEXT blob deserialized to list in detect.py _query() (json.loads, null on error); investigate.py adds car_analytics top-level key with CAR SQLite lookup by attack_technique (subtechnique suffix stripped, silent fallback to []). 1020 unit tests green.
 - 2026-04-11: Plan 39-02 complete — CARStore class (DDL, bulk_insert, analytic_count, get_analytics_for_technique), seed_car_analytics(), car_analytics column migration on detections table, CARStore wired in main.py lifespan, CAR lookup in matcher.py _sync_save(). 1020 unit tests green.
 - 2026-04-11: Plan 39-01 complete — CAR analytics JSON bundle (158 entries, 102 YAML files) + 8 RED TDD stubs for CARStore. All stubs SKIP cleanly. 1012 existing tests unaffected.
@@ -77,6 +78,11 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **40-01:** AtomicsStore TDD stubs use skipif-importerror guard — 8 stubs SKIP cleanly (not ERROR) until Plan 02 implements the class
+- **40-01:** #{variable} markers in ART command strings preserved as-is — substitution is runner responsibility at execution time
+- **40-01:** executor = test.get('executor', {}) or {} — handles None executor in ART YAML (Pitfall 3)
+- **40-01:** deps = test.get('dependencies') or [] — handles None dependencies (not empty list) in ART YAML (Pitfall 7)
+- **40-01:** generate_bundle exits 0 with warning on empty bundle (network unavailable) — offline-safe for CI without GitHub access
 - **39-04:** loadInvestigation() in InvestigationView calls api.investigate(investigationId) — keeps CAR section self-sufficient without prop drilling or App.svelte changes
 - **39-04:** expandedId keyed on d.id ?? d.rule_id ?? '' — consistent with existing getDetectionId() helper in DetectionsView
 - **39-04:** CAR card CSS car-* classes duplicated in DetectionsView and InvestigationView — Svelte component scoping makes duplication idiomatic; no shared stylesheet exists
