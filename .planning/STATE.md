@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 02 complete)
-status: planning
-last_updated: "2026-04-12T08:25:00.000Z"
+current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 03 complete)
+status: in-progress
+last_updated: "2026-04-12T08:40:00.000Z"
 progress:
   total_phases: 41
   completed_phases: 38
   total_plans: 195
-  completed_plans: 198
+  completed_plans: 199
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — COMPLETE
-**Current phase:** 40-atomic-red-team-validation (IN PROGRESS — Plan 01 complete)
+**Current phase:** 40-atomic-red-team-validation (IN PROGRESS — Plan 03 complete)
 **Previous phase:** 39-mitre-car-analytics-integration — COMPLETE
 **Status:** Ready to plan
 
 ## Session Log
 
+- 2026-04-12: Plan 40-03 complete — POST /api/atomics/validate endpoint with 5-minute window detection check (3-way technique matching: exact/LIKE/parent), ValidateRequest Pydantic model, _check_detection_sync() helper, verdict+detection_id persistence via asyncio.to_thread. All 3 API tests pass; 1028 total unit tests green.
 - 2026-04-12: Plan 40-02 complete — AtomicsStore (DDL, bulk_insert, list_techniques, validation CRUD), seed_atomics(), GET /api/atomics with three-tier coverage + Invoke-AtomicTest strings. Test stubs fixed (SimpleNamespace, auth override, _VALIDATE_AVAILABLE guard). 1026 unit tests green.
 - 2026-04-12: Plan 40-01 complete — Wave 0 TDD stubs (8 SKIP) for AtomicsStore + atomics API, ART atomics.json bundle generated (1773 entries, 328 techniques). #{variable} markers preserved. 1020 unit tests green.
 - 2026-04-11: Plan 39-03 complete — car_analytics TEXT blob deserialized to list in detect.py _query() (json.loads, null on error); investigate.py adds car_analytics top-level key with CAR SQLite lookup by attack_technique (subtechnique suffix stripped, silent fallback to []). 1020 unit tests green.
@@ -79,6 +80,8 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **40-03:** _check_detection_sync uses hasattr(row, "keys") guard — handles both sqlite3.Row (row_factory set) and plain tuple rows; row["id"] vs row[0] fallback
+- **40-03:** VALIDATION_WINDOW_SECONDS=300 module-level constant + 3-way technique matching (exact T1059.001, LIKE T1059.%, parent T1059) from RESEARCH.md Pattern 3 Pitfall 5
 - **40-02:** AtomicsStore uses sqlite_store._conn fallback to atomics_store._conn in get_atomics handler — allows test isolation without lifespan
 - **40-02:** test_atomics_api.py refactored: SimpleNamespace for sqlite_store, dependency_overrides for auth, _VALIDATE_AVAILABLE guard for Plan 03 stubs
 - **40-02:** _VALIDATE_AVAILABLE checks router.routes for /atomics/validate path — activates validate tests only when Plan 03 registers POST endpoint
