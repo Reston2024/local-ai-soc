@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 43-sigma-v2-correlation-rules — in progress (plans 01+02 work complete, 43-03 pending)
-status: in_progress
-last_updated: "2026-04-12T17:45:00.000Z"
+current_phase: 43 — in progress (plan 01 of N complete)
+status: completed
+last_updated: "2026-04-12T19:01:41.307Z"
 progress:
   total_phases: 48
-  completed_phases: 42
-  total_plans: 203
-  completed_plans: 212
+  completed_phases: 41
+  total_plans: 207
+  completed_plans: 210
 ---
 
 # Session State
@@ -23,10 +23,18 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 43 — in progress (plan 01 of N complete)
 **Previous phase:** 42-streaming-behavioral-profiles — COMPLETE ✅
-**Status:** Plan 43-01 complete — Wave 0 TDD stubs locked
+**Status:** Plan 43-02 complete — CorrelationEngine core implementation done
+
+## Key Decisions
+
+- **43-02:** entity_key added to DetectionRecord model as Optional[str] for correlation dedup key
+- **43-02:** save_detections() uses getattr(det, entity_key, None) for backward compat with existing callers
+- **43-02:** Step 5 in ingest_events() is non-fatal (try/except) to prevent correlation errors aborting ingest
+- **43-02:** ANOMALY_DEDUP_WINDOW_MINUTES added to config alongside CORRELATION_* settings
 
 ## Session Log
 
+- 2026-04-12: Plan 43-02 complete — CorrelationEngine with port scan (_detect_port_scans, 15+ dst_ports/60s), brute force (_detect_brute_force, 10+ auth failures/60s), and beaconing (_detect_beaconing, CV < 0.3 over 20+ connections) via DuckDB window queries. entity_key on DetectionRecord + SQLite migration + insert_detection() updated. Step 5 in ingest_events(). main.py block 7g + ingest.py _get_loader() wired. 6 behavioral tests GREEN, 1064 total unit tests, zero regressions.
 - 2026-04-12: Plan 43-01 + 43-02 effectively complete — linter ran concurrently and pre-implemented CorrelationEngine (port scan/brute force/beaconing) alongside Wave 0 stubs. test_correlation_engine.py has 6 GREEN behavioral tests + 3 SKIP (chain/ingest = Plan 43-03). 1064 total unit tests passing, 0 regressions. Wiring in main.py/loader.py/ingest.py pending commit (Plan 43-02 scope).
 - 2026-04-12: Phase 42 VERIFIED — gap fix: GET /api/anomaly/trend now returns {trend: [...], entity_key: "..."} instead of plain list. 14/14 unit tests green. ROADMAP.md and STATE.md updated. Phase 42 COMPLETE ✅
 - 2026-04-12: Plan 42-04 complete — AnomalyView.svelte (250 lines: score bar table, entity profile sparkline, 24h trend chart), api.ts anomaly interfaces (AnomalyEvent/EntityProfile/ScoreTrendResponse) + api.anomaly group (list/entityProfile/trend), App.svelte wired with 'anomaly' View type and Anomaly Profiles nav item in Intelligence group. TypeScript compiles clean. Auto-approved human-verify (auto_advance=true). Phase 42 COMPLETE.
