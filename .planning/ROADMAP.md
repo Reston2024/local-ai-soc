@@ -1485,6 +1485,14 @@ Plans:
 - P43-T05: Surface correlation hits as detections with correlated_event_ids evidence list
 - P43-T06: CorrelationView or correlation panel in DetectionsView showing matched event sequences
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 43-01-PLAN.md — TDD Wave 0 stubs: test contract stubs for correlation engine behaviors
+- [ ] 43-02-PLAN.md — Core correlation engine: port scan, brute force, beaconing detection + config + wiring
+- [ ] 43-03-PLAN.md — Chain detection: YAML config, multi-stage chain matching, two pre-built chains
+- [ ] 43-04-PLAN.md — Frontend: CORR filter chip, correlation type badge, expand-to-event-IDs panel
+
 ## Phase 44: Analyst Feedback Loop
 **Status:** TODO
 **Added:** 2026-04-12
