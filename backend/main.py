@@ -844,6 +844,13 @@ def create_app() -> FastAPI:
     except Exception as exc:
         log.warning("Atomics router not available: %s", exc)
 
+    try:
+        from backend.api.map import router as map_router
+        app.include_router(map_router, prefix="/api/map", tags=["map"])
+        log.info("Map router mounted at /api/map")
+    except Exception as exc:
+        log.warning("Map router not available: %s", exc)
+
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
     # -----------------------------------------------------------------------

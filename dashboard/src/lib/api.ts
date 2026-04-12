@@ -555,6 +555,47 @@ export interface OperatorRotateResponse {
   api_key: string   // one-time display
 }
 
+// ---------------------------------------------------------------------------
+// Phase 41 — Threat Map interfaces
+// ---------------------------------------------------------------------------
+
+export interface MapIpInfo {
+  lat: number | null
+  lon: number | null
+  country: string | null
+  country_iso: string | null
+  city: string | null
+  asn: string | null
+  ip_type: 'tor' | 'vpn' | 'datacenter' | 'residential' | 'isp' | null
+  ipsum_tier: number | null
+  is_tor: boolean
+  is_proxy: boolean
+  is_datacenter: boolean
+}
+
+export interface MapFlow {
+  src_ip: string
+  dst_ip: string
+  conn_count: number
+  direction: 'inbound' | 'outbound' | 'lateral'
+}
+
+export interface MapStats {
+  total_ips: number
+  tor_count: number
+  vpn_count: number
+  datacenter_count: number
+  top_src_country: string | null
+  top_src_country_conn_count: number
+  flow_count: number
+}
+
+export interface MapData {
+  flows: MapFlow[]
+  ips: Record<string, MapIpInfo>
+  stats: MapStats
+}
+
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
 /** Returns the current API token from localStorage or Vite env fallback. */
@@ -973,6 +1014,11 @@ export const api = {
       request<{ result: TriageResult | null }>('/api/triage/latest'),
     run: (): Promise<TriageRunResult> =>
       request<TriageRunResult>('/api/triage/run', { method: 'POST' }),
+  },
+
+  map: {
+    getData: (window: string = '24h'): Promise<MapData> =>
+      request<MapData>(`/api/map/data?window=${window}`),
   },
 }
 
