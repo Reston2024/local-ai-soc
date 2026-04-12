@@ -45,10 +45,29 @@ def test_direction_detection():
     assert detect_direction("8.8.8.8", "1.1.1.1") == "lateral"
 
 
+def test_ipsum_parser():
+    """parse_ipsum_line parses tab-separated ipsum lines and skips comments/blanks."""
+    assert parse_ipsum_line("1.2.3.4\t3") == ("1.2.3.4", 3)
+    assert parse_ipsum_line("# comment") is None
+    assert parse_ipsum_line("") is None
+    assert parse_ipsum_line("5.6.7.8\t1") == ("5.6.7.8", 1)
+
+
 def test_stats_aggregation():
     """build_map_stats returns dict with all required stat keys."""
-    # Stub: will be implemented in Plan 02
-    pytest.skip("stub — Plan 02 implements build_map_stats()")
+    ip_data = {
+        "1.2.3.4": {"ip_type": "tor", "country": "US", "_conn_total": 5},
+        "5.6.7.8": {"ip_type": "vpn", "country": "DE", "_conn_total": 3},
+        "9.10.11.12": {"ip_type": "datacenter", "country": "US", "_conn_total": 7},
+    }
+    stats = build_map_stats(list(ip_data.keys()), ip_data, 10)
+    assert stats["total_ips"] == 3
+    assert stats["tor_count"] == 1
+    assert stats["vpn_count"] == 1
+    assert stats["datacenter_count"] == 1
+    assert stats["flow_count"] == 10
+    assert stats["top_src_country"] == "US"
+    assert "top_src_country_conn_count" in stats
 
 
 def test_map_endpoint_response_shape():
