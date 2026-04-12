@@ -1450,9 +1450,17 @@ Plans:
 - [ ] 41-04-PLAN.md — Wave 3: Frontend — MapView.svelte rewrite (MarkerCluster, arc lines, LAN node, classification panel)
 
 ## Phase 42: Streaming Behavioral Profiles
-**Status:** TODO
+**Status:** PLANNED
 **Added:** 2026-04-12
 **Goal:** Give every event an anomaly score at ingest time using online ML that learns continuously without batch retraining. Every (hostname, process_name) entity gets a behavioral baseline that updates with each new event via River HalfSpaceTrees. High-deviation events surface in the detections pipeline regardless of whether any Sigma rule fires — closing the gap between known-bad detection and novel-behavior detection.
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 42-01-PLAN.md — Wave 0 RED test stubs (AnomalyScorer + anomaly API)
+- [ ] 42-02-PLAN.md — River integration, per-entity model persistence, anomaly_score in DuckDB
+- [ ] 42-03-PLAN.md — Anomaly API endpoints + synthetic detection creation
+- [ ] 42-04-PLAN.md — AnomalyView dashboard tab (events table, sparklines, trend chart)
 
 ### Requirements
 - P42-T01: Integrate River HalfSpaceTrees into the ingest pipeline — score every event against its entity's model at ingest time
