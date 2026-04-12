@@ -380,9 +380,9 @@
         <tbody>
           {#each detections as d}
             <tr
-              onclick={() => { const id = d.id ?? d.rule_id ?? ''; expandedId = expandedId === id ? null : id }}
+              onclick={() => { const id = getDetectionId(d); expandedId = expandedId === id ? null : id }}
               style="cursor: pointer;"
-              class:row-expanded={expandedId === (d.id ?? d.rule_id ?? '')}
+              class:row-expanded={expandedId === getDetectionId(d)}
             >
               <td class="mono ts">{fmtTime(d.fired_at)}</td>
               <td class="rule-name">
@@ -414,7 +414,7 @@
               </td>
               <td class="event-count">{getEventCount(d)}</td>
               <td class="actions-cell">
-                <span class="expand-chevron" title="Toggle CAR analytics">{expandedId === (d.id ?? d.rule_id ?? '') ? '▾' : '▸'}</span>
+                <span class="expand-chevron" title="Toggle CAR analytics">{expandedId === getDetectionId(d) ? '▾' : '▸'}</span>
                 {#if onInvestigate}
                   <button
                     class="btn-investigate"
@@ -438,7 +438,7 @@
                 {/if}
               </td>
             </tr>
-            {#if expandedId === (d.id ?? d.rule_id ?? '')}
+            {#if expandedId === getDetectionId(d)}
               <tr class="car-panel-row">
                 <td colspan="99" class="car-panel-cell">
                   {#if d.car_analytics && d.car_analytics.length > 0}

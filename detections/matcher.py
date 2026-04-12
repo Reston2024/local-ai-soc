@@ -662,7 +662,11 @@ class SigmaMatcher:
             for tag in rule.tags:
                 tag_str = str(tag).lower()
                 if tag_str.startswith("attack.t"):
-                    attack_technique = str(tag).split(".")[-1].upper()
+                    # Preserve full technique ID: attack.t1059.001 → T1059.001
+                    parts = tag_str.split(".")
+                    tech_parts = [p for p in parts if p.startswith("t") and len(p) >= 5]
+                    if tech_parts:
+                        attack_technique = ".".join(tech_parts).upper()
                 elif tag_str.startswith("attack."):
                     attack_tactic = str(tag).split(".")[-1].replace("_", " ").title()
 
