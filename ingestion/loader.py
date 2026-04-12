@@ -237,14 +237,45 @@ def _extract_features(event: NormalizedEvent) -> dict:
     }
 
 
-def _apply_anomaly_scoring(event: NormalizedEvent, scorer: AnomalyScorer) -> NormalizedEvent:
-    """Score event and learn from it. Mutates event.anomaly_score. Sync - called from asyncio.to_thread."""
+def _apply_anomaly_scoring(
+    event: NormalizedEvent,
+    scorer: AnomalyScorer,
+    sqlite_store=None,
+    anomaly_threshold: float = 0.7,
+) -> NormalizedEvent:
+    """Score event and learn from it. Mutates event.anomaly_score. Sync — called from asyncio.to_thread.
+
+    When score > anomaly_threshold and sqlite_store is provided, creates a synthetic
+    detection row (rule_id prefixed with 'anomaly-') so high-anomaly events surface
+    in DetectionsView regardless of Sigma rules.
+    """
     key = _anomaly_entity_key(event.src_ip or event.hostname, event.process_name)
     features = _extract_features(event)
     score = scorer.score_one(features, entity=key)
     scorer.learn_one(features, entity=key)
     scorer.save_model(key)
     event.anomaly_score = score
+
+    # Synthetic detection for high-anomaly events (P42-T04)
+    if score > anomaly_threshold and sqlite_store is not None:
+        try:
+            detection_id = str(_uuid4())
+            key_str = f"{key[0]}__{key[1]}"
+            severity = "high" if score > 0.85 else "medium"
+            sqlite_store.insert_detection(
+                detection_id,
+                f"anomaly-{key_str}",
+                f"Anomaly: {key[0]} / {key[1]} (score={score:.2f})",
+                severity,
+                [event.event_id],
+                None,  # attack_technique
+                None,  # attack_tactic
+                f"Behavioral anomaly score {score:.2f} exceeds threshold {anomaly_threshold}",
+                None,  # case_id
+            )
+        except Exception as exc:
+            log.warning("Failed to create anomaly detection", error=str(exc))
+
     return event
 
 
@@ -499,6 +530,15 @@ class IngestionLoader:
         ioc_store_ref = self._ioc_store
         asset_store_ref = self._asset_store
         anomaly_scorer_ref = self._anomaly_scorer
+        sqlite_store_ref = self._stores.sqlite
+
+        # Resolve ANOMALY_THRESHOLD from settings (fallback to 0.7 if unavailable)
+        anomaly_threshold_val: float = 0.7
+        try:
+            from backend.core.config import settings as _settings
+            anomaly_threshold_val = _settings.ANOMALY_THRESHOLD
+        except Exception:
+            pass
 
         if ioc_store_ref is not None or asset_store_ref is not None or anomaly_scorer_ref is not None:
 
@@ -510,7 +550,11 @@ class IngestionLoader:
                     if asset_store_ref is not None:
                         _apply_asset_upsert(e, asset_store_ref)
                     if anomaly_scorer_ref is not None:
-                        e = _apply_anomaly_scoring(e, anomaly_scorer_ref)
+                        e = _apply_anomaly_scoring(
+                            e, anomaly_scorer_ref,
+                            sqlite_store=sqlite_store_ref,
+                            anomaly_threshold=anomaly_threshold_val,
+                        )
                     result.append(e)
                 return result
 

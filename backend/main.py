@@ -325,6 +325,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     asyncio.ensure_future(seed_atomics(atomics_store))
     log.info("Atomics seed task scheduled (Phase 40)")
 
+    # 7f. Phase 42: Anomaly scoring — River HalfSpaceTrees per-entity behavioral profiling
+    try:
+        from backend.services.anomaly.scorer import AnomalyScorer as _AnomalyScorer
+        _anomaly_scorer = _AnomalyScorer(model_dir=settings.ANOMALY_MODEL_DIR)
+        app.state.anomaly_scorer = _anomaly_scorer
+        app.state._anomaly_scorer_for_ingester = _anomaly_scorer
+        log.info("AnomalyScorer initialised (Phase 42)", model_dir=settings.ANOMALY_MODEL_DIR)
+    except Exception as exc:
+        log.warning("AnomalyScorer failed to initialise — anomaly scoring disabled: %s", exc)
+        app.state.anomaly_scorer = None
+        app.state._anomaly_scorer_for_ingester = None
+
     # 7c. Phase 35: Auto-triage background worker (60s poll)
     try:
         from backend.api.triage import _auto_triage_loop
@@ -850,6 +862,13 @@ def create_app() -> FastAPI:
         log.info("Map router mounted at /api/map")
     except Exception as exc:
         log.warning("Map router not available: %s", exc)
+
+    try:
+        from backend.api.anomaly import router as anomaly_router
+        app.include_router(anomaly_router)
+        log.info("Anomaly router mounted at /api/anomaly")
+    except Exception as exc:
+        log.warning("Anomaly router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
