@@ -556,6 +556,44 @@ export interface OperatorRotateResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 42 — Anomaly scoring interfaces
+// ---------------------------------------------------------------------------
+
+export interface AnomalyEvent {
+  event_id: string
+  timestamp: string
+  hostname: string | null
+  process_name: string | null
+  src_ip: string | null
+  event_type: string | null
+  severity: string
+  anomaly_score: number
+}
+
+export interface AnomalyListResponse {
+  anomalies: AnomalyEvent[]
+  total: number
+}
+
+export interface ScorePoint {
+  timestamp: string
+  score: number
+}
+
+export interface EntityProfile {
+  entity_key: string
+  event_count: number
+  avg_score: number
+  max_score: number
+  scores: ScorePoint[]
+}
+
+export interface ScoreTrendResponse {
+  trend: ScorePoint[]
+  entity_key: string
+}
+
+// ---------------------------------------------------------------------------
 // Phase 41 — Threat Map interfaces
 // ---------------------------------------------------------------------------
 
@@ -1021,6 +1059,19 @@ export const api = {
   map: {
     getData: (window: string = '24h'): Promise<MapData> =>
       request<MapData>(`/api/map/data?window=${window}`),
+  },
+
+  anomaly: {
+    list: (minScore = 0.5, limit = 100) =>
+      request<AnomalyListResponse>(`/api/anomaly?min_score=${minScore}&limit=${limit}`),
+    entityProfile: (subnet: string, process: string) =>
+      request<EntityProfile>(
+        `/api/anomaly/entity?subnet=${encodeURIComponent(subnet)}&process=${encodeURIComponent(process)}`
+      ),
+    trend: (entityKey: string, hours = 24) =>
+      request<ScoreTrendResponse>(
+        `/api/anomaly/trend?entity_key=${encodeURIComponent(entityKey)}&hours=${hours}`
+      ),
   },
 }
 
