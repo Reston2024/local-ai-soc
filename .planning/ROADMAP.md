@@ -1485,7 +1485,7 @@ Plans:
 - P43-T05: Surface correlation hits as detections with correlated_event_ids evidence list
 - P43-T06: CorrelationView or correlation panel in DetectionsView showing matched event sequences
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 43-01-PLAN.md — TDD Wave 0 stubs: test contract stubs for correlation engine behaviors
