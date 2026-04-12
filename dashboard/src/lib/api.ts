@@ -100,6 +100,8 @@ export interface Detection {
   explanation?: string
   details?: Record<string, unknown>
   car_analytics?: CARAnalytic[] | null
+  correlation_type?: string       // 'PORT_SCAN' | 'BRUTE_FORCE' | 'BEACON' | 'CHAIN'
+  matched_event_count?: number    // convenience count for row badge
 }
 
 export interface GraphEntity {

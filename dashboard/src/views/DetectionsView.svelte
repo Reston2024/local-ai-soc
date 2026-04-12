@@ -19,6 +19,7 @@
   let runningDetection = $state(false)
   let error = $state<string | null>(null)
   let severityFilter = $state('')
+  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA'
 
   // Severity breakdowns
   let criticalCount = $derived(detections.filter(d => d.severity?.toLowerCase() === 'critical').length)
@@ -30,6 +31,20 @@
   let postureScore = $derived(
     Math.max(0, 100 - criticalCount * 25 - highCount * 10 - mediumCount * 4 - lowCount * 1)
   )
+
+  // Type-filtered detection list for display
+  let displayDetections = $derived(
+    typeFilter === 'CORR'
+      ? detections.filter(d => d.rule_id?.startsWith('corr-'))
+      : typeFilter === 'ANOMALY'
+      ? detections.filter(d => d.rule_id?.startsWith('anomaly-'))
+      : typeFilter === 'SIGMA'
+      ? detections.filter(d => !d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-'))
+      : detections
+  )
+
+  // Correlation count for badge
+  let corrCount = $derived(detections.filter(d => d.rule_id?.startsWith('corr-')).length)
 
   // Push posture to parent whenever it changes
   $effect(() => { onPostureUpdate?.(postureScore) })
@@ -161,6 +176,15 @@
   $effect(() => {
     api.playbooks.list().then(r => { availablePlaybooks = r.playbooks }).catch(() => {})
   })
+
+  function corrBadgeLabel(ruleId: string): string | null {
+    if (!ruleId?.startsWith('corr-')) return null
+    if (ruleId.startsWith('corr-portscan')) return 'PORT_SCAN'
+    if (ruleId.startsWith('corr-bruteforce')) return 'BRUTE_FORCE'
+    if (ruleId.startsWith('corr-beacon')) return 'BEACON'
+    if (ruleId.startsWith('corr-chain')) return 'CHAIN'
+    return 'CORR'
+  }
 
   function suggestPlaybook(detection: Detection): Playbook | null {
     if (!detection.attack_technique) return null
@@ -306,6 +330,24 @@
         <option value="medium">Medium</option>
         <option value="low">Low</option>
       </select>
+      <div class="type-filter-chips">
+        <button
+          class="chip {typeFilter === '' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = ''; }}
+        >All</button>
+        <button
+          class="chip chip-corr {typeFilter === 'CORR' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = typeFilter === 'CORR' ? '' : 'CORR'; }}
+        >CORR {corrCount > 0 ? `(${corrCount})` : ''}</button>
+        <button
+          class="chip chip-anomaly {typeFilter === 'ANOMALY' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = typeFilter === 'ANOMALY' ? '' : 'ANOMALY'; }}
+        >ANOMALY</button>
+        <button
+          class="chip chip-sigma {typeFilter === 'SIGMA' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = typeFilter === 'SIGMA' ? '' : 'SIGMA'; }}
+        >SIGMA</button>
+      </div>
       <button class="btn" onclick={load} disabled={loading}>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
           <path d="M13.5 8A5.5 5.5 0 1 1 8 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
@@ -378,7 +420,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each detections as d}
+          {#each displayDetections as d}
             <tr
               onclick={() => { const id = getDetectionId(d); expandedId = expandedId === id ? null : id }}
               style="cursor: pointer;"
@@ -387,6 +429,11 @@
               <td class="mono ts">{fmtTime(d.fired_at)}</td>
               <td class="rule-name">
                 {d.rule_name}
+                {#if corrBadgeLabel(d.rule_id)}
+                  <span class="corr-type-badge corr-badge-{corrBadgeLabel(d.rule_id)?.toLowerCase().replace('_', '-')}">
+                    {corrBadgeLabel(d.rule_id)}
+                  </span>
+                {/if}
                 {#if d.explanation}
                   <span class="info-tip" title={d.explanation}>
                     <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
@@ -833,4 +880,43 @@
   .car-label { color: rgba(255,255,255,0.45); font-weight: 500; }
   .car-pseudocode { font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.4); color: #a5b4fc; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre; margin: 8px 0 0; max-height: 200px; overflow-y: auto; }
   .car-no-analytics { font-size: 0.8rem; color: rgba(255,255,255,0.4); margin: 0; padding: 8px 0; }
+
+  /* Phase 43: CORR type filter chips */
+  .type-filter-chips {
+    display: flex;
+    gap: 0.4rem;
+    margin-left: 0.75rem;
+    align-items: center;
+  }
+  .chip {
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: transparent;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .chip:hover { background: rgba(255,255,255,0.08); }
+  .chip.chip-active { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.35); }
+  .chip-corr.chip-active { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.5); color: #fca5a5; }
+  .chip-anomaly.chip-active { background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
+  .chip-sigma.chip-active { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+
+  /* Phase 43: Correlation type badge on detection rows */
+  .corr-type-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .corr-badge-port-scan { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.35); }
+  .corr-badge-brute-force { background: rgba(239,68,68,0.3); color: #ef4444; border: 1px solid rgba(239,68,68,0.5); }
+  .corr-badge-beacon { background: rgba(168,85,247,0.2); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.35); }
+  .corr-badge-chain { background: rgba(239,68,68,0.4); color: #fff; border: 1px solid rgba(239,68,68,0.6); }
 </style>
