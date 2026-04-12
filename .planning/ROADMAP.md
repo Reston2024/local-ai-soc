@@ -1473,7 +1473,7 @@ Plans:
 - P42-T06: Peer group baselining — baseline per (subnet, process_name) not just per individual host to reduce false positive rate
 
 ## Phase 43: Sigma v2 Correlation Rules
-**Status:** IN PROGRESS (1/4 plans complete)
+**Status:** IN PROGRESS (1-2/4 plans complete — linter pre-implemented Plan 43-02 core engine)
 **Added:** 2026-04-12
 **Goal:** Add multi-event correlation to the detection pipeline using Sigma v2.1 correlation rule types transpiled to windowed DuckDB SQL. Detect port scans (N distinct dst_ports from one src_ip in window), brute force (N failed auths in window), and multi-stage chains (rules A+B+C all fire for same entity within T seconds) without a separate correlation engine. Also implement beaconing detection via DuckDB coefficient of variation query.
 
@@ -1489,7 +1489,7 @@ Plans:
 
 Plans:
 - [x] 43-01-PLAN.md — TDD Wave 0 stubs: test contract stubs for correlation engine behaviors
-- [ ] 43-02-PLAN.md — Core correlation engine: port scan, brute force, beaconing detection + config + wiring
+- [~] 43-02-PLAN.md — Core correlation engine: port scan, brute force, beaconing detection + config + wiring (engine implemented by linter; wiring pending formal plan commit)
 - [ ] 43-03-PLAN.md — Chain detection: YAML config, multi-stage chain matching, two pre-built chains
 - [ ] 43-04-PLAN.md — Frontend: CORR filter chip, correlation type badge, expand-to-event-IDs panel
 
