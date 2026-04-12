@@ -1,211 +1,581 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
   import { api } from '../lib/api.ts'
-  import type { OsintResult, Detection } from '../lib/api.ts'
-  import 'leaflet/dist/leaflet.css'
+  import type { MapData, MapIpInfo, MapFlow } from '../lib/api.ts'
 
-  let mapContainer: HTMLDivElement
-  // Module-level typed variables — set once in onMount
-  let L: typeof import('leaflet') | null = null
-  let map: import('leaflet').Map | null = null
-  let markerLayer: import('leaflet').LayerGroup | null = null
-
+  // --- State (Svelte 5 runes) ---
+  let map: any = null
+  let L: any = null
+  let clusterGroup: any = null
+  let arcLayer: any = null
+  let lanMarker: any = null
+  let mapData = $state<MapData | null>(null)
   let selectedIp = $state<string | null>(null)
-  let osintData = $state<OsintResult | null>(null)
-  let osintLoading = $state(false)
-  let markerCount = $state(0)
-  let lastRefresh = $state('')
-  let refreshInterval: ReturnType<typeof setInterval> | null = null
+  let selectedWindow = $state('24h')
+  let loading = $state(false)
+  let refreshPaused = $state(false)
+  let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-  const SEV_COLORS: Record<string, string> = {
-    critical: '#ef4444',
-    high:     '#f97316',
-    medium:   '#eab308',
-    low:      '#3b82f6',
-    info:     '#94a3b8',
+  // --- Color helpers ---
+  function markerColor(info: MapIpInfo): string {
+    if (info.is_tor || info.ipsum_tier !== null) return '#ef4444'  // red — known bad
+    if (info.is_datacenter) return '#f97316'                        // orange — hosting
+    if (info.is_proxy) return '#eab308'                             // yellow — VPN/proxy
+    return '#3b82f6'                                                // blue — clean
   }
 
-  async function loadMarkers() {
-    // Guard: only run after onMount has initialised L, map, markerLayer
-    if (!L || !map || !markerLayer) return
-    try {
-      const resp = await api.detections.list({ limit: 200 })
-      const detections: Detection[] = resp.detections ?? []
+  function threatColor(info: MapIpInfo | null, _flow: MapFlow): string {
+    if (!info) return '#3b82f6'
+    return markerColor(info)
+  }
 
-      // Deduplicate IPs, keeping highest severity for each
-      const ipMap = new Map<string, { severity: string; count: number }>()
-      for (const d of detections) {
-        if (!d.src_ip) continue
-        const existing = ipMap.get(d.src_ip)
-        const sevOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 }
-        const newSev = (d.severity ?? 'info').toLowerCase()
-        if (!existing || (sevOrder[newSev] ?? 4) < (sevOrder[existing.severity] ?? 4)) {
-          ipMap.set(d.src_ip, { severity: newSev, count: (existing?.count ?? 0) + 1 })
-        } else {
-          ipMap.set(d.src_ip, { ...existing, count: existing.count + 1 })
-        }
+  function ipRingWeight(info: MapIpInfo): number {
+    if (info.ipsum_tier === null) return 1
+    return Math.min(6, 1 + info.ipsum_tier)  // tier 1→2, tier 8→6 (max ring weight)
+  }
+
+  // --- Data loading ---
+  async function loadMapData() {
+    loading = true
+    try {
+      mapData = await api.map.getData(selectedWindow)
+      renderMap()
+    } catch (e) {
+      console.error('Map data fetch failed', e)
+    } finally {
+      loading = false
+    }
+  }
+
+  // --- Render ---
+  function renderMap() {
+    if (!L || !map || !mapData) return
+    clusterGroup.clearLayers()
+    arcLayer.clearLayers()
+
+    const PRIVATE_PREFIXES = [
+      '10.', '172.16.', '172.17.', '172.18.', '172.19.',
+      '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
+      '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
+      '172.30.', '172.31.', '192.168.', '127.'
+    ]
+    function isPrivate(ip: string): boolean {
+      return PRIVATE_PREFIXES.some(p => ip.startsWith(p))
+    }
+
+    // LAN node at map center (indigo circle representing all RFC1918 hosts)
+    const center = map.getCenter()
+    lanMarker = L.circleMarker(center, {
+      radius: 14,
+      color: '#6366f1',
+      fillColor: '#6366f1',
+      fillOpacity: 0.9,
+      weight: 3,
+    })
+    lanMarker.bindTooltip('LAN (internal hosts)', { permanent: false })
+    lanMarker.addTo(clusterGroup)
+
+    // External IP markers
+    for (const [ip, info] of Object.entries(mapData.ips as Record<string, MapIpInfo>)) {
+      if (!info.lat || !info.lon) continue
+      const color = markerColor(info)
+      const weight = ipRingWeight(info)
+      const marker = L.circleMarker([info.lat, info.lon], {
+        radius: 8,
+        color,
+        fillColor: color,
+        fillOpacity: 0.7,
+        weight,
+      })
+      marker.bindTooltip(ip, { permanent: false })
+      marker.on('click', () => {
+        selectedIp = ip
+        refreshPaused = true
+      })
+      marker.on('mouseover', () => { refreshPaused = true })
+      marker.on('mouseout', () => { if (selectedIp !== ip) refreshPaused = false })
+      clusterGroup.addLayer(marker)
+    }
+
+    // Arc lines for top-50 flows by connection count
+    const topFlows = [...mapData.flows]
+      .sort((a, b) => b.conn_count - a.conn_count)
+      .slice(0, 50)
+    const maxConn = topFlows[0]?.conn_count ?? 1
+
+    for (const flow of topFlows) {
+      const srcIsPrivate = isPrivate(flow.src_ip)
+      const dstIsPrivate = isPrivate(flow.dst_ip)
+      const srcInfo = srcIsPrivate ? null : (mapData.ips[flow.src_ip] as MapIpInfo | undefined)
+      const dstInfo = dstIsPrivate ? null : (mapData.ips[flow.dst_ip] as MapIpInfo | undefined)
+
+      // Both ends need coordinates (use LAN node coords for private IPs)
+      const srcLatLng = srcIsPrivate
+        ? [center.lat, center.lng]
+        : (srcInfo?.lat && srcInfo?.lon ? [srcInfo.lat, srcInfo.lon] : null)
+      const dstLatLng = dstIsPrivate
+        ? [center.lat, center.lng]
+        : (dstInfo?.lat && dstInfo?.lon ? [dstInfo.lat, dstInfo.lon] : null)
+
+      if (!srcLatLng || !dstLatLng) continue
+
+      // Antimeridian guard: adjust lon if |lon_a - lon_b| > 180
+      let sLon = srcLatLng[1]
+      let dLon = dstLatLng[1]
+      const sLat = srcLatLng[0]
+      const dLat = dstLatLng[0]
+      if (Math.abs(sLon - dLon) > 180) {
+        if (sLon > dLon) dLon += 360; else dLon -= 360
       }
 
-      markerLayer.clearLayers()
-      let plotted = 0
+      // Threat signal color
+      const threatIp = srcIsPrivate ? dstInfo : srcInfo
+      const arcColor = threatColor(threatIp ?? null, flow)
+      const arcWeight = Math.max(1, Math.round((flow.conn_count / maxConn) * 5))
+      const arcOpacity = flow.conn_count / maxConn >= 0.1 ? 0.7 : 0.3
 
-      // For each unique IP, fetch geo from OSINT cache (or skip if private/no data)
-      const geoFetches = Array.from(ipMap.entries()).map(async ([ip, meta]) => {
-        try {
-          const osint = await api.osint.get(ip)
-          if (!osint.geo?.latitude || !osint.geo?.longitude) return
-          const lat = osint.geo.latitude
-          const lon = osint.geo.longitude
-          const color = SEV_COLORS[meta.severity] ?? SEV_COLORS.info
-          // Use module-level L directly — no window.L
-          const marker = L!.circleMarker([lat, lon], {
-            color,
-            fillColor: color,
-            fillOpacity: 0.75,
-            radius: Math.min(6 + meta.count, 14),
-            weight: 1.5,
-          })
-          marker.on('click', () => selectIp(ip))
-          marker.bindTooltip(`${ip} (${meta.count} detection${meta.count > 1 ? 's' : ''}, ${meta.severity})`, { permanent: false })
-          markerLayer!.addLayer(marker)
-          plotted++
-        } catch {
-          // Private/invalid IP — skip silently
-        }
+      const line = L.polyline([[sLat, sLon], [dLat, dLon]], {
+        color: arcColor,
+        weight: arcWeight,
+        opacity: arcOpacity,
       })
+      line.addTo(arcLayer)
 
-      await Promise.allSettled(geoFetches)
-      markerCount = plotted
-      lastRefresh = new Date().toLocaleTimeString()
-    } catch (e) {
-      console.error('MapView: failed to load markers', e)
+      const decorator = (L as any).polylineDecorator(line, {
+        patterns: [{
+          offset: '100%',
+          repeat: 0,
+          symbol: (L as any).Symbol.arrowHead({
+            pixelSize: 8,
+            headAngle: 40,
+            fill: true,
+            fillOpacity: 0.8,
+            pathOptions: { color: arcColor, weight: 0 },
+          }),
+        }],
+      })
+      decorator.addTo(arcLayer)
     }
   }
 
-  async function selectIp(ip: string) {
-    selectedIp = ip
-    osintLoading = true
-    osintData = null
-    try {
-      osintData = await api.osint.get(ip)
-    } catch {
-      osintData = null
-    } finally {
-      osintLoading = false
-    }
-  }
-
+  // --- Lifecycle ---
   onMount(async () => {
-    // Dynamic import of Leaflet module — CSS is imported statically above
+    // 1. Import Leaflet first (CRITICAL: sequential — not Promise.all)
     const leafletModule = await import('leaflet')
     L = leafletModule.default
+    await import('leaflet/dist/leaflet.css')
 
-    map = L.map(mapContainer, { center: [20, 10], zoom: 2, zoomControl: true })
+    // 2. MarkerCluster — AFTER Leaflet resolves
+    await import('leaflet.markercluster')
+    await import('leaflet.markercluster/dist/MarkerCluster.css')
+    await import('leaflet.markercluster/dist/MarkerCluster.Default.css')
 
+    // 3. PolylineDecorator — AFTER Leaflet resolves
+    await import('leaflet-polylinedecorator')
+
+    // 4. Init map
+    map = L.map('threat-map', { center: [20, 10], zoom: 2, zoomControl: true })
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 18,
     }).addTo(map)
 
-    markerLayer = L.layerGroup().addTo(map)
+    // 5. Init layers
+    clusterGroup = (L as any).markerClusterGroup({ maxClusterRadius: 40 })
+    arcLayer = L.layerGroup()
+    map.addLayer(clusterGroup)
+    map.addLayer(arcLayer)
 
     // Force Leaflet to recalculate container size after flex layout resolves
     requestAnimationFrame(() => { map?.invalidateSize() })
 
-    await loadMarkers()
-    refreshInterval = setInterval(loadMarkers, 60_000)
+    // 6. Initial data load + start refresh timer
+    await loadMapData()
+    refreshTimer = setInterval(async () => {
+      if (!refreshPaused) await loadMapData()
+    }, 60_000)
   })
 
   onDestroy(() => {
-    if (refreshInterval) clearInterval(refreshInterval)
+    if (refreshTimer) clearInterval(refreshTimer)
     if (map) map.remove()
   })
 </script>
 
-<div class="map-view">
+<div class="map-container">
+  <!-- Header stats bar -->
   <div class="map-header">
-    <h1>Threat Map</h1>
-    <span class="map-meta">{markerCount} IPs plotted · refreshes every 60s{lastRefresh ? ` · last: ${lastRefresh}` : ''}</span>
+    <div class="map-stats">
+      {#if mapData}
+        <span>{mapData.stats.total_ips} IPs plotted</span>
+        <span class="sep">·</span>
+        <span class="stat-tor">{mapData.stats.tor_count} Tor</span>
+        <span class="sep">·</span>
+        <span class="stat-vpn">{mapData.stats.vpn_count} VPN/Proxy</span>
+        <span class="sep">·</span>
+        <span class="stat-dc">{mapData.stats.datacenter_count} Datacenter</span>
+        {#if mapData.stats.top_src_country}
+          <span class="sep">·</span>
+          <span>Top source: {mapData.stats.top_src_country} ({mapData.stats.top_src_country_conn_count.toLocaleString()} conns)</span>
+        {/if}
+        <span class="sep">·</span>
+        <span>{mapData.stats.flow_count} flows shown</span>
+      {:else}
+        <span class="stat-loading">{loading ? 'Loading...' : 'No data'}</span>
+      {/if}
+    </div>
+    <!-- Time window buttons -->
+    <div class="window-buttons">
+      {#each ['1h', '6h', '24h', '7d'] as w}
+        <button
+          class="window-btn"
+          class:active={selectedWindow === w}
+          onclick={() => { selectedWindow = w; loadMapData() }}
+        >{w}</button>
+      {/each}
+    </div>
   </div>
-  <div class="map-body">
-    <div class="map-container" bind:this={mapContainer}></div>
-    {#if selectedIp}
-      <div class="osint-side-panel">
-        <div class="panel-header">
-          <span class="panel-ip">{selectedIp}</span>
-          <button class="panel-close" onclick={() => { selectedIp = null; osintData = null }}>✕</button>
-        </div>
-        {#if osintLoading}
-          <div class="panel-loading">Loading OSINT…</div>
-        {:else if osintData}
-          <div class="panel-body">
-            {#if osintData.geo}
-              <div class="panel-section">
-                <div class="panel-label">LOCATION</div>
-                <div class="panel-value">{osintData.geo.country_name ?? '—'} / {osintData.geo.city ?? '—'}</div>
-                <div class="panel-sub">{osintData.geo.autonomous_system_organization ?? '—'} (AS{osintData.geo.autonomous_system_number ?? '?'})</div>
-              </div>
+
+  <!-- Map canvas -->
+  <div id="threat-map" class="map-canvas"></div>
+
+  <!-- Side panel -->
+  {#if selectedIp && mapData}
+    {@const info = (mapData.ips as Record<string, MapIpInfo>)[selectedIp]}
+    <div class="side-panel">
+      <div class="panel-header">
+        <span class="panel-ip">{selectedIp}</span>
+        <button
+          class="close-btn"
+          onclick={() => { selectedIp = null; refreshPaused = false }}
+        >×</button>
+      </div>
+
+      <!-- CLASSIFICATION section — first, per user decision -->
+      <section class="panel-section classification">
+        <h4>CLASSIFICATION</h4>
+        {#if info}
+          <div class="classification-badges">
+            {#if info.ip_type}
+              <span class="badge badge-{info.ip_type}">{info.ip_type.toUpperCase()}</span>
+            {:else}
+              <span class="badge badge-unknown">UNKNOWN</span>
             {/if}
-            {#if osintData.abuseipdb}
-              <div class="panel-section">
-                <div class="panel-label">ABUSEIPDB</div>
-                <div class="panel-value">
-                  <span class="abuse-score" class:abuse-red={(osintData.abuseipdb.abuseConfidenceScore ?? 0) > 50}>
-                    {osintData.abuseipdb.abuseConfidenceScore ?? 0}% confidence
-                  </span>
-                </div>
-                <div class="panel-sub">{osintData.abuseipdb.totalReports ?? 0} reports · {osintData.abuseipdb.isp ?? '—'}</div>
-              </div>
+            {#if info.ipsum_tier !== null}
+              <span class="badge badge-ipsum">ipsum tier {info.ipsum_tier}/8</span>
             {/if}
-            {#if osintData.virustotal}
-              <div class="panel-section">
-                <div class="panel-label">VIRUSTOTAL</div>
-                <div class="panel-value">{osintData.virustotal.malicious ?? 0} malicious / {osintData.virustotal.suspicious ?? 0} suspicious</div>
-              </div>
-            {/if}
-            {#if osintData.whois}
-              <div class="panel-section">
-                <div class="panel-label">WHOIS</div>
-                <div class="panel-value">{osintData.whois.org ?? '—'}</div>
-                <div class="panel-sub">Registrar: {osintData.whois.registrar ?? '—'}</div>
-                <div class="panel-sub">Created: {osintData.whois.creation_date ?? '—'}</div>
-              </div>
-            {/if}
-            {#if osintData.shodan}
-              <div class="panel-section">
-                <div class="panel-label">SHODAN</div>
-                <div class="panel-value">Ports: {osintData.shodan.open_ports?.join(', ') || 'none'}</div>
-                <div class="panel-sub">{osintData.shodan.org ?? '—'}</div>
-              </div>
-            {/if}
-            <div class="panel-cache">{osintData.cached ? 'cached' : 'fresh'} · {osintData.fetched_at.slice(0, 19)}</div>
+          </div>
+          <div class="classification-detail">
+            {#if info.is_tor}<div class="flag flag-tor">Tor Exit Node</div>{/if}
+            {#if info.is_proxy}<div class="flag flag-proxy">VPN / Proxy</div>{/if}
+            {#if info.is_datacenter}<div class="flag flag-dc">Datacenter / Hosting</div>{/if}
           </div>
         {:else}
-          <div class="panel-empty">No enrichment data</div>
+          <p class="no-data">No classification data</p>
         {/if}
-      </div>
-    {/if}
-  </div>
+      </section>
+
+      <!-- Geo section -->
+      <section class="panel-section">
+        <h4>GEO</h4>
+        {#if info?.lat}
+          <div class="detail-row"><span>Country</span><span>{info.country ?? '—'} ({info.country_iso ?? '—'})</span></div>
+          <div class="detail-row"><span>City</span><span>{info.city ?? '—'}</span></div>
+          <div class="detail-row"><span>Lat/Lon</span><span>{info.lat?.toFixed(2)}, {info.lon?.toFixed(2)}</span></div>
+        {:else}
+          <p class="no-data">No geo data (enrichment pending)</p>
+        {/if}
+      </section>
+
+      <!-- ASN section -->
+      <section class="panel-section">
+        <h4>ASN</h4>
+        <div class="detail-row"><span>ASN</span><span>{info?.asn ?? '—'}</span></div>
+      </section>
+    </div>
+  {/if}
 </div>
 
 <style>
-  .map-view { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-  .map-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); flex-shrink: 0; }
-  .map-header h1 { font-size: 15px; font-weight: 600; }
-  .map-meta { font-size: 11px; color: var(--text-muted); }
-  .map-body { display: flex; flex: 1; overflow: hidden; }
-  .map-container { flex: 1; min-height: 400px; }
-  .osint-side-panel { width: 300px; border-left: 1px solid var(--border); background: var(--bg-secondary); overflow-y: auto; flex-shrink: 0; }
-  .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }
-  .panel-ip { font-family: monospace; font-size: 13px; font-weight: 600; }
-  .panel-close { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; }
-  .panel-loading, .panel-empty { padding: 20px 14px; font-size: 12px; color: var(--text-muted); }
-  .panel-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 14px; }
-  .panel-section { display: flex; flex-direction: column; gap: 2px; }
-  .panel-label { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: var(--accent-cyan); }
-  .panel-value { font-size: 12px; color: var(--text-primary); }
-  .panel-sub { font-size: 11px; color: var(--text-muted); }
-  .panel-cache { font-size: 10px; color: var(--text-muted); }
-  .abuse-score { color: var(--text-secondary); }
-  .abuse-score.abuse-red { color: #ef4444; font-weight: 600; }
+  /* --- Layout --- */
+  .map-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* --- Header stats bar --- */
+  .map-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .map-stats {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    flex-wrap: wrap;
+  }
+
+  .sep {
+    color: var(--text-muted, rgba(255, 255, 255, 0.3));
+  }
+
+  .stat-tor {
+    color: #ef4444;
+    font-weight: 600;
+  }
+
+  .stat-vpn {
+    color: #eab308;
+    font-weight: 600;
+  }
+
+  .stat-dc {
+    color: #f97316;
+    font-weight: 600;
+  }
+
+  .stat-loading {
+    color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    font-style: italic;
+  }
+
+  /* --- Time window buttons --- */
+  .window-buttons {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .window-btn {
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    border-radius: 4px;
+    color: var(--text-muted, rgba(255, 255, 255, 0.5));
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .window-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary, rgba(255, 255, 255, 0.9));
+  }
+
+  .window-btn.active {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: #6366f1;
+    color: #a5b4fc;
+    font-weight: 600;
+  }
+
+  /* --- Map canvas --- */
+  .map-canvas {
+    flex: 1;
+    min-height: 500px;
+  }
+
+  /* --- Side panel --- */
+  .side-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 320px;
+    background: #1a1a1a;
+    border-left: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    overflow-y: auto;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+    flex-shrink: 0;
+  }
+
+  .panel-ip {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary, rgba(255, 255, 255, 0.9));
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 4px;
+    transition: color 0.15s;
+  }
+
+  .close-btn:hover {
+    color: var(--text-primary, rgba(255, 255, 255, 0.9));
+  }
+
+  /* --- Panel sections --- */
+  .panel-section {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  }
+
+  .panel-section h4 {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: var(--accent-cyan, #22d3ee);
+    text-transform: uppercase;
+    margin: 0 0 8px 0;
+  }
+
+  .no-data {
+    font-size: 11px;
+    color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    margin: 0;
+    font-style: italic;
+  }
+
+  /* --- Classification badges --- */
+  .classification-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .badge-tor,
+  .badge-vpn { /* tor uses same red as markerColor */
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+
+  .badge-vpn {
+    background: rgba(234, 179, 8, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(234, 179, 8, 0.4);
+  }
+
+  .badge-datacenter {
+    background: rgba(249, 115, 22, 0.2);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.4);
+  }
+
+  .badge-residential,
+  .badge-isp {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+  }
+
+  .badge-unknown {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .badge-ipsum {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* --- Classification flags --- */
+  .classification-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .flag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 0;
+  }
+
+  .flag::before {
+    content: '●';
+    margin-right: 6px;
+    font-size: 8px;
+  }
+
+  .flag-tor {
+    color: #f87171;
+  }
+
+  .flag-tor::before {
+    color: #ef4444;
+  }
+
+  .flag-proxy {
+    color: #fbbf24;
+  }
+
+  .flag-proxy::before {
+    color: #eab308;
+  }
+
+  .flag-dc {
+    color: #fb923c;
+  }
+
+  .flag-dc::before {
+    color: #f97316;
+  }
+
+  /* --- Detail rows (Geo, ASN) --- */
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 12px;
+    padding: 3px 0;
+    gap: 8px;
+  }
+
+  .detail-row span:first-child {
+    color: var(--text-muted, rgba(255, 255, 255, 0.4));
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .detail-row span:last-child {
+    color: var(--text-primary, rgba(255, 255, 255, 0.87));
+    text-align: right;
+    word-break: break-all;
+  }
 </style>
