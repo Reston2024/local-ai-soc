@@ -190,7 +190,8 @@ async def get_map_data(
         }
     """
     window_seconds = WINDOW_TO_SECONDS.get(window, WINDOW_TO_SECONDS["24h"])
-    cutoff = (datetime.now(tz=timezone.utc) - timedelta(seconds=window_seconds)).isoformat()
+    # Strip timezone suffix — stored timestamps are naive UTC strings (no +00:00)
+    cutoff = (datetime.now(tz=timezone.utc) - timedelta(seconds=window_seconds)).strftime("%Y-%m-%dT%H:%M:%S")
 
     stores = request.app.state.stores
     duckdb_store = stores.duckdb
@@ -199,7 +200,9 @@ async def get_map_data(
     # Fetch raw flows from DuckDB
     try:
         rows = await duckdb_store.fetch_df(_FLOW_SQL, [cutoff])
-    except Exception:
+        log.debug("map flow query returned %d rows (cutoff=%s)", len(rows), cutoff)
+    except Exception as exc:
+        log.error("map flow query failed: %s", exc)
         rows = []
 
     # Build flows list with direction annotation
