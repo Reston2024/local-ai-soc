@@ -1426,3 +1426,91 @@ Plans:
 - [ ] 40-02-PLAN.md — Wave 1: AtomicsStore class + startup seed + main.py wiring + GET /api/atomics endpoint
 - [ ] 40-03-PLAN.md — Wave 2: POST /api/atomics/validate endpoint + validation_results persistence
 - [ ] 40-04-PLAN.md — Wave 3: Frontend — AtomicsView (grouped/collapsible, copy buttons, badges) + App.svelte wiring
+
+## Phase 41: Threat Map Overhaul
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Transform the threat map from a basic detection-IP plotter into a live geospatial intelligence surface. Plot all network_connection events (not just Sigma-fired detections), differentiate inbound vs outbound flows with directional arc lines, and enrich every IP with VPN/proxy/Tor/hosting classification using free local and API sources. Analysts see the full traffic picture with context — not just alerts.
+
+### Requirements
+- P41-T01: Source all raw network_connection events from DuckDB (src_ip + dst_ip), not just detection IPs
+- P41-T02: Differentiate inbound vs outbound flows visually — arc lines connecting src→dst with direction arrows, colored by threat signal
+- P41-T03: VPN/proxy/Tor/hosting detection per IP — Tor exit list, ipsum blocklist, ipapi.is ASN type, ip-api.com proxy field
+- P41-T04: ASN type badge per marker (hosting/datacenter/ISP/residential/education)
+- P41-T05: Time window filter (1h / 6h / 24h / 7d) on map
+- P41-T06: Connection volume heatmap — marker size and arc weight by connection count
+- P41-T07: Side panel enrichment — geo, ASN, VPN/proxy flags, AbuseIPDB score, Shodan ports, ipsum tier
+
+## Phase 42: Streaming Behavioral Profiles
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Give every event an anomaly score at ingest time using online ML that learns continuously without batch retraining. Every (hostname, process_name) entity gets a behavioral baseline that updates with each new event via River HalfSpaceTrees. High-deviation events surface in the detections pipeline regardless of whether any Sigma rule fires — closing the gap between known-bad detection and novel-behavior detection.
+
+### Requirements
+- P42-T01: Integrate River HalfSpaceTrees into the ingest pipeline — score every event against its entity's model at ingest time
+- P42-T02: Persist per-entity models to disk (River model serialization) so baselines survive restarts
+- P42-T03: Store anomaly_score (float) on every event in DuckDB events table
+- P42-T04: Auto-surface high-anomaly events (score > threshold) as synthetic detections without requiring a Sigma rule match
+- P42-T05: AnomalyView dashboard tab — list high-scoring events, entity profile sparklines, score trend over time
+- P42-T06: Peer group baselining — baseline per (subnet, process_name) not just per individual host to reduce false positive rate
+
+## Phase 43: Sigma v2 Correlation Rules
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Add multi-event correlation to the detection pipeline using Sigma v2.1 correlation rule types transpiled to windowed DuckDB SQL. Detect port scans (N distinct dst_ports from one src_ip in window), brute force (N failed auths in window), and multi-stage chains (rules A+B+C all fire for same entity within T seconds) without a separate correlation engine. Also implement beaconing detection via DuckDB coefficient of variation query.
+
+### Requirements
+- P43-T01: Implement beaconing detection — CV (stddev/mean of inter-connection intervals) < 0.3 over 20+ connections per (src_ip, dst_ip, dst_port) tuple
+- P43-T02: Implement port scan detection — N distinct dst_ports from one src_ip within time window
+- P43-T03: Implement brute force detection — N failed auth events for same target within window
+- P43-T04: Implement multi-stage chain correlation — rules A+B+C all fire for same entity within T seconds
+- P43-T05: Surface correlation hits as detections with correlated_event_ids evidence list
+- P43-T06: CorrelationView or correlation panel in DetectionsView showing matched event sequences
+
+## Phase 44: Analyst Feedback Loop
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Make analyst approve/reject decisions feed back into detection quality. When an analyst marks a detection True Positive or False Positive, embed the event sequence in Chroma with a label, update an SGDClassifier via partial_fit(), and surface similar confirmed incidents in future investigations. Closes the learning loop — the system gets measurably better with each analyst decision.
+
+### Requirements
+- P44-T01: Add TP/FP verdict buttons to DetectionsView per detection row
+- P44-T02: POST /api/feedback endpoint — stores verdict in SQLite feedback table, embeds event sequence in Chroma labeled collection
+- P44-T03: SGDClassifier.partial_fit() called on each verdict — persisted to disk between sessions
+- P44-T04: Similar incident surfacing in InvestigationView — Chroma k-NN search against confirmed cases, show top 3 matches with similarity score and verdict
+- P44-T05: Feedback stats in MetricsView — TP rate, FP rate, model accuracy trend over time
+
+## Phase 45: Agentic Investigation
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Replace the pre-built investigation summary with a genuine agentic loop — the LLM calls tools, reasons about intermediate results, decides what to query next, and produces a chain-of-reasoning verdict. Analysts see the investigation steps, not just the conclusion. Uses smolagents with 6 tools wrapping existing DuckDB/Chroma/IOC endpoints. qwen3:14b via Ollama handles tool-calling reliably at this scope.
+
+### Requirements
+- P45-T01: Define 6 investigation tools: query_events, get_entity_profile, enrich_ip, search_sigma_matches, get_graph_neighbors, search_similar_incidents
+- P45-T02: Implement smolagents ToolCallingAgent with sandboxed execution, local Ollama backend
+- P45-T03: POST /api/investigate/agentic — runs the agent loop, streams reasoning steps back to client
+- P45-T04: InvestigationView agentic mode — shows tool calls, intermediate results, and final verdict as a readable chain of reasoning
+- P45-T05: Hard resource limits — max 10 tool calls per investigation, 90s timeout, read-only tools only
+
+## Phase 46: RITA + JA4 TLS Fingerprinting
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Integrate RITA (Real Intelligence Threat Analytics) consuming Phase 36 Zeek SPAN port logs for production-grade beaconing, DNS tunneling, and exfiltration detection. Add JA4+ TLS fingerprinting via Zeek plugin to identify Cobalt Strike, Metasploit, and known malware by TLS fingerprint without signatures. Both consume the existing Zeek pipeline.
+
+### Requirements
+- P46-T01: Install and configure RITA against Zeek log directory from Phase 36 SPAN port
+- P46-T02: Scheduled RITA analysis job — runs hourly, imports beacon/tunnel/exfil findings into SQLite
+- P46-T03: Install ja4-zeek Zeek package — outputs JA4 hashes into conn.log
+- P46-T04: JA4 hash cross-reference against public malware hash database (GreyNoise/Censys free datasets)
+- P46-T05: Surface RITA findings and JA4 hits in ThreatHuntingView and DetectionsView
+
+## Phase 47: GNN Lateral Movement Detection
+**Status:** TODO
+**Added:** 2026-04-12
+**Goal:** Detect lateral movement via graph neural network analysis of authentication event sequences. Model auth events as a bipartite user→host graph, compute node2vec embeddings nightly, and flag nodes whose embeddings shift significantly between time windows. Phase in Euler GNN if node2vec proves insufficient. Requires substantial labeled data from Phase 44 feedback loop before this is effective.
+
+### Requirements
+- P47-T01: Build bipartite auth graph from DuckDB auth_failure and process_create events (user→host edges)
+- P47-T02: Compute node2vec embeddings nightly via PyTorch Geometric — persist embeddings to SQLite
+- P47-T03: Flag nodes with cosine distance > threshold between consecutive nightly embeddings
+- P47-T04: Surface lateral movement candidates in a dedicated LateralMovementView
+- P47-T05: Upgrade to Euler GNN if node2vec false positive rate > 15% after 30 days of labeled feedback
