@@ -7,10 +7,69 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request
+from pydantic import BaseModel
 
 router = APIRouter()
+
+VALIDATION_WINDOW_SECONDS = 300  # 5 minutes
+
+
+class ValidateRequest(BaseModel):
+    technique_id: str
+    test_number: int
+
+
+def _check_detection_sync(conn, technique_id: str, cutoff_iso: str):
+    """Return detection ID if found within window, else None. Run in asyncio.to_thread."""
+    parent = technique_id.split(".")[0].upper()
+    try:
+        row = conn.execute(
+            """SELECT id FROM detections
+               WHERE (attack_technique = ? OR attack_technique LIKE ? OR attack_technique = ?)
+                 AND created_at > ?
+               ORDER BY created_at DESC LIMIT 1""",
+            (technique_id, f"{parent}.%", parent, cutoff_iso)
+        ).fetchone()
+        if row is None:
+            return None
+        return row["id"] if hasattr(row, "keys") else row[0]
+    except Exception:
+        return None
+
+
+@router.post("/atomics/validate")
+async def validate_atomic(body: ValidateRequest, request: Request):
+    atomics_store = request.app.state.atomics_store
+    try:
+        sqlite_conn = request.app.state.sqlite_store._conn
+    except AttributeError:
+        sqlite_conn = atomics_store._conn
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(seconds=VALIDATION_WINDOW_SECONDS)
+    cutoff_iso = cutoff.strftime("%Y-%m-%dT%H:%M:%S")
+    checked_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    detection_id = await asyncio.to_thread(
+        _check_detection_sync, sqlite_conn, body.technique_id, cutoff_iso
+    )
+
+    verdict = "pass" if detection_id else "fail"
+
+    # Persist result regardless of verdict
+    await asyncio.to_thread(
+        atomics_store.save_validation_result,
+        body.technique_id, body.test_number, verdict, detection_id
+    )
+
+    return {
+        "verdict": verdict,
+        "detection_id": detection_id,
+        "checked_at": checked_at,
+    }
 
 
 @router.get("/atomics")
