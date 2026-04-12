@@ -158,8 +158,9 @@ async def get_map_data(
     window_seconds = WINDOW_TO_SECONDS.get(window, WINDOW_TO_SECONDS["24h"])
     cutoff = (datetime.now(tz=timezone.utc) - timedelta(seconds=window_seconds)).isoformat()
 
-    duckdb_store = request.app.state.duckdb_store
-    sqlite_store = request.app.state.sqlite_store
+    stores = request.app.state.stores
+    duckdb_store = stores.duckdb
+    sqlite_store = stores.sqlite
 
     # Fetch raw flows from DuckDB
     try:
@@ -227,8 +228,9 @@ async def get_map_data(
             }
 
     # Fire background enrichment for cache-miss IPs (non-blocking)
-    if missing_ips and hasattr(request.app.state, "osint_service"):
-        osint_service = request.app.state.osint_service
+    if missing_ips:
+        from backend.services.osint import OsintService
+        osint_service = OsintService(sqlite_store=sqlite_store)
         for ip in missing_ips:
             asyncio.ensure_future(osint_service.enrich(ip))
 
