@@ -102,6 +102,7 @@ export interface Detection {
   car_analytics?: CARAnalytic[] | null
   correlation_type?: string       // 'PORT_SCAN' | 'BRUTE_FORCE' | 'BEACON' | 'CHAIN'
   matched_event_count?: number    // convenience count for row badge
+  verdict?: string | null         // Phase 44: 'TP' | 'FP' | null
 }
 
 export interface GraphEntity {
@@ -1075,6 +1076,17 @@ export const api = {
         `/api/anomaly/trend?entity_key=${encodeURIComponent(entityKey)}&hours=${hours}`
       ),
   },
+
+  feedback: {
+    submit: (req: FeedbackRequest): Promise<FeedbackResponse> =>
+      request<FeedbackResponse>('/api/feedback', { method: 'POST', body: JSON.stringify(req) }),
+    similar: (detection_id: string, rule_id?: string, rule_name?: string): Promise<SimilarCasesResponse> => {
+      const params = new URLSearchParams({ detection_id })
+      if (rule_id) params.set('rule_id', rule_id)
+      if (rule_name) params.set('rule_name', rule_name)
+      return request<SimilarCasesResponse>(`/api/feedback/similar?${params}`)
+    },
+  },
 }
 
 // Phase 4: direct graph helpers (bypass /api prefix — backend graph routes at /graph)
@@ -1154,6 +1166,41 @@ export interface KpiSnapshot {
   open_cases: KpiValue
   assets_monitored: KpiValue
   log_sources: KpiValue
+  // Phase 44 feedback fields
+  verdicts_given?: number
+  tp_rate?: number
+  fp_rate?: number
+  classifier_accuracy?: number | null
+  training_samples?: number
+}
+
+// ---------------------------------------------------------------------------
+// Phase 44 — Analyst feedback interfaces
+// ---------------------------------------------------------------------------
+
+export interface FeedbackRequest {
+  detection_id: string
+  verdict: 'TP' | 'FP'
+  rule_id?: string
+  rule_name?: string
+  severity?: number
+}
+
+export interface FeedbackResponse {
+  ok: boolean
+  verdict: string
+}
+
+export interface SimilarCase {
+  detection_id: string
+  verdict: 'TP' | 'FP'
+  rule_name: string | null
+  similarity_pct: number
+  summary: string | null
+}
+
+export interface SimilarCasesResponse {
+  cases: SimilarCase[]
 }
 
 // ---------------------------------------------------------------------------
