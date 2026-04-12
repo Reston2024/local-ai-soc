@@ -488,34 +488,59 @@
             {#if expandedId === getDetectionId(d)}
               <tr class="car-panel-row">
                 <td colspan="99" class="car-panel-cell">
-                  {#if d.car_analytics && d.car_analytics.length > 0}
-                    <div class="car-panel">
-                      {#each d.car_analytics as analytic (analytic.analytic_id + analytic.technique_id)}
-                        <div class="car-card">
-                          <div class="car-card-header">
-                            <code class="car-id-badge">{analytic.analytic_id}</code>
-                            <span class="car-title">{analytic.title}</span>
-                            <span class="car-coverage coverage-{analytic.coverage_level.toLowerCase()}">{analytic.coverage_level}</span>
-                            <a href="https://car.mitre.org/analytics/{analytic.analytic_id}/" target="_blank" rel="noopener noreferrer" class="car-link">CAR ↗</a>
-                            <a href="https://attack.mitre.org/techniques/{analytic.technique_id}/" target="_blank" rel="noopener noreferrer" class="car-link">ATT&CK ↗</a>
-                          </div>
-                          {#if analytic.description}
-                            <p class="car-description">{analytic.description}</p>
-                          {/if}
-                          {#if analytic.log_sources}
-                            <div class="car-meta"><span class="car-label">Log Sources:</span> {analytic.log_sources}</div>
-                          {/if}
-                          {#if analytic.analyst_notes}
-                            <div class="car-meta"><span class="car-label">Analyst Notes:</span> {analytic.analyst_notes}</div>
-                          {/if}
-                          {#if analytic.pseudocode}
-                            <pre class="car-pseudocode">{analytic.pseudocode}</pre>
-                          {/if}
+                  {#if d.rule_id?.startsWith('corr-')}
+                    <!-- Correlation expand panel -->
+                    <div class="corr-expand-panel">
+                      <div class="corr-expand-header">
+                        <span class="corr-expand-label">Matched Event IDs</span>
+                        <span class="corr-expand-count">
+                          {d.matched_event_ids?.length ?? 0} events
+                        </span>
+                      </div>
+                      {#if d.matched_event_ids && d.matched_event_ids.length > 0}
+                        <div class="corr-event-id-list">
+                          {#each d.matched_event_ids as eid}
+                            <code class="corr-event-id">{eid}</code>
+                          {/each}
                         </div>
-                      {/each}
+                      {:else}
+                        <p class="corr-no-events">No event IDs available for this correlation detection.</p>
+                      {/if}
+                      {#if d.explanation}
+                        <p class="corr-explanation">{d.explanation}</p>
+                      {/if}
                     </div>
                   {:else}
-                    <p class="car-no-analytics">No CAR analytics available for {d.attack_technique ?? 'this detection'}.</p>
+                    <!-- Existing CAR analytics panel -->
+                    {#if d.car_analytics && d.car_analytics.length > 0}
+                      <div class="car-panel">
+                        {#each d.car_analytics as analytic (analytic.analytic_id + analytic.technique_id)}
+                          <div class="car-card">
+                            <div class="car-card-header">
+                              <code class="car-id-badge">{analytic.analytic_id}</code>
+                              <span class="car-title">{analytic.title}</span>
+                              <span class="car-coverage coverage-{analytic.coverage_level.toLowerCase()}">{analytic.coverage_level}</span>
+                              <a href="https://car.mitre.org/analytics/{analytic.analytic_id}/" target="_blank" rel="noopener noreferrer" class="car-link">CAR ↗</a>
+                              <a href="https://attack.mitre.org/techniques/{analytic.technique_id}/" target="_blank" rel="noopener noreferrer" class="car-link">ATT&CK ↗</a>
+                            </div>
+                            {#if analytic.description}
+                              <p class="car-description">{analytic.description}</p>
+                            {/if}
+                            {#if analytic.log_sources}
+                              <div class="car-meta"><span class="car-label">Log Sources:</span> {analytic.log_sources}</div>
+                            {/if}
+                            {#if analytic.analyst_notes}
+                              <div class="car-meta"><span class="car-label">Analyst Notes:</span> {analytic.analyst_notes}</div>
+                            {/if}
+                            {#if analytic.pseudocode}
+                              <pre class="car-pseudocode">{analytic.pseudocode}</pre>
+                            {/if}
+                          </div>
+                        {/each}
+                      </div>
+                    {:else}
+                      <p class="car-no-analytics">No CAR analytics available for {d.attack_technique ?? 'this detection'}.</p>
+                    {/if}
                   {/if}
                 </td>
               </tr>
@@ -919,4 +944,57 @@
   .corr-badge-brute-force { background: rgba(239,68,68,0.3); color: #ef4444; border: 1px solid rgba(239,68,68,0.5); }
   .corr-badge-beacon { background: rgba(168,85,247,0.2); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.35); }
   .corr-badge-chain { background: rgba(239,68,68,0.4); color: #fff; border: 1px solid rgba(239,68,68,0.6); }
+
+  /* Phase 43: Correlation expand panel */
+  .corr-expand-panel {
+    padding: 0.75rem 1rem;
+    background: rgba(239,68,68,0.05);
+    border-top: 1px solid rgba(239,68,68,0.15);
+  }
+  .corr-expand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .corr-expand-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .corr-expand-count {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.4);
+  }
+  .corr-event-id-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .corr-event-id {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-family: monospace;
+    color: rgba(255,255,255,0.6);
+    cursor: default;
+  }
+  .corr-no-events {
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.35);
+    margin: 0;
+  }
+  .corr-explanation {
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+    font-style: italic;
+  }
 </style>
