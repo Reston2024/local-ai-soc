@@ -1441,7 +1441,7 @@ Plans:
 - P41-T06: Connection volume heatmap — marker size and arc weight by connection count
 - P41-T07: Side panel enrichment — geo, ASN, VPN/proxy flags, AbuseIPDB score, Shodan ports, ipsum tier
 
-**Plans:** 2/4 plans executed
+**Plans:** 3/4 plans executed
 
 Plans:
 - [ ] 41-01-PLAN.md — Wave 0: TDD stubs (test_map_api.py x5, test_osint_classification.py x6)

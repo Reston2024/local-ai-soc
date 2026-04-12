@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 41-threat-map-overhaul — Plan 02 complete
+current_phase: 41-threat-map-overhaul — Plan 03 complete
 status: executing
-last_updated: "2026-04-12T13:06:14.677Z"
+last_updated: "2026-04-12T13:13:45.000Z"
 progress:
   total_phases: 48
   completed_phases: 39
   total_plans: 199
-  completed_plans: 202
+  completed_plans: 203
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 41-threat-map-overhaul — Plan 02 complete
+**Current phase:** 41-threat-map-overhaul — Plan 03 complete
 **Previous phase:** 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
 **Status:** Active — executing Phase 41
 
 ## Session Log
 
+- 2026-04-12: Plan 41-03 complete — SQLiteStore gains ipsum_blocklist/tor_exit_nodes tables + 5 classification columns on osint_cache + get_ipsum_tier/get_tor_exit/bulk_insert_ipsum/bulk_insert_tor_exits/set_classification_cache methods; OsintService gains _ipapi_is/_tor_exit_check/_refresh_tor_exit_list/_ipsum_check/_refresh_ipsum + proxy/hosting/mobile fields in _geo_ipapi; _parse_ipsum_line_local module helper avoids circular import. 1044 unit tests green.
 - 2026-04-12: Plan 41-02 complete — backend/api/map.py (WINDOW_TO_SECONDS, detect_direction, parse_ipsum_line, build_map_stats, GET /api/map/data), map router wired in main.py, TypeScript MapIpInfo/MapFlow/MapStats/MapData interfaces + api.map.getData() in api.ts. 1033 unit tests green.
 - 2026-04-12: Plan 41-01 complete — 11 Wave 0 TDD stubs (5 map API + 6 OSINT classification), all SKIP cleanly. 1028 existing unit tests unaffected.
 - 2026-04-12: Plan 40-04 complete — AtomicsView.svelte (collapsible technique list, coverage badges, 3 copy buttons, validate button), api.ts interfaces (AtomicTest/AtomicTechnique/AtomicsResponse/ValidationResult), App.svelte wired. Human-verify checkpoint approved. Phase 40 COMPLETE.
@@ -83,6 +84,10 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **41-03:** _parse_ipsum_line_local added to osint.py module level — avoids circular import with map.py which imports osint.py indirectly
+- **41-03:** ipapi.is 900/day quota guard checked before lock acquisition — fast-path rejection without lock overhead
+- **41-03:** bulk_insert_ipsum guards empty entries before DELETE — prevents wiping valid cache on network failure
+- **41-03:** bulk_insert_tor_exits uses INSERT OR IGNORE; bulk_insert_ipsum uses INSERT OR REPLACE — tier updates allowed for ipsum
 - **41-01:** test_map_api.py uses module-level pytestmark skipif guard — all 5 stubs SKIP as unit when backend/api/map.py absent (pure-logic stubs test_window_mapping/test_direction_detection activate green immediately on Plan 02)
 - **41-01:** test_osint_classification.py uses 3 separate import guards (_OSINT_CLASSIFY_AVAILABLE, _SQLITE_AVAILABLE, _IPSUM_PARSER_AVAILABLE) — stubs span 3 source files with independent availability
 - **40-04:** AtomicsView initialises validationResults in second $effect after loading — prevents overwriting live results if user validates before load completes
