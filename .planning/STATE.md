@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 42-streaming-behavioral-profiles — Plan 01 complete
+current_phase: 41-threat-map-overhaul — Plan 04 complete
 status: executing
-last_updated: "2026-04-12T14:51:52.351Z"
+last_updated: "2026-04-12T15:07:37.641Z"
 progress:
   total_phases: 48
   completed_phases: 40
   total_plans: 203
-  completed_plans: 205
+  completed_plans: 206
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 41-threat-map-overhaul — Plan 04 complete
-**Previous phase:** 41-threat-map-overhaul — COMPLETE (all 4 plans done)
+**Current phase:** 42-streaming-behavioral-profiles — Plan 02 complete
+**Previous phase:** 42-streaming-behavioral-profiles — Plan 01 complete
 **Status:** Active — executing Phase 42
 
 ## Session Log
 
+- 2026-04-12: Plan 42-02 complete — River HalfSpaceTrees AnomalyScorer: scorer.py (entity_key with .subnet suffix, tanh normalization, fresh model 0.5 baseline, save/load roundtrip), anomaly_score FLOAT column in DuckDB, _apply_anomaly_scoring() wired into ingest pipeline, ANOMALY_THRESHOLD/ANOMALY_MODEL_DIR settings. All 8 scorer stubs GREEN + DuckDB column test GREEN. 1053 total unit tests, zero regressions.
 - 2026-04-12: Plan 42-01 complete — Wave 0 TDD stubs for Phase 42 anomaly scoring: test_anomaly_scorer.py (8 stubs, all SKIP) for AnomalyScorer/entity_key; test_anomaly_api.py (6 stubs: 5 SKIP + 1 RED FAIL on missing anomaly_score DuckDB column). 1044 existing tests unaffected. Contracts defined for Plans 42-02 (AnomalyScorer) and 42-03 (anomaly API + DuckDB schema).
 - 2026-04-12: Plan 41-04 complete — MapView.svelte full rewrite (581 lines): LeafletMarkerCluster, LAN node (indigo circleMarker), directional arc lines + arrowheads via leaflet-polylinedecorator, threat-signal coloring (red/orange/yellow/blue), time window buttons [1h][6h][24h][7d], header stats bar, classification side panel (CLASSIFICATION first with ip_type badge + ipsum tier). 3 npm packages installed. 1044 unit tests green. Human-verify auto-approved (auto_advance=true).
 - 2026-04-12: Plan 41-03 complete — SQLiteStore gains ipsum_blocklist/tor_exit_nodes tables + 5 classification columns on osint_cache + get_ipsum_tier/get_tor_exit/bulk_insert_ipsum/bulk_insert_tor_exits/set_classification_cache methods; OsintService gains _ipapi_is/_tor_exit_check/_refresh_tor_exit_list/_ipsum_check/_refresh_ipsum + proxy/hosting/mobile fields in _geo_ipapi; _parse_ipsum_line_local module helper avoids circular import. 1044 unit tests green.

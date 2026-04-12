@@ -1454,7 +1454,7 @@ Plans:
 **Added:** 2026-04-12
 **Goal:** Give every event an anomaly score at ingest time using online ML that learns continuously without batch retraining. Every (hostname, process_name) entity gets a behavioral baseline that updates with each new event via River HalfSpaceTrees. High-deviation events surface in the detections pipeline regardless of whether any Sigma rule fires — closing the gap between known-bad detection and novel-behavior detection.
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [ ] 42-01-PLAN.md — Wave 0 RED test stubs (AnomalyScorer + anomaly API)
