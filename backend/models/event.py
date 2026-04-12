@@ -390,6 +390,7 @@ class DetectionRecord(BaseModel):
     explanation: Optional[str] = None
     case_id: Optional[str] = None
     created_at: Optional[datetime] = None
+    entity_key: Optional[str] = None  # Phase 43: correlation engine dedup key (e.g. src_ip)
 
 
 class EventListResponse(BaseModel):

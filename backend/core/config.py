@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     # Phase 42: Streaming behavioral profiles
     ANOMALY_THRESHOLD: float = 0.7     # Score above this triggers synthetic detection
     ANOMALY_MODEL_DIR: str = "data/anomaly_models"  # Per-entity model storage
+    ANOMALY_DEDUP_WINDOW_MINUTES: int = 60  # Suppress duplicate anomaly detections within window
+
+    # Phase 43: Correlation engine (port scan, brute force, beaconing)
+    CORRELATION_LOOKBACK_HOURS: int = 2          # Window of events to analyze
+    CORRELATION_DEDUP_WINDOW_MINUTES: int = 60   # Suppress repeat correlation alerts
 
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
