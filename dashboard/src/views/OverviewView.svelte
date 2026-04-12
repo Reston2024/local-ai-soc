@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type TelemetrySummary, type TriageResult } from '../lib/api.ts'
+  import { api, type TelemetrySummary, type TriageResult, type Asset } from '../lib/api.ts'
 
   let {
     healthStatus,
@@ -14,6 +14,86 @@
   let loading = $state(true)
   let error = $state<string | null>(null)
   let triageExpanded = $state(false)
+  let internalAssets = $state<Asset[]>([])
+
+  // ── Topology ──────────────────────────────────────────────────
+  type TopoNode = {
+    id: string; label: string; sub: string
+    kind: 'internet' | 'router' | 'firewall' | 'server' | 'device'
+    status: 'up' | 'down' | 'unknown'
+    x: number; y: number
+  }
+
+  const topoData = $derived.by(() => {
+    const W = 800
+    const NH = 40
+    const nodes: TopoNode[] = []
+    const edges: Array<{fx:number;fy:number;tx:number;ty:number}> = []
+
+    const link = (a: TopoNode, b: TopoNode) =>
+      edges.push({ fx: a.x, fy: a.y + NH/2, tx: b.x, ty: b.y - NH/2 })
+
+    const st = (key: string): 'up'|'down'|'unknown' =>
+      networkDevices[key] === 'up' ? 'up' : networkDevices[key] === 'down' ? 'down' : 'unknown'
+
+    const internet: TopoNode = { id:'internet', label:'Internet', sub:'', kind:'internet', status:'up', x:W/2, y:30 }
+    nodes.push(internet)
+
+    const router: TopoNode = { id:'router', label:'Router', sub:'192.168.1.1', kind:'router', status:st('router'), x:W/2, y:115 }
+    nodes.push(router)
+    link(internet, router)
+
+    let prev = router
+
+    if (networkDevices.firewall !== undefined) {
+      const fw: TopoNode = { id:'firewall', label:'Firewall', sub:'192.168.1.1:444', kind:'firewall', status:st('firewall'), x:W/2, y:200 }
+      nodes.push(fw)
+      link(router, fw)
+      prev = fw
+    }
+
+    const leafY = prev.y + 85
+    const knownIPs = new Set(['192.168.1.1'])
+
+    type Leaf = Omit<TopoNode,'x'|'y'>
+    const leaves: Leaf[] = []
+
+    if (networkDevices.gmktec !== undefined) {
+      leaves.push({ id:'gmktec', label:'GMKtec', sub:'192.168.1.22 · Malcolm', kind:'server', status:st('gmktec') })
+      knownIPs.add('192.168.1.22'); knownIPs.add('192.168.1.100')
+    }
+
+    for (const a of internalAssets) {
+      if (!knownIPs.has(a.ip)) {
+        leaves.push({ id:`a-${a.ip}`, label: a.hostname || a.ip, sub: a.ip, kind:'device', status:'unknown' })
+        if (leaves.length >= 6) break  // cap at 6 to keep layout readable
+      }
+    }
+
+    if (leaves.length === 0)
+      leaves.push({ id:'lan', label:'LAN Devices', sub:'No assets discovered yet', kind:'device', status:'unknown' })
+
+    const gap = Math.min(180, Math.max(140, (W - 60) / leaves.length))
+    const startX = W/2 - (gap * (leaves.length - 1)) / 2
+    for (let i = 0; i < leaves.length; i++) {
+      const n: TopoNode = { ...leaves[i], x: startX + i * gap, y: leafY }
+      nodes.push(n)
+      link(prev, n)
+    }
+
+    return { nodes, edges, h: leafY + 55 }
+  })
+
+  function kindColor(k: TopoNode['kind']) {
+    return k === 'internet'  ? { fill:'rgba(6,182,212,0.12)',  stroke:'rgba(6,182,212,0.4)'  }
+         : k === 'router'    ? { fill:'rgba(99,102,241,0.12)', stroke:'rgba(99,102,241,0.5)' }
+         : k === 'firewall'  ? { fill:'rgba(249,115,22,0.12)', stroke:'rgba(249,115,22,0.45)'}
+         : k === 'server'    ? { fill:'rgba(16,185,129,0.12)', stroke:'rgba(16,185,129,0.45)'}
+         : { fill:'rgba(255,255,255,0.04)', stroke:'rgba(255,255,255,0.12)' }
+  }
+  function statusDot(s: TopoNode['status']) {
+    return s === 'up' ? '#22c55e' : s === 'down' ? '#ef4444' : '#64748b'
+  }
 
   const maxCount = $derived(
     summary
@@ -23,12 +103,16 @@
 
   async function load() {
     try {
-      const [summaryData, triageData] = await Promise.all([
+      const [summaryData, triageData, allAssets] = await Promise.all([
         api.telemetry.summary(),
         api.triage.latest(),
+        api.assets.list(200),
       ])
       summary = summaryData
       triageResult = triageData.result
+      internalAssets = allAssets.filter(a =>
+        a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.')
+      )
       error = null
     } catch (e) {
       error = String(e)
@@ -210,6 +294,60 @@
         </div>
 
       </div>
+    </div>
+
+    <!-- Network Topology -->
+    <div class="card topo-card">
+      <h3 class="card-title">Network Topology <span class="card-sub">LAN devices</span></h3>
+      <svg
+        class="topo-svg"
+        viewBox="0 0 800 {topoData.h}"
+        preserveAspectRatio="xMidYMid meet"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <!-- Edges -->
+        {#each topoData.edges as e}
+          <line x1={e.fx} y1={e.fy} x2={e.tx} y2={e.ty}
+            stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-dasharray="5 3"/>
+        {/each}
+
+        <!-- Nodes -->
+        {#each topoData.nodes as n}
+          {@const c = kindColor(n.kind)}
+          <g transform="translate({n.x - 65},{n.y - 20})">
+            <rect width="130" height="40" rx="7" fill={c.fill} stroke={c.stroke} stroke-width="1"/>
+
+            <!-- Kind icon -->
+            {#if n.kind === 'internet'}
+              <path d="M12 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM8 4C8 4 6 6 6 8a2 2 0 0 0 4 0c0-2-2-4-2-4z M4 8h8" stroke={c.stroke} stroke-width="1.2" fill="none" transform="translate(9,10)"/>
+            {:else if n.kind === 'router'}
+              <rect x="9" y="13" width="14" height="10" rx="2" stroke={c.stroke} stroke-width="1.2" fill="none"/>
+              <path d="M12 13V11M16 13V10M20 13V11" stroke={c.stroke} stroke-width="1.1" stroke-linecap="round"/>
+            {:else if n.kind === 'firewall'}
+              <path d="M16 11L12 9v5c0 2.5 1.5 4.5 4 5 2.5-.5 4-2.5 4-5V9l-4 2z" stroke={c.stroke} stroke-width="1.2" fill="none"/>
+            {:else if n.kind === 'server'}
+              <rect x="9" y="11" width="14" height="4" rx="1.5" stroke={c.stroke} stroke-width="1.1" fill="none"/>
+              <rect x="9" y="17" width="14" height="4" rx="1.5" stroke={c.stroke} stroke-width="1.1" fill="none"/>
+              <circle cx="21" cy="13" r="1" fill={c.stroke}/>
+              <circle cx="21" cy="19" r="1" fill={c.stroke}/>
+            {:else}
+              <rect x="9" y="12" width="14" height="10" rx="2" stroke={c.stroke} stroke-width="1.1" fill="none"/>
+              <line x1="9" y1="16" x2="23" y2="16" stroke={c.stroke} stroke-width="0.9"/>
+            {/if}
+
+            <!-- Label -->
+            <text x="30" y="16" font-size="10.5" font-weight="600" fill="rgba(255,255,255,0.88)" font-family="inherit">{n.label}</text>
+            {#if n.sub}
+              <text x="30" y="28" font-size="9" fill="rgba(255,255,255,0.38)" font-family="inherit">{n.sub}</text>
+            {/if}
+
+            <!-- Status dot (only for infra nodes) -->
+            {#if n.kind !== 'device' && n.kind !== 'internet'}
+              <circle cx="121" cy="8" r="4.5" fill={statusDot(n.status)}/>
+            {/if}
+          </g>
+        {/each}
+      </svg>
     </div>
   {/if}
 </div>
@@ -486,4 +624,14 @@
 
   .rule-name { font-weight: 500; color: var(--text-primary); }
   .rule-count { font-variant-numeric: tabular-nums; text-align: right; padding-right: 12px; }
+
+  /* ── Network topology ── */
+  .topo-card { margin-top: 0; }
+
+  .topo-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    min-height: 180px;
+  }
 </style>
