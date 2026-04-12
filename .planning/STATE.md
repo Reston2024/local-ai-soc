@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 04 at human-verify checkpoint)
+current_phase: 40-atomic-red-team-validation — COMPLETE
 status: in-progress
-last_updated: "2026-04-12T09:20:00.000Z"
+last_updated: "2026-04-12T10:00:00.000Z"
 progress:
   total_phases: 41
-  completed_phases: 39
+  completed_phases: 40
   total_plans: 195
-  completed_plans: 200
+  completed_plans: 201
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — COMPLETE
-**Current phase:** 40-atomic-red-team-validation (IN PROGRESS — Plan 03 complete)
+**Current phase:** 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
 **Previous phase:** 39-mitre-car-analytics-integration — COMPLETE
-**Status:** Ready to plan
+**Status:** Phase 40 complete — ready for Phase 41
 
 ## Session Log
 
+- 2026-04-12: Plan 40-04 complete — AtomicsView.svelte (collapsible technique list, coverage badges, 3 copy buttons, validate button), api.ts interfaces (AtomicTest/AtomicTechnique/AtomicsResponse/ValidationResult), App.svelte wired. Human-verify checkpoint approved. Phase 40 COMPLETE.
 - 2026-04-12: Plan 40-03 complete — POST /api/atomics/validate endpoint with 5-minute window detection check (3-way technique matching: exact/LIKE/parent), ValidateRequest Pydantic model, _check_detection_sync() helper, verdict+detection_id persistence via asyncio.to_thread. All 3 API tests pass; 1028 total unit tests green.
 - 2026-04-12: Plan 40-02 complete — AtomicsStore (DDL, bulk_insert, list_techniques, validation CRUD), seed_atomics(), GET /api/atomics with three-tier coverage + Invoke-AtomicTest strings. Test stubs fixed (SimpleNamespace, auth override, _VALIDATE_AVAILABLE guard). 1026 unit tests green.
 - 2026-04-12: Plan 40-01 complete — Wave 0 TDD stubs (8 SKIP) for AtomicsStore + atomics API, ART atomics.json bundle generated (1773 entries, 328 techniques). #{variable} markers preserved. 1020 unit tests green.
