@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 41-threat-map-overhaul — Plan 01/N in progress
-status: active
-last_updated: "2026-04-12T13:03:14Z"
+current_phase: 41-threat-map-overhaul — Plan 02 complete
+status: executing
+last_updated: "2026-04-12T13:06:14.677Z"
 progress:
-  total_phases: 41
+  total_phases: 48
   completed_phases: 39
-  total_plans: 195
-  completed_plans: 201
+  total_plans: 199
+  completed_plans: 202
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 41-threat-map-overhaul — Plan 01 complete
+**Current phase:** 41-threat-map-overhaul — Plan 02 complete
 **Previous phase:** 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
 **Status:** Active — executing Phase 41
 
 ## Session Log
 
+- 2026-04-12: Plan 41-02 complete — backend/api/map.py (WINDOW_TO_SECONDS, detect_direction, parse_ipsum_line, build_map_stats, GET /api/map/data), map router wired in main.py, TypeScript MapIpInfo/MapFlow/MapStats/MapData interfaces + api.map.getData() in api.ts. 1033 unit tests green.
 - 2026-04-12: Plan 41-01 complete — 11 Wave 0 TDD stubs (5 map API + 6 OSINT classification), all SKIP cleanly. 1028 existing unit tests unaffected.
 - 2026-04-12: Plan 40-04 complete — AtomicsView.svelte (collapsible technique list, coverage badges, 3 copy buttons, validate button), api.ts interfaces (AtomicTest/AtomicTechnique/AtomicsResponse/ValidationResult), App.svelte wired. Human-verify checkpoint approved. Phase 40 COMPLETE.
 - 2026-04-12: Plan 40-03 complete — POST /api/atomics/validate endpoint with 5-minute window detection check (3-way technique matching: exact/LIKE/parent), ValidateRequest Pydantic model, _check_detection_sync() helper, verdict+detection_id persistence via asyncio.to_thread. All 3 API tests pass; 1028 total unit tests green.
