@@ -36,6 +36,16 @@ log = get_logger(__name__)
 _ipapi_lock = asyncio.Lock()
 _IPAPI_INTERVAL = 1.5
 
+# ipapi.is free tier: 1,000 req/day — conservative burst prevention
+_ipapiis_lock = asyncio.Lock()
+_IPAPIIS_INTERVAL = 0.1
+_ipapiis_calls_today: int = 0
+_ipapiis_last_reset: str = ""  # ISO date string
+
+# Refresh locks — prevent concurrent fetches of Tor/ipsum lists
+_tor_refresh_lock = asyncio.Lock()
+_ipsum_refresh_lock = asyncio.Lock()
+
 # VirusTotal free tier: 4 req/min → 1 per 15s to be safe
 _vt_lock = asyncio.Lock()
 _VT_INTERVAL = 15.0  # seconds between VirusTotal requests
@@ -95,6 +105,23 @@ def _is_cache_valid(fetched_at: str | None, ttl_hours: int = 24) -> bool:
         return age < timedelta(hours=ttl_hours)
     except (ValueError, TypeError):
         return False
+
+
+# ---------------------------------------------------------------------------
+# Phase 41: ipsum line parser (module-level — avoids circular import from map.py)
+# ---------------------------------------------------------------------------
+
+
+def _parse_ipsum_line_local(line: str) -> tuple[str, int] | None:
+    """Parse 'ip\\ttier' line from ipsum.txt. Returns (ip, tier) or None."""
+    line = line.strip()
+    if not line or line.startswith('#') or '\t' not in line:
+        return None
+    parts = line.split('\t')
+    try:
+        return parts[0].strip(), int(parts[1].strip())
+    except (ValueError, IndexError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +345,9 @@ class OsintService:
                 async with httpx.AsyncClient(timeout=10) as client:
                     resp = await client.get(
                         f"http://ip-api.com/json/{ip}",
-                        params={"fields": "status,country,countryCode,city,lat,lon,as,org"},
+                        params={
+                            "fields": "status,country,countryCode,city,lat,lon,as,org,proxy,hosting,mobile"
+                        },
                     )
                 if resp.status_code != 200:
                     return None
@@ -340,6 +369,10 @@ class OsintService:
                     "longitude": d.get("lon"),
                     "autonomous_system_number": asn,
                     "autonomous_system_organization": d.get("org") or d.get("as"),
+                    # Phase 41 additions: proxy classification fields
+                    "proxy": bool(d.get("proxy", False)),
+                    "hosting": bool(d.get("hosting", False)),
+                    "mobile": bool(d.get("mobile", False)),
                 }
             except Exception as exc:
                 log.warning("ip-api.com geo lookup failed", ip=ip, error=str(exc))
@@ -394,6 +427,98 @@ class OsintService:
                 # Covers shodan.exception.APIError "no information available"
                 log.warning("Shodan lookup failed", ip=ip, error=str(exc))
                 return None
+
+    # -----------------------------------------------------------------------
+    # Phase 41: IP classification methods
+    # -----------------------------------------------------------------------
+
+    async def _ipapi_is(self, ip: str) -> dict | None:
+        """Query ipapi.is for datacenter/tor/proxy/VPN classification.
+
+        Rate limit: 1,000 req/day free. Internal counter caps at 900 to leave buffer.
+        Gracefully degrades to None when quota exceeded or on network failure.
+        """
+        global _ipapiis_calls_today, _ipapiis_last_reset
+        import datetime
+        today = datetime.date.today().isoformat()
+        # Reset daily counter at start of each new day
+        if _ipapiis_last_reset != today:
+            _ipapiis_calls_today = 0
+            _ipapiis_last_reset = today
+        if _ipapiis_calls_today >= 900:
+            return None  # quota guard — graceful degradation
+
+        async with _ipapiis_lock:
+            await asyncio.sleep(_IPAPIIS_INTERVAL)
+            try:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.get("https://api.ipapi.is/", params={"q": ip})
+                if resp.status_code != 200:
+                    return None
+                d = resp.json()
+                _ipapiis_calls_today += 1
+                return {
+                    "is_datacenter": bool(d.get("is_datacenter", False)),
+                    "is_tor":        bool(d.get("is_tor", False)),
+                    "is_proxy":      bool(d.get("is_proxy", False)),
+                    "is_vpn":        bool(d.get("is_vpn", False)),
+                    "asn_type":      (d.get("asn") or {}).get("type"),
+                    "company_type":  (d.get("company") or {}).get("type"),
+                }
+            except Exception:
+                return None
+
+    async def _tor_exit_check(self, ip: str) -> bool:
+        """Return True if IP is a known Tor exit node (uses local SQLite cache)."""
+        row = await asyncio.to_thread(self._store.get_tor_exit, ip)
+        return row is not None
+
+    async def _refresh_tor_exit_list(self) -> None:
+        """Fetch Tor exit node list from torproject.org and cache in SQLite (daily)."""
+        import datetime
+        today = datetime.date.today().isoformat()
+        async with _tor_refresh_lock:
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    resp = await client.get(
+                        "https://check.torproject.org/torbulkexitlist"
+                    )
+                if resp.status_code != 200:
+                    return
+                ips = [
+                    line.strip()
+                    for line in resp.text.splitlines()
+                    if line.strip() and not line.startswith('#')
+                ]
+                await asyncio.to_thread(self._store.bulk_insert_tor_exits, ips, today)
+            except Exception:
+                pass  # Network failure — use stale cache
+
+    async def _ipsum_check(self, ip: str) -> int | None:
+        """Return ipsum tier (1-8) if IP is in blocklist, else None."""
+        return await asyncio.to_thread(self._store.get_ipsum_tier, ip)
+
+    async def _refresh_ipsum(self) -> None:
+        """Fetch ipsum blocklist from GitHub and cache in SQLite (daily)."""
+        import datetime
+        today = datetime.date.today().isoformat()
+        async with _ipsum_refresh_lock:
+            try:
+                async with httpx.AsyncClient(timeout=60) as client:
+                    resp = await client.get(
+                        "https://raw.githubusercontent.com/stamparm/ipsum/master/ipsum.txt"
+                    )
+                if resp.status_code != 200:
+                    return
+                entries: list[tuple[str, int, str]] = []
+                for line in resp.text.splitlines():
+                    parsed = _parse_ipsum_line_local(line)
+                    if parsed:
+                        entries.append((parsed[0], parsed[1], today))
+                if entries:
+                    await asyncio.to_thread(self._store.bulk_insert_ipsum, entries)
+            except Exception:
+                pass  # Network failure — use stale cache
 
 
 # ---------------------------------------------------------------------------
