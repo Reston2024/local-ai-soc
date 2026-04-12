@@ -63,9 +63,10 @@
       return PRIVATE_PREFIXES.some(p => ip.startsWith(p))
     }
 
-    // LAN node at map center (indigo circle representing all RFC1918 hosts)
-    const center = map.getCenter()
-    lanMarker = L.circleMarker(center, {
+    // LAN node at server's actual geographic location (falls back to [0, 0] if unavailable)
+    const homeLat = mapData.home_lat ?? 0
+    const homeLon = mapData.home_lon ?? 0
+    lanMarker = L.circleMarker([homeLat, homeLon], {
       radius: 14,
       color: '#6366f1',
       fillColor: '#6366f1',
@@ -74,6 +75,11 @@
     })
     lanMarker.bindTooltip('LAN (internal hosts)', { permanent: false })
     lanMarker.addTo(clusterGroup)
+
+    // Pan map to home location on first load (only if map hasn't been moved by user)
+    if (mapData.home_lat !== null && mapData.home_lon !== null) {
+      map.setView([homeLat, homeLon], map.getZoom(), { animate: false })
+    }
 
     // External IP markers
     for (const [ip, info] of Object.entries(mapData.ips as Record<string, MapIpInfo>)) {
@@ -111,10 +117,10 @@
 
       // Both ends need coordinates (use LAN node coords for private IPs)
       const srcLatLng = srcIsPrivate
-        ? [center.lat, center.lng]
+        ? [homeLat, homeLon]
         : (srcInfo?.lat && srcInfo?.lon ? [srcInfo.lat, srcInfo.lon] : null)
       const dstLatLng = dstIsPrivate
-        ? [center.lat, center.lng]
+        ? [homeLat, homeLon]
         : (dstInfo?.lat && dstInfo?.lon ? [dstInfo.lat, dstInfo.lon] : null)
 
       if (!srcLatLng || !dstLatLng) continue

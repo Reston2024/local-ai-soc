@@ -594,6 +594,8 @@ export interface MapData {
   flows: MapFlow[]
   ips: Record<string, MapIpInfo>
   stats: MapStats
+  home_lat: number | null
+  home_lon: number | null
 }
 
 const BASE = ''  // proxied via Vite dev server, or same origin in prod

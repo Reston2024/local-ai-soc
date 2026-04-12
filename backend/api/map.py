@@ -4,10 +4,14 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, Query, Request
+
+log = logging.getLogger(__name__)
 
 from backend.core.auth import verify_token
 
@@ -135,6 +139,34 @@ def build_map_stats(
     }
 
 
+async def _get_home_location() -> tuple[float | None, float | None]:
+    """Resolve server's own external IP and return (lat, lon) via ip-api.com.
+
+    Falls back to (None, None) on any network error so the map still loads.
+    Uses a short timeout to avoid blocking the map response.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            # Step 1: resolve external IP
+            r = await client.get("https://api.ipify.org?format=json")
+            r.raise_for_status()
+            ext_ip = r.json().get("ip", "")
+            if not ext_ip:
+                return None, None
+
+            # Step 2: geolocate it (free tier — fields subset)
+            geo = await client.get(
+                f"http://ip-api.com/json/{ext_ip}?fields=lat,lon,status"
+            )
+            geo.raise_for_status()
+            data = geo.json()
+            if data.get("status") == "success":
+                return float(data["lat"]), float(data["lon"])
+    except Exception as exc:  # noqa: BLE001
+        log.debug("_get_home_location failed: %s", exc)
+    return None, None
+
+
 @router.get("/data")
 async def get_map_data(
     request: Request,
@@ -234,9 +266,12 @@ async def get_map_data(
         for ip in missing_ips:
             asyncio.ensure_future(osint_service.enrich(ip))
 
+    # Resolve server's home location (non-blocking — falls back to None/None)
+    home_lat, home_lon = await _get_home_location()
+
     # Strip internal _conn_total before returning (used for stats only)
     stats = build_map_stats(list(unique_ips), ip_data, len(flows))
     for info in ip_data.values():
         info.pop("_conn_total", None)
 
-    return {"flows": flows, "ips": ip_data, "stats": stats}
+    return {"flows": flows, "ips": ip_data, "stats": stats, "home_lat": home_lat, "home_lon": home_lon}
