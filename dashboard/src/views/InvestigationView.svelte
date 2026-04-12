@@ -1,6 +1,6 @@
 <script lang="ts">
   import { api } from '../lib/api.ts'
-  import type { TimelineItem, ChatHistoryMessage, CARAnalytic } from '../lib/api.ts'
+  import type { TimelineItem, ChatHistoryMessage, CARAnalytic, SimilarCase } from '../lib/api.ts'
 
   let {
     investigationId = '',
@@ -13,7 +13,10 @@
   } = $props()
 
   // Investigation result — holds car_analytics from POST /api/investigate
-  let investigationResult = $state<{ car_analytics?: CARAnalytic[]; detection?: { attack_technique?: string } } | null>(null)
+  let investigationResult = $state<{ car_analytics?: CARAnalytic[]; detection?: { attack_technique?: string; rule_id?: string; rule_name?: string } } | null>(null)
+
+  // Phase 44: similar confirmed cases
+  let similarCases = $state<SimilarCase[]>([])
 
   // Timeline state
   let timelineItems = $state<TimelineItem[]>([])
@@ -33,6 +36,19 @@
     loadTimeline()
     loadChatHistory()
     loadInvestigation()
+  })
+
+  // Phase 44: load similar confirmed cases when investigationId changes
+  $effect(() => {
+    if (!investigationId) return
+    const det = investigationResult?.detection
+    api.feedback.similar(
+      investigationId,
+      det?.rule_id,
+      det?.rule_name
+    ).then(r => {
+      similarCases = r.cases ?? []
+    }).catch(() => { similarCases = [] })
   })
 
   async function loadInvestigation() {
@@ -180,6 +196,24 @@
               {/if}
               {#if analytic.pseudocode}
                 <pre class="car-pseudocode">{analytic.pseudocode}</pre>
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    {#if similarCases.length > 0}
+      <section class="inv-section similar-cases-section">
+        <h3 class="inv-section-title">Similar Confirmed Cases</h3>
+        <div class="similar-cases-list">
+          {#each similarCases as c (c.detection_id)}
+            <div class="similar-case-card">
+              <span class="verdict-badge verdict-{c.verdict.toLowerCase()}">{c.verdict}</span>
+              <span class="similar-rule-name">{c.rule_name ?? 'Unknown rule'}</span>
+              <span class="similar-score">{c.similarity_pct}% similar</span>
+              {#if c.summary}
+                <p class="similar-summary">{c.summary}</p>
               {/if}
             </div>
           {/each}
@@ -432,4 +466,15 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .car-meta { font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-bottom: 4px; }
 .car-label { color: rgba(255,255,255,0.45); font-weight: 500; }
 .car-pseudocode { font-family: monospace; font-size: 0.75rem; background: rgba(0,0,0,0.4); color: #a5b4fc; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre; margin: 8px 0 0; max-height: 200px; overflow-y: auto; }
+
+/* Phase 44: Similar Confirmed Cases */
+.similar-cases-section { margin-top: 16px; }
+.similar-cases-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.similar-case-card { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); flex-wrap: wrap; }
+.similar-rule-name { font-size: 13px; color: rgba(255,255,255,0.8); flex: 1; }
+.similar-score { font-size: 12px; color: rgba(255,255,255,0.45); white-space: nowrap; }
+.similar-summary { font-size: 12px; color: rgba(255,255,255,0.5); margin: 4px 0 0; width: 100%; }
+.verdict-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.verdict-tp { background: rgba(34,197,94,0.2); color: #22c55e; }
+.verdict-fp { background: rgba(239,68,68,0.2); color: #ef4444; }
 </style>
