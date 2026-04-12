@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     SHODAN_API_KEY: str = ""
     GEOIP_DB_PATH: str = "data/GeoLite2-City.mmdb"
 
+    # Map — home LAN node pin (optional override for IP geolocation inaccuracy)
+    # Set these in .env to fix the LAN node to your exact location.
+    # Leave unset to auto-detect via external IP geolocation (accurate to ISP hub level).
+    HOME_LAT: float | None = None   # e.g. HOME_LAT=47.6062
+    HOME_LON: float | None = None   # e.g. HOME_LON=-122.3321
+
     # Network device monitoring — TCP reachability checks shown in dashboard sidebar
     # Each value is "host:port". Empty string = disabled (dot hidden).
     MONITOR_ROUTER_HOST: str = ""       # e.g. "192.168.0.1:80"

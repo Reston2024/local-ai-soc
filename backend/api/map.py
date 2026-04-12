@@ -11,6 +11,8 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, Query, Request
 
+from backend.core.config import settings
+
 log = logging.getLogger(__name__)
 
 from backend.core.auth import verify_token
@@ -266,8 +268,11 @@ async def get_map_data(
         for ip in missing_ips:
             asyncio.ensure_future(osint_service.enrich(ip))
 
-    # Resolve server's home location (non-blocking — falls back to None/None)
-    home_lat, home_lon = await _get_home_location()
+    # Resolve server's home location — use .env pin if set, else auto-detect
+    if settings.HOME_LAT is not None and settings.HOME_LON is not None:
+        home_lat, home_lon = settings.HOME_LAT, settings.HOME_LON
+    else:
+        home_lat, home_lon = await _get_home_location()
 
     # Strip internal _conn_total before returning (used for stats only)
     stats = build_map_stats(list(unique_ips), ip_data, len(flows))
