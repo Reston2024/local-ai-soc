@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 43
-status: ready
-last_updated: "2026-04-12T17:00:00.000Z"
+current_phase: 43-sigma-v2-correlation-rules — in progress (plan 01 complete)
+status: in_progress
+last_updated: "2026-04-12T17:45:00.000Z"
 progress:
   total_phases: 48
   completed_phases: 42
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 43 (next unstarted)
+**Current phase:** 43 — in progress (plan 01 of N complete)
 **Previous phase:** 42-streaming-behavioral-profiles — COMPLETE ✅
-**Status:** Ready — Phase 42 verified and closed
+**Status:** Plan 43-01 complete — Wave 0 TDD stubs locked
 
 ## Session Log
 
+- 2026-04-12: Plan 43-01 complete — Wave 0 TDD stubs for Phase 43 correlation engine: test_correlation_engine.py (1 RED import + 8 SKIP stubs) covering port scan, brute force, beaconing, chain, dedup, YAML loading, and ingest hook. 1058 existing tests unaffected. Note: linter premature-created correlation_engine.py + config/model changes reverted — scope belongs to Plan 43-02.
 - 2026-04-12: Phase 42 VERIFIED — gap fix: GET /api/anomaly/trend now returns {trend: [...], entity_key: "..."} instead of plain list. 14/14 unit tests green. ROADMAP.md and STATE.md updated. Phase 42 COMPLETE ✅
 - 2026-04-12: Plan 42-04 complete — AnomalyView.svelte (250 lines: score bar table, entity profile sparkline, 24h trend chart), api.ts anomaly interfaces (AnomalyEvent/EntityProfile/ScoreTrendResponse) + api.anomaly group (list/entityProfile/trend), App.svelte wired with 'anomaly' View type and Anomaly Profiles nav item in Intelligence group. TypeScript compiles clean. Auto-approved human-verify (auto_advance=true). Phase 42 COMPLETE.
 - 2026-04-12: Plan 42-03 complete — Anomaly API (3 endpoints: /api/anomaly, /api/anomaly/entity, /api/anomaly/trend), AnomalyScorer wired into main.py lifespan (Phase 42 block 7f), synthetic detection creation in _apply_anomaly_scoring (rule_id='anomaly-*' when score > ANOMALY_THRESHOLD), anomaly_router registered via deferred try/except. All 6 test_anomaly_api.py stubs GREEN (Wave 0 stubs fixed with auth mocking). 1058 total unit tests, zero regressions.
@@ -90,6 +91,7 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **43-01:** Per-test @_skip decorator (not module-level pytestmark) lets RED import test run while 8 behavioral stubs skip cleanly — same pattern as Phase 42 test_anomaly_scorer.py
 - **42-01:** test_anomaly_score_in_duckdb uses async def with start_write_worker pattern — consistent with pytest-asyncio auto mode and existing test_duckdb_store.py fixture
 - **42-01:** Per-test @_skip_api decorator for API stubs — allows test_anomaly_score_in_duckdb to run RED while 5 API stubs skip cleanly (DuckDB available; anomaly router not yet available)
 - **41-04:** Sequential await imports in onMount — Leaflet must resolve before markercluster/polylinedecorator attach; Promise.all causes "L.markerClusterGroup is not a function"
