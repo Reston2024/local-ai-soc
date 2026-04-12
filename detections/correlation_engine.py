@@ -243,5 +243,86 @@ class CorrelationEngine:
         return len(self._chains)
 
     async def _detect_chains(self) -> list[DetectionRecord]:
-        """Detect multi-stage chains. Implemented in Plan 43-03."""
-        return []
+        """Detect multi-stage chains by querying SQLite detections for co-fired rules."""
+        if not self._chains:
+            return []
+        results = []
+        for chain in self._chains:
+            matches = await self._query_chain(chain)
+            for entity_key, detection_ids in matches:
+                det = DetectionRecord(
+                    id=str(uuid4()),
+                    rule_id=f"corr-chain-{chain['name']}",
+                    rule_name=f"Correlation Chain: {chain.get('description', chain['name'])}",
+                    severity=chain.get("severity", "critical"),
+                    matched_event_ids=detection_ids,
+                    attack_technique=None,
+                    attack_tactic="lateral-movement",
+                    explanation=(
+                        f"Chain '{chain['name']}' matched for entity {entity_key} "
+                        f"(rules: {', '.join(chain.get('rule_ids', []))} within "
+                        f"{chain.get('window_minutes', 15)} min)"
+                    ),
+                    entity_key=entity_key,
+                )
+                results.append(det)
+        return results
+
+    async def _query_chain(self, chain: dict) -> list[tuple[str, list[str]]]:
+        """Query SQLite for chain matches. Returns list of (entity_key, detection_id_list)."""
+        from datetime import timedelta
+        rule_ids = chain.get("rule_ids", [])
+        rule_tactics = chain.get("rule_tactics", [])
+        window_minutes = chain.get("window_minutes", 15)
+        window_start = (
+            datetime.now(tz=timezone.utc) - timedelta(minutes=window_minutes)
+        ).isoformat()
+
+        def _check():
+            conn = self.stores.sqlite._conn
+            matches: list[tuple[str, list[str]]] = []
+
+            # For chains with explicit rule_ids: check all fired for same entity within window
+            if rule_ids:
+                placeholders = ",".join("?" * len(rule_ids))
+                rows = conn.execute(
+                    f"""SELECT entity_key,
+                               COUNT(DISTINCT rule_id) AS matched_rules,
+                               GROUP_CONCAT(id, ',') AS detection_ids
+                        FROM detections
+                        WHERE rule_id IN ({placeholders})
+                          AND created_at >= ?
+                          AND entity_key IS NOT NULL
+                        GROUP BY entity_key
+                        HAVING COUNT(DISTINCT rule_id) = ?""",
+                    rule_ids + [window_start, len(rule_ids)],
+                ).fetchall()
+                for row in rows:
+                    det_ids = (row[2] or "").split(",") if row[2] else []
+                    matches.append((row[0], det_ids))
+
+            # For chains with tactic matching (recon-to-exploit): check tactic diversity
+            if rule_tactics and len(rule_tactics) >= 2:
+                tactic_placeholders = ",".join("?" * len(rule_tactics))
+                rows = conn.execute(
+                    f"""SELECT entity_key,
+                               COUNT(DISTINCT attack_tactic) AS matched_tactics,
+                               GROUP_CONCAT(id, ',') AS detection_ids
+                        FROM detections
+                        WHERE attack_tactic IN ({tactic_placeholders})
+                          AND created_at >= ?
+                          AND entity_key IS NOT NULL
+                        GROUP BY entity_key
+                        HAVING COUNT(DISTINCT attack_tactic) = ?""",
+                    rule_tactics + [window_start, len(rule_tactics)],
+                ).fetchall()
+                for row in rows:
+                    # Avoid duplicate entries for entities already matched by rule_ids
+                    entity = row[0]
+                    if not any(m[0] == entity for m in matches):
+                        det_ids = (row[2] or "").split(",") if row[2] else []
+                        matches.append((entity, det_ids))
+
+            return matches
+
+        return await asyncio.to_thread(_check)

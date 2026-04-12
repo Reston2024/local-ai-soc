@@ -246,7 +246,7 @@ def test_chain_detection():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
     try:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, check_same_thread=False)
         conn.execute("""
             CREATE TABLE detections (
                 id TEXT PRIMARY KEY,

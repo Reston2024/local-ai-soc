@@ -1,0 +1,25 @@
+# Phase 43 — Pre-built correlation chains
+# Each chain fires when all rule_ids trigger for the same entity_key within window_minutes.
+# Produces a corr-chain-{name} detection at severity: critical.
+# Add new chains here — no code changes needed.
+
+chains:
+  - name: scan-bruteforce
+    description: "Port scan followed by brute force — service discovery then credential attack"
+    rule_ids:
+      - corr-portscan
+      - corr-bruteforce
+    entity_key: src_ip
+    window_minutes: 15
+    severity: critical
+
+  - name: recon-to-exploit
+    description: "Recon/discovery then port scan then exploitation — classic kill chain"
+    rule_ids:
+      - corr-portscan
+    rule_tactics:
+      - discovery
+      - execution
+    entity_key: src_ip
+    window_minutes: 15
+    severity: critical
