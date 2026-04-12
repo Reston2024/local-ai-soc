@@ -49,6 +49,12 @@ class KpiSnapshot(BaseModel):
     avg_latency_ms_per_model: dict[str, float] = {}
     total_llm_calls: int = 0
     error_rate: float = 0.0
+    # Phase 44 — Analyst feedback fields
+    verdicts_given: int = 0
+    tp_rate: float = 0.0
+    fp_rate: float = 0.0
+    classifier_accuracy: float | None = None   # None until training_samples >= 10
+    training_samples: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -412,12 +418,19 @@ class MetricsService:
     # Aggregate: compute_all_kpis
     # ------------------------------------------------------------------
 
-    async def compute_all_kpis(self) -> KpiSnapshot:
+    async def compute_all_kpis(self, app_state=None) -> KpiSnapshot:
         """
         Run all compute_* coroutines concurrently via asyncio.gather.
 
-        Returns a KpiSnapshot with all 9 SOC KPI fields plus 3 LLMOps fields.
+        Returns a KpiSnapshot with all 9 SOC KPI fields plus 3 LLMOps fields
+        and 5 Phase 44 analyst feedback fields.
         Never raises — all individual functions have their own exception guards.
+
+        Args:
+            app_state: Optional FastAPI app.state object.  When provided, the
+                       FeedbackClassifier instance is read from
+                       ``app_state.feedback_classifier`` to populate
+                       classifier_accuracy and training_samples.
         """
         (
             mttd,
@@ -445,6 +458,26 @@ class MetricsService:
             self._stores.duckdb
         )
 
+        # Feedback KPIs (from SQLite feedback table)
+        try:
+            stats = await asyncio.to_thread(self._stores.sqlite.get_feedback_stats)
+            verdicts_given = stats.get("verdicts_given", 0)
+            tp_rate = stats.get("tp_rate", 0.0)
+            fp_rate = stats.get("fp_rate", 0.0)
+        except Exception:
+            verdicts_given, tp_rate, fp_rate = 0, 0.0, 0.0
+
+        # Classifier accuracy (from FeedbackClassifier if available on app_state)
+        classifier_accuracy = None
+        training_samples = 0
+        try:
+            classifier = getattr(app_state, "feedback_classifier", None)
+            if classifier:
+                training_samples = classifier.n_samples
+                classifier_accuracy = classifier.accuracy()  # None if < 10 samples
+        except Exception:
+            pass
+
         return KpiSnapshot(
             computed_at=datetime.now(tz=timezone.utc),
             mttd=mttd,
@@ -459,4 +492,9 @@ class MetricsService:
             avg_latency_ms_per_model=avg_latency_per_model,
             total_llm_calls=total_llm_calls,
             error_rate=error_rate,
+            verdicts_given=verdicts_given,
+            tp_rate=tp_rate,
+            fp_rate=fp_rate,
+            classifier_accuracy=classifier_accuracy,
+            training_samples=training_samples,
         )

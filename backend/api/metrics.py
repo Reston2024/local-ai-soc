@@ -27,12 +27,12 @@ _kpi_cache: Optional[KpiSnapshot] = None
 _scheduler: Optional[AsyncIOScheduler] = None
 
 
-async def _refresh_kpis(stores) -> None:
+async def _refresh_kpis(stores, app_state=None) -> None:
     """Background scheduler job: recompute KPIs and update module-level cache."""
     global _kpi_cache
     try:
         svc = MetricsService(stores)
-        _kpi_cache = await svc.compute_all_kpis()
+        _kpi_cache = await svc.compute_all_kpis(app_state=app_state)
         log.debug("KPI cache refreshed: computed_at=%s", _kpi_cache.computed_at)
     except Exception as exc:
         log.warning("KPI refresh failed: %s", exc)
@@ -48,6 +48,8 @@ async def get_kpis(request: Request, stores: StoresDep) -> JSONResponse:
     """
     global _kpi_cache, _scheduler
 
+    app_state = getattr(request.app, "state", None)
+
     # Start scheduler on first call (attaches to the running asyncio event loop)
     if _scheduler is None:
         _scheduler = AsyncIOScheduler()
@@ -55,7 +57,7 @@ async def get_kpis(request: Request, stores: StoresDep) -> JSONResponse:
             _refresh_kpis,
             "interval",
             seconds=60,
-            args=[stores],
+            kwargs={"stores": stores, "app_state": app_state},
             id="kpi_refresh",
             replace_existing=True,
         )
@@ -64,7 +66,7 @@ async def get_kpis(request: Request, stores: StoresDep) -> JSONResponse:
 
     # Cold cache: compute inline so the first response is never empty
     if _kpi_cache is None:
-        await _refresh_kpis(stores)
+        await _refresh_kpis(stores, app_state=app_state)
 
     if _kpi_cache is None:
         # Fallback if compute still failed (e.g. stores not ready)
