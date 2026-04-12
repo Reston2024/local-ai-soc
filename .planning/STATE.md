@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 44 — in progress (plan 01 of N complete)
+current_phase: 44 — in progress (plan 03 of N complete)
 status: executing
-last_updated: "2026-04-12T20:30:07.247Z"
+last_updated: "2026-04-12T20:36:25.120Z"
 progress:
   total_phases: 48
   completed_phases: 42
   total_plans: 211
-  completed_plans: 214
+  completed_plans: 215
 ---
 
 # Session State
@@ -42,9 +42,12 @@ See: .planning/PROJECT.md
 - **44-02:** River LogisticRegression used for FeedbackClassifier — already installed, no new dependencies needed
 - **44-02:** SQLiteStore path= kwarg added for unit test isolation (tests use file path, not directory)
 - **44-02:** Chroma feedback_verdicts uses Ollama embeddings (not query_texts) — graceful degradation when Ollama offline
+- **44-03:** compute_all_kpis() gains optional app_state=None param; metrics.py APScheduler uses kwargs= to forward app_state to _refresh_kpis
+- **44-03:** TypeScript FeedbackRequest/FeedbackResponse/SimilarCase interfaces added to api.ts; api.feedback.submit() and api.feedback.similar() methods typed and ready for Wave 3 components
 
 ## Session Log
 
+- 2026-04-12: Plan 44-03 complete — Wave 2 metrics + api.ts: KpiSnapshot gains 5 feedback fields (verdicts_given, tp_rate, fp_rate, classifier_accuracy, training_samples), compute_all_kpis() populates from SQLite + FeedbackClassifier via app_state, api.ts adds FeedbackRequest/FeedbackResponse/SimilarCase/SimilarCasesResponse interfaces + api.feedback.submit() + api.feedback.similar(). 1081 unit tests GREEN, TypeScript 0 errors.
 - 2026-04-12: Plan 44-02 complete — Backend data layer: FeedbackClassifier (River LogisticRegression, joblib persistence), SQLite feedback table (upsert/query/stats), POST /api/feedback + GET /api/feedback/similar, main.py wiring (block 7h + feedback_verdicts Chroma collection + feedback_router), detections list LEFT JOINs verdict field. 1081 unit tests GREEN, 0 failures.
 - 2026-04-12: Plan 44-01 complete — Wave 0 TDD stubs: test_feedback_store.py (7 stubs, importorskip pattern) + test_feedback_classifier.py (7 tests). Background agent pre-implemented FeedbackClassifier (River LogisticRegression, persist via joblib) and SQLiteStore feedback methods. All 1074 unit tests GREEN, 0 regressions. river>=0.21.0 added to uv.lock.
 - 2026-04-12: Plan 43-04 complete — Frontend: Detection interface extended (correlation_type, matched_event_count), typeFilter rune + displayDetections + corrCount derived, CORR/ANOMALY/SIGMA/All filter chips, corr-type-badge on corr-* rows, expand panel branches to event IDs for corr-* vs CAR analytics for others. TypeScript clean, 1067 unit tests GREEN.
