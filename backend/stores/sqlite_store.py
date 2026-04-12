@@ -332,6 +332,17 @@ CREATE TABLE IF NOT EXISTS triage_results (
     created_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_triage_results_created ON triage_results (created_at DESC);
+
+-- Phase 44: Analyst feedback verdicts (TP/FP)
+CREATE TABLE IF NOT EXISTS feedback (
+    id            TEXT PRIMARY KEY,
+    detection_id  TEXT NOT NULL UNIQUE,
+    verdict       TEXT NOT NULL CHECK(verdict IN ('TP', 'FP')),
+    features_json TEXT,
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_detection ON feedback (detection_id);
 """
 
 # Phase 41: ipsum blocklist and Tor exit node tables
@@ -363,9 +374,12 @@ class SQLiteStore:
     asyncio.to_thread().
     """
 
-    def __init__(self, data_dir: str) -> None:
-        # Support ":memory:" for unit tests — skip directory creation.
-        if data_dir == ":memory:":
+    def __init__(self, data_dir: str = ":memory:", *, path: Optional[Any] = None) -> None:
+        # ``path`` is an alternative to ``data_dir`` — points directly to the
+        # .db file rather than a data directory (used by unit tests).
+        if path is not None:
+            self._db_path = str(path)
+        elif data_dir == ":memory:":
             self._db_path = ":memory:"
         else:
             db_dir = Path(data_dir)
@@ -447,6 +461,17 @@ class SQLiteStore:
             self._conn.commit()
         except Exception:
             pass  # column already exists — idempotent
+
+        # Phase 44 migration — features_json on feedback (for DBs created before
+        # the column was added to the DDL)
+        try:
+            self._conn.execute("SELECT features_json FROM feedback LIMIT 1")
+        except Exception:
+            try:
+                self._conn.execute("ALTER TABLE feedback ADD COLUMN features_json TEXT")
+                self._conn.commit()
+            except Exception:
+                pass  # column already exists or table not yet created — idempotent
 
         # Phase 41: ipsum + Tor tables (idempotent — CREATE IF NOT EXISTS)
         self._conn.execute(_IPSUM_DDL)
@@ -1854,6 +1879,62 @@ class SQLiteStore:
             (ip_type, ipsum_tier, int(is_tor), int(is_proxy), int(is_datacenter), ip),
         )
         self._conn.commit()
+
+    # ------------------------------------------------------------------
+    # Phase 44: Analyst feedback (TP/FP verdicts)
+    # ------------------------------------------------------------------
+
+    def upsert_feedback(self, detection_id: str, verdict: str) -> None:
+        """Insert or update an analyst verdict for a detection.
+
+        Args:
+            detection_id: The detection this verdict applies to.
+            verdict:      ``"TP"`` (True Positive) or ``"FP"`` (False Positive).
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn.execute(
+            """
+            INSERT INTO feedback (id, detection_id, verdict, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(detection_id) DO UPDATE
+                SET verdict    = excluded.verdict,
+                    updated_at = excluded.updated_at
+            """,
+            (str(uuid4()), detection_id, verdict, now, now),
+        )
+        self._conn.commit()
+
+    def get_verdict_for_detection(self, detection_id: str) -> Optional[str]:
+        """Return the verdict for a detection, or ``None`` if not yet reviewed."""
+        row = self._conn.execute(
+            "SELECT verdict FROM feedback WHERE detection_id = ?",
+            (detection_id,),
+        ).fetchone()
+        return row[0] if row else None
+
+    def get_feedback_stats(self) -> dict:
+        """Return aggregate feedback statistics.
+
+        Returns:
+            Dict with keys ``verdicts_given``, ``tp_rate``, ``fp_rate``.
+        """
+        row = self._conn.execute(
+            """
+            SELECT
+                COUNT(*),
+                SUM(CASE WHEN verdict = 'TP' THEN 1 ELSE 0 END),
+                SUM(CASE WHEN verdict = 'FP' THEN 1 ELSE 0 END)
+            FROM feedback
+            """
+        ).fetchone()
+        total = row[0] or 0
+        tp = row[1] or 0
+        fp = row[2] or 0
+        return {
+            "verdicts_given": total,
+            "tp_rate": tp / total if total else 0.0,
+            "fp_rate": fp / total if total else 0.0,
+        }
 
     def close(self) -> None:
         """Close the SQLite connection."""
