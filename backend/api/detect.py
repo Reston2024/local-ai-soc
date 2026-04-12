@@ -77,10 +77,24 @@ async def list_detections(
             conditions.append("rule_id = ?")
             params.append(rule_id)
 
-        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        where_clause = ("WHERE " + " AND ".join(f"d.{c}" for c in conditions)) if conditions else ""
+        # Rebuild conditions with table alias for the JOIN query
+        aliased_conditions = []
+        if case_id:
+            aliased_conditions.append("d.case_id = ?")
+        if severity:
+            aliased_conditions.append("LOWER(d.severity) = LOWER(?)")
+        if rule_id:
+            aliased_conditions.append("d.rule_id = ?")
+        where_clause = ("WHERE " + " AND ".join(aliased_conditions)) if aliased_conditions else ""
+
         sql = f"""
-            SELECT * FROM detections {where}
-            ORDER BY created_at DESC
+            SELECT d.*, f.verdict AS verdict
+            FROM detections d
+            LEFT JOIN (SELECT detection_id, verdict FROM feedback) f
+                ON d.id = f.detection_id
+            {where_clause}
+            ORDER BY d.created_at DESC
             LIMIT ? OFFSET ?
         """
         params += [limit, offset]
@@ -101,6 +115,7 @@ async def list_detections(
                     d["car_analytics"] = _json.loads(d["car_analytics"])
                 except Exception:
                     d["car_analytics"] = None
+            # Phase 44: verdict is None for unreviewed detections — preserve as-is
             result.append(d)
         return result
 

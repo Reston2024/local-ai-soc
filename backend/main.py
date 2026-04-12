@@ -221,6 +221,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     await chroma_store.initialise_default_collections(embed_model=settings.OLLAMA_EMBED_MODEL)
 
+    # 3b. Phase 44: feedback_verdicts Chroma collection for k-NN similar incident retrieval
+    try:
+        await chroma_store.get_or_create_collection_async(
+            "feedback_verdicts",
+            metadata={"embed_model": settings.OLLAMA_EMBED_MODEL, "hnsw:space": "cosine"},
+        )
+        log.info("feedback_verdicts Chroma collection ready (Phase 44)")
+    except Exception as exc:
+        log.warning("feedback_verdicts Chroma collection init failed (non-fatal): %s", exc)
+
     # 4. SQLite store
     sqlite_store = SQLiteStore(data_dir=settings.DATA_DIR)
 
@@ -336,6 +346,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.warning("AnomalyScorer failed to initialise — anomaly scoring disabled: %s", exc)
         app.state.anomaly_scorer = None
         app.state._anomaly_scorer_for_ingester = None
+
+    # 7h. Phase 44: FeedbackClassifier — River LogisticRegression for TP/FP online learning
+    try:
+        from backend.services.feedback.classifier import FeedbackClassifier as _FeedbackClassifier
+        app.state.feedback_classifier = _FeedbackClassifier()
+        app.state.feedback_classifier.load()
+        log.info("FeedbackClassifier loaded (Phase 44)", n_samples=app.state.feedback_classifier.n_samples)
+    except Exception as exc:
+        log.warning("FeedbackClassifier init failed — feedback scoring disabled: %s", exc)
+        app.state.feedback_classifier = None
 
     # 7g. Phase 43: Correlation engine (port scan, brute force, beaconing)
     try:
@@ -887,6 +907,13 @@ def create_app() -> FastAPI:
         log.info("Anomaly router mounted at /api/anomaly")
     except Exception as exc:
         log.warning("Anomaly router not available: %s", exc)
+
+    try:
+        from backend.api.feedback import feedback_router
+        app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
+        log.info("Feedback router mounted at /api/feedback (Phase 44)")
+    except Exception as exc:
+        log.warning("Feedback router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
