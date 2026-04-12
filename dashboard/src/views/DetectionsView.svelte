@@ -21,6 +21,12 @@
   let severityFilter = $state('')
   let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA'
 
+  // Phase 44: Verdict state
+  let verdicts = $state<Map<string, 'TP' | 'FP'>>(new Map())
+  let toastMessage = $state<string | null>(null)
+  let toastTimer: ReturnType<typeof setTimeout> | null = null
+  let verdictFilter = $state(false)
+
   // Severity breakdowns
   let criticalCount = $derived(detections.filter(d => d.severity?.toLowerCase() === 'critical').length)
   let highCount     = $derived(detections.filter(d => d.severity?.toLowerCase() === 'high').length)
@@ -32,15 +38,21 @@
     Math.max(0, 100 - criticalCount * 25 - highCount * 10 - mediumCount * 4 - lowCount * 1)
   )
 
-  // Type-filtered detection list for display
+  // Type-filtered + verdict-filtered detection list for display
   let displayDetections = $derived(
-    typeFilter === 'CORR'
-      ? detections.filter(d => d.rule_id?.startsWith('corr-'))
-      : typeFilter === 'ANOMALY'
-      ? detections.filter(d => d.rule_id?.startsWith('anomaly-'))
-      : typeFilter === 'SIGMA'
-      ? detections.filter(d => !d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-'))
-      : detections
+    (() => {
+      let base = typeFilter === 'CORR'
+        ? detections.filter(d => d.rule_id?.startsWith('corr-'))
+        : typeFilter === 'ANOMALY'
+        ? detections.filter(d => d.rule_id?.startsWith('anomaly-'))
+        : typeFilter === 'SIGMA'
+        ? detections.filter(d => !d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-'))
+        : detections
+      if (verdictFilter) {
+        base = base.filter(d => !verdicts.has(getDetectionId(d)))
+      }
+      return base
+    })()
   )
 
   // Correlation count for badge
@@ -64,6 +76,14 @@
       const res = await api.detections.list({ limit: 100, severity: severityFilter || undefined })
       detections = res.detections ?? []
       total = res.total
+      // Phase 44: initialize verdicts from backend response
+      const newVerdicts = new Map<string, 'TP' | 'FP'>()
+      for (const det of detections) {
+        if (det.verdict === 'TP' || det.verdict === 'FP') {
+          newVerdicts.set(getDetectionId(det), det.verdict as 'TP' | 'FP')
+        }
+      }
+      verdicts = newVerdicts
     } catch (e) {
       error = String(e)
     } finally {
@@ -194,6 +214,25 @@
         tc.toLowerCase() === (detection.attack_technique ?? '').toLowerCase()
       )
     ) ?? null
+  }
+
+  // Phase 44: verdict helpers
+  function showToast(msg: string) {
+    toastMessage = msg
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => { toastMessage = null }, 3000)
+  }
+
+  async function submitVerdict(d: Detection, newVerdict: 'TP' | 'FP') {
+    const id = getDetectionId(d)
+    verdicts = new Map(verdicts).set(id, newVerdict)
+    showToast(newVerdict === 'TP' ? 'Marked as True Positive' : 'Marked as False Positive')
+    try {
+      await api.feedback.submit({
+        detection_id: id, verdict: newVerdict,
+        rule_id: d.rule_id, rule_name: d.rule_name, severity: d.severity
+      })
+    } catch { /* ML errors are silent */ }
   }
 </script>
 
@@ -347,6 +386,10 @@
           class="chip chip-sigma {typeFilter === 'SIGMA' ? 'chip-active' : ''}"
           onclick={() => { typeFilter = typeFilter === 'SIGMA' ? '' : 'SIGMA'; }}
         >SIGMA</button>
+        <button
+          class="chip filter-chip {verdictFilter ? 'chip-active chip-unreviewed' : ''}"
+          onclick={() => verdictFilter = !verdictFilter}
+        >Unreviewed</button>
       </div>
       <button class="btn" onclick={load} disabled={loading}>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
@@ -443,6 +486,11 @@
                     </svg>
                   </span>
                 {/if}
+                {#if verdicts.get(getDetectionId(d)) === 'TP'}
+                  <span class="verdict-badge verdict-tp">TP</span>
+                {:else if verdicts.get(getDetectionId(d)) === 'FP'}
+                  <span class="verdict-badge verdict-fp">FP</span>
+                {/if}
               </td>
               <td><span class={severityClass(d.severity)}>{d.severity}</span></td>
               <td class="tactic">
@@ -509,6 +557,16 @@
                       {#if d.explanation}
                         <p class="corr-explanation">{d.explanation}</p>
                       {/if}
+                      <div class="verdict-row">
+                        <button
+                          class="verdict-btn {verdicts.get(getDetectionId(d)) === 'TP' ? 'verdict-active-tp' : ''}"
+                          onclick={() => submitVerdict(d, 'TP')}
+                        >&#10003; True Positive</button>
+                        <button
+                          class="verdict-btn {verdicts.get(getDetectionId(d)) === 'FP' ? 'verdict-active-fp' : ''}"
+                          onclick={() => submitVerdict(d, 'FP')}
+                        >&#10007; False Positive</button>
+                      </div>
                     </div>
                   {:else}
                     <!-- Existing CAR analytics panel -->
@@ -541,6 +599,16 @@
                     {:else}
                       <p class="car-no-analytics">No CAR analytics available for {d.attack_technique ?? 'this detection'}.</p>
                     {/if}
+                    <div class="verdict-row">
+                      <button
+                        class="verdict-btn {verdicts.get(getDetectionId(d)) === 'TP' ? 'verdict-active-tp' : ''}"
+                        onclick={() => submitVerdict(d, 'TP')}
+                      >&#10003; True Positive</button>
+                      <button
+                        class="verdict-btn {verdicts.get(getDetectionId(d)) === 'FP' ? 'verdict-active-fp' : ''}"
+                        onclick={() => submitVerdict(d, 'FP')}
+                      >&#10007; False Positive</button>
+                    </div>
                   {/if}
                 </td>
               </tr>
@@ -549,6 +617,10 @@
         </tbody>
       </table>
     </div>
+  {/if}
+
+  {#if toastMessage}
+    <div class="verdict-toast">{toastMessage}</div>
   {/if}
 </div>
 
@@ -997,4 +1069,16 @@
     color: rgba(255,255,255,0.5);
     font-style: italic;
   }
+
+  /* Phase 44: verdict badges, buttons, toast */
+  .verdict-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 4px; }
+  .verdict-tp { background: rgba(34,197,94,0.2); color: #22c55e; }
+  .verdict-fp { background: rgba(239,68,68,0.2); color: #ef4444; }
+  .verdict-row { display: flex; gap: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 12px; }
+  .verdict-btn { padding: 6px 14px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 13px; }
+  .verdict-btn:hover { background: rgba(255,255,255,0.06); }
+  .verdict-active-tp { border-color: #22c55e; color: #22c55e; background: rgba(34,197,94,0.1); }
+  .verdict-active-fp { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.1); }
+  .verdict-toast { position: fixed; bottom: 24px; right: 24px; background: rgba(30,30,30,0.95); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 18px; color: rgba(255,255,255,0.9); font-size: 13px; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  .chip-unreviewed.chip-active { background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.4); color: #a5b4fc; }
 </style>
