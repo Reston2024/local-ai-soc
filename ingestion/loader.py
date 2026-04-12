@@ -36,6 +36,7 @@ from backend.core.logging import get_logger
 from backend.models.event import NormalizedEvent
 from backend.services.attack.asset_store import AssetStore, _apply_asset_upsert
 from backend.services.intel.ioc_store import IocStore
+from backend.services.anomaly.scorer import AnomalyScorer, entity_key as _anomaly_entity_key
 from backend.services.ollama_client import OllamaClient
 from backend.stores.chroma_store import DEFAULT_COLLECTION
 from ingestion.entity_extractor import extract_entities_and_edges, extract_perimeter_entities
@@ -80,7 +81,8 @@ INSERT OR IGNORE INTO normalized_events (
     kerberos_client, kerberos_service,
     ntlm_domain, ntlm_username,
     smb_path, smb_action,
-    rdp_cookie, rdp_security_protocol
+    rdp_cookie, rdp_security_protocol,
+    anomaly_score
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -103,7 +105,8 @@ INSERT OR IGNORE INTO normalized_events (
     ?, ?,
     ?, ?,
     ?, ?,
-    ?, ?
+    ?, ?,
+    ?
 )
 """
 
@@ -211,6 +214,40 @@ async def retroactive_ioc_scan(
     return count
 
 
+# ---------------------------------------------------------------------------
+# Phase 42: Anomaly scoring helpers
+# ---------------------------------------------------------------------------
+
+_SEVERITY_MAP = {
+    "critical": 1.0, "high": 0.75, "medium": 0.5,
+    "low": 0.25, "informational": 0.0,
+}
+
+
+def _extract_features(event: NormalizedEvent) -> dict:
+    """Extract numeric features from event for HalfSpaceTrees. All values float in [0, 1]."""
+    return {
+        "severity": _SEVERITY_MAP.get((event.severity or "").lower(), 0.25),
+        "event_type_hash": (hash(event.event_type or "") % 100) / 100.0,
+        "src_port": ((event.src_port or 0) % 65536) / 65535.0,
+        "dst_port": ((event.dst_port or 0) % 65536) / 65535.0,
+        "http_status": ((event.http_status_code or 0) % 1000) / 999.0,
+        "conn_dur": min((event.conn_duration or 0.0), 3600.0) / 3600.0,
+        "pid": ((event.process_id or 0) % 65536) / 65535.0,
+    }
+
+
+def _apply_anomaly_scoring(event: NormalizedEvent, scorer: AnomalyScorer) -> NormalizedEvent:
+    """Score event and learn from it. Mutates event.anomaly_score. Sync - called from asyncio.to_thread."""
+    key = _anomaly_entity_key(event.src_ip or event.hostname, event.process_name)
+    features = _extract_features(event)
+    score = scorer.score_one(features, entity=key)
+    scorer.learn_one(features, entity=key)
+    scorer.save_model(key)
+    event.anomaly_score = score
+    return event
+
+
 @dataclass
 class IngestionResult:
     """Summary of a completed ingestion run."""
@@ -288,11 +325,13 @@ class IngestionLoader:
         ollama_client: OllamaClient,
         ioc_store: IocStore | None = None,
         asset_store: AssetStore | None = None,
+        anomaly_scorer: AnomalyScorer | None = None,
     ) -> None:
         self._stores = stores
         self._ollama = ollama_client
         self._ioc_store: IocStore | None = ioc_store
         self._asset_store: AssetStore | None = asset_store
+        self._anomaly_scorer: AnomalyScorer | None = anomaly_scorer
 
     # ------------------------------------------------------------------
     # Public API
@@ -455,24 +494,27 @@ class IngestionLoader:
         # Ensure normalisation
         events = [normalize_event(e) for e in events]
 
-        # Phase 33: IOC matching + Phase 34: asset upsert
-        # Both are synchronous helpers called inside a single asyncio.to_thread block.
+        # Phase 33: IOC matching + Phase 34: asset upsert + Phase 42: anomaly scoring
+        # All are synchronous helpers called inside a single asyncio.to_thread block.
         ioc_store_ref = self._ioc_store
         asset_store_ref = self._asset_store
+        anomaly_scorer_ref = self._anomaly_scorer
 
-        if ioc_store_ref is not None or asset_store_ref is not None:
+        if ioc_store_ref is not None or asset_store_ref is not None or anomaly_scorer_ref is not None:
 
-            def _apply_ioc_batch(evts: list[NormalizedEvent]) -> list[NormalizedEvent]:
+            def _apply_enrichment_batch(evts: list[NormalizedEvent]) -> list[NormalizedEvent]:
                 result: list[NormalizedEvent] = []
                 for e in evts:
                     if ioc_store_ref is not None:
                         e = _apply_ioc_matching(e, ioc_store_ref)
                     if asset_store_ref is not None:
                         _apply_asset_upsert(e, asset_store_ref)
+                    if anomaly_scorer_ref is not None:
+                        e = _apply_anomaly_scoring(e, anomaly_scorer_ref)
                     result.append(e)
                 return result
 
-            events = await asyncio.to_thread(_apply_ioc_batch, events)
+            events = await asyncio.to_thread(_apply_enrichment_batch, events)
 
         # Step 1: Deduplicate against DuckDB
         new_events = await self._deduplicate(events)

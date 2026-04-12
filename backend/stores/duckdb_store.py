@@ -265,6 +265,8 @@ _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
     ("smb_action",             "TEXT"),
     ("rdp_cookie",             "TEXT"),
     ("rdp_security_protocol",  "TEXT"),
+    # Phase 42: online anomaly scoring
+    ("anomaly_score",          "FLOAT"),
 ]
 
 

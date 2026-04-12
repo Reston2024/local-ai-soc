@@ -107,6 +107,10 @@ class Settings(BaseSettings):
     CHROMA_URL: str = ""          # e.g. "http://192.168.1.22:8200"
     CHROMA_TOKEN: str = ""        # Bearer token for remote Chroma (X-Chroma-Token header)
 
+    # Phase 42: Streaming behavioral profiles
+    ANOMALY_THRESHOLD: float = 0.7     # Score above this triggers synthetic detection
+    ANOMALY_MODEL_DIR: str = "data/anomaly_models"  # Per-entity model storage
+
     # Authentication — default is non-empty so auth is ON by default.
     # Set AUTH_TOKEN= in .env to override. An empty string is treated as
     # misconfiguration and will cause ALL requests to be rejected.
