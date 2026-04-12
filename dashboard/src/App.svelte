@@ -21,11 +21,12 @@
   import AttackCoverageView from './views/AttackCoverageView.svelte'
   import OverviewView from './views/OverviewView.svelte'
   import AtomicsView from './views/AtomicsView.svelte'
+  import AnomalyView from './views/AnomalyView.svelte'
 
   type View =
     | 'overview' | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
-    | 'recommendations' | 'settings' | 'map' | 'attack-coverage' | 'atomics'
+    | 'recommendations' | 'settings' | 'map' | 'attack-coverage' | 'atomics' | 'anomaly'
 
   let currentView = $state<View>('overview')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -169,6 +170,7 @@
         { id: 'hunting',          label: 'Hunting',         color: '' },
         { id: 'map',              label: 'Threat Map',      color: '' },
         { id: 'atomics',          label: 'Atomics',         color: '' },
+        { id: 'anomaly',          label: 'Anomaly Profiles', color: '' },
       ],
     },
     {
@@ -365,6 +367,8 @@
       <AttackCoverageView />
     {:else if currentView === 'atomics'}
       <AtomicsView />
+    {:else if currentView === 'anomaly'}
+      <AnomalyView />
     {/if}
   </main>
 </div>
