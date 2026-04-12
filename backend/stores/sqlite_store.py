@@ -334,6 +334,22 @@ CREATE TABLE IF NOT EXISTS triage_results (
 CREATE INDEX IF NOT EXISTS idx_triage_results_created ON triage_results (created_at DESC);
 """
 
+# Phase 41: ipsum blocklist and Tor exit node tables
+_IPSUM_DDL = """
+CREATE TABLE IF NOT EXISTS ipsum_blocklist (
+    ip           TEXT PRIMARY KEY,
+    tier         INTEGER NOT NULL,
+    fetched_date TEXT NOT NULL
+)
+"""
+
+_TOR_DDL = """
+CREATE TABLE IF NOT EXISTS tor_exit_nodes (
+    ip           TEXT PRIMARY KEY,
+    fetched_date TEXT NOT NULL
+)
+"""
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -423,6 +439,25 @@ class SQLiteStore:
             self._conn.commit()
         except Exception:
             pass  # column already exists — idempotent
+        self._conn.commit()
+
+        # Phase 41: ipsum + Tor tables (idempotent — CREATE IF NOT EXISTS)
+        self._conn.execute(_IPSUM_DDL)
+        self._conn.execute(_TOR_DDL)
+
+        # Phase 41: classification columns on osint_cache
+        _CLASSIFICATION_MIGRATIONS = [
+            "ALTER TABLE osint_cache ADD COLUMN ip_type TEXT",
+            "ALTER TABLE osint_cache ADD COLUMN ipsum_tier INTEGER",
+            "ALTER TABLE osint_cache ADD COLUMN is_tor INTEGER",
+            "ALTER TABLE osint_cache ADD COLUMN is_proxy INTEGER",
+            "ALTER TABLE osint_cache ADD COLUMN is_datacenter INTEGER",
+        ]
+        for _sql in _CLASSIFICATION_MIGRATIONS:
+            try:
+                self._conn.execute(_sql)
+            except Exception:
+                pass  # column already exists — idempotent
         self._conn.commit()
 
         # Graph schema version seeding (Phase 26)
@@ -1742,6 +1777,70 @@ class SQLiteStore:
             "INSERT OR REPLACE INTO osint_cache (ip, result_json, fetched_at, expires_at) "
             "VALUES (?, ?, ?, ?)",
             (ip, result_json, fetched_at, expires_at),
+        )
+        self._conn.commit()
+
+    # ------------------------------------------------------------------
+    # Phase 41: IP classification — ipsum blocklist, Tor exits, cache columns
+    # ------------------------------------------------------------------
+
+    def get_ipsum_tier(self, ip: str) -> int | None:
+        """Return ipsum tier (1-8) for IP, or None if not in blocklist."""
+        row = self._conn.execute(
+            "SELECT tier FROM ipsum_blocklist WHERE ip = ?", (ip,)
+        ).fetchone()
+        return row[0] if row else None
+
+    def get_tor_exit(self, ip: str) -> tuple | None:
+        """Return row tuple if IP is a known Tor exit node, else None."""
+        return self._conn.execute(
+            "SELECT ip FROM tor_exit_nodes WHERE ip = ?", (ip,)
+        ).fetchone()
+
+    def bulk_insert_ipsum(self, entries: list[tuple[str, int, str]]) -> None:
+        """Bulk upsert ipsum entries. entries: list of (ip, tier, fetched_date).
+
+        Clears stale entries (different fetched_date) before inserting.
+        Guards against empty entries to avoid wiping valid cached data.
+        """
+        if not entries:
+            return
+        fetched_date = entries[0][2]
+        self._conn.execute(
+            "DELETE FROM ipsum_blocklist WHERE fetched_date != ?", (fetched_date,)
+        )
+        self._conn.executemany(
+            "INSERT OR REPLACE INTO ipsum_blocklist (ip, tier, fetched_date) VALUES (?, ?, ?)",
+            entries,
+        )
+        self._conn.commit()
+
+    def bulk_insert_tor_exits(self, ips: list[str], fetched_date: str) -> None:
+        """Bulk upsert Tor exit nodes for a given date. Clears stale entries first."""
+        self._conn.execute(
+            "DELETE FROM tor_exit_nodes WHERE fetched_date != ?", (fetched_date,)
+        )
+        self._conn.executemany(
+            "INSERT OR IGNORE INTO tor_exit_nodes (ip, fetched_date) VALUES (?, ?)",
+            [(ip, fetched_date) for ip in ips],
+        )
+        self._conn.commit()
+
+    def set_classification_cache(
+        self,
+        ip: str,
+        ip_type: str | None,
+        ipsum_tier: int | None,
+        is_tor: bool,
+        is_proxy: bool,
+        is_datacenter: bool,
+    ) -> None:
+        """Update classification columns on an existing osint_cache row."""
+        self._conn.execute(
+            """UPDATE osint_cache
+               SET ip_type=?, ipsum_tier=?, is_tor=?, is_proxy=?, is_datacenter=?
+               WHERE ip=?""",
+            (ip_type, ipsum_tier, int(is_tor), int(is_proxy), int(is_datacenter), ip),
         )
         self._conn.commit()
 
