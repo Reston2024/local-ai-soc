@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 03 complete)
+current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 04 at human-verify checkpoint)
 status: in-progress
-last_updated: "2026-04-12T08:40:00.000Z"
+last_updated: "2026-04-12T09:20:00.000Z"
 progress:
   total_phases: 41
-  completed_phases: 38
+  completed_phases: 39
   total_plans: 195
-  completed_plans: 199
+  completed_plans: 200
 ---
 
 # Session State
@@ -80,6 +80,8 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **40-04:** AtomicsView initialises validationResults in second $effect after loading — prevents overwriting live results if user validates before load completes
+- **40-04:** copyFeedback keyed by technique_id:test_number:button_type — allows independent "Copied!" state per button without collisions
 - **40-03:** _check_detection_sync uses hasattr(row, "keys") guard — handles both sqlite3.Row (row_factory set) and plain tuple rows; row["id"] vs row[0] fallback
 - **40-03:** VALIDATION_WINDOW_SECONDS=300 module-level constant + 3-way technique matching (exact T1059.001, LIKE T1059.%, parent T1059) from RESEARCH.md Pattern 3 Pitfall 5
 - **40-02:** AtomicsStore uses sqlite_store._conn fallback to atomics_store._conn in get_atomics handler — allows test isolation without lifespan
