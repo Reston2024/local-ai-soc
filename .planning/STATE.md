@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 44 — in progress (plan 01 of N complete)
-status: in-progress
-last_updated: "2026-04-12T20:28:48.160Z"
+status: executing
+last_updated: "2026-04-12T20:30:07.247Z"
 progress:
   total_phases: 48
   completed_phases: 42
   total_plans: 211
-  completed_plans: 213
+  completed_plans: 214
 ---
 
 # Session State
@@ -39,9 +39,13 @@ See: .planning/PROJECT.md
 - **43-04:** Expand panel branches on rule_id.startsWith('corr-') — corr rows show event ID pills, others keep CAR panel intact
 - **44-01:** importorskip pattern used for FeedbackClassifier stubs (survives linter rewriting skip decorators)
 - **44-01:** background agent pre-implemented FeedbackClassifier (River LogisticRegression) and SQLiteStore feedback methods alongside Wave 0 stubs; Plan 44-02 scope reduced to wiring/API
+- **44-02:** River LogisticRegression used for FeedbackClassifier — already installed, no new dependencies needed
+- **44-02:** SQLiteStore path= kwarg added for unit test isolation (tests use file path, not directory)
+- **44-02:** Chroma feedback_verdicts uses Ollama embeddings (not query_texts) — graceful degradation when Ollama offline
 
 ## Session Log
 
+- 2026-04-12: Plan 44-02 complete — Backend data layer: FeedbackClassifier (River LogisticRegression, joblib persistence), SQLite feedback table (upsert/query/stats), POST /api/feedback + GET /api/feedback/similar, main.py wiring (block 7h + feedback_verdicts Chroma collection + feedback_router), detections list LEFT JOINs verdict field. 1081 unit tests GREEN, 0 failures.
 - 2026-04-12: Plan 44-01 complete — Wave 0 TDD stubs: test_feedback_store.py (7 stubs, importorskip pattern) + test_feedback_classifier.py (7 tests). Background agent pre-implemented FeedbackClassifier (River LogisticRegression, persist via joblib) and SQLiteStore feedback methods. All 1074 unit tests GREEN, 0 regressions. river>=0.21.0 added to uv.lock.
 - 2026-04-12: Plan 43-04 complete — Frontend: Detection interface extended (correlation_type, matched_event_count), typeFilter rune + displayDetections + corrCount derived, CORR/ANOMALY/SIGMA/All filter chips, corr-type-badge on corr-* rows, expand panel branches to event IDs for corr-* vs CAR analytics for others. TypeScript clean, 1067 unit tests GREEN.
 - 2026-04-12: Plan 43-03 complete — Chain detection: correlation_chains.yml (scan-bruteforce, recon-to-exploit), _detect_chains() + _query_chain() implemented (rule_ids + rule_tactics paths), empty-batch ingest hook fix. All 9 correlation engine tests GREEN, 1067 total unit tests, zero regressions.
