@@ -317,6 +317,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     asyncio.ensure_future(seed_car_analytics(car_store))
     log.info("CAR analytics seed task scheduled (Phase 39)")
 
+    # 7e. Phase 40: Atomics (Atomic Red Team) store
+    from backend.services.atomics.atomics_store import AtomicsStore, seed_atomics
+    atomics_store = AtomicsStore(sqlite_store._conn)
+    app.state.atomics_store = atomics_store
+    log.info("AtomicsStore initialised (Phase 40)")
+    asyncio.ensure_future(seed_atomics(atomics_store))
+    log.info("Atomics seed task scheduled (Phase 40)")
+
     # 7c. Phase 35: Auto-triage background worker (60s poll)
     try:
         from backend.api.triage import _auto_triage_loop
@@ -828,6 +836,13 @@ def create_app() -> FastAPI:
         log.info("Triage router mounted at /api/triage")
     except ImportError as exc:
         log.warning("Triage router not available: %s", exc)
+
+    try:
+        from backend.api.atomics import router as atomics_router
+        app.include_router(atomics_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Atomics router mounted at /api/atomics")
+    except Exception as exc:
+        log.warning("Atomics router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
