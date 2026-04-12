@@ -522,6 +522,19 @@ class IngestionLoader:
         result = IngestionResult(file_path="<batch>")
 
         if not events:
+            # Still run correlation engine even on empty batches so chain detection
+            # can fire based on previously-stored SQLite detections.
+            if self._correlation_engine is not None:
+                try:
+                    corr_detections = await self._correlation_engine.run()
+                    if corr_detections:
+                        await self._correlation_engine.save_detections(corr_detections)
+                        log.debug(
+                            "Correlation detections saved (empty batch)",
+                            count=len(corr_detections),
+                        )
+                except Exception as exc:
+                    log.warning("Correlation engine error (non-fatal)", error=str(exc))
             return result
 
         # Ensure normalisation
