@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type TelemetrySummary, type TriageResult, type Asset } from '../lib/api.ts'
+  import { api, type TelemetrySummary, type TriageResult, type Asset, type KpiSnapshot } from '../lib/api.ts'
 
   let {
     healthStatus,
@@ -11,6 +11,7 @@
 
   let summary = $state<TelemetrySummary | null>(null)
   let triageResult = $state<TriageResult | null>(null)
+  let kpis = $state<KpiSnapshot | null>(null)
   let loading = $state(true)
   let error = $state<string | null>(null)
   let triageExpanded = $state(false)
@@ -103,13 +104,15 @@
 
   async function load() {
     try {
-      const [summaryData, triageData, allAssets] = await Promise.all([
+      const [summaryData, triageData, allAssets, kpisData] = await Promise.all([
         api.telemetry.summary(),
         api.triage.latest(),
         api.assets.list(200),
+        api.metrics.kpis().catch(() => null),
       ])
       summary = summaryData
       triageResult = triageData.result
+      kpis = kpisData
       internalAssets = allAssets.filter(a =>
         a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.')
       )
@@ -199,6 +202,34 @@
             <div class="scorecard-tile">
               <span class="tile-value">{summary?.assets_count ?? 0}</span>
               <span class="tile-label">Assets</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Block 2b: Feedback KPI row (Phase 44) -->
+        <div class="card scorecard-card">
+          <div class="scorecard-row feedback-kpi-row">
+            <div class="scorecard-tile">
+              <span class="tile-value">{kpis?.verdicts_given ?? 0}</span>
+              <span class="tile-label">Verdicts Given</span>
+            </div>
+            <div class="scorecard-tile">
+              <span class="tile-value">{kpis?.verdicts_given ? ((kpis.tp_rate ?? 0) * 100).toFixed(1) + '%' : '—'}</span>
+              <span class="tile-label">TP Rate</span>
+            </div>
+            <div class="scorecard-tile">
+              <span class="tile-value">{kpis?.verdicts_given ? ((kpis.fp_rate ?? 0) * 100).toFixed(1) + '%' : '—'}</span>
+              <span class="tile-label">FP Rate</span>
+            </div>
+            {#if (kpis?.training_samples ?? 0) >= 10}
+              <div class="scorecard-tile">
+                <span class="tile-value">{kpis?.classifier_accuracy != null ? (kpis.classifier_accuracy * 100).toFixed(1) + '%' : '—'}</span>
+                <span class="tile-label">Classifier Accuracy</span>
+              </div>
+            {/if}
+            <div class="scorecard-tile">
+              <span class="tile-value">{kpis?.training_samples ?? 0}</span>
+              <span class="tile-label">Training Samples</span>
             </div>
           </div>
         </div>
@@ -633,5 +664,10 @@
     height: auto;
     display: block;
     min-height: 180px;
+  }
+
+  /* Phase 44: Feedback KPI row — flexible columns for conditional Classifier Accuracy tile */
+  .feedback-kpi-row {
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
   }
 </style>
