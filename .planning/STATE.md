@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 43 — in progress (plan 04 of N complete)
-status: in-progress
-last_updated: "2026-04-12T19:13:14.136Z"
+current_phase: 43 — in progress (plan 01 of N complete)
+status: planning
+last_updated: "2026-04-12T19:18:10.073Z"
 progress:
   total_phases: 48
   completed_phases: 42
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 43 — in progress (plan 01 of N complete)
 **Previous phase:** 42-streaming-behavioral-profiles — COMPLETE ✅
-**Status:** Plan 43-04 complete — Frontend CORR filter chip, correlation type badges, expand-to-event-ids UI done
+**Status:** Ready to plan
 
 ## Key Decisions
 
