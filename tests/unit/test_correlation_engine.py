@@ -227,37 +227,161 @@ def test_dedup_suppresses_repeat():
 
 
 # ---------------------------------------------------------------------------
-# Stub 6 — chain detection (Plan 43-03)
+# Test 6 — chain detection (Plan 43-03)
 # ---------------------------------------------------------------------------
-@_skip
 def test_chain_detection():
     """
     CorrelationEngine._detect_chains() returns a DetectionRecord with
     rule_id='corr-chain-scan-bruteforce' when both corr-portscan and
     corr-bruteforce have fired for the same src_ip within the last 15 minutes.
     """
-    pass
+    import sqlite3
+    import tempfile
+    import os
+    from datetime import datetime, timezone
+    from detections.correlation_engine import CorrelationEngine
+    from backend.models.event import DetectionRecord
+
+    # Create a temp SQLite DB with a detections table and two rows
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE detections (
+                id TEXT PRIMARY KEY,
+                rule_id TEXT,
+                rule_name TEXT,
+                severity TEXT,
+                matched_event_ids TEXT,
+                attack_technique TEXT,
+                attack_tactic TEXT,
+                explanation TEXT,
+                case_id TEXT,
+                entity_key TEXT,
+                created_at TEXT
+            )
+        """)
+        now = datetime.now(tz=timezone.utc).isoformat()
+        conn.execute(
+            "INSERT INTO detections VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("d1", "corr-portscan", "Port Scan", "medium", "[]", "T1046", "discovery",
+             "port scan", None, "10.0.0.1", now),
+        )
+        conn.execute(
+            "INSERT INTO detections VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            ("d2", "corr-bruteforce", "Brute Force", "high", "[]", "T1110", "credential-access",
+             "brute force", None, "10.0.0.1", now),
+        )
+        conn.commit()
+
+        mock_sqlite = MagicMock()
+        mock_sqlite._conn = conn
+        mock_duckdb = MagicMock()
+        mock_duckdb.fetch_all = AsyncMock(return_value=[])
+        stores = SimpleNamespace(duckdb=mock_duckdb, sqlite=mock_sqlite)
+
+        engine = CorrelationEngine(stores)
+        engine._chains = [
+            {
+                "name": "scan-bruteforce",
+                "description": "Port scan followed by brute force",
+                "rule_ids": ["corr-portscan", "corr-bruteforce"],
+                "entity_key": "src_ip",
+                "window_minutes": 15,
+                "severity": "critical",
+            }
+        ]
+
+        results = asyncio.run(engine._detect_chains())
+        conn.close()
+
+        assert len(results) == 1
+        det = results[0]
+        assert isinstance(det, DetectionRecord)
+        assert det.rule_id == "corr-chain-scan-bruteforce"
+        assert det.severity == "critical"
+        assert det.entity_key == "10.0.0.1"
+        assert "d1" in det.matched_event_ids or "d2" in det.matched_event_ids
+    finally:
+        try:
+            os.unlink(db_path)
+        except PermissionError:
+            pass  # Windows: file may still be held — acceptable in CI
 
 
 # ---------------------------------------------------------------------------
-# Stub 7 — chain YAML loading (Plan 43-03)
+# Test 7 — chain YAML loading (Plan 43-03)
 # ---------------------------------------------------------------------------
-@_skip
 def test_chain_yaml_loading():
     """
     load_chains(path) reads a YAML file and returns the count of chain
     definitions loaded.
     """
-    pass
+    import tempfile
+    import os
+    from detections.correlation_engine import CorrelationEngine
+
+    yaml_content = """
+chains:
+  - name: scan-bruteforce
+    description: "Port scan then brute force"
+    rule_ids:
+      - corr-portscan
+      - corr-bruteforce
+    entity_key: src_ip
+    window_minutes: 15
+    severity: critical
+
+  - name: recon-to-exploit
+    description: "Recon then exploitation"
+    rule_ids:
+      - corr-portscan
+    rule_tactics:
+      - discovery
+      - execution
+    entity_key: src_ip
+    window_minutes: 15
+    severity: critical
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yml", delete=False
+    ) as f:
+        f.write(yaml_content)
+        tmp_path = f.name
+    try:
+        mock_stores = SimpleNamespace(duckdb=MagicMock(), sqlite=MagicMock())
+        engine = CorrelationEngine(mock_stores)
+        count = engine.load_chains(tmp_path)
+
+        assert count == 2
+        assert len(engine._chains) == 2
+        names = [c["name"] for c in engine._chains]
+        assert "scan-bruteforce" in names
+        assert "recon-to-exploit" in names
+    finally:
+        os.unlink(tmp_path)
 
 
 # ---------------------------------------------------------------------------
-# Stub 8 — ingest hook calls correlation (verified via loader.py integration)
+# Test 8 — ingest hook calls correlation (verified via loader.py integration)
 # ---------------------------------------------------------------------------
-@_skip
-def test_ingest_hook_calls_correlation():
+async def test_ingest_hook_calls_correlation():
     """
     When CorrelationEngine is wired into IngestionLoader, loader calls
     correlation_engine.run() after each batch of events is ingested.
     """
-    pass
+    from ingestion.loader import IngestionLoader
+
+    mock_engine = MagicMock()
+    mock_engine.run = AsyncMock(return_value=[])
+    mock_engine.save_detections = AsyncMock(return_value=0)
+
+    mock_stores = MagicMock()
+    mock_stores.duckdb.fetch_all = AsyncMock(return_value=[])
+
+    loader = IngestionLoader(stores=mock_stores, ollama_client=MagicMock(), correlation_engine=mock_engine)
+    # Call ingest_events with empty list — should still call engine.run()
+    await loader.ingest_events([])
+
+    mock_engine.run.assert_called_once()
