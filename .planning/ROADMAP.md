@@ -1441,6 +1441,14 @@ Plans:
 - P41-T06: Connection volume heatmap — marker size and arc weight by connection count
 - P41-T07: Side panel enrichment — geo, ASN, VPN/proxy flags, AbuseIPDB score, Shodan ports, ipsum tier
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 41-01-PLAN.md — Wave 0: TDD stubs (test_map_api.py x5, test_osint_classification.py x6)
+- [ ] 41-02-PLAN.md — Wave 1: Backend data layer — DuckDB flow query + GET /api/map/data + api.ts interfaces
+- [ ] 41-03-PLAN.md — Wave 2: OSINT classification — ip-api proxy fields, ipapi.is, ipsum, Tor exit list, osint_cache migration
+- [ ] 41-04-PLAN.md — Wave 3: Frontend — MapView.svelte rewrite (MarkerCluster, arc lines, LAN node, classification panel)
+
 ## Phase 42: Streaming Behavioral Profiles
 **Status:** TODO
 **Added:** 2026-04-12
