@@ -29,9 +29,9 @@ WINDOW_TO_SECONDS: dict[str, int] = {
 _FLOW_SQL = """
 SELECT src_ip, dst_ip, COUNT(*) AS conn_count
 FROM normalized_events
-WHERE event_type = 'network_connection'
-  AND timestamp > ?
-  AND (src_ip IS NOT NULL OR dst_ip IS NOT NULL)
+WHERE timestamp > ?
+  AND src_ip IS NOT NULL
+  AND dst_ip IS NOT NULL
 GROUP BY src_ip, dst_ip
 ORDER BY conn_count DESC
 LIMIT 500
