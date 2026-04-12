@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 01 complete)
+current_phase: 40-atomic-red-team-validation (IN PROGRESS — Plan 02 complete)
 status: planning
-last_updated: "2026-04-12T08:30:00.000Z"
+last_updated: "2026-04-12T08:25:00.000Z"
 progress:
   total_phases: 41
   completed_phases: 38
   total_plans: 195
-  completed_plans: 197
+  completed_plans: 198
 ---
 
 # Session State
@@ -27,6 +27,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-12: Plan 40-02 complete — AtomicsStore (DDL, bulk_insert, list_techniques, validation CRUD), seed_atomics(), GET /api/atomics with three-tier coverage + Invoke-AtomicTest strings. Test stubs fixed (SimpleNamespace, auth override, _VALIDATE_AVAILABLE guard). 1026 unit tests green.
 - 2026-04-12: Plan 40-01 complete — Wave 0 TDD stubs (8 SKIP) for AtomicsStore + atomics API, ART atomics.json bundle generated (1773 entries, 328 techniques). #{variable} markers preserved. 1020 unit tests green.
 - 2026-04-11: Plan 39-03 complete — car_analytics TEXT blob deserialized to list in detect.py _query() (json.loads, null on error); investigate.py adds car_analytics top-level key with CAR SQLite lookup by attack_technique (subtechnique suffix stripped, silent fallback to []). 1020 unit tests green.
 - 2026-04-11: Plan 39-02 complete — CARStore class (DDL, bulk_insert, analytic_count, get_analytics_for_technique), seed_car_analytics(), car_analytics column migration on detections table, CARStore wired in main.py lifespan, CAR lookup in matcher.py _sync_save(). 1020 unit tests green.
@@ -78,6 +79,10 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **40-02:** AtomicsStore uses sqlite_store._conn fallback to atomics_store._conn in get_atomics handler — allows test isolation without lifespan
+- **40-02:** test_atomics_api.py refactored: SimpleNamespace for sqlite_store, dependency_overrides for auth, _VALIDATE_AVAILABLE guard for Plan 03 stubs
+- **40-02:** _VALIDATE_AVAILABLE checks router.routes for /atomics/validate path — activates validate tests only when Plan 03 registers POST endpoint
+- **40-02:** detections table created in _make_conn() — prevents OperationalError crash in test_validate_pass setup
 - **40-01:** AtomicsStore TDD stubs use skipif-importerror guard — 8 stubs SKIP cleanly (not ERROR) until Plan 02 implements the class
 - **40-01:** #{variable} markers in ART command strings preserved as-is — substitution is runner responsibility at execution time
 - **40-01:** executor = test.get('executor', {}) or {} — handles None executor in ART YAML (Pitfall 3)
