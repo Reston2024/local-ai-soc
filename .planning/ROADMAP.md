@@ -1498,7 +1498,7 @@ Plans:
 **Added:** 2026-04-12
 **Goal:** Make analyst approve/reject decisions feed back into detection quality. When an analyst marks a detection True Positive or False Positive, embed the event sequence in Chroma with a label, update a River LogisticRegression classifier via learn_one(), and surface similar confirmed incidents in future investigations. Closes the learning loop — the system gets measurably better with each analyst decision.
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 44-01-PLAN.md — Wave 0 TDD stubs: FeedbackStore and FeedbackClassifier contracts

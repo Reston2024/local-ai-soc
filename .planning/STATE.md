@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 43 — in progress (plan 01 of N complete)
-status: planning
-last_updated: "2026-04-12T19:18:10.073Z"
+current_phase: 44 — in progress (plan 01 of N complete)
+status: in-progress
+last_updated: "2026-04-12T20:28:48.160Z"
 progress:
   total_phases: 48
   completed_phases: 42
-  total_plans: 207
-  completed_plans: 212
+  total_plans: 211
+  completed_plans: 213
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 43 — in progress (plan 01 of N complete)
-**Previous phase:** 42-streaming-behavioral-profiles — COMPLETE ✅
-**Status:** Ready to plan
+**Current phase:** 44 — in progress (plan 01 of N complete)
+**Previous phase:** 43-correlation-engine — COMPLETE ✅
+**Status:** In progress
 
 ## Key Decisions
 
@@ -37,9 +37,12 @@ See: .planning/PROJECT.md
 - **43-04:** displayDetections derived from typeFilter rune so severity filter and type filter compose independently
 - **43-04:** corrBadgeLabel branches on rule_id prefix to map corr-portscan/bruteforce/beacon/chain to display labels
 - **43-04:** Expand panel branches on rule_id.startsWith('corr-') — corr rows show event ID pills, others keep CAR panel intact
+- **44-01:** importorskip pattern used for FeedbackClassifier stubs (survives linter rewriting skip decorators)
+- **44-01:** background agent pre-implemented FeedbackClassifier (River LogisticRegression) and SQLiteStore feedback methods alongside Wave 0 stubs; Plan 44-02 scope reduced to wiring/API
 
 ## Session Log
 
+- 2026-04-12: Plan 44-01 complete — Wave 0 TDD stubs: test_feedback_store.py (7 stubs, importorskip pattern) + test_feedback_classifier.py (7 tests). Background agent pre-implemented FeedbackClassifier (River LogisticRegression, persist via joblib) and SQLiteStore feedback methods. All 1074 unit tests GREEN, 0 regressions. river>=0.21.0 added to uv.lock.
 - 2026-04-12: Plan 43-04 complete — Frontend: Detection interface extended (correlation_type, matched_event_count), typeFilter rune + displayDetections + corrCount derived, CORR/ANOMALY/SIGMA/All filter chips, corr-type-badge on corr-* rows, expand panel branches to event IDs for corr-* vs CAR analytics for others. TypeScript clean, 1067 unit tests GREEN.
 - 2026-04-12: Plan 43-03 complete — Chain detection: correlation_chains.yml (scan-bruteforce, recon-to-exploit), _detect_chains() + _query_chain() implemented (rule_ids + rule_tactics paths), empty-batch ingest hook fix. All 9 correlation engine tests GREEN, 1067 total unit tests, zero regressions.
 - 2026-04-12: Plan 43-02 complete — CorrelationEngine with port scan (_detect_port_scans, 15+ dst_ports/60s), brute force (_detect_brute_force, 10+ auth failures/60s), and beaconing (_detect_beaconing, CV < 0.3 over 20+ connections) via DuckDB window queries. entity_key on DetectionRecord + SQLite migration + insert_detection() updated. Step 5 in ingest_events(). main.py block 7g + ingest.py _get_loader() wired. 6 behavioral tests GREEN, 1064 total unit tests, zero regressions.
