@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
-status: completed
-last_updated: "2026-04-12T11:52:44.571Z"
+current_phase: 41-threat-map-overhaul — Plan 01/N in progress
+status: active
+last_updated: "2026-04-12T13:03:14Z"
 progress:
   total_phases: 41
   completed_phases: 39
   total_plans: 195
-  completed_plans: 200
+  completed_plans: 201
 ---
 
 # Session State
@@ -20,13 +20,14 @@ See: .planning/PROJECT.md
 
 ## Position
 
-**Milestone:** v1.0 milestone — COMPLETE
-**Current phase:** 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
-**Previous phase:** 39-mitre-car-analytics-integration — COMPLETE
-**Status:** Milestone complete
+**Milestone:** v1.0 milestone — In Progress
+**Current phase:** 41-threat-map-overhaul — Plan 01 complete
+**Previous phase:** 40-atomic-red-team-validation — COMPLETE (all 4 plans done)
+**Status:** Active — executing Phase 41
 
 ## Session Log
 
+- 2026-04-12: Plan 41-01 complete — 11 Wave 0 TDD stubs (5 map API + 6 OSINT classification), all SKIP cleanly. 1028 existing unit tests unaffected.
 - 2026-04-12: Plan 40-04 complete — AtomicsView.svelte (collapsible technique list, coverage badges, 3 copy buttons, validate button), api.ts interfaces (AtomicTest/AtomicTechnique/AtomicsResponse/ValidationResult), App.svelte wired. Human-verify checkpoint approved. Phase 40 COMPLETE.
 - 2026-04-12: Plan 40-03 complete — POST /api/atomics/validate endpoint with 5-minute window detection check (3-way technique matching: exact/LIKE/parent), ValidateRequest Pydantic model, _check_detection_sync() helper, verdict+detection_id persistence via asyncio.to_thread. All 3 API tests pass; 1028 total unit tests green.
 - 2026-04-12: Plan 40-02 complete — AtomicsStore (DDL, bulk_insert, list_techniques, validation CRUD), seed_atomics(), GET /api/atomics with three-tier coverage + Invoke-AtomicTest strings. Test stubs fixed (SimpleNamespace, auth override, _VALIDATE_AVAILABLE guard). 1026 unit tests green.
@@ -81,6 +82,8 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **41-01:** test_map_api.py uses module-level pytestmark skipif guard — all 5 stubs SKIP as unit when backend/api/map.py absent (pure-logic stubs test_window_mapping/test_direction_detection activate green immediately on Plan 02)
+- **41-01:** test_osint_classification.py uses 3 separate import guards (_OSINT_CLASSIFY_AVAILABLE, _SQLITE_AVAILABLE, _IPSUM_PARSER_AVAILABLE) — stubs span 3 source files with independent availability
 - **40-04:** AtomicsView initialises validationResults in second $effect after loading — prevents overwriting live results if user validates before load completes
 - **40-04:** copyFeedback keyed by technique_id:test_number:button_type — allows independent "Copied!" state per button without collisions
 - **40-03:** _check_detection_sync uses hasattr(row, "keys") guard — handles both sqlite3.Row (row_factory set) and plain tuple rows; row["id"] vs row[0] fallback
