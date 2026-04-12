@@ -31,6 +31,44 @@ export interface EventsListResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 40 — Atomic Red Team interfaces
+// ---------------------------------------------------------------------------
+
+export interface AtomicTest {
+  test_number: number
+  test_name: string
+  supported_platforms: string[]
+  executor_name: string
+  elevation_required: boolean
+  command: string
+  cleanup_command: string
+  prereq_command: string
+  invoke_command: string
+  invoke_prereq: string
+  invoke_cleanup: string
+  validation: { verdict: 'pass' | 'fail'; validated_at: string } | null
+}
+
+export interface AtomicTechnique {
+  technique_id: string
+  display_name: string
+  coverage: 'validated' | 'detected' | 'none'
+  tests: AtomicTest[]
+}
+
+export interface AtomicsResponse {
+  techniques: AtomicTechnique[]
+  total_techniques: number
+  total_tests: number
+}
+
+export interface ValidationResult {
+  verdict: 'pass' | 'fail'
+  detection_id: string | null
+  checked_at: string
+}
+
+// ---------------------------------------------------------------------------
 // Phase 39 — MITRE CAR Analytics interface
 // ---------------------------------------------------------------------------
 
@@ -914,6 +952,15 @@ export const api = {
 
     actorMatches: (): Promise<ActorMatch[]> =>
       request<ActorMatch[]>('/api/attack/actor-matches'),
+  },
+
+  atomics: {
+    list: () => request<AtomicsResponse>('/api/atomics'),
+    validate: (technique_id: string, test_number: number) =>
+      request<ValidationResult>('/api/atomics/validate', {
+        method: 'POST',
+        body: JSON.stringify({ technique_id, test_number }),
+      }),
   },
 
   telemetry: {
