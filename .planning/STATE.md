@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 42-streaming-behavioral-profiles — Plan 04 complete
-status: executing
-last_updated: "2026-04-12T15:19:38.411Z"
+current_phase: 43
+status: ready
+last_updated: "2026-04-12T17:00:00.000Z"
 progress:
   total_phases: 48
-  completed_phases: 41
+  completed_phases: 42
   total_plans: 203
-  completed_plans: 208
+  completed_plans: 212
 ---
 
 # Session State
@@ -21,12 +21,13 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 42-streaming-behavioral-profiles — Plan 04 complete
-**Previous phase:** 42-streaming-behavioral-profiles — Plan 03 complete
-**Status:** Active — executing Phase 42
+**Current phase:** 43 (next unstarted)
+**Previous phase:** 42-streaming-behavioral-profiles — COMPLETE ✅
+**Status:** Ready — Phase 42 verified and closed
 
 ## Session Log
 
+- 2026-04-12: Phase 42 VERIFIED — gap fix: GET /api/anomaly/trend now returns {trend: [...], entity_key: "..."} instead of plain list. 14/14 unit tests green. ROADMAP.md and STATE.md updated. Phase 42 COMPLETE ✅
 - 2026-04-12: Plan 42-04 complete — AnomalyView.svelte (250 lines: score bar table, entity profile sparkline, 24h trend chart), api.ts anomaly interfaces (AnomalyEvent/EntityProfile/ScoreTrendResponse) + api.anomaly group (list/entityProfile/trend), App.svelte wired with 'anomaly' View type and Anomaly Profiles nav item in Intelligence group. TypeScript compiles clean. Auto-approved human-verify (auto_advance=true). Phase 42 COMPLETE.
 - 2026-04-12: Plan 42-03 complete — Anomaly API (3 endpoints: /api/anomaly, /api/anomaly/entity, /api/anomaly/trend), AnomalyScorer wired into main.py lifespan (Phase 42 block 7f), synthetic detection creation in _apply_anomaly_scoring (rule_id='anomaly-*' when score > ANOMALY_THRESHOLD), anomaly_router registered via deferred try/except. All 6 test_anomaly_api.py stubs GREEN (Wave 0 stubs fixed with auth mocking). 1058 total unit tests, zero regressions.
 - 2026-04-12: Plan 42-02 complete — River HalfSpaceTrees AnomalyScorer: scorer.py (entity_key with .subnet suffix, tanh normalization, fresh model 0.5 baseline, save/load roundtrip), anomaly_score FLOAT column in DuckDB, _apply_anomaly_scoring() wired into ingest pipeline, ANOMALY_THRESHOLD/ANOMALY_MODEL_DIR settings. All 8 scorer stubs GREEN + DuckDB column test GREEN. 1053 total unit tests, zero regressions.

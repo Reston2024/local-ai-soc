@@ -122,4 +122,4 @@ async def score_trend(
         for r in rows
         if r.get("anomaly_score") is not None
     ]
-    return JSONResponse(content=trend)
+    return JSONResponse(content={"trend": trend, "entity_key": entity_key})

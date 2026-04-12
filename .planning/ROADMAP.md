@@ -1428,7 +1428,8 @@ Plans:
 - [ ] 40-04-PLAN.md — Wave 3: Frontend — AtomicsView (grouped/collapsible, copy buttons, badges) + App.svelte wiring
 
 ## Phase 41: Threat Map Overhaul
-**Status:** TODO
+**Status:** COMPLETE ✅
+**Completed:** 2026-04-12
 **Added:** 2026-04-12
 **Goal:** Transform the threat map from a basic detection-IP plotter into a live geospatial intelligence surface. Plot all network_connection events (not just Sigma-fired detections), differentiate inbound vs outbound flows with directional arc lines, and enrich every IP with VPN/proxy/Tor/hosting classification using free local and API sources. Analysts see the full traffic picture with context — not just alerts.
 
@@ -1444,23 +1445,24 @@ Plans:
 **Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 41-01-PLAN.md — Wave 0: TDD stubs (test_map_api.py x5, test_osint_classification.py x6)
-- [ ] 41-02-PLAN.md — Wave 1: Backend data layer — DuckDB flow query + GET /api/map/data + api.ts interfaces
-- [ ] 41-03-PLAN.md — Wave 2: OSINT classification — ip-api proxy fields, ipapi.is, ipsum, Tor exit list, osint_cache migration
-- [ ] 41-04-PLAN.md — Wave 3: Frontend — MapView.svelte rewrite (MarkerCluster, arc lines, LAN node, classification panel)
+- [x] 41-01-PLAN.md — Wave 0: TDD stubs (test_map_api.py x5, test_osint_classification.py x6)
+- [x] 41-02-PLAN.md — Wave 1: Backend data layer — DuckDB flow query + GET /api/map/data + api.ts interfaces
+- [x] 41-03-PLAN.md — Wave 2: OSINT classification — ip-api proxy fields, ipapi.is, ipsum, Tor exit list, osint_cache migration
+- [x] 41-04-PLAN.md — Wave 3: Frontend — MapView.svelte rewrite (MarkerCluster, arc lines, LAN node, classification panel)
 
 ## Phase 42: Streaming Behavioral Profiles
-**Status:** PLANNED
+**Status:** COMPLETE ✅
+**Completed:** 2026-04-12
 **Added:** 2026-04-12
 **Goal:** Give every event an anomaly score at ingest time using online ML that learns continuously without batch retraining. Every (hostname, process_name) entity gets a behavioral baseline that updates with each new event via River HalfSpaceTrees. High-deviation events surface in the detections pipeline regardless of whether any Sigma rule fires — closing the gap between known-bad detection and novel-behavior detection.
 
 **Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 42-01-PLAN.md — Wave 0 RED test stubs (AnomalyScorer + anomaly API)
-- [ ] 42-02-PLAN.md — River integration, per-entity model persistence, anomaly_score in DuckDB
-- [ ] 42-03-PLAN.md — Anomaly API endpoints + synthetic detection creation
-- [ ] 42-04-PLAN.md — AnomalyView dashboard tab (events table, sparklines, trend chart)
+- [x] 42-01-PLAN.md — Wave 0 RED test stubs (AnomalyScorer + anomaly API)
+- [x] 42-02-PLAN.md — River integration, per-entity model persistence, anomaly_score in DuckDB
+- [x] 42-03-PLAN.md — Anomaly API endpoints + synthetic detection creation
+- [x] 42-04-PLAN.md — AnomalyView dashboard tab (events table, sparklines, trend chart)
 
 ### Requirements
 - P42-T01: Integrate River HalfSpaceTrees into the ingest pipeline — score every event against its entity's model at ingest time

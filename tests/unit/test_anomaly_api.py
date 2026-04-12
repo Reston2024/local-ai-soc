@@ -130,8 +130,10 @@ def test_score_trend_endpoint():
     resp = client.get("/api/anomaly/trend?entity_key=192.168.1__svchost.exe")
     assert resp.status_code == 200
     body = resp.json()
-    assert isinstance(body, list)
-    for item in body:
+    assert "trend" in body
+    assert "entity_key" in body
+    assert isinstance(body["trend"], list)
+    for item in body["trend"]:
         assert "timestamp" in item
         assert "score" in item
 
