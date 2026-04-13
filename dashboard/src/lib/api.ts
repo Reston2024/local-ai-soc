@@ -883,6 +883,61 @@ export const api = {
     chatHistory: (investigationId: string) =>
       request<{ messages: ChatHistoryMessage[] }>(`/api/investigations/${investigationId}/chat/history`),
 
+    runAgentic: async (
+      detectionId: string,
+      onStep: (step: AgentStep) => void,
+      onReasoning: (text: string) => void,
+      onVerdict: (verdict: AgentVerdict) => void,
+      onLimit: (reason: string) => void,
+      onDone: () => void,
+      onError: (message: string) => void,
+      signal?: AbortSignal,
+    ): Promise<void> => {
+      const res = await fetch('/api/investigate/agentic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ detection_id: detectionId }),
+        signal,
+      })
+      if (!res.ok) {
+        onError(`Agent request failed: ${res.status}`)
+        return
+      }
+      const reader = res.body?.getReader()
+      if (!reader) { onError('No response body'); return }
+      const decoder = new TextDecoder()
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
+        for (const line of lines) {
+          if (line.startsWith('event: ')) continue  // event type line
+          if (!line.startsWith('data: ')) continue
+          const raw = line.slice(6).trim()
+          if (!raw || raw === '{}') continue
+          try {
+            const parsed = JSON.parse(raw)
+            // Dispatch based on data shape — each event type has a unique key
+            if ('call_number' in parsed && 'tool_name' in parsed) {
+              onStep(parsed as AgentStep)
+            } else if ('text' in parsed) {
+              onReasoning(parsed.text)
+            } else if ('verdict' in parsed) {
+              onVerdict(parsed as AgentVerdict)
+            } else if ('reason' in parsed) {
+              onLimit(parsed.reason)
+            } else if ('message' in parsed) {
+              onError(parsed.message)
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+      onDone()
+    },
+
     chatStream: async (
       investigationId: string,
       question: string,
@@ -1201,6 +1256,39 @@ export interface SimilarCase {
 
 export interface SimilarCasesResponse {
   cases: SimilarCase[]
+}
+
+// ---------------------------------------------------------------------------
+// Phase 45 — Agentic Investigation interfaces
+// ---------------------------------------------------------------------------
+
+export interface AgentStep {
+  call_number: number
+  tool_name: string
+  arguments: Record<string, unknown>
+  result: string
+}
+
+export interface AgentReasoning {
+  text: string
+}
+
+export interface AgentVerdict {
+  verdict: 'TP' | 'FP'
+  confidence: number   // 0-100
+  narrative: string
+}
+
+export interface AgentLimit {
+  reason: 'timeout' | 'max_calls'
+}
+
+export interface AgentRunResult {
+  steps: AgentStep[]
+  reasoningChunks: string[]
+  verdict: AgentVerdict | null
+  limitReason: string | null
+  error: string | null
 }
 
 // ---------------------------------------------------------------------------
