@@ -4,7 +4,7 @@
 
 A single-analyst, local-first cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally — no cloud, no telemetry, no external services.
 
-**Status:** v1.0 complete (30 phases, 59/59 requirements, 8/8 E2E flows). v1.1 in progress (Phases 31-36).
+**Status:** v1.0 complete (30 phases). v1.1 complete (Phases 31-44). Phase 45 (Agentic Investigation) next.
 
 ---
 
@@ -67,10 +67,14 @@ A single-analyst, local-first cybersecurity workstation. All inference, detectio
 | **Perimeter Entities** | Ready | Firewall zone nodes with colour-coded risk; network segment subnet bubbles |
 | **osquery Telemetry** | Optional | Live host telemetry via `OSQUERY_ENABLED=True` |
 | **CI Pipeline** | Ready | ruff + pytest (≥70% coverage) + pip-audit + gitleaks + frontend build/svelte-check |
-| **Threat Hunting** | Phase 32 — in development | HuntingView is 100% disabled; no backend hunt API yet |
-| **Threat Intelligence** | Phase 33 — in development | ThreatIntelView is a stub with fake feed data; "BETA" badge |
-| **Asset Discovery** | Phase 34 — in development | AssetsView "Discover Assets" button permanently disabled |
-| **Auto AI Triage** | Phase 35 — not yet wired | POST /api/detect/run fires Sigma but does NOT call AI; no background triage loop |
+| **Threat Hunting** | Ready | HuntingView with rule-based hunt queries, live event search |
+| **Threat Intelligence** | Ready | IOC matching, OSINT enrichment, geolocated Threat Map |
+| **Asset Discovery** | Ready | Auto-derived entity inventory from telemetry |
+| **Auto AI Triage** | Ready | Background triage loop; POST /api/triage/run |
+| **Malcolm Real Telemetry** | Ready | EVE JSON ingestion; Zeek SPAN port active (Phase 36) |
+| **Sigma v2 Correlation** | Ready | Port scan, brute force, beaconing, multi-stage chain detection; CORR filter chips |
+| **Streaming Behavioral Profiles** | Ready | River-based entity anomaly scoring; score trend sparklines |
+| **Analyst Feedback Loop** | Ready | TP/FP verdict buttons; River classifier; Similar Cases via Chroma k-NN; feedback KPIs |
 
 ---
 
@@ -270,7 +274,12 @@ Network telemetry collection and indexing only. No AI. No inference.
 | POST | `/api/receipts` | Firewall execution receipts |
 | GET | `/api/firewall/status` | FirewallCollector heartbeat |
 
-**Planned in v1.1:** `/api/hunts` (Phase 32), `/api/intel` (Phase 33), `/api/assets` (Phase 34), `/api/triage/run` (Phase 35)
+| POST | `/api/feedback` | Submit TP/FP analyst verdict |
+| GET | `/api/feedback/similar` | Chroma k-NN similar confirmed incidents |
+| GET | `/api/anomaly/score` | Entity behavioral anomaly score |
+| GET | `/api/anomaly/trend` | Entity score trend over time |
+
+**Phase 45+:** `/api/investigate/auto` (agentic investigation pipeline)
 
 **Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. `AUTH_TOKEN` must be 32+ chars or `dev-only-bypass` in `.env`.
 
@@ -311,12 +320,21 @@ Network telemetry collection and indexing only. No AI. No inference.
 | 28 | Dashboard Integration Fixes — RAG SSE, event search shape, ingest status, SettingsView routing | ✅ |
 | 29 | Missing Phase Verifiers — VERIFICATION.md for all phases | ✅ |
 | 30 | Final Security + Sign-Off — Sigma guard, Caddy digest pin, Phase 22 UI | ✅ |
-| **31** | **Malcolm Real Telemetry + Evidence Archive** | **Planned — ready to execute** |
-| 32 | Real Threat Hunting — HuntingView backend API, no disabled buttons | Planned |
-| 33 | Real Threat Intelligence — IOC matching, live feeds | Planned |
-| 34 | Asset Inventory — auto-derived from telemetry | Planned |
-| 35 | SOC Completeness + Auto AI Triage loop — POST /api/triage/run + background worker | Planned |
-| 36 | Zeek Full Telemetry | Blocked — requires managed switch with SPAN port (~$50-80) |
+| 31 | Malcolm Real Telemetry + Evidence Archive — EVE JSON ingestion, Malcolm collector | ✅ |
+| 32 | Real Threat Hunting — HuntingView backend API, live hunt queries | ✅ |
+| 33 | Real Threat Intelligence — IOC matching, OSINT feeds, live enrichment | ✅ |
+| 34 | Asset Inventory — auto-derived entity inventory from telemetry | ✅ |
+| 35 | SOC Completeness + Auto AI Triage loop — background worker, triage API | ✅ |
+| 36 | Zeek Full Telemetry — Netgear GS308E SPAN port, Zeek flow analysis | ✅ |
+| 37 | Analyst Report Templates — structured report authoring, case export | ✅ |
+| 38 | CISA Playbook Content — expanded playbook library | ✅ |
+| 39 | CAR Analytics Integration — MITRE CAR detection enrichment in DetectionsView | ✅ |
+| 40 | Threat Map — geolocated OSINT attacker map, IP enrichment | ✅ |
+| 41 | Anomaly Baseline Engine — DuckDB sliding-window baselines, severity heat map | ✅ |
+| 42 | Streaming Behavioral Profiles — River online anomaly scoring, score trend sparklines | ✅ |
+| 43 | Sigma v2 Correlation Rules — port scan, brute force, beaconing, multi-stage chain detection | ✅ |
+| 44 | Analyst Feedback Loop — TP/FP verdicts, River classifier, Chroma k-NN similar cases, feedback KPIs | ✅ |
+| **45** | **Agentic Investigation** | **Next** |
 
 ---
 
@@ -338,7 +356,7 @@ Network telemetry collection and indexing only. No AI. No inference.
 |------|-------------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System design, two-box architecture, data flow, decisions |
 | [DECISION_LOG.md](DECISION_LOG.md) | Architecture Decision Records (ADR-001 through ADR-033) |
-| [STATE.md](STATE.md) | Live project state — all 30 phases + v1.1 status |
+| [STATE.md](STATE.md) | Live project state — current phase, decisions, next steps |
 | [THREAT_MODEL.md](THREAT_MODEL.md) | Threat model for local desktop deployment |
 | [REPRODUCIBILITY_RECEIPT.md](REPRODUCIBILITY_RECEIPT.md) | Pinned dependency versions + infrastructure |
 | [docs/manifest.md](docs/manifest.md) | Full file tree and API reference |

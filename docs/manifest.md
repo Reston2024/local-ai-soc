@@ -1,8 +1,8 @@
 # Project Manifest
 
-Generated: 2026-04-09
+Generated: 2026-04-12
 Branch: main
-Status: v1.0 complete (30 phases) — v1.1 in progress (Phases 31-36)
+Status: v1.0 complete (30 phases) — v1.1 complete (Phases 31-44) — Phase 45 next
 
 ---
 
@@ -355,11 +355,17 @@ ai-soc-brain/
 | POST | /api/receipts | Bearer | Firewall execution receipt ingestion |
 | GET | /api/firewall/status | Bearer | FirewallCollector heartbeat |
 
-**Planned in v1.1:**
-- `POST/GET /api/hunts` — Phase 32 (HuntingView backend)
-- `GET/POST /api/intel/iocs` — Phase 33 (IOC matching)
-- `GET /api/assets` — Phase 34 (auto-derived asset inventory)
-- `POST /api/triage/run` — Phase 35 (auto-triage background worker)
+| POST | /api/feedback | Bearer | Submit TP/FP analyst verdict; fires async Chroma embed + River learn_one |
+| GET | /api/feedback/similar | Bearer | Chroma k-NN top 3 similar confirmed incidents |
+| GET | /api/anomaly/score | Bearer | Entity behavioral anomaly score (River) |
+| GET | /api/anomaly/trend | Bearer | Entity score trend over time |
+| GET | /api/triage/run | Bearer | Auto AI triage background worker |
+| GET | /api/intel/iocs | Bearer | IOC matching against live feeds |
+| GET | /api/assets | Bearer | Auto-derived asset inventory |
+| GET | /api/hunts | Bearer | Threat hunt query results |
+| GET | /api/threat-map | Bearer | Geolocated attacker IP data |
+
+**Phase 45+:** `/api/investigate/auto` (agentic investigation pipeline)
 
 **Auth:** All `/api/*` routes require `Authorization: Bearer <token>`. `AUTH_TOKEN` must be 32+ chars or `dev-only-bypass`. Implemented in `backend/core/auth.py`.
 
@@ -374,21 +380,23 @@ ai-soc-brain/
 | Investigation | InvestigationView.svelte | Ready | Timeline, attack chain, AI copilot, "Run Playbook" |
 | Query | QueryView.svelte | Ready | SSE streaming RAG Q&A |
 | Ingest | IngestView.svelte | Ready | File upload ingestion, status polling |
-| Assets | AssetsView.svelte | Partial | Entity inventory — "Discover Assets" disabled (Phase 34) |
+| Assets | AssetsView.svelte | Ready | Auto-derived entity inventory from telemetry |
 | Graph | GraphView.svelte | Ready | Cytoscape.js fCoSE, Dijkstra paths, MITRE overlay |
 | Playbooks | PlaybooksView.svelte | Ready | Library browser + step execution with audit trail |
 | Reports | ReportsView.svelte | Ready | PDF, MITRE heatmap, KPI trends, TheHive export |
 | Settings | SettingsView.svelte | Ready | Operator CRUD, RBAC |
-| Threat Intel | ThreatIntelView.svelte | STUB | Fake feed data, "BETA" badge — Phase 33 |
-| Hunting | HuntingView.svelte | STUB | All buttons disabled — Phase 32 |
+| Threat Intel | ThreatIntelView.svelte | Ready | IOC matching, live feed enrichment |
+| Hunting | HuntingView.svelte | Ready | Rule-based hunt queries, live event search |
+| Threat Map | ThreatMapView.svelte | Ready | Geolocated attacker IPs, OSINT enrichment |
+| Overview | OverviewView.svelte | Ready | SOC KPIs + feedback KPIs (verdicts, TP/FP rates, classifier accuracy) |
 
 ---
 
-## Test Baseline (2026-04-08)
+## Test Baseline (2026-04-12)
 
 ```
 uv run pytest tests/unit/ tests/security/ tests/sigma_smoke/ -q
-938+ passed
+1081+ passed
 ```
 
 Coverage target: ≥70% (enforced in CI).
@@ -468,6 +476,26 @@ Fully documented in ARCHITECTURE.md and DECISION_LOG.md.
 - Sigma guard on startup
 - Caddy image digest-pinned in docker-compose.yml
 
+### Phases 31-36: Malcolm Telemetry + Real Data
+- Phase 31: EVE JSON ingestion, Malcolm collector expanded
+- Phase 32: HuntingView backend API, live hunt queries
+- Phase 33: IOC matching, OSINT feed enrichment
+- Phase 34: Auto-derived asset inventory from telemetry
+- Phase 35: Auto AI triage background loop, `/api/triage/run`
+- Phase 36: Zeek full telemetry via Netgear GS308E SPAN port (port 1→5)
+
+### Phases 37-40: Content + Intelligence
+- Phase 37: Analyst report templates, structured case export
+- Phase 38: Expanded CISA playbook library
+- Phase 39: CAR analytics in DetectionsView — MITRE CAR description + MODERATE/MODERATE/HIGH coverage badges
+- Phase 40: Threat Map — geolocated OSINT attacker map, IP enrichment via ipinfo.io
+
+### Phases 41-44: Behavioral AI + Feedback
+- Phase 41: Anomaly baseline engine — DuckDB sliding-window statistical baselines, severity heat map
+- Phase 42: Streaming behavioral profiles — River online anomaly scoring, score trend sparklines in AnomalyView
+- Phase 43: Sigma v2 correlation rules — port scan (15+ ports/60s), brute force (10+ fails/60s), beaconing (CV<0.3/20+ connections), multi-stage chain detection via YAML config; CORR filter chips in DetectionsView
+- Phase 44: Analyst feedback loop — TP/FP ghost buttons in expand panel, verdict badge on collapsed rows, Unreviewed filter chip, toast notification, River LogisticRegression online classifier, Chroma k-NN similar confirmed incidents in InvestigationView, 5 feedback KPI tiles in OverviewView
+
 ---
 
-*Manifest last updated: 2026-04-09 (v1.0 complete, v1.1 in progress)*
+*Manifest last updated: 2026-04-12 (v1.1 complete — 44 phases)*
