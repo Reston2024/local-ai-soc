@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 45 — in progress (plan 01 of N complete)
-status: planning
-last_updated: "2026-04-13T03:23:46.808Z"
+current_phase: 45 — in progress (plan 02 of N complete)
+status: executing
+last_updated: "2026-04-13T03:30:29.985Z"
 progress:
   total_phases: 48
   completed_phases: 43
   total_plans: 216
-  completed_plans: 217
+  completed_plans: 218
 ---
 
 # Session State
@@ -49,9 +49,13 @@ See: .planning/PROJECT.md
 - **44-04:** verdictFilter composes with typeFilter via IIFE-wrapped displayDetections $derived in DetectionsView
 - **45-01:** importorskip pattern used for all Phase 45 stubs (matches Phase 44/42/43 pattern)
 - **45-01:** smolagents[litellm]==1.24.0 installed; litellm routes agent to Ollama via LiteLLMModel
+- **45-02:** nullable: True required in smolagents Tool inputs dict for any forward() param with a default value (smolagents validates json schema against inputs dict)
+- **45-02:** _sqlite_read() context manager ensures sqlite3 file handle release on Windows — prevents PermissionError on temp dir cleanup in tests
+- **45-02:** SearchSigmaMatchesTool queries detections without hostname column (actual schema has no hostname on detections table)
 
 ## Session Log
 
+- 2026-04-13: Plan 45-02 complete — 6 smolagents Tool subclasses in backend/services/agent/tools.py: QueryEventsTool, GetEntityProfileTool, EnrichIpTool, SearchSigmaMatchesTool, GetGraphNeighborsTool, SearchSimilarIncidentsTool. All synchronous, read-only DB connections, nullable: True on optional inputs. 7/7 test_agent_tools.py tests GREEN, 1088 total unit tests passing.
 - 2026-04-13: Plan 45-01 complete — Wave 0 TDD stubs: 3 test files (test_agent_tools.py 7 stubs, test_agent_runner.py 3 stubs, test_agentic_api.py 2 stubs). smolagents==1.24.0 + litellm==1.83.0 installed. All 12 stubs SKIP cleanly, 1081 unit tests GREEN.
 - 2026-04-12: Plan 44-04 complete — Wave 3 frontend: DetectionsView gets verdict buttons (TP/FP in expand panels), Unreviewed chip, verdict badges on collapsed rows, toast notification; InvestigationView gets Similar Confirmed Cases section below CAR analytics; OverviewView gets 5 feedback KPI tiles (Verdicts Given, TP Rate, FP Rate, Classifier Accuracy conditional, Training Samples). TypeScript 0 errors, 1081 unit tests GREEN.
 - 2026-04-12: Plan 44-03 complete — Wave 2 metrics + api.ts: KpiSnapshot gains 5 feedback fields (verdicts_given, tp_rate, fp_rate, classifier_accuracy, training_samples), compute_all_kpis() populates from SQLite + FeedbackClassifier via app_state, api.ts adds FeedbackRequest/FeedbackResponse/SimilarCase/SimilarCasesResponse interfaces + api.feedback.submit() + api.feedback.similar(). 1081 unit tests GREEN, TypeScript 0 errors.
