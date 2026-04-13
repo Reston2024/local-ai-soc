@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 44 — in progress (plan 01 of N complete)
+current_phase: 45 — in progress (plan 01 of N complete)
 status: planning
-last_updated: "2026-04-12T20:49:31.035Z"
+last_updated: "2026-04-13T03:23:46.808Z"
 progress:
   total_phases: 48
   completed_phases: 43
-  total_plans: 211
-  completed_plans: 216
+  total_plans: 216
+  completed_plans: 217
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 44 — in progress (plan 01 of N complete)
-**Previous phase:** 43-correlation-engine — COMPLETE ✅
-**Status:** Ready to plan
+**Current phase:** 45 — in progress (plan 01 of N complete)
+**Previous phase:** 44-analyst-feedback — COMPLETE ✅
+**Status:** In progress
 
 ## Key Decisions
 
@@ -47,9 +47,12 @@ See: .planning/PROJECT.md
 - **44-04:** OverviewView adds kpis state via api.metrics.kpis() in load() Promise.all with graceful .catch(() => null) — no separate polling loop needed
 - **44-04:** feedback-kpi-row uses auto-fit minmax(90px, 1fr) to handle conditional Classifier Accuracy tile (hidden until training_samples >= 10)
 - **44-04:** verdictFilter composes with typeFilter via IIFE-wrapped displayDetections $derived in DetectionsView
+- **45-01:** importorskip pattern used for all Phase 45 stubs (matches Phase 44/42/43 pattern)
+- **45-01:** smolagents[litellm]==1.24.0 installed; litellm routes agent to Ollama via LiteLLMModel
 
 ## Session Log
 
+- 2026-04-13: Plan 45-01 complete — Wave 0 TDD stubs: 3 test files (test_agent_tools.py 7 stubs, test_agent_runner.py 3 stubs, test_agentic_api.py 2 stubs). smolagents==1.24.0 + litellm==1.83.0 installed. All 12 stubs SKIP cleanly, 1081 unit tests GREEN.
 - 2026-04-12: Plan 44-04 complete — Wave 3 frontend: DetectionsView gets verdict buttons (TP/FP in expand panels), Unreviewed chip, verdict badges on collapsed rows, toast notification; InvestigationView gets Similar Confirmed Cases section below CAR analytics; OverviewView gets 5 feedback KPI tiles (Verdicts Given, TP Rate, FP Rate, Classifier Accuracy conditional, Training Samples). TypeScript 0 errors, 1081 unit tests GREEN.
 - 2026-04-12: Plan 44-03 complete — Wave 2 metrics + api.ts: KpiSnapshot gains 5 feedback fields (verdicts_given, tp_rate, fp_rate, classifier_accuracy, training_samples), compute_all_kpis() populates from SQLite + FeedbackClassifier via app_state, api.ts adds FeedbackRequest/FeedbackResponse/SimilarCase/SimilarCasesResponse interfaces + api.feedback.submit() + api.feedback.similar(). 1081 unit tests GREEN, TypeScript 0 errors.
 - 2026-04-12: Plan 44-02 complete — Backend data layer: FeedbackClassifier (River LogisticRegression, joblib persistence), SQLite feedback table (upsert/query/stats), POST /api/feedback + GET /api/feedback/similar, main.py wiring (block 7h + feedback_verdicts Chroma collection + feedback_router), detections list LEFT JOINs verdict field. 1081 unit tests GREEN, 0 failures.
