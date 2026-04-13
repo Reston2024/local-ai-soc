@@ -42,6 +42,28 @@ localhost {
         }
     }
 
+    # Agentic investigation SSE stream — flush_interval -1 required for real-time tool call streaming.
+    handle /api/investigate/agentic {
+        reverse_proxy host.docker.internal:8000 {
+            flush_interval -1
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Investigations chat stream — flush_interval -1 required for token streaming.
+    handle /api/investigations/chat-stream/* {
+        reverse_proxy host.docker.internal:8000 {
+            flush_interval -1
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
     # File upload endpoint — allow up to 100MB for evidence uploads.
     # Must appear BEFORE handle /api/* (Caddy: first match wins).
     handle /api/ingest/file {
