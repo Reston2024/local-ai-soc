@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 45 — in progress (plan 04 of N complete)
+current_phase: 45 — in progress (plan 05 of N complete)
 status: executing
-last_updated: "2026-04-13T04:06:00Z"
+last_updated: "2026-04-13T04:40:00Z"
 progress:
   total_phases: 48
   completed_phases: 43
   total_plans: 216
-  completed_plans: 220
+  completed_plans: 221
 ---
 
 # Session State
@@ -58,9 +58,13 @@ See: .planning/PROJECT.md
 - **45-04:** Deferred import of build_agent/run_investigation inside route handler with try/except prevents import-time failures when smolagents not installed
 - **45-04:** No asyncio.wait_for wrapper at route layer — run_investigation() enforces 90s timeout internally via deadline-polling
 - **45-04:** Fixed test URL /agentic → /investigate/agentic to match router prefix (Rule 1 auto-fix on Plan 45-01 stub)
+- **45-05:** api.investigations.runAgentic() added to investigations group (not investigate) to avoid conflict with existing api.investigate() bare function
+- **45-05:** verdict-badge-agent CSS class used in Agent tab to avoid cascade conflict with Phase 44 verdict-badge in Similar Cases section
+- **45-05:** agentCache declared in <script module lang="ts"> for Svelte 5 cross-mount persistence
 
 ## Session Log
 
+- 2026-04-13: Plan 45-05 complete — dashboard/src/lib/api.ts: 5 Phase 45 interfaces + api.investigations.runAgentic() SSE client (dispatch-by-shape). dashboard/src/views/InvestigationView.svelte: [Summary][Agent] tabs, Agent panel with streaming trace cards, call counter, limit/error banners, Verdict section + Confirm buttons wired to Phase 44 feedback. TypeScript 0 errors. Auto-approved checkpoint (auto_advance=true).
 - 2026-04-13: Plan 45-04 complete — backend/api/investigate.py: POST /investigate/agentic route added with AgenticInvestigateRequest, EventSourceResponse wrapping run_investigation() async generator, deferred smolagents import + error handling. test_agentic_endpoint_exists + test_agentic_sse_content_type GREEN (fixed test URL /agentic→/investigate/agentic). 1092 unit tests passing.
 - 2026-04-13: Plan 45-03 complete — backend/services/agent/runner.py: build_agent() wired to LiteLLMModel(ollama_chat/qwen3:14b, num_ctx=8192), run_investigation() async generator with threading.Thread + queue.Queue SSE bridge. SYSTEM_PROMPT starts with /no_think. test_build_agent + test_max_steps_limit GREEN, test_timeout_fires SKIP. 1090 unit tests passing.
 - 2026-04-13: Plan 45-02 complete — 6 smolagents Tool subclasses in backend/services/agent/tools.py: QueryEventsTool, GetEntityProfileTool, EnrichIpTool, SearchSigmaMatchesTool, GetGraphNeighborsTool, SearchSimilarIncidentsTool. All synchronous, read-only DB connections, nullable: True on optional inputs. 7/7 test_agent_tools.py tests GREEN, 1088 total unit tests passing.
