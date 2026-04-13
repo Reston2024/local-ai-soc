@@ -31,7 +31,8 @@ def test_build_agent():
         )
         agent = build_agent(stores)
         assert isinstance(agent, ToolCallingAgent)
-        assert len(agent.tools) == 6  # 6 investigation tools
+        # agent.tools dict has 7 entries: 6 custom investigation tools + built-in final_answer
+        assert len(agent.tools) == 7
 
 
 @_skip
