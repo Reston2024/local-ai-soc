@@ -386,15 +386,56 @@ async def run_agentic_investigation(
             yield {"event": "error", "data": json.dumps({"message": f"Agent build failed: {exc}"})}
             return
 
+        # Enrich task prompt with detection context so tools have concrete values to query.
+        # query_events and get_entity_profile need hostname, not detection_id — supply it here.
+        import asyncio as _asyncio
+        detection_ctx = ""
+        try:
+            det = await _asyncio.to_thread(stores.sqlite.get_detection, detection_id)
+            if det:
+                rule_id = det.get("rule_id") or ""
+                technique = det.get("attack_technique") or ""
+                severity = det.get("severity") or ""
+                entity_key = det.get("entity_key") or ""
+                # Hostname may be in entity_key ("hostname:FQDN" or bare value)
+                hostname = ""
+                if entity_key:
+                    hostname = entity_key.split(":", 1)[-1] if ":" in entity_key else entity_key
+                # If no entity_key, try to get hostname from matched events
+                if not hostname:
+                    matched_ids: list[str] = det.get("matched_event_ids") or []
+                    if matched_ids:
+                        sample_events = await stores.duckdb.fetch_df(
+                            f"SELECT hostname FROM normalized_events WHERE event_id IN ({','.join(['?' for _ in matched_ids[:3]])}) AND hostname IS NOT NULL LIMIT 1",
+                            matched_ids[:3],
+                        )
+                        if sample_events:
+                            hostname = sample_events[0].get("hostname") or ""
+                ctx_parts = []
+                if hostname:
+                    ctx_parts.append(f"hostname={hostname}")
+                if rule_id:
+                    ctx_parts.append(f"rule_id={rule_id}")
+                if technique:
+                    ctx_parts.append(f"technique={technique}")
+                if severity:
+                    ctx_parts.append(f"severity={severity}")
+                if ctx_parts:
+                    detection_ctx = " Context: " + ", ".join(ctx_parts) + "."
+        except Exception as _exc:
+            log.debug("Could not enrich task with detection context: %s", _exc)
+
         task = (
-            f"Investigate security detection ID: {detection_id}. "
-            "Query relevant events, enrich suspicious IPs, check graph connections, "
-            "and search for similar confirmed incidents. "
+            f"Investigate security detection ID: {detection_id}.{detection_ctx} "
+            "IMPORTANT: query_events and get_entity_profile require a hostname parameter — "
+            "use the hostname from the context above, NOT the detection_id. "
+            "Query relevant events for the host, enrich suspicious destination IPs, "
+            "check graph connections for lateral movement, and search for similar confirmed incidents. "
             "Produce a final TP or FP verdict with confidence and narrative."
         )
 
         log.info("Starting agentic investigation for detection_id=%s", detection_id)
-        async for event in run_investigation(agent, task, timeout=90.0):
+        async for event in run_investigation(agent, task, timeout=300.0):
             yield event
         log.info("Agentic investigation complete for detection_id=%s", detection_id)
 

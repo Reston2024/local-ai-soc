@@ -441,7 +441,7 @@
       </div>
 
       <!-- Empty state (before first run) -->
-      {#if !agentRunning && agentSteps.length === 0 && !agentVerdict && !agentError}
+      {#if !agentRunning && agentSteps.length === 0 && !agentVerdict && !agentError && !agentLimitReason}
         <div class="agent-empty">
           <p class="agent-empty-desc">
             The AI agent will query events, enrich IPs, and reason step-by-step to a verdict.
@@ -454,6 +454,18 @@
       {:else}
         <!-- Trace cards + streaming reasoning -->
         <div class="agent-trace">
+
+          <!-- Waiting spinner — shown until first tool call or reasoning text arrives -->
+          {#if agentRunning && agentSteps.length === 0 && agentReasoningChunks.length === 0}
+            <div class="agent-thinking">
+              <div class="thinking-spinner"></div>
+              <div class="thinking-text">
+                <span class="thinking-label">Agent is working…</span>
+                <span class="thinking-sub">Querying evidence and reasoning about the detection</span>
+              </div>
+            </div>
+          {/if}
+
           {#each agentSteps as step, i (step.call_number)}
             <!-- Collapsible trace card -->
             <div class="trace-card">
@@ -496,8 +508,9 @@
         <!-- Limit/timeout warning banner -->
         {#if agentLimitReason && !agentRunning}
           <div class="agent-limit-banner">
-            Agent stopped — hit {agentLimitReason === 'timeout' ? '90s timeout' : '10-call limit'}.
-            Partial investigation shown.
+            <span>Agent stopped — hit {agentLimitReason === 'timeout' ? 'time limit' : '10-call limit'}.
+            Partial investigation shown.</span>
+            <button class="btn-retry" onclick={retryAgent}>Re-run ↺</button>
           </div>
         {/if}
 
@@ -743,7 +756,7 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .reasoning-text { font-size: 0.8rem; color: rgba(255,255,255,0.55); font-style: italic; padding: 0.25rem 0.5rem; border-left: 2px solid #6366f1; margin: 0.25rem 0; }
 .reasoning-live { animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%,100% { opacity: 0.6 } 50% { opacity: 1 } }
-.agent-limit-banner { background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); border-radius: 6px; padding: 0.5rem 0.75rem; color: #fbbf24; font-size: 0.8rem; }
+.agent-limit-banner { background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); border-radius: 6px; padding: 0.5rem 0.75rem; color: #fbbf24; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 .agent-error-card { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 0.5rem 0.75rem; display: flex; justify-content: space-between; align-items: center; color: #f87171; font-size: 0.8rem; }
 .btn-retry { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
 .verdict-section { margin-top: auto; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -758,4 +771,40 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .btn-confirm-tp:hover { background: rgba(34,197,94,0.25); }
 .btn-mark-fp { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #f87171; padding: 0.35rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
 .btn-mark-fp:hover { background: rgba(239,68,68,0.22); }
+
+/* Phase 45: Waiting / thinking indicator */
+.agent-thinking {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: rgba(99,102,241,0.06);
+  border: 1px solid rgba(99,102,241,0.15);
+  border-radius: 8px;
+  margin: 0.25rem 0;
+}
+.thinking-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(99,102,241,0.25);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.thinking-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.thinking-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+.thinking-sub {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.42);
+}
 </style>

@@ -12,7 +12,9 @@ Architecture:
 CRITICAL CONSTRAINTS:
 - smolagents.agent.run() is SYNCHRONOUS — never call it directly in async code.
 - Use threading.Thread + queue.Queue bridge (NOT asyncio.Queue — wrong thread model).
-- System prompt MUST start with /no_think to suppress qwen3 thinking tokens.
+- think=False MUST be passed to LiteLLMModel — qwen3:14b generates 2000+ thinking tokens
+  by default, taking ~300s per call. think=False reduces TTFT from ~300s to ~5s.
+- /no_think in system prompt does NOT suppress thinking; only think=False API param works.
 - num_ctx=8192 is REQUIRED — default 2048 causes silent tool-call JSON truncation.
 """
 from __future__ import annotations
@@ -42,27 +44,24 @@ from backend.services.agent.tools import (
 log = get_logger(__name__)
 
 MAX_STEPS = 10
-DEFAULT_TIMEOUT = 90.0
+DEFAULT_TIMEOUT = 300.0  # 5 min: CPU inference for qwen3:14b needs ~50s to encode system prompt + tools
 
 SYSTEM_PROMPT = """/no_think
-You are a cybersecurity investigation agent for a SOC analyst.
-Your job: analyze a security detection by querying events, enriching suspicious IPs,
-checking graph relationships, and searching for similar confirmed incidents.
+You are a SOC triage agent. Investigate security detections by calling tools, then emit a verdict.
 
-Follow this investigation strategy:
-1. Query events for the detected host to understand what happened.
-2. Get the entity profile to assess the host's baseline behaviour.
-3. Enrich any suspicious destination IPs to check for known threats.
-4. Search for similar confirmed incidents to leverage past analyst decisions.
-5. Check graph neighbors for lateral movement indicators.
-6. Search Sigma matches to correlate with known detection rules.
+Strategy (call tools in this order, skip if no data):
+1. query_events — use the hostname from the task context
+2. get_entity_profile — use the same hostname
+3. enrich_ip — for the most suspicious dst_ip from events
+4. search_similar_incidents — use detection_id and 1-sentence description
+5. Final answer immediately after step 4
 
-After gathering evidence, produce your final answer as valid JSON:
-{"verdict": "TP", "confidence": 85, "narrative": "2-3 sentence explanation"}
+Output ONLY this JSON as your final answer (no prose before or after):
+{"verdict": "TP", "confidence": 85, "narrative": "max 2 sentences"}
 or
-{"verdict": "FP", "confidence": 90, "narrative": "2-3 sentence explanation"}
+{"verdict": "FP", "confidence": 90, "narrative": "max 2 sentences"}
 
-Be concise. Use only the tools provided. Do not guess — base your verdict on evidence.
+Rules: Use tools only. No explanations between tool calls. Emit verdict after ≤5 tool calls.
 """
 
 
@@ -92,7 +91,8 @@ def build_agent(stores) -> ToolCallingAgent:
         model_id="ollama_chat/qwen3:14b",
         api_base=str(settings.OLLAMA_HOST),
         api_key="ollama",  # required field even for local; any non-empty string
-        num_ctx=8192,  # CRITICAL: prevents silent truncation during tool-call conversations
+        num_ctx=8192,  # 8192 prevents tool-call JSON truncation in multi-turn conversations
+        think=False,  # CRITICAL: disables qwen3 thinking tokens; without this TTFT is ~300s
     )
 
     tools = [
@@ -173,20 +173,42 @@ async def run_investigation(
     def _run_sync() -> None:
         """Execute the synchronous agent generator in a background thread."""
         try:
+            # Lazy import to avoid circular imports in thread
+            try:
+                from smolagents.memory import FinalAnswerStep as _FinalAnswerStep
+            except ImportError:
+                _FinalAnswerStep = None
+
             gen = agent.run(task, stream=True, reset=True)
             for step in gen:
                 event_queue.put(("step", step))
-            # After generator exhausts, retrieve final answer from agent memory
-            try:
-                from smolagents.memory import FinalAnswerStep
+                # Capture FinalAnswerStep directly from stream — it is NOT stored
+                # in agent.memory.steps, so post-run memory scan never finds it.
+                if _FinalAnswerStep is not None and isinstance(step, _FinalAnswerStep):
+                    answer_text = (
+                        str(getattr(step, "output", "") or "")
+                        or str(getattr(step, "final_answer", "") or "")
+                    )
+                    if answer_text:
+                        final_answer.append(answer_text)
+                        log.debug("Captured FinalAnswerStep output: %s", answer_text[:200])
 
-                last_steps = agent.memory.steps if hasattr(agent, "memory") else []
-                for s in reversed(last_steps):
-                    if isinstance(s, FinalAnswerStep):
-                        final_answer.append(getattr(s, "final_answer", "") or "")
-                        break
-            except Exception:
-                pass
+            # Fallback: scan memory in case future smolagents versions store it
+            if not final_answer:
+                try:
+                    last_steps = agent.memory.steps if hasattr(agent, "memory") else []
+                    for s in reversed(last_steps):
+                        if _FinalAnswerStep and isinstance(s, _FinalAnswerStep):
+                            final_answer.append(getattr(s, "final_answer", "") or "")
+                            break
+                        # Also look for ActionStep with final_answer attribute set
+                        fa = getattr(s, "final_answer", None)
+                        if fa:
+                            final_answer.append(str(fa))
+                            break
+                except Exception:
+                    pass
+
             event_queue.put(("done", None))
         except Exception as exc:
             event_queue.put(("error", str(exc)))

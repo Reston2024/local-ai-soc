@@ -914,7 +914,7 @@ export const api = {
         const lines = buffer.split('\n')
         buffer = lines.pop() ?? ''
         for (const line of lines) {
-          if (line.startsWith('event: ')) continue  // event type line
+          if (line.startsWith('event: ')) continue
           if (!line.startsWith('data: ')) continue
           const raw = line.slice(6).trim()
           if (!raw || raw === '{}') continue
@@ -924,7 +924,12 @@ export const api = {
             if ('call_number' in parsed && 'tool_name' in parsed) {
               onStep(parsed as AgentStep)
             } else if ('text' in parsed) {
-              onReasoning(parsed.text)
+              // Filter out reasoning chunks that are just the verdict JSON — the model
+              // often emits the verdict as plain text before calling final_answer.
+              // These will be captured via the proper 'verdict' event instead.
+              const txt: string = parsed.text || ''
+              const looksLikeVerdict = txt.includes('"verdict"') && (txt.includes('"TP"') || txt.includes('"FP"'))
+              if (!looksLikeVerdict) onReasoning(txt)
             } else if ('verdict' in parsed) {
               onVerdict(parsed as AgentVerdict)
             } else if ('reason' in parsed) {

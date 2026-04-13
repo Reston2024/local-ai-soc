@@ -5,7 +5,9 @@ backend/services/agent/tools.py
 Each tool wraps existing DuckDB/SQLite/Chroma stores via synchronous connections.
 
 DESIGN NOTE: Tools are always synchronous (smolagents requirement).
-They open fresh read-only DB connections per call — thread-safe, no async needed.
+DuckDB 1.5+ requires all connections to the same file to use the same configuration
+(no read_only=True) — use duckdb.connect(path) without read_only flag to match the
+main store's write connection. Tools only issue SELECT queries; no writes occur.
 """
 from __future__ import annotations
 
@@ -93,7 +95,7 @@ class QueryEventsTool(Tool):
             LIMIT {limit}
         """
         try:
-            with duckdb.connect(self._db_path, read_only=True) as conn:
+            with duckdb.connect(self._db_path) as conn:
                 conn.execute("SET enable_external_access = false")
                 rows = conn.execute(sql, params).fetchall()
         except Exception as exc:
@@ -154,7 +156,7 @@ class GetEntityProfileTool(Tool):
             params.append(username)
         where = "WHERE " + " AND ".join(conditions)
         try:
-            with duckdb.connect(self._db_path, read_only=True) as conn:
+            with duckdb.connect(self._db_path) as conn:
                 conn.execute("SET enable_external_access = false")
                 count_row = conn.execute(
                     f"SELECT COUNT(*) FROM normalized_events {where}", params
