@@ -39,6 +39,7 @@ dependencies = [
     "geoip2==4.8.1",
     "shodan==1.31.0",
     "river>=0.21.0",
+    "smolagents[litellm]>=1.24.0",
 ]
 
 [dependency-groups]
