@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '../lib/api.ts'
-  import type { TimelineItem, ChatHistoryMessage, CARAnalytic, SimilarCase } from '../lib/api.ts'
+  import type { TimelineItem, ChatHistoryMessage, CARAnalytic, SimilarCase, AgentStep, AgentVerdict } from '../lib/api.ts'
+
 
   let {
     investigationId = '',
@@ -17,6 +18,18 @@
 
   // Phase 44: similar confirmed cases
   let similarCases = $state<SimilarCase[]>([])
+
+  // Phase 45: Agent tab state
+  let activeTab = $state<'summary' | 'agent'>('summary')
+  let agentSteps = $state<AgentStep[]>([])
+  let agentReasoningChunks = $state<string[]>([])
+  let agentVerdict = $state<AgentVerdict | null>(null)
+  let agentRunning = $state(false)
+  let agentCallCount = $state(0)
+  let agentLimitReason = $state<string | null>(null)
+  let agentError = $state<string | null>(null)
+  let agentExpandedSteps = $state<Set<number>>(new Set())
+  let agentAbortController: AbortController | null = null
 
   // Timeline state
   let timelineItems = $state<TimelineItem[]>([])
@@ -122,6 +135,111 @@
     if (score >= 0.5) return 'medium'
     return 'low'
   }
+
+  // Phase 45: Agent helpers
+  function toolIcon(name: string): string {
+    const icons: Record<string, string> = {
+      query_events: '🔍',
+      get_entity_profile: '👤',
+      enrich_ip: '🌐',
+      search_sigma_matches: '⚡',
+      get_graph_neighbors: '🕸️',
+      search_similar_incidents: '📋',
+    }
+    return icons[name] ?? '🔧'
+  }
+
+  function toggleStep(callNumber: number) {
+    const next = new Set(agentExpandedSteps)
+    if (next.has(callNumber)) next.delete(callNumber)
+    else next.add(callNumber)
+    agentExpandedSteps = next
+  }
+
+  async function startAgent() {
+    if (!investigationId) return
+
+    // Check cache
+    const cached = agentCache.get(investigationId)
+    if (cached) {
+      agentSteps = cached.steps
+      agentReasoningChunks = cached.reasoningChunks
+      agentVerdict = cached.verdict
+      agentLimitReason = cached.limitReason
+      agentError = cached.error
+      agentCallCount = cached.steps.length
+      return
+    }
+
+    // Fresh run
+    agentRunning = true
+    agentSteps = []
+    agentReasoningChunks = []
+    agentVerdict = null
+    agentLimitReason = null
+    agentError = null
+    agentCallCount = 0
+
+    agentAbortController = new AbortController()
+
+    try {
+      await api.investigations.runAgentic(
+        investigationId,
+        (step) => {
+          agentSteps = [...agentSteps, step]
+          agentCallCount = step.call_number
+        },
+        (text) => {
+          agentReasoningChunks = [...agentReasoningChunks, text]
+        },
+        (verdict) => {
+          agentVerdict = verdict
+        },
+        (reason) => {
+          agentLimitReason = reason
+        },
+        () => {
+          agentRunning = false
+          agentCache.set(investigationId, {
+            steps: agentSteps,
+            reasoningChunks: agentReasoningChunks,
+            verdict: agentVerdict,
+            limitReason: agentLimitReason,
+            error: agentError,
+          })
+        },
+        (message) => {
+          agentError = message
+          agentRunning = false
+        },
+        agentAbortController.signal,
+      )
+    } catch (err) {
+      agentError = err instanceof Error ? err.message : 'Unknown error'
+      agentRunning = false
+    }
+  }
+
+  function retryAgent() {
+    if (investigationId) agentCache.delete(investigationId)
+    agentVerdict = null
+    agentError = null
+    agentLimitReason = null
+    startAgent()
+  }
+
+  async function confirmVerdict(verdict: 'TP' | 'FP') {
+    if (!investigationId) return
+    try {
+      await api.feedback.submit({ detection_id: investigationId, verdict })
+    } catch { /* silent on error */ }
+  }
+</script>
+
+<script module lang="ts">
+  // Phase 45: module-level cache — keyed by detection_id, persists across mounts
+  import type { AgentRunResult as _AgentRunResult } from '../lib/api.ts'
+  const agentCache = new Map<string, _AgentRunResult>()
 </script>
 
 <div class="investigation-view">
@@ -222,12 +340,28 @@
     {/if}
   </div>
 
-  <!-- AI Copilot panel -->
+  <!-- AI Copilot / Agent panel -->
   <div class="panel copilot-panel">
     <div class="panel-header">
       <h2>AI Copilot</h2>
       <span class="model-label">foundation-sec:8b</span>
     </div>
+
+    <!-- Phase 45: Tab selector -->
+    <div class="tab-header">
+      <button
+        class="tab-btn"
+        class:active={activeTab === 'summary'}
+        onclick={() => activeTab = 'summary'}
+      >Summary</button>
+      <button
+        class="tab-btn"
+        class:active={activeTab === 'agent'}
+        onclick={() => { activeTab = 'agent'; if (!agentRunning && !agentVerdict && agentSteps.length === 0 && !agentError) startAgent() }}
+      >Agent</button>
+    </div>
+
+    {#if activeTab === 'summary'}
     <div class="chat-history">
       {#each chatMessages as msg (msg.id)}
         <div class="message {msg.role}">
@@ -293,6 +427,109 @@
         {/if}
       </div>
     </div>
+
+    {:else}
+    <!-- AGENT TAB -->
+    <div class="agent-panel">
+
+      <!-- Header with call counter during run -->
+      <div class="agent-header">
+        <span class="agent-title">Agentic Investigation</span>
+        {#if agentRunning}
+          <span class="call-counter">{agentCallCount}/10 calls used</span>
+        {/if}
+      </div>
+
+      <!-- Empty state (before first run) -->
+      {#if !agentRunning && agentSteps.length === 0 && !agentVerdict && !agentError}
+        <div class="agent-empty">
+          <p class="agent-empty-desc">
+            The AI agent will query events, enrich IPs, and reason step-by-step to a verdict.
+          </p>
+          <button class="btn-run-agent" onclick={startAgent}>
+            Run agentic investigation ▶
+          </button>
+        </div>
+
+      {:else}
+        <!-- Trace cards + streaming reasoning -->
+        <div class="agent-trace">
+          {#each agentSteps as step, i (step.call_number)}
+            <!-- Collapsible trace card -->
+            <div class="trace-card">
+              <button
+                class="trace-card-header"
+                onclick={() => toggleStep(step.call_number)}
+              >
+                <span class="tool-icon">{toolIcon(step.tool_name)}</span>
+                <span class="tool-name">{step.tool_name}</span>
+                <span class="tool-summary">{step.result.slice(0, 80)}{step.result.length > 80 ? '…' : ''}</span>
+                <span class="chevron">{agentExpandedSteps.has(step.call_number) ? '▾' : '▸'}</span>
+              </button>
+              {#if agentExpandedSteps.has(step.call_number)}
+                <div class="trace-card-body">
+                  <div class="trace-args">
+                    <strong>Arguments:</strong>
+                    <pre>{JSON.stringify(step.arguments, null, 2)}</pre>
+                  </div>
+                  <div class="trace-result">
+                    <strong>Result:</strong>
+                    <p>{step.result}</p>
+                  </div>
+                </div>
+              {/if}
+            </div>
+            <!-- Reasoning text after this card -->
+            {#if agentReasoningChunks[i]}
+              <div class="reasoning-text">{agentReasoningChunks[i]}</div>
+            {/if}
+          {/each}
+
+          <!-- Live reasoning text (after last card, while running) -->
+          {#if agentRunning && agentReasoningChunks.length > agentSteps.length}
+            <div class="reasoning-text reasoning-live">
+              {agentReasoningChunks[agentReasoningChunks.length - 1]}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Limit/timeout warning banner -->
+        {#if agentLimitReason && !agentRunning}
+          <div class="agent-limit-banner">
+            Agent stopped — hit {agentLimitReason === 'timeout' ? '90s timeout' : '10-call limit'}.
+            Partial investigation shown.
+          </div>
+        {/if}
+
+        <!-- Error banner with retry -->
+        {#if agentError && !agentRunning}
+          <div class="agent-error-card">
+            <span>{agentError}</span>
+            <button class="btn-retry" onclick={retryAgent}>Retry ↺</button>
+          </div>
+        {/if}
+
+        <!-- Final Verdict section — visible once complete -->
+        {#if agentVerdict && !agentRunning}
+          <div class="verdict-section">
+            <div class="verdict-header">
+              <span class="verdict-badge-agent" class:tp={agentVerdict.verdict === 'TP'} class:fp={agentVerdict.verdict === 'FP'}>
+                {agentVerdict.verdict}
+              </span>
+              <span class="verdict-confidence">{agentVerdict.confidence}% confident</span>
+            </div>
+            <p class="verdict-narrative">{agentVerdict.narrative}</p>
+            <div class="verdict-actions">
+              <button class="btn-confirm-tp" onclick={() => confirmVerdict('TP')}>✓ Confirm TP</button>
+              <button class="btn-mark-fp" onclick={() => confirmVerdict('FP')}>✗ Mark FP</button>
+            </div>
+          </div>
+        {/if}
+      {/if}
+
+    </div>
+    {/if}
+
   </div>
 
 </div>
@@ -477,4 +714,48 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .verdict-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
 .verdict-tp { background: rgba(34,197,94,0.2); color: #22c55e; }
 .verdict-fp { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+/* Phase 45: Tab header */
+.tab-header { display: flex; gap: 0; border-bottom: 1px solid #2a2a3a; margin: 0; padding: 0 0.75rem; }
+.tab-btn { background: none; border: none; color: rgba(255,255,255,0.48); padding: 0.5rem 1rem; cursor: pointer; font-size: 0.85rem; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab-btn.active { color: #fff; border-bottom-color: #6366f1; }
+.tab-btn:hover:not(.active) { color: rgba(255,255,255,0.72); }
+
+/* Phase 45: Agent panel */
+.agent-panel { display: flex; flex-direction: column; gap: 0.75rem; padding: 0.75rem; flex: 1; overflow-y: auto; }
+.agent-header { display: flex; justify-content: space-between; align-items: center; }
+.agent-title { font-size: 0.9rem; font-weight: 600; color: rgba(255,255,255,0.9); }
+.call-counter { font-size: 0.75rem; color: rgba(255,255,255,0.48); font-variant-numeric: tabular-nums; }
+.agent-empty { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; text-align: center; }
+.agent-empty-desc { color: rgba(255,255,255,0.48); font-size: 0.85rem; max-width: 320px; }
+.btn-run-agent { background: #6366f1; color: #fff; border: none; padding: 0.5rem 1.25rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.btn-run-agent:hover { background: #4f46e5; }
+.agent-trace { display: flex; flex-direction: column; gap: 0.5rem; }
+.trace-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; }
+.trace-card-header { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; width: 100%; background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; text-align: left; font-size: 0.8rem; }
+.tool-icon { font-size: 1rem; }
+.tool-name { font-weight: 600; color: #a5b4fc; min-width: 140px; }
+.tool-summary { flex: 1; color: rgba(255,255,255,0.48); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chevron { color: rgba(255,255,255,0.4); }
+.trace-card-body { padding: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06); font-size: 0.78rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.trace-args pre { background: rgba(0,0,0,0.3); padding: 0.4rem; border-radius: 4px; font-size: 0.72rem; color: rgba(255,255,255,0.7); overflow-x: auto; margin: 0.25rem 0 0; }
+.trace-result p { color: rgba(255,255,255,0.8); margin: 0.25rem 0 0; white-space: pre-wrap; }
+.reasoning-text { font-size: 0.8rem; color: rgba(255,255,255,0.55); font-style: italic; padding: 0.25rem 0.5rem; border-left: 2px solid #6366f1; margin: 0.25rem 0; }
+.reasoning-live { animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 0.6 } 50% { opacity: 1 } }
+.agent-limit-banner { background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); border-radius: 6px; padding: 0.5rem 0.75rem; color: #fbbf24; font-size: 0.8rem; }
+.agent-error-card { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 6px; padding: 0.5rem 0.75rem; display: flex; justify-content: space-between; align-items: center; color: #f87171; font-size: 0.8rem; }
+.btn-retry { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 0.25rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+.verdict-section { margin-top: auto; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.verdict-header { display: flex; align-items: center; gap: 0.75rem; }
+.verdict-badge-agent { font-size: 1rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; }
+.verdict-badge-agent.tp { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.verdict-badge-agent.fp { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.verdict-confidence { color: rgba(255,255,255,0.55); font-size: 0.8rem; }
+.verdict-narrative { color: rgba(255,255,255,0.8); font-size: 0.82rem; margin: 0; line-height: 1.5; }
+.verdict-actions { display: flex; gap: 0.5rem; }
+.btn-confirm-tp { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; padding: 0.35rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+.btn-confirm-tp:hover { background: rgba(34,197,94,0.25); }
+.btn-mark-fp { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #f87171; padding: 0.35rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
+.btn-mark-fp:hover { background: rgba(239,68,68,0.22); }
 </style>
