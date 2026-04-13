@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 45 — in progress (plan 02 of N complete)
+current_phase: 45 — in progress (plan 03 of N complete)
 status: executing
-last_updated: "2026-04-13T03:30:29.985Z"
+last_updated: "2026-04-13T03:36:40.243Z"
 progress:
   total_phases: 48
   completed_phases: 43
   total_plans: 216
-  completed_plans: 218
+  completed_plans: 219
 ---
 
 # Session State
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 45 — in progress (plan 01 of N complete)
+**Current phase:** 45 — in progress (plan 03 of N complete)
 **Previous phase:** 44-analyst-feedback — COMPLETE ✅
 **Status:** In progress
 
@@ -52,9 +52,13 @@ See: .planning/PROJECT.md
 - **45-02:** nullable: True required in smolagents Tool inputs dict for any forward() param with a default value (smolagents validates json schema against inputs dict)
 - **45-02:** _sqlite_read() context manager ensures sqlite3 file handle release on Windows — prevents PermissionError on temp dir cleanup in tests
 - **45-02:** SearchSigmaMatchesTool queries detections without hostname column (actual schema has no hostname on detections table)
+- **45-03:** agent.tools dict has 7 entries (6 custom + built-in final_answer) — test assertion corrected to == 7
+- **45-03:** Deadline-polling used for timeout in run_investigation() async generator (not asyncio.wait_for — incompatible with async generators)
+- **45-03:** num_ctx=8192 passed to LiteLLMModel as **kwargs — prevents silent tool-call JSON truncation at default 2048
 
 ## Session Log
 
+- 2026-04-13: Plan 45-03 complete — backend/services/agent/runner.py: build_agent() wired to LiteLLMModel(ollama_chat/qwen3:14b, num_ctx=8192), run_investigation() async generator with threading.Thread + queue.Queue SSE bridge. SYSTEM_PROMPT starts with /no_think. test_build_agent + test_max_steps_limit GREEN, test_timeout_fires SKIP. 1090 unit tests passing.
 - 2026-04-13: Plan 45-02 complete — 6 smolagents Tool subclasses in backend/services/agent/tools.py: QueryEventsTool, GetEntityProfileTool, EnrichIpTool, SearchSigmaMatchesTool, GetGraphNeighborsTool, SearchSimilarIncidentsTool. All synchronous, read-only DB connections, nullable: True on optional inputs. 7/7 test_agent_tools.py tests GREEN, 1088 total unit tests passing.
 - 2026-04-13: Plan 45-01 complete — Wave 0 TDD stubs: 3 test files (test_agent_tools.py 7 stubs, test_agent_runner.py 3 stubs, test_agentic_api.py 2 stubs). smolagents==1.24.0 + litellm==1.83.0 installed. All 12 stubs SKIP cleanly, 1081 unit tests GREEN.
 - 2026-04-12: Plan 44-04 complete — Wave 3 frontend: DetectionsView gets verdict buttons (TP/FP in expand panels), Unreviewed chip, verdict badges on collapsed rows, toast notification; InvestigationView gets Similar Confirmed Cases section below CAR analytics; OverviewView gets 5 feedback KPI tiles (Verdicts Given, TP Rate, FP Rate, Classifier Accuracy conditional, Training Samples). TypeScript 0 errors, 1081 unit tests GREEN.
