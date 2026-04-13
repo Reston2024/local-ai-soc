@@ -2,13 +2,17 @@
 Investigation API — unified investigation workflow endpoint.
 
 POST /api/investigate  — start investigation from detection or entity
+POST /api/investigate/agentic  — agentic SSE investigation stream
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sse_starlette.sse import EventSourceResponse
 
 from backend.core.logging import get_logger
 
@@ -339,3 +343,59 @@ async def start_investigation(request: Request) -> JSONResponse:
     )
 
     return JSONResponse(content=result)
+
+
+# ---------------------------------------------------------------------------
+# Phase 45: Agentic investigation SSE endpoint
+# ---------------------------------------------------------------------------
+
+class AgenticInvestigateRequest(BaseModel):
+    detection_id: str
+
+
+@router.post("/agentic")
+async def run_agentic_investigation(
+    body: AgenticInvestigateRequest,
+    request: Request,
+) -> EventSourceResponse:
+    """
+    Run an agentic investigation for a detection.
+
+    Streams SSE events:
+      - tool_call: each tool the agent invokes
+      - reasoning: LLM chain-of-thought text between calls
+      - verdict: final TP/FP verdict with confidence + narrative
+      - limit: hit max_calls (10) or timeout (90s)
+      - done: stream complete
+      - error: agent error (Ollama unavailable, etc.)
+    """
+    detection_id = body.detection_id
+
+    async def _event_generator():
+        try:
+            stores = request.app.state.stores
+        except AttributeError:
+            yield {"event": "error", "data": json.dumps({"message": "Stores not initialised"})}
+            return
+
+        try:
+            from backend.services.agent.runner import build_agent, run_investigation
+            agent = build_agent(stores)
+        except Exception as exc:
+            log.error("Failed to build agent: %s", exc)
+            yield {"event": "error", "data": json.dumps({"message": f"Agent build failed: {exc}"})}
+            return
+
+        task = (
+            f"Investigate security detection ID: {detection_id}. "
+            "Query relevant events, enrich suspicious IPs, check graph connections, "
+            "and search for similar confirmed incidents. "
+            "Produce a final TP or FP verdict with confidence and narrative."
+        )
+
+        log.info("Starting agentic investigation for detection_id=%s", detection_id)
+        async for event in run_investigation(agent, task, timeout=90.0):
+            yield event
+        log.info("Agentic investigation complete for detection_id=%s", detection_id)
+
+    return EventSourceResponse(_event_generator())

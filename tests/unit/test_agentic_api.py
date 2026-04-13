@@ -38,5 +38,5 @@ def test_agentic_sse_content_type():
     app.include_router(router)
 
     with TestClient(app, raise_server_exceptions=False) as client:
-        resp = client.post("/agentic", json={"detection_id": "det-test"})
+        resp = client.post("/investigate/agentic", json={"detection_id": "det-test"})
         assert resp.status_code in (200, 401, 422)
