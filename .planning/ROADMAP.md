@@ -1524,7 +1524,7 @@ Plans:
 - P45-T04: InvestigationView agentic mode — shows tool calls, intermediate results, and final verdict as a readable chain of reasoning
 - P45-T05: Hard resource limits — max 10 tool calls per investigation, 90s timeout, read-only tools only
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [ ] 45-01-PLAN.md — Wave 0: smolagents install + TDD stubs (P45-T01, P45-T02, P45-T03, P45-T05)
