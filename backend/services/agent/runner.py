@@ -18,12 +18,14 @@ CRITICAL CONSTRAINTS:
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import json
 import queue
 import re
 import threading
 from typing import Any, AsyncIterator, Optional
 
+import yaml
 from smolagents import LiteLLMModel, ToolCallingAgent
 
 from backend.core.config import settings
@@ -102,10 +104,20 @@ def build_agent(stores) -> ToolCallingAgent:
         SearchSimilarIncidentsTool(chroma_path=chroma_path),
     ]
 
+    # Load smolagents default templates, then override only system_prompt.
+    # smolagents requires all 4 keys: system_prompt, planning, managed_agent, final_answer.
+    _default_templates = yaml.safe_load(
+        importlib.resources.files("smolagents.prompts")
+        .joinpath("toolcalling_agent.yaml")
+        .read_text()
+    )
+    _default_templates["system_prompt"] = SYSTEM_PROMPT
+
     agent = ToolCallingAgent(
         tools=tools,
         model=model,
         max_steps=MAX_STEPS,
+        prompt_templates=_default_templates,
     )
     return agent
 
