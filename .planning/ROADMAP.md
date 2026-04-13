@@ -1524,6 +1524,15 @@ Plans:
 - P45-T04: InvestigationView agentic mode — shows tool calls, intermediate results, and final verdict as a readable chain of reasoning
 - P45-T05: Hard resource limits — max 10 tool calls per investigation, 90s timeout, read-only tools only
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 45-01-PLAN.md — Wave 0: smolagents install + TDD stubs (P45-T01, P45-T02, P45-T03, P45-T05)
+- [ ] 45-02-PLAN.md — Wave 1: 6 Tool subclasses in backend/services/agent/tools.py (P45-T01)
+- [ ] 45-03-PLAN.md — Wave 2: agent runner build_agent() and run_investigation() SSE bridge (P45-T02, P45-T05)
+- [ ] 45-04-PLAN.md — Wave 3: POST /api/investigate/agentic SSE endpoint (P45-T03, P45-T05)
+- [ ] 45-05-PLAN.md — Wave 4: Frontend [Agent] tab, api.ts types, InvestigationView (P45-T04, P45-T05)
+
 ## Phase 46: RITA + JA4 TLS Fingerprinting
 **Status:** TODO
 **Added:** 2026-04-12
