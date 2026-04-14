@@ -371,6 +371,16 @@ CREATE TABLE IF NOT EXISTS hayabusa_scanned_files (
 )
 """
 
+_CHAINSAW_DDL = """
+CREATE TABLE IF NOT EXISTS chainsaw_scanned_files (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_sha256 TEXT NOT NULL UNIQUE,
+    file_path   TEXT NOT NULL,
+    scanned_at  TEXT NOT NULL,
+    findings    INTEGER NOT NULL DEFAULT 0
+)
+"""
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -496,6 +506,10 @@ class SQLiteStore:
 
         # Phase 48: Hayabusa scanned files dedup table (idempotent — CREATE IF NOT EXISTS)
         self._conn.execute(_HAYABUSA_DDL)
+        self._conn.commit()
+
+        # Phase 49: Chainsaw scanned files dedup table (idempotent — CREATE IF NOT EXISTS)
+        self._conn.execute(_CHAINSAW_DDL)
         self._conn.commit()
 
         # Phase 48: detection_source column on detections
@@ -866,6 +880,24 @@ class SQLiteStore:
         """Record a Hayabusa scan completion for dedup.  INSERT OR IGNORE is idempotent."""
         self._conn.execute(
             "INSERT OR IGNORE INTO hayabusa_scanned_files "
+            "(file_sha256, file_path, scanned_at, findings) VALUES (?, ?, ?, ?)",
+            (file_sha256, file_path, _now_iso(), findings),
+        )
+        self._conn.commit()
+
+    # Phase 49: Chainsaw dedup helpers
+    def is_chainsaw_scanned(self, file_sha256: str) -> bool:
+        """Return True if this file SHA-256 has already been scanned by Chainsaw."""
+        row = self._conn.execute(
+            "SELECT 1 FROM chainsaw_scanned_files WHERE file_sha256 = ?",
+            (file_sha256,),
+        ).fetchone()
+        return row is not None
+
+    def mark_chainsaw_scanned(self, file_sha256: str, file_path: str, findings: int) -> None:
+        """Record a Chainsaw scan completion for dedup. INSERT OR IGNORE is idempotent."""
+        self._conn.execute(
+            "INSERT OR IGNORE INTO chainsaw_scanned_files "
             "(file_sha256, file_path, scanned_at, findings) VALUES (?, ?, ?, ?)",
             (file_sha256, file_path, _now_iso(), findings),
         )

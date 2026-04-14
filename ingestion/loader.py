@@ -41,6 +41,7 @@ from backend.services.ollama_client import OllamaClient
 from backend.stores.chroma_store import DEFAULT_COLLECTION
 from ingestion.entity_extractor import extract_entities_and_edges, extract_perimeter_entities
 from ingestion.hayabusa_scanner import scan_evtx, hayabusa_record_to_detection
+from ingestion.chainsaw_scanner import scan_evtx as chainsaw_scan_evtx, chainsaw_record_to_detection
 from ingestion.normalizer import normalize_event
 from ingestion.registry import get_parser
 
@@ -292,6 +293,7 @@ class IngestionResult:
     errors: list[str] = field(default_factory=list)
     duration_seconds: float = 0.0
     hayabusa_findings: int = 0  # Phase 48: Hayabusa threat hunting findings count
+    chainsaw_findings: int = 0  # Phase 49: Chainsaw threat hunting findings count
 
     def __str__(self) -> str:
         return (
@@ -376,6 +378,47 @@ def _run_hayabusa_scan(
         count += 1
     sqlite.mark_scanned(raw_sha256, file_path, count)
     log.info("Hayabusa scan complete", file_path=file_path, findings=count)
+    return count
+
+
+# ---------------------------------------------------------------------------
+# Phase 49: Chainsaw EVTX scanning helper (sync — runs inside asyncio.to_thread)
+# ---------------------------------------------------------------------------
+
+
+def _run_chainsaw_scan(
+    file_path: str,
+    raw_sha256: str,
+    case_id: str | None,
+    stores,
+) -> int:
+    """Run Chainsaw against one EVTX file. Returns number of findings inserted.
+
+    Checks chainsaw_scanned_files dedup table first; skips without subprocess if
+    already scanned. Runs in asyncio.to_thread — must be purely synchronous.
+    """
+    sqlite = stores.sqlite
+    if sqlite.is_chainsaw_scanned(raw_sha256):
+        log.debug("Chainsaw scan skipped (already scanned)", file_path=file_path)
+        return 0
+    count = 0
+    for rec in chainsaw_scan_evtx(file_path):
+        det = chainsaw_record_to_detection(rec, file_path, case_id)
+        sqlite.insert_detection(
+            detection_id=det.id,
+            rule_id=det.rule_id or "",
+            rule_name=det.rule_name or "",
+            severity=det.severity,
+            matched_event_ids=det.matched_event_ids,
+            attack_technique=det.attack_technique,
+            attack_tactic=det.attack_tactic,
+            explanation=det.explanation,
+            case_id=det.case_id,
+            detection_source="chainsaw",
+        )
+        count += 1
+    sqlite.mark_chainsaw_scanned(raw_sha256, file_path, count)
+    log.info("Chainsaw scan complete", file_path=file_path, findings=count)
     return count
 
 
@@ -537,6 +580,17 @@ class IngestionLoader:
             except Exception as exc:
                 log.warning(
                     "Hayabusa scan failed (non-fatal)", file_path=file_path, error=str(exc)
+                )
+
+        # Phase 49: Chainsaw EVTX threat hunting (non-fatal — failure must not abort pipeline)
+        if _Path(file_path).suffix.lower() == ".evtx":
+            try:
+                result.chainsaw_findings = await asyncio.to_thread(
+                    _run_chainsaw_scan, file_path, raw_sha256, case_id, self._stores
+                )
+            except Exception as exc:
+                log.warning(
+                    "Chainsaw scan failed (non-fatal)", file_path=file_path, error=str(exc)
                 )
 
         result.duration_seconds = time.monotonic() - t0

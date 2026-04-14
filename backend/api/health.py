@@ -107,6 +107,33 @@ async def _check_hayabusa(request: Request) -> dict[str, Any]:
         return {"status": "warning", "binary": None, "detection_count": 0, "detail": "check failed"}
 
 
+async def _check_chainsaw(request: Request) -> dict[str, Any]:
+    """Report Chainsaw binary availability and detection count from SQLite."""
+    try:
+        from ingestion.chainsaw_scanner import CHAINSAW_BIN  # noqa: PLC0415
+        has_binary = CHAINSAW_BIN is not None
+
+        try:
+            stores = request.app.state.stores
+            row = await asyncio.to_thread(
+                stores.sqlite._conn.execute,
+                "SELECT COUNT(*) FROM detections WHERE detection_source = 'chainsaw'",
+            )
+            detection_count: int = int(row.fetchone()[0])
+        except Exception:
+            detection_count = 0
+
+        return {
+            "status": "ok" if has_binary else "warning",
+            "binary": str(CHAINSAW_BIN) if has_binary else None,
+            "detection_count": detection_count,
+            "detail": None if has_binary else "binary not found — EVTX scanning disabled",
+        }
+    except Exception as exc:
+        log.error("Health check failed for chainsaw: %s", str(exc))
+        return {"status": "warning", "binary": None, "detection_count": 0, "detail": "check failed"}
+
+
 def _tcp_check(host: str, port: int, timeout: float = 2.0) -> bool:
     """Return True if TCP connection to host:port succeeds within timeout."""
     try:
@@ -164,12 +191,13 @@ async def health(request: Request) -> JSONResponse:
     - degraded:  some components ok (Ollama failures are degraded, not fatal)
     - unhealthy: core storage components (DuckDB, SQLite) failed
     """
-    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result = await asyncio.gather(
+    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result = await asyncio.gather(
         _check_ollama(request),
         _check_duckdb(request),
         _check_chroma(request),
         _check_sqlite(request),
         _check_hayabusa(request),
+        _check_chainsaw(request),
         return_exceptions=False,
     )
 
@@ -179,6 +207,7 @@ async def health(request: Request) -> JSONResponse:
         "chroma": chroma_result,
         "sqlite": sqlite_result,
         "hayabusa": hayabusa_result,
+        "chainsaw": chainsaw_result,
     }
 
     # Determine overall status:
