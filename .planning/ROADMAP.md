@@ -631,6 +631,36 @@ Plans:
 
 *Phase 13 added: 2026-03-27 (Mature SOC Metrics, KPIs & HF Model Upgrade)*
 
+### Phase 48: Hayabusa EVTX Threat Hunting Integration
+
+**Goal:** Integrate Hayabusa (Rust-based, 3,108 stars, actively maintained) as a scheduled EVTX analysis engine alongside the existing EVTX parser. Hayabusa runs its own Sigma rule engine against Windows Event Logs and produces JSONL timeline output with MITRE ATT&CK tagging — surfacing threats the current field-mapping approach misses. Run Hayabusa on ingested EVTX files at ingest time, import findings into the detections table, and surface Hayabusa-sourced detections distinctly in DetectionsView. Adds a pre-built rule corpus of 4,000+ Windows detection rules with no manual authoring.
+**Requirements**: Hayabusa binary on PATH (Windows native, no runtime deps); existing EVTX ingest pipeline (Phase ingestion parsers); detections table in DuckDB.
+**Depends on:** Phase 47
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 48 to break down)
+
+### Phase 49: Chainsaw Windows Event Log Analysis
+
+**Goal:** Integrate Chainsaw (Rust-based, 3,511 stars, actively maintained) as a complementary Windows Event Log analysis layer to Phase 48's Hayabusa. Where Hayabusa excels at timeline generation and MITRE tagging, Chainsaw's strengths are MFT/EVTX/journal parsing, lateral movement hunting, and persistence detection with different rule coverage. Run both tools against the same EVTX sources; merge deduplicated findings into the detections pipeline. Together Hayabusa + Chainsaw provide near-complete coverage of Windows-based attacker TTPs from event logs alone.
+**Requirements**: Chainsaw binary on PATH; Phase 48 Hayabusa integration complete; EVTX ingest pipeline.
+**Depends on:** Phase 48
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 49 to break down)
+
+### Phase 50: MISP Threat Intelligence Integration
+
+**Goal:** Integrate a self-hosted MISP (Malware Information Sharing Platform) instance on the GMKtec as the project's structured threat intelligence backbone — completing the work deferred from Phase 33. MISP provides STIX/TAXII 2.1 ingestion, IOC relationship graphs, TLP-aware sharing, and a REST API. Connect MISP to the existing ioc_store via scheduled sync: pull MISP events → normalize to the internal IOC schema → retroactive hunt against historical events. Surface MISP-sourced intelligence distinctly in ThreatIntelView with confidence scores and event context. Unlocks community feed subscriptions (CIRCL, MISPProject defaults) at no cost.
+**Requirements**: Docker on GMKtec (Malcolm already running there); Phase 33 IOC pipeline; existing ThreatIntelView.
+**Depends on:** Phase 49
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 50 to break down)
+
 ---
 
 ## Phase 14: LLMOps Evaluation & Investigation AI Copilot

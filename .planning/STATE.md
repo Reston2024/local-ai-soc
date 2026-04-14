@@ -263,3 +263,12 @@ See: .planning/PROJECT.md
 - **38-03:** SQLiteStore has no execute_write method (DuckDB-only pattern) — PATCH route uses asyncio.to_thread with nested _set_case_id function calling _conn.execute() + commit() directly
 - **38-03:** PATCH /api/playbook-runs/{run_id} registered before /{run_id}/cancel in FastAPI router — correct route specificity ordering
 - **38-03:** Suggest CTA placed in Actions table column — DetectionsView uses table rows (not expandable panels), keeps layout consistent
+
+
+## Accumulated Context
+
+### Roadmap Evolution
+- Phase 48 added: Hayabusa EVTX Threat Hunting Integration (sourced from SOC_ThreatHunting_Tools_2026.xlsx review — 3,108 stars, actively maintained, Sigma rule engine for Windows Event Logs)
+- Phase 49 added: Chainsaw Windows Event Log Analysis (sourced from SOC_ThreatHunting_Tools_2026.xlsx review — 3,511 stars, complements Hayabusa with different rule coverage and MFT/journal parsing)
+- Phase 50 added: MISP Threat Intelligence Integration (sourced from SOC_ThreatHunting_Tools_2026.xlsx review — completes Phase 33 deferred TAXII/MISP work; self-hosted on GMKtec)
+- Note: RITA already planned as Phase 46; SpiderFoot-equivalent OSINT covered by Phase 32 (AbuseIPDB/Shodan/WHOIS pipeline)
