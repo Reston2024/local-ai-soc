@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 49
-status: in-progress
-last_updated: "2026-04-14T22:22:00Z"
+status: executing
+last_updated: "2026-04-14T22:26:32.019Z"
 progress:
   total_phases: 53
   completed_phases: 45
   total_plans: 222
-  completed_plans: 225
+  completed_plans: 226
 ---
 
 # Session State
@@ -81,9 +81,13 @@ See: .planning/PROJECT.md
 - **49-01:** pytest.importorskip at module level (not per-test) so entire unit file skips atomically when ingestion.chainsaw_scanner absent — mirrors Phase 48 hayabusa pattern exactly
 - **49-01:** chainsaw marker added to pyproject.toml markers list to avoid PytestUnknownMarkWarning
 - **49-01:** shutil.which checks both 'chainsaw' and 'chainsaw.exe' for Windows PATH compatibility
+- **49-02:** _extract_technique() helper used for MITRE technique extraction to handle both T1003 and T1003.001 sub-technique formats (last segment length check failed for 3-char subtechnique IDs like "001")
+- **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
+- **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
 ## Session Log
 
+- 2026-04-14: Plan 49-02 complete — Wave 1 implementation: ingestion/chainsaw_scanner.py (CHAINSAW_BIN, scan_evtx, chainsaw_record_to_detection, _LEVEL_MAP), SQLite chainsaw_scanned_files dedup table + is_chainsaw_scanned/mark_chainsaw_scanned, IngestionResult.chainsaw_findings, _run_chainsaw_scan() + non-fatal loader block, _check_chainsaw() health component. All 7 unit tests GREEN.
 - 2026-04-14: Plan 49-01 complete — Wave 0 TDD stubs: test_chainsaw_scanner.py (7 stubs, importorskip pattern) + test_chainsaw_e2e.py (1 integration stub gated on binary). chainsaw marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
 - 2026-04-14: Plan 48-03 complete — Wave 2 frontend: Detection interface extended with detection_source, HAYABUSA chip (amber) + hayabusaCount $derived + corrected SIGMA filter + amber badge-hayabusa on detection rows. TypeScript 0 errors. Phase 48 COMPLETE — all requirements HAY-01 through HAY-07 fulfilled.
 - 2026-04-14: Plan 48-02 complete — Wave 1 implementation: ingestion/hayabusa_scanner.py (scan_evtx, hayabusa_record_to_detection, _LEVEL_MAP, HAYABUSA_BIN), SQLite hayabusa_scanned_files dedup table, detection_source column migration, insert_detection() extended, loader.py wired. All 6 unit tests GREEN.
