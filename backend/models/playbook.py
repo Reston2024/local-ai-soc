@@ -47,7 +47,8 @@ class Playbook(BaseModel):
     version: str = "1.0"
     created_at: str
     is_builtin: bool = False
-    source: str = "custom"  # Phase 38: 'cisa' | 'custom'
+    source: str = "custom"  # Phase 38+46: 'cisa'|'cert_sg'|'aws'|'microsoft'|'guardsight'|'community'|'custom'
+    category: str = ""  # Phase 46: malware|ransomware|phishing|identity|network|cloud|insider|supply_chain|web|endpoint|data_breach|ics_ot|vulnerability
 
 
 class PlaybookCreate(BaseModel):
@@ -60,6 +61,7 @@ class PlaybookCreate(BaseModel):
     trigger_conditions: list[str] = []
     steps: list[PlaybookStep] = []
     version: str = "1.0"
+    category: str = ""  # Phase 46
 
 
 class PlaybookRun(BaseModel):
@@ -89,3 +91,4 @@ class PlaybookRunAdvance(BaseModel):
     analyst_note: str = ""
     outcome: Literal["confirmed", "skipped"] = "confirmed"
     containment_action: Optional[str] = None
+    confidence: Optional[float] = None  # 0.0–1.0 analyst/detection confidence; used by policy gate

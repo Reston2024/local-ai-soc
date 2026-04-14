@@ -205,7 +205,8 @@ export interface Playbook {
   version: string
   is_builtin: boolean
   created_at: string
-  source: 'cisa' | 'custom'  // Phase 38 addition
+  source: 'cisa' | 'cert_sg' | 'aws' | 'microsoft' | 'guardsight' | 'community' | 'custom'  // Phase 46 expansion
+  category: string  // Phase 46: malware|ransomware|phishing|identity|network|cloud|insider|supply_chain|web|endpoint|data_breach|ics_ot|vulnerability
 }
 
 export interface PlaybookStepResult {
@@ -979,14 +980,19 @@ export const api = {
   },
 
   provenance: {
+    recent: (limit = 20) =>
+      request<{ records: Array<{ record_id: string; record_type: string; label: string; created_at: string }> }>(
+        `/api/provenance/recent?limit=${limit}`,
+        { headers: authHeaders() },
+      ),
     ingest: (eventId: string) =>
-      request<IngestProvenanceRecord>(`/api/provenance/ingest/${encodeURIComponent(eventId)}`),
+      request<IngestProvenanceRecord>(`/api/provenance/ingest/${encodeURIComponent(eventId)}`, { headers: authHeaders() }),
     detection: (detectionId: string) =>
-      request<DetectionProvenanceRecord>(`/api/provenance/detection/${encodeURIComponent(detectionId)}`),
+      request<DetectionProvenanceRecord>(`/api/provenance/detection/${encodeURIComponent(detectionId)}`, { headers: authHeaders() }),
     llm: (auditId: string) =>
-      request<LlmProvenanceRecord>(`/api/provenance/llm/${encodeURIComponent(auditId)}`),
+      request<LlmProvenanceRecord>(`/api/provenance/llm/${encodeURIComponent(auditId)}`, { headers: authHeaders() }),
     playbook: (runId: string) =>
-      request<PlaybookProvenanceRecord>(`/api/provenance/playbook/${encodeURIComponent(runId)}`),
+      request<PlaybookProvenanceRecord>(`/api/provenance/playbook/${encodeURIComponent(runId)}`, { headers: authHeaders() }),
   },
 
   recommendations: {
@@ -1052,6 +1058,8 @@ export const api = {
       request<{ presets: HuntPreset[] }>('/api/hunts/presets', { headers: authHeaders() }),
     getResults: (hunt_id: string) =>
       request<HuntHistoryItem>(`/api/hunts/${hunt_id}/results`, { headers: authHeaders() }),
+    history: (limit = 20) =>
+      request<{ hunts: HuntHistoryItem[] }>(`/api/hunts/history?limit=${limit}`, { headers: authHeaders() }),
   },
 
   osint: {

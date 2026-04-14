@@ -444,6 +444,13 @@ class SQLiteStore:
             )
         except Exception:
             pass  # column already exists — idempotent
+        # Phase 46 migrations — category field for playbook library filtering
+        try:
+            self._conn.execute(
+                "ALTER TABLE playbooks ADD COLUMN category TEXT NOT NULL DEFAULT ''"
+            )
+        except Exception:
+            pass  # column already exists — idempotent
 
         # Phase 39 migration — CAR analytics enrichment column on detections
         try:
@@ -1135,15 +1142,17 @@ class SQLiteStore:
         description = data.get("description", "")
         source = data.get("source", "custom")
 
+        category = data.get("category", "")
+
         self._conn.execute(
             """
             INSERT INTO playbooks
                 (playbook_id, name, description, trigger_conditions, steps,
-                 version, is_builtin, source, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 version, is_builtin, source, category, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (playbook_id, name, description, trigger_conditions, steps,
-             version, is_builtin, source, now),
+             version, is_builtin, source, category, now),
         )
         self._conn.commit()
         log.debug("Playbook created", playbook_id=playbook_id, name=name)
@@ -1787,19 +1796,20 @@ class SQLiteStore:
     def get_osint_cache(self, ip: str) -> dict | None:
         """Retrieve a cached OSINT result for an IP address.
 
-        Returns a dict with keys 'data' (the OsintResult fields dict) and
-        'fetched_at' (ISO string), or None if not cached.
+        Returns a flat dict with all osint_cache columns including Phase 41
+        classification fields (ip_type, ipsum_tier, is_tor, is_proxy,
+        is_datacenter) plus the raw result_json string.  Returns None if not
+        cached.
         """
         row = self._conn.execute(
-            "SELECT result_json, fetched_at FROM osint_cache WHERE ip = ?",
+            """SELECT ip, result_json, fetched_at,
+                      ip_type, ipsum_tier, is_tor, is_proxy, is_datacenter
+               FROM osint_cache WHERE ip = ?""",
             (ip,),
         ).fetchone()
         if row is None:
             return None
-        return {
-            "data": json.loads(row["result_json"]),
-            "fetched_at": row["fetched_at"],
-        }
+        return dict(row)
 
     def set_osint_cache(
         self,

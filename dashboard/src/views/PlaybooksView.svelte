@@ -46,6 +46,54 @@
     critical: 4, high: 3, medium: 2, low: 1, informational: 0
   }
 
+  // --- Phase 46: Category and source filter state ---
+  let selectedCategory = $state<string>('all')
+  let selectedSource = $state<string>('all')
+
+  const CATEGORY_LABELS: Record<string, string> = {
+    all: 'All',
+    ransomware: '🔒 Ransomware',
+    phishing: '🎣 Phishing',
+    identity: '🔑 Identity',
+    malware: '🦠 Malware',
+    network: '🌐 Network',
+    cloud: '☁️ Cloud',
+    endpoint: '💻 Endpoint',
+    web: '🌍 Web',
+    insider: '👤 Insider',
+    supply_chain: '⛓ Supply Chain',
+    data_breach: '📤 Data Breach',
+    vulnerability: '🛡 Vulnerability',
+    ics_ot: '⚙️ ICS/OT',
+  }
+
+  const SOURCE_LABELS: Record<string, string> = {
+    all: 'All Sources',
+    cisa: 'CISA',
+    cert_sg: 'CERT-SG',
+    aws: 'AWS',
+    microsoft: 'Microsoft',
+    guardsight: 'GuardSight',
+    community: 'Community',
+    custom: 'Custom',
+  }
+
+  const availableCategories = $derived(
+    ['all', ...new Set(playbooks.map(p => p.category).filter(Boolean))]
+  )
+
+  const availableSources = $derived(
+    ['all', ...new Set(playbooks.map(p => p.source ?? 'custom'))]
+  )
+
+  const filteredPlaybooks = $derived(
+    playbooks.filter(p => {
+      const catOk = selectedCategory === 'all' || p.category === selectedCategory
+      const srcOk = selectedSource === 'all' || (p.source ?? 'custom') === selectedSource
+      return catOk && srcOk
+    })
+  )
+
   // Load playbooks on mount
   $effect(() => {
     loadLibrary()
@@ -219,24 +267,61 @@
       {:else if playbooks.length === 0}
         <p class="muted">No playbooks found.</p>
       {:else}
+        <!-- Phase 46: Filter bar -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <span class="filter-label">Category</span>
+            <div class="filter-chips">
+              {#each availableCategories as cat}
+                <button
+                  class="filter-chip {selectedCategory === cat ? 'active' : ''}"
+                  onclick={() => selectedCategory = cat}
+                >
+                  {CATEGORY_LABELS[cat] ?? cat}
+                </button>
+              {/each}
+            </div>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Source</span>
+            <div class="filter-chips">
+              {#each availableSources as src}
+                <button
+                  class="filter-chip source-filter-{src} {selectedSource === src ? 'active' : ''}"
+                  onclick={() => selectedSource = src}
+                >
+                  {SOURCE_LABELS[src] ?? src}
+                </button>
+              {/each}
+            </div>
+          </div>
+          <span class="filter-count">{filteredPlaybooks.length} / {playbooks.length} playbooks</span>
+        </div>
+
         <div class="playbook-list">
-          {#each playbooks as pb (pb.playbook_id)}
+          {#each filteredPlaybooks as pb (pb.playbook_id)}
             <div class="pb-card">
               <div class="pb-top">
                 <div class="pb-left">
                   <div class="pb-name-row">
                     <span class="pb-name">{pb.name}</span>
-                    <!-- Phase 38: source badge -->
+                    <!-- Phase 38/46: source badge -->
                     <span class="source-badge source-{pb.source ?? 'custom'}">
-                      {(pb.source ?? 'custom').toUpperCase()}
+                      {SOURCE_LABELS[pb.source ?? 'custom'] ?? (pb.source ?? 'CUSTOM').toUpperCase()}
                     </span>
+                    {#if pb.category}
+                      <span class="category-badge">{CATEGORY_LABELS[pb.category] ?? pb.category}</span>
+                    {/if}
                   </div>
                   <span class="pb-version">v{pb.version}{pb.is_builtin ? ' · Built-in' : ''}</span>
                   <p class="pb-desc">{pb.description}</p>
                   <div class="pb-triggers">
-                    {#each pb.trigger_conditions as tc}
+                    {#each pb.trigger_conditions.slice(0, 6) as tc}
                       <span class="trigger-tag">{tc}</span>
                     {/each}
+                    {#if pb.trigger_conditions.length > 6}
+                      <span class="trigger-tag muted-tag">+{pb.trigger_conditions.length - 6} more</span>
+                    {/if}
                   </div>
                 </div>
                 <div class="pb-meta">
@@ -251,11 +336,14 @@
                   title={!investigationId ? 'Select an investigation first' : `Run ${pb.name}`}
                   onclick={() => startRun(pb)}
                 >
-                  Run Playbook
+                  ▶ Run Playbook
                 </button>
               </div>
             </div>
           {/each}
+          {#if filteredPlaybooks.length === 0}
+            <p class="muted">No playbooks match the selected filters.</p>
+          {/if}
         </div>
       {/if}
     </div>
@@ -576,10 +664,35 @@
   }
   .btn-shortcut:hover { background: rgba(251,191,36,0.25); }
 
-  /* Phase 38: Source badges */
+  /* Phase 46: Filter bar */
+  .filter-bar {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary); flex-shrink: 0;
+  }
+  .filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .filter-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; width: 62px; flex-shrink: 0; }
+  .filter-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .filter-chip {
+    padding: 3px 10px; border-radius: 12px; font-size: 11px; cursor: pointer;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-secondary); transition: all 0.12s;
+  }
+  .filter-chip:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .filter-chip.active { background: #34d399; color: #000; border-color: #34d399; font-weight: 600; }
+  .filter-count { font-size: 11px; color: var(--text-muted); margin-left: auto; white-space: nowrap; }
+  .category-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; background: rgba(52,211,153,0.10); border: 1px solid rgba(52,211,153,0.25); color: #34d399; }
+  .muted-tag { color: var(--text-muted); background: rgba(255,255,255,0.04); border-color: var(--border); }
+
+  /* Phase 38/46: Source badges */
   .source-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
-  .source-cisa { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
-  .source-custom { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+  .source-cisa      { background: rgba(245,158,11,0.15);  color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+  .source-cert_sg   { background: rgba(6,182,212,0.15);   color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); }
+  .source-aws       { background: rgba(249,115,22,0.15);  color: #fb923c; border: 1px solid rgba(249,115,22,0.3); }
+  .source-microsoft { background: rgba(99,102,241,0.15);  color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+  .source-guardsight{ background: rgba(168,85,247,0.15);  color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+  .source-community { background: rgba(52,211,153,0.12);  color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .source-custom    { background: rgba(59,130,246,0.15);  color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
 
   /* Phase 38: ATT&CK technique chips — violet pill, same as DetectionsView */
   .technique-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }

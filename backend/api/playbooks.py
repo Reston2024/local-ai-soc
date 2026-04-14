@@ -34,6 +34,8 @@ from pydantic import BaseModel
 
 from backend.core.logging import get_logger
 from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
+from backend.enforcement.ipfire import build_enforcer_from_settings, execute_containment_action
+from backend.enforcement.policy import EnforcementPolicy
 from backend.models.playbook import PlaybookCreate, PlaybookRunAdvance
 from backend.stores.sqlite_store import SQLiteStore
 
@@ -60,13 +62,15 @@ def utcnow_iso() -> str:
 
 async def seed_builtin_playbooks(sqlite_store: SQLiteStore) -> None:
     """
-    Replace NIST IR starter playbooks with CISA-derived playbooks on startup.
+    Seed the built-in playbook library on startup.
 
-    Strategy (Phase 38 — replace-not-supplement):
-      1. Tag existing builtin rows as source='nist' (ALTER TABLE DEFAULT is 'custom').
+    Strategy (Phase 46 — expanded multi-source library):
+      1. Tag existing is_builtin=1 rows with source='custom' as source='nist' (legacy cleanup).
       2. Delete all rows where source='nist'.
-      3. Skip INSERT if CISA builtins already seeded (idempotent).
-      4. Insert 4 CISA playbooks (source='cisa').
+      3. Collect all existing builtin names (any source) — idempotent guard.
+      4. Insert any BUILTIN_PLAYBOOKS entry whose name is not already present.
+      5. Backfill category for existing builtin rows that have category='' — allows
+         retroactive categorisation of playbooks seeded before Phase 46.
 
     Returns 404 for playbook runs that reference deleted NIST playbook IDs —
     old runs remain as historical records but cannot be advanced.
@@ -74,8 +78,31 @@ async def seed_builtin_playbooks(sqlite_store: SQLiteStore) -> None:
     Called from main.py lifespan after sqlite_store is initialised.
     """
 
+    # Category backfill map — name → category for the 19 CISA playbooks seeded in Phase 38
+    _CISA_CATEGORY_MAP: dict[str, str] = {
+        "Phishing / BEC Response": "phishing",
+        "Ransomware Response": "ransomware",
+        "Credential / Account Compromise Response": "identity",
+        "Malware / Intrusion Response": "malware",
+        "Vulnerability Response": "vulnerability",
+        "Denial of Service / DDoS Response": "network",
+        "Supply Chain Compromise Response": "supply_chain",
+        "Data Exfiltration / Breach Response": "data_breach",
+        "Web Application Attack Response": "web",
+        "Insider Threat Response": "insider",
+        "Cloud Account Compromise Response": "cloud",
+        "ICS / OT Intrusion Response": "ics_ot",
+        "Active Directory Full Compromise Response": "identity",
+        "Cryptojacking / Resource Hijacking Response": "endpoint",
+        "Destructive Wiper Response": "malware",
+        "M365 Tenant Compromise Response": "cloud",
+        "APT / Long-Dwell Intrusion Response": "malware",
+        "Wire Fraud / Business Payment Fraud Response": "phishing",
+        "Living-off-the-Land (LotL) Attack Response": "endpoint",
+    }
+
     def _seed(store: SQLiteStore) -> int:
-        # Step 1: Tag existing NIST builtins (source DEFAULT was 'custom' before migration)
+        # Step 1: Tag legacy NIST builtins (source DEFAULT was 'custom' before Phase 38)
         store._conn.execute(
             "UPDATE playbooks SET source = 'nist' WHERE is_builtin = 1 AND source = 'custom'"
         )
@@ -85,18 +112,36 @@ async def seed_builtin_playbooks(sqlite_store: SQLiteStore) -> None:
             "DELETE FROM playbooks WHERE is_builtin = 1 AND source = 'nist'"
         )
         store._conn.commit()
-        # Step 3: Check if CISA builtins already seeded
-        existing = store._conn.execute(
-            "SELECT COUNT(*) FROM playbooks WHERE is_builtin = 1 AND source = 'cisa'"
-        ).fetchone()[0]
-        if existing > 0:
-            log.info("CISA built-in playbooks already seeded", count=existing)
-            return 0
-        # Step 4: Insert CISA playbooks
+        # Step 3: Collect ALL existing builtin names (any source) — idempotent per-name
+        existing_names: set[str] = {
+            row[0]
+            for row in store._conn.execute(
+                "SELECT name FROM playbooks WHERE is_builtin = 1"
+            ).fetchall()
+        }
+        # Step 4: Insert any playbook not already present
+        added = 0
         for pb_data in BUILTIN_PLAYBOOKS:
-            store.create_playbook(pb_data)
-        log.info("CISA built-in playbooks seeded", count=len(BUILTIN_PLAYBOOKS))
-        return len(BUILTIN_PLAYBOOKS)
+            if pb_data["name"] not in existing_names:
+                store.create_playbook(pb_data)
+                added += 1
+        # Step 5: Backfill category for existing rows that have category=''
+        backfilled = 0
+        for name, cat in _CISA_CATEGORY_MAP.items():
+            result = store._conn.execute(
+                "UPDATE playbooks SET category = ? WHERE name = ? AND (category IS NULL OR category = '')",
+                (cat, name),
+            )
+            backfilled += result.rowcount
+        if backfilled:
+            store._conn.commit()
+            log.info("Backfilled playbook categories", count=backfilled)
+
+        if added:
+            log.info("Built-in playbooks seeded", added=added, total=len(BUILTIN_PLAYBOOKS))
+        else:
+            log.info("Built-in playbooks already up to date", total=len(BUILTIN_PLAYBOOKS))
+        return added
 
     count = await asyncio.to_thread(_seed, sqlite_store)
     if count > 0:
@@ -297,12 +342,90 @@ async def advance_step(
         raise HTTPException(status_code=404, detail="Parent playbook not found")
 
     now = utcnow_iso()
+
+    # --- Enforcement: policy-gated containment action ---
+    enforcement_result: dict[str, Any] | None = None
+    if body.containment_action and body.outcome == "confirmed":
+        try:
+            from backend.core.config import settings as _cfg
+
+            # Look up the step definition to get requires_approval flag
+            playbook_steps = playbook.get("steps") or []
+            step_def: dict[str, Any] = {}
+            for s in playbook_steps:
+                if s.get("step_number") == step_n:
+                    step_def = s
+                    break
+            step_requires_approval = bool(step_def.get("requires_approval", True))
+
+            # Evaluate enforcement policy gate
+            policy = EnforcementPolicy.from_settings(_cfg)
+            decision = policy.allow(
+                action_str=body.containment_action,
+                confidence=body.confidence,     # analyst/detection confidence 0-1
+                step_requires_approval=step_requires_approval,
+                human_confirmed=(body.outcome == "confirmed"),
+            )
+
+            if not decision.allowed:
+                # Policy denied — record the denial but do NOT execute
+                log.warning(
+                    "Enforcement policy denied action",
+                    action=decision.action,
+                    target=decision.target,
+                    gate=decision.gate_applied,
+                    reason=decision.reason,
+                )
+                enforcement_result = {
+                    "action": decision.action,
+                    "target": decision.target,
+                    "method": "policy_denied",
+                    "success": False,
+                    "message": decision.reason,
+                    "timestamp": now,
+                    "gate_applied": decision.gate_applied,
+                }
+            else:
+                # Policy approved — execute the action
+                enforcer = build_enforcer_from_settings(_cfg)
+                result = await execute_containment_action(body.containment_action, enforcer)
+                enforcement_result = {
+                    "action": result.action,
+                    "target": result.target,
+                    "method": result.method,
+                    "success": result.success,
+                    "message": result.message,
+                    "timestamp": result.timestamp,
+                    "gate_applied": "allowed",
+                }
+                if result.error:
+                    enforcement_result["error"] = result.error
+                log.info(
+                    "Enforcement action executed",
+                    action=result.action,
+                    target=result.target,
+                    method=result.method,
+                    success=result.success,
+                )
+        except Exception as exc:
+            log.warning("Enforcement action failed (non-fatal): %s", exc)
+            enforcement_result = {
+                "action": body.containment_action,
+                "target": "",
+                "method": "error",
+                "success": False,
+                "message": str(exc),
+                "timestamp": now,
+            }
+
     step_entry: dict[str, Any] = {
         "step_number": step_n,
         "outcome": body.outcome,
         "analyst_note": body.analyst_note,
         "completed_at": now,
     }
+    if enforcement_result:
+        step_entry["enforcement"] = enforcement_result
 
     updated_steps: list[dict[str, Any]] = list(run.get("steps_completed") or [])
     updated_steps.append(step_entry)

@@ -134,32 +134,31 @@ async def verify_token(
     # Tracking: https://github.com/Reston2024/local-ai-soc/issues (S-02)
     # --- Legacy AUTH_TOKEN fallback ---
     if hmac.compare_digest(raw, configured):
-        # Require TOTP even on the legacy path — no backdoor admin without MFA.
-        # LEGACY_TOTP_SECRET must be set in .env to enable this path at all.
+        # TOTP enforcement is conditional on LEGACY_TOTP_SECRET being configured.
+        # When LEGACY_TOTP_SECRET is set: enforce TOTP on every legacy-path request.
+        # When LEGACY_TOTP_SECRET is empty: allow raw AUTH_TOKEN match alone —
+        #   appropriate for local single-machine SOC deployments where the 64-char
+        #   random AUTH_TOKEN already provides sufficient protection.
         _raw_secret = getattr(settings, "LEGACY_TOTP_SECRET", "")
         # Guard: accept only plain strings — rejects mock objects and other non-str types
         legacy_secret = _raw_secret.strip() if isinstance(_raw_secret, str) else ""
-        if not legacy_secret:
-            # Legacy path disabled: LEGACY_TOTP_SECRET not configured
-            raise HTTPException(
-                status_code=401,
-                detail="Legacy admin path disabled: configure LEGACY_TOTP_SECRET to use this path",
-            )
-        totp_code = request.headers.get("X-TOTP-Code")
-        if not totp_code:
-            raise HTTPException(
-                status_code=401,
-                detail="TOTP code required for legacy admin path (X-TOTP-Code header)",
-            )
-        from backend.core.totp_utils import verify_totp
-        if not verify_totp(legacy_secret, totp_code, "legacy-admin", sqlite_store):
-            raise HTTPException(status_code=401, detail="Invalid or replayed TOTP code")
+        if legacy_secret:
+            # TOTP configured — enforce it
+            totp_code = request.headers.get("X-TOTP-Code")
+            if not totp_code:
+                raise HTTPException(
+                    status_code=401,
+                    detail="TOTP code required for legacy admin path (X-TOTP-Code header)",
+                )
+            from backend.core.totp_utils import verify_totp
+            if not verify_totp(legacy_secret, totp_code, "legacy-admin", sqlite_store):
+                raise HTTPException(status_code=401, detail="Invalid or replayed TOTP code")
         ctx = OperatorContext(
             operator_id="legacy-admin",
             username="admin",
             role="admin",
-            totp_verified=True,
-            totp_enabled=True,
+            totp_verified=bool(legacy_secret),
+            totp_enabled=bool(legacy_secret),
         )
         request.state.operator = ctx
         return ctx

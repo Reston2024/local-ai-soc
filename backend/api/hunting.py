@@ -15,8 +15,10 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
+from backend.core.logging import get_logger
 from backend.services.hunt_engine import PRESET_HUNTS, HuntEngine
 
+log = get_logger(__name__)
 router = APIRouter(prefix="/hunts", tags=["hunting"])
 
 
@@ -67,6 +69,12 @@ async def run_hunt_query(body: HuntQueryRequest, request: Request) -> JSONRespon
             status_code=422,
             content={"error": str(exc), "sql_rejected": True},
         )
+    except Exception as exc:
+        log.error("Hunt query failed", query=body.query, error=str(exc))
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Hunt failed: {exc}", "sql_rejected": False},
+        )
 
     return JSONResponse(
         status_code=200,
@@ -97,6 +105,35 @@ async def run_hunt_query(body: HuntQueryRequest, request: Request) -> JSONRespon
 async def get_hunt_presets() -> JSONResponse:
     """Return the 6 preset hunt definitions with MITRE tags."""
     return JSONResponse(content={"presets": PRESET_HUNTS})
+
+
+# ---------------------------------------------------------------------------
+# GET /api/hunts/history — must be before /{hunt_id} catch-all
+# ---------------------------------------------------------------------------
+
+
+@router.get("/history")
+async def get_hunt_history(
+    request: Request,
+    analyst_id: str | None = None,
+    limit: int = 20,
+) -> JSONResponse:
+    """Return recent hunt records ordered by created_at DESC."""
+    stores = request.app.state.stores
+    hunts = await asyncio.to_thread(stores.sqlite.list_hunts, analyst_id, limit)
+    # Omit results_json (large) — return metadata only
+    records = [
+        {
+            "hunt_id": h["hunt_id"],
+            "query": h["query"],
+            "sql_text": h.get("sql_text", ""),
+            "row_count": h.get("row_count", 0),
+            "analyst_id": h.get("analyst_id", ""),
+            "created_at": h.get("created_at", ""),
+        }
+        for h in hunts
+    ]
+    return JSONResponse(content={"hunts": records})
 
 
 # ---------------------------------------------------------------------------

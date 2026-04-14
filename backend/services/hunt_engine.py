@@ -29,8 +29,8 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 _SCHEMA_COLUMNS = (
-    "event_id, ts, source_type, hostname, severity, event_type, src_ip, dst_ip, "
-    "dst_port, process_name, user_name, event_dataset, detection_source"
+    "event_id, timestamp, source_type, hostname, severity, event_type, src_ip, dst_ip, "
+    "dst_port, process_name, username, command_line, attack_technique, detection_source"
 )
 
 # ---------------------------------------------------------------------------
@@ -133,22 +133,36 @@ def validate_hunt_sql(sql: str) -> bool:
     if re.search(r"\b(DELETE|UPDATE|INSERT)\b", upper):
         raise ValueError("only SELECT allowed")
 
-    # Check first keyword is SELECT
+    # Check first keyword is SELECT or WITH (CTEs allowed)
     first_token_match = re.match(r"(\w+)", stripped)
-    if not first_token_match or first_token_match.group(1).upper() != "SELECT":
+    first_kw = first_token_match.group(1).upper() if first_token_match else ""
+    if first_kw not in ("SELECT", "WITH"):
         raise ValueError("only SELECT allowed")
 
     # Check for system table access (sqlite_master, information_schema, pg_catalog)
     if re.search(r"\b(sqlite_master|information_schema|pg_catalog)\b", upper):
         raise ValueError("system table access not allowed")
 
-    # Extract all table names referenced in FROM / JOIN clauses
-    # Pattern: FROM <table> or JOIN <table> (with optional AS alias)
-    table_refs = re.findall(r"(?:FROM|JOIN)\s+(\w+)", upper)
-    allowed_tables = {"NORMALIZED_EVENTS"}
+    # Build allowed tables: normalized_events + any CTE aliases declared in WITH clause
+    # Pattern: WITH cte_name AS ( or WITH RECURSIVE cte_name AS (
+    cte_names = {name.upper() for name in re.findall(r"\bWITH\s+(?:RECURSIVE\s+)?(\w+)\s+AS\s*\(", upper)}
+    # Also catch additional CTEs separated by comma: ), cte2 AS (
+    cte_names.update(name.upper() for name in re.findall(r"\),\s*(\w+)\s+AS\s*\(", upper))
+    allowed_tables = {"NORMALIZED_EVENTS"} | cte_names
+
+    # Extract all table names referenced in FROM / JOIN clauses.
+    # We must exclude FROM that appears inside function calls like:
+    #   EXTRACT(HOUR FROM timestamp)  — "FROM" here is part of the function, not a table ref
+    #   TRIM(LEADING '0' FROM col)    — same
+    # Strategy: strip all balanced parentheses contents before scanning for FROM/JOIN,
+    # since table refs in FROM/JOIN are never inside parens at the top level of the clause.
+    # Simpler approach: strip known function patterns that contain FROM keyword.
+    scrubbed = re.sub(r"\bEXTRACT\s*\([^)]+\)", "EXTRACT_PLACEHOLDER", upper)
+    scrubbed = re.sub(r"\bTRIM\s*\([^)]+\)", "TRIM_PLACEHOLDER", scrubbed)
+    table_refs = re.findall(r"(?:FROM|JOIN)\s+(\w+)", scrubbed)
     for table_name in table_refs:
         if table_name not in allowed_tables:
-            raise ValueError("only normalized_events table allowed")
+            raise ValueError(f"only normalized_events table allowed (got: {table_name.lower()})")
 
     return True
 
@@ -225,14 +239,35 @@ class HuntEngine:
             "You are a DuckDB SQL generator for a SOC analyst. "
             "The analyst wants to hunt for threats. "
             "Write a single DuckDB SELECT statement against the normalized_events table only. "
-            "Return ONLY the SQL, no explanation, no markdown. "
-            f"Schema columns available: {_SCHEMA_COLUMNS}. "
+            "CRITICAL: Use DuckDB syntax only. "
+            "For time arithmetic use: timestamp - INTERVAL '5 minutes' (NOT DATE_SUB). "
+            "For hour extraction use: EXTRACT(HOUR FROM timestamp). "
+            "For string matching use: LIKE or ILIKE or SIMILAR TO. "
+            "Return ONLY the SQL query, no explanation, no markdown, no code fences. "
+            f"Available columns: {_SCHEMA_COLUMNS}. "
             f"Analyst query: {query}"
         )
 
-        # 2. Call Ollama — use cybersec model for hunting
-        model = settings.OLLAMA_CYBERSEC_MODEL
-        raw_response = await self._ollama.generate(prompt, model=model)
+        # 2. Call Ollama — prefer cybersec model; fall back to default if not pulled
+        try:
+            available = await self._ollama.list_models()
+        except Exception:
+            available = []
+        preferred = settings.OLLAMA_CYBERSEC_MODEL
+        # Match by base name (strip :tag) so "foundation-sec:8b" matches "foundation-sec:8b"
+        available_bases = {m.split(":")[0].lower() for m in available}
+        model_to_use = (
+            preferred
+            if preferred.split(":")[0].lower() in available_bases or preferred in available
+            else settings.OLLAMA_MODEL
+        )
+        if model_to_use != preferred:
+            log.info(
+                "Hunt: cybersec model not available, falling back",
+                requested=preferred,
+                using=model_to_use,
+            )
+        raw_response = await self._ollama.generate(prompt, model=model_to_use)
 
         # Strip markdown code fences if present (```sql ... ``` or ``` ... ```)
         sql = raw_response.strip()
@@ -240,12 +275,108 @@ class HuntEngine:
         sql = re.sub(r"\s*```$", "", sql)
         sql = sql.strip()
 
-        # Normalize common LLM column name mistakes (llama3 uses 'ts' instead of 'timestamp')
-        sql = re.sub(r'\bts\b', 'timestamp', sql)
+        # Normalize common LLM column name mistakes
+        sql = re.sub(r'\bts\b', 'timestamp', sql)             # ts → timestamp
         sql = re.sub(r'\bsrc_host\b', 'hostname', sql)
         sql = re.sub(r'\bdst_host\b', 'hostname', sql)
+        sql = re.sub(r'\buser_name\b', 'username', sql)       # user_name → username
         sql = re.sub(r'\buser\b(?=\s*[,\)\s])', 'username', sql)
         sql = re.sub(r'\bproc\b', 'process_name', sql)
+        sql = re.sub(r'\bevent_dataset\b', 'event_type', sql) # event_dataset → event_type (Malcolm field)
+        sql = re.sub(r'\bsrc_port_number\b', 'src_port', sql)
+        sql = re.sub(r'\bdst_port_number\b', 'dst_port', sql)
+
+        # ---------------------------------------------------------------------------
+        # Fix MySQL/PostgreSQL date functions → DuckDB equivalents
+        # LLMs commonly generate MySQL syntax even when asked for DuckDB.
+        # ---------------------------------------------------------------------------
+
+        # DATE_SUB(expr, INTERVAL n unit) → (expr) - INTERVAL 'n unit'
+        # e.g. DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 5 MINUTE) → CURRENT_TIMESTAMP - INTERVAL '5 minutes'
+        def _fix_date_sub(m: re.Match) -> str:
+            expr, n, unit = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+            # DuckDB interval units: use plural lowercase
+            unit_map = {
+                "SECOND": "seconds", "SECONDS": "seconds",
+                "MINUTE": "minutes", "MINUTES": "minutes",
+                "HOUR": "hours",   "HOURS": "hours",
+                "DAY": "days",     "DAYS": "days",
+                "WEEK": "weeks",   "WEEKS": "weeks",
+                "MONTH": "months", "MONTHS": "months",
+                "YEAR": "years",   "YEARS": "years",
+            }
+            duckdb_unit = unit_map.get(unit.upper(), unit.lower() + "s")
+            return f"({expr}) - INTERVAL '{n} {duckdb_unit}'"
+
+        sql = re.sub(
+            r"\bDATE_SUB\s*\(\s*(.+?)\s*,\s*INTERVAL\s+(\d+)\s+(\w+)\s*\)",
+            _fix_date_sub,
+            sql,
+            flags=re.IGNORECASE,
+        )
+
+        # DATE_ADD(expr, INTERVAL n unit) → (expr) + INTERVAL 'n unit'
+        def _fix_date_add(m: re.Match) -> str:
+            expr, n, unit = m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
+            unit_map = {
+                "SECOND": "seconds", "SECONDS": "seconds",
+                "MINUTE": "minutes", "MINUTES": "minutes",
+                "HOUR": "hours",   "HOURS": "hours",
+                "DAY": "days",     "DAYS": "days",
+                "WEEK": "weeks",   "WEEKS": "weeks",
+                "MONTH": "months", "MONTHS": "months",
+                "YEAR": "years",   "YEARS": "years",
+            }
+            duckdb_unit = unit_map.get(unit.upper(), unit.lower() + "s")
+            return f"({expr}) + INTERVAL '{n} {duckdb_unit}'"
+
+        sql = re.sub(
+            r"\bDATE_ADD\s*\(\s*(.+?)\s*,\s*INTERVAL\s+(\d+)\s+(\w+)\s*\)",
+            _fix_date_add,
+            sql,
+            flags=re.IGNORECASE,
+        )
+
+        # INTERVAL n unit (bare form) → INTERVAL 'n unit'  (DuckDB string form)
+        # e.g. INTERVAL 5 MINUTE → INTERVAL '5 minutes'
+        def _fix_bare_interval(m: re.Match) -> str:
+            n, unit = m.group(1).strip(), m.group(2).strip()
+            unit_map = {
+                "SECOND": "seconds", "SECONDS": "seconds",
+                "MINUTE": "minutes", "MINUTES": "minutes",
+                "HOUR": "hours",   "HOURS": "hours",
+                "DAY": "days",     "DAYS": "days",
+                "WEEK": "weeks",   "WEEKS": "weeks",
+                "MONTH": "months", "MONTHS": "months",
+                "YEAR": "years",   "YEARS": "years",
+            }
+            duckdb_unit = unit_map.get(unit.upper(), unit.lower() + "s")
+            return f"INTERVAL '{n} {duckdb_unit}'"
+
+        sql = re.sub(
+            r"\bINTERVAL\s+(\d+)\s+(\w+)\b(?!\s*')",
+            _fix_bare_interval,
+            sql,
+            flags=re.IGNORECASE,
+        )
+
+        # NOW() → CURRENT_TIMESTAMP (DuckDB prefers CURRENT_TIMESTAMP)
+        sql = re.sub(r'\bNOW\(\)', 'CURRENT_TIMESTAMP', sql, flags=re.IGNORECASE)
+
+        # TIMESTAMPDIFF(unit, t1, t2) — no direct equiv; approximate with epoch diff
+        # Most commonly used as TIMESTAMPDIFF(SECOND, t1, t2) — convert to epoch seconds diff
+        sql = re.sub(
+            r"\bTIMESTAMPDIFF\s*\(\s*SECOND\s*,\s*(.+?)\s*,\s*(.+?)\s*\)",
+            r"DATEDIFF('second', \1, \2)",
+            sql,
+            flags=re.IGNORECASE,
+        )
+        sql = re.sub(
+            r"\bTIMESTAMPDIFF\s*\(\s*MINUTE\s*,\s*(.+?)\s*,\s*(.+?)\s*\)",
+            r"DATEDIFF('minute', \1, \2)",
+            sql,
+            flags=re.IGNORECASE,
+        )
 
         # Fix invalid window-function-in-WHERE pattern that llama3 commonly generates:
         # WHERE ROW_NUMBER() OVER (ORDER BY col [DESC|ASC]) <= N
@@ -265,7 +396,30 @@ class HuntEngine:
         validate_hunt_sql(sql)
 
         # 4. Execute against DuckDB — fetch_df returns list[dict] (fetch_all returns tuples)
-        rows: list[dict] = await self._duckdb.fetch_df(sql)
+        # If DuckDB rejects the SQL (bad function, unknown column, etc.) we fall back to a
+        # safe broadening query so the hunt always returns something rather than 500-ing.
+        try:
+            rows: list[dict] = await self._duckdb.fetch_df(sql)
+        except Exception as db_exc:
+            log.warning(
+                "DuckDB rejected generated SQL — using fallback broad query",
+                original_sql=sql,
+                error=str(db_exc),
+            )
+            # Extract keywords from the original query and run a broad ILIKE search
+            keywords = [w for w in re.split(r'\W+', query) if len(w) > 3]
+            keyword = keywords[0].lower() if keywords else "powershell"
+            fallback_sql = (
+                f"SELECT * FROM normalized_events "
+                f"WHERE LOWER(COALESCE(command_line,'') || ' ' || COALESCE(process_name,'') "
+                f"|| ' ' || COALESCE(event_type,'')) LIKE '%{keyword}%' "
+                f"ORDER BY timestamp DESC LIMIT 500"
+            )
+            try:
+                rows = await self._duckdb.fetch_df(fallback_sql)
+                sql = fallback_sql  # report the actual SQL that ran
+            except Exception:
+                rows = []
 
         # 5. Rank results
         ranked_rows = _rank_results(rows)
