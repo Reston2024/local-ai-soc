@@ -798,6 +798,7 @@ export const api = {
 
   metrics: {
     kpis: () => request<KpiSnapshot>('/api/metrics/kpis'),
+    perf: () => request<PerfMetrics>('/api/metrics/perf'),
   },
 
   playbooks: {
@@ -1221,6 +1222,32 @@ export interface KpiValue {
   value: number
   unit: string
   trend: 'up' | 'down' | 'flat'
+}
+
+// ---------------------------------------------------------------------------
+// Phase 47 — Performance gauge interfaces
+// ---------------------------------------------------------------------------
+
+export interface SocBrainPerf {
+  cpu_pct: number
+  ram_pct: number
+  disk_pct: number
+  ram_detail: string
+  disk_detail: string
+}
+
+export interface GmktecPerf {
+  cpu_pct: number | null
+  heap_pct: number | null
+  disk_pct: number | null
+  heap_detail: string | null
+  disk_detail: string | null
+}
+
+export interface PerfMetrics {
+  soc_brain: SocBrainPerf
+  gmktec: GmktecPerf
+  timestamp: string
 }
 
 export interface KpiSnapshot {

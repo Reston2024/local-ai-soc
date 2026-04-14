@@ -59,6 +59,7 @@ from backend.api.graph import router as graph_router  # noqa: E402
 # ---------------------------------------------------------------------------
 from backend.api.health import router as health_router  # noqa: E402
 from backend.api.ingest import router as ingest_router  # noqa: E402
+from backend.api.perf import router as perf_router  # noqa: E402
 from backend.api.query import router as query_router  # noqa: E402
 from backend.services.attack.asset_store import AssetStore  # noqa: E402
 from backend.services.attack.attack_store import AttackStore  # noqa: E402
@@ -708,6 +709,7 @@ def create_app() -> FastAPI:
     app.include_router(detect_router,  prefix="/api", dependencies=[Depends(verify_token)])   # /api/detect
     app.include_router(graph_router,   prefix="/api", dependencies=[Depends(verify_token)])   # /api/graph
     app.include_router(export_router,  prefix="/api", dependencies=[Depends(verify_token)])   # /api/export
+    app.include_router(perf_router,    prefix="/api", dependencies=[Depends(verify_token)])   # /api/metrics/perf
 
     # -----------------------------------------------------------------------
     # Deferred routers (graceful degradation if modules absent)

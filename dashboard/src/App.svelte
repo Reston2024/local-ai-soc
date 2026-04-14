@@ -22,11 +22,13 @@
   import OverviewView from './views/OverviewView.svelte'
   import AtomicsView from './views/AtomicsView.svelte'
   import AnomalyView from './views/AnomalyView.svelte'
+  import PerformanceView from './views/PerformanceView.svelte'
 
   type View =
     | 'overview' | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
     | 'recommendations' | 'settings' | 'map' | 'attack-coverage' | 'atomics' | 'anomaly'
+    | 'performance'
 
   let currentView = $state<View>('overview')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -184,9 +186,10 @@
     {
       label: 'Platform',
       items: [
-        { id: 'query',    label: 'AI Query',  color: '' },
-        { id: 'ingest',   label: 'Ingest',    color: '' },
-        { id: 'settings', label: 'Settings',  color: '' },
+        { id: 'performance', label: 'Performance', color: '' },
+        { id: 'query',       label: 'AI Query',    color: '' },
+        { id: 'ingest',      label: 'Ingest',      color: '' },
+        { id: 'settings',    label: 'Settings',    color: '' },
       ],
     },
   ]
@@ -373,6 +376,8 @@
       <AtomicsView />
     {:else if currentView === 'anomaly'}
       <AnomalyView />
+    {:else if currentView === 'performance'}
+      <PerformanceView />
     {/if}
   </main>
 </div>
