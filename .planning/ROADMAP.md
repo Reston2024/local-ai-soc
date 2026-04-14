@@ -636,10 +636,12 @@ Plans:
 **Goal:** Integrate Hayabusa (Rust-based, 3,108 stars, actively maintained) as a scheduled EVTX analysis engine alongside the existing EVTX parser. Hayabusa runs its own Sigma rule engine against Windows Event Logs and produces JSONL timeline output with MITRE ATT&CK tagging — surfacing threats the current field-mapping approach misses. Run Hayabusa on ingested EVTX files at ingest time, import findings into the detections table, and surface Hayabusa-sourced detections distinctly in DetectionsView. Adds a pre-built rule corpus of 4,000+ Windows detection rules with no manual authoring.
 **Requirements**: Hayabusa binary on PATH (Windows native, no runtime deps); existing EVTX ingest pipeline (Phase ingestion parsers); detections table in DuckDB.
 **Depends on:** Phase 47
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 48 to break down)
+- [ ] 48-01-PLAN.md — Wave 0 TDD stubs: unit stubs HAY-01 through HAY-06, integration stub HAY-08
+- [ ] 48-02-PLAN.md — Backend: hayabusa_scanner.py, SQLite migration, loader.py wiring (HAY-01 to HAY-06, HAY-08)
+- [ ] 48-03-PLAN.md — Frontend: detection_source in api.ts, HAYABUSA chip in DetectionsView (HAY-07)
 
 ### Phase 49: Chainsaw Windows Event Log Analysis
 
