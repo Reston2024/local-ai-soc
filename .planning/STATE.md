@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 46
-status: Ready for next phase
-last_updated: "2026-04-14T20:26:32.613Z"
+current_phase: 48
+status: In progress (48-02 complete)
+last_updated: "2026-04-14T20:38:00.000Z"
 progress:
   total_phases: 53
   completed_phases: 44
   total_plans: 219
-  completed_plans: 222
+  completed_plans: 223
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 46
-**Previous phase:** 45-agentic-investigation — COMPLETE ✅
-**Status:** Ready for next phase
+**Current phase:** 48
+**Previous phase:** 47-live-performance-gauges — COMPLETE ✅
+**Status:** Phase 48 in progress — Plan 48-02 complete
 
 ## Key Decisions
 
@@ -71,9 +71,14 @@ See: .planning/PROJECT.md
 - **48-01:** pytest.importorskip at module level (not per-test) so entire unit file skips atomically when ingestion.hayabusa_scanner absent
 - **48-01:** hayabusa marker added to pyproject.toml markers list to avoid PytestUnknownMarkWarning
 - **48-01:** shutil.which checks both 'hayabusa' and 'hayabusa.exe' for Windows PATH compatibility
+- **48-02:** structlog not installed — use backend.core.logging.get_logger() in hayabusa_scanner.py (project standard)
+- **48-02:** hayabusa_findings: int = 0 field added to IngestionResult dataclass for type-safe scan count tracking
+- **48-02:** Hayabusa scan block in ingest_file() wrapped non-fatally (try/except) — EVTX parse must never be aborted by Hayabusa failures
+- **48-02:** detection_source default='sigma' in insert_detection() ensures 100% backward compat with all existing callers
 
 ## Session Log
 
+- 2026-04-14: Plan 48-02 complete — Wave 1 implementation: ingestion/hayabusa_scanner.py (scan_evtx, hayabusa_record_to_detection, _LEVEL_MAP, HAYABUSA_BIN), SQLite hayabusa_scanned_files dedup table, detection_source column migration, insert_detection() extended, loader.py wired. All 6 unit tests GREEN.
 - 2026-04-14: Plan 48-01 complete — Wave 0 TDD stubs: test_hayabusa_scanner.py (6 stubs, importorskip pattern) + test_hayabusa_e2e.py (1 integration stub gated on binary). hayabusa marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
 - 2026-04-13: Phase 45 UAT complete — agent runs end-to-end: spinner → tool_call cards (hostname=WORKSTATION-01, 51 events, mimikatz.exe detected) → verdict SSE event emitted and rendered. All bugs fixed: think=False, DuckDB connection config, FinalAnswerStep capture, hostname enrichment, verdict JSON in reasoning filtered.
 - 2026-04-13: Plan 45-05 complete — dashboard/src/lib/api.ts: 5 Phase 45 interfaces + api.investigations.runAgentic() SSE client (dispatch-by-shape). dashboard/src/views/InvestigationView.svelte: [Summary][Agent] tabs, Agent panel with streaming trace cards, call counter, limit/error banners, Verdict section + Confirm buttons wired to Phase 44 feedback. TypeScript 0 errors. Auto-approved checkpoint (auto_advance=true).
