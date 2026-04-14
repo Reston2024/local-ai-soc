@@ -18,6 +18,10 @@
   let triageExpanded = $state(false)
   let internalAssets = $state<Asset[]>([])
 
+  let hayabusaFindingCount = $derived(
+    (componentHealth?.components?.hayabusa?.detection_count as number | undefined) ?? 0
+  )
+
   /** Strip markdown bold/italic asterisks from LLM output */
   function stripMd(text: string): string {
     return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '')
@@ -242,6 +246,10 @@
               <span class="tile-value">{summary?.assets_count ?? 0}</span>
               <span class="tile-label">Assets</span>
             </div>
+            <div class="scorecard-tile">
+              <span class="tile-value tile-hayabusa">{hayabusaFindingCount}</span>
+              <span class="tile-label">Hayabusa<br>Findings</span>
+            </div>
           </div>
         </div>
 
@@ -316,6 +324,23 @@
               <span class="health-label">Zeek</span>
               <span class="health-status" title="Inferred from event type presence">{compStatusLabel(zeekStatus(summary))}</span>
             </div>
+
+            <!-- Hayabusa EVTX scanner (from /health component) -->
+            {#if componentHealth?.components?.hayabusa}
+              {@const hay = componentHealth.components.hayabusa}
+              {@const hayCount = (hay.detection_count as number) ?? 0}
+              <div class="health-row">
+                <span class="health-dot {hay.status === 'ok' ? 'dot-healthy' : 'dot-degraded'}"></span>
+                <span class="health-label">Hayabusa</span>
+                <span class="health-status hayabusa-status" title={hay.binary as string ?? 'binary not found'}>
+                  {#if hay.status === 'ok'}
+                    {hayCount > 0 ? `${hayCount} findings` : 'ready'}
+                  {:else}
+                    not found
+                  {/if}
+                </span>
+              </div>
+            {/if}
 
             <!-- Network devices -->
             {#each [['router','Router'],['firewall','Firewall'],['gmktec','GMKtec / Malcolm']] as [key, label]}
@@ -607,6 +632,7 @@
   }
 
   .tile-ioc { color: var(--severity-high, #f97316); }
+  .tile-hayabusa { color: #fbbf24; }  /* amber — matches HAYABUSA chip in DetectionsView */
 
   .tile-label {
     font-size: 10px;
@@ -649,6 +675,8 @@
     color: var(--text-muted);
     text-transform: capitalize;
   }
+
+  .hayabusa-status { color: #fbbf24; }  /* amber accent for hayabusa findings count */
 
   /* ── Triage result ── */
   .triage-result { display: flex; flex-direction: column; gap: 8px; }

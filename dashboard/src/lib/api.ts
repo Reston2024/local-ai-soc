@@ -1,8 +1,15 @@
 // Typed API client for AI-SOC-Brain backend
 
+export interface HayabusaHealth {
+  status: 'ok' | 'warning'
+  binary: string | null
+  detection_count: number
+  detail?: string | null
+}
+
 export interface HealthResponse {
   status: 'healthy' | 'degraded' | 'unhealthy'
-  components: Record<string, { status: string; detail?: string }>
+  components: Record<string, { status: string; detail?: string; [key: string]: unknown }>
   version: string
 }
 
