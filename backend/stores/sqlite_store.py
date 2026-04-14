@@ -361,6 +361,16 @@ CREATE TABLE IF NOT EXISTS tor_exit_nodes (
 )
 """
 
+_HAYABUSA_DDL = """
+CREATE TABLE IF NOT EXISTS hayabusa_scanned_files (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_sha256 TEXT NOT NULL UNIQUE,
+    file_path   TEXT NOT NULL,
+    scanned_at  TEXT NOT NULL,
+    findings    INTEGER NOT NULL DEFAULT 0
+)
+"""
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -483,6 +493,19 @@ class SQLiteStore:
         # Phase 41: ipsum + Tor tables (idempotent — CREATE IF NOT EXISTS)
         self._conn.execute(_IPSUM_DDL)
         self._conn.execute(_TOR_DDL)
+
+        # Phase 48: Hayabusa scanned files dedup table (idempotent — CREATE IF NOT EXISTS)
+        self._conn.execute(_HAYABUSA_DDL)
+        self._conn.commit()
+
+        # Phase 48: detection_source column on detections
+        try:
+            self._conn.execute(
+                "ALTER TABLE detections ADD COLUMN detection_source TEXT DEFAULT 'sigma'"
+            )
+            self._conn.commit()
+        except Exception:
+            pass  # column already exists — idempotent
 
         # Phase 41: classification columns on osint_cache
         _CLASSIFICATION_MIGRATIONS = [
@@ -783,6 +806,7 @@ class SQLiteStore:
         explanation: Optional[str] = None,
         case_id: Optional[str] = None,
         entity_key: Optional[str] = None,
+        detection_source: str = "sigma",
     ) -> None:
         """
         Insert a detection record.
@@ -798,14 +822,15 @@ class SQLiteStore:
             explanation:        LLM-generated or rule-derived explanation text.
             case_id:            Associated case.
             entity_key:         Phase 43 correlation dedup key (e.g. src_ip value).
+            detection_source:   Phase 48 — 'sigma', 'hayabusa', 'correlation', etc.
         """
         self._conn.execute(
             """
             INSERT OR REPLACE INTO detections
                 (id, rule_id, rule_name, severity, matched_event_ids,
                  attack_technique, attack_tactic, explanation, case_id, created_at,
-                 entity_key)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 entity_key, detection_source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 detection_id, rule_id, rule_name, severity,
@@ -813,6 +838,7 @@ class SQLiteStore:
                 attack_technique, attack_tactic, explanation, case_id,
                 _now_iso(),
                 entity_key,
+                detection_source,
             ),
         )
         self._conn.commit()
@@ -821,7 +847,29 @@ class SQLiteStore:
             detection_id=detection_id,
             rule=rule_name,
             severity=severity,
+            detection_source=detection_source,
         )
+
+    # ------------------------------------------------------------------
+    # Phase 48: Hayabusa dedup helpers
+    # ------------------------------------------------------------------
+
+    def is_already_scanned(self, file_sha256: str) -> bool:
+        """Return True if this file SHA-256 has already been scanned by Hayabusa."""
+        row = self._conn.execute(
+            "SELECT 1 FROM hayabusa_scanned_files WHERE file_sha256 = ?",
+            (file_sha256,),
+        ).fetchone()
+        return row is not None
+
+    def mark_scanned(self, file_sha256: str, file_path: str, findings: int) -> None:
+        """Record a Hayabusa scan completion for dedup.  INSERT OR IGNORE is idempotent."""
+        self._conn.execute(
+            "INSERT OR IGNORE INTO hayabusa_scanned_files "
+            "(file_sha256, file_path, scanned_at, findings) VALUES (?, ?, ?, ?)",
+            (file_sha256, file_path, _now_iso(), findings),
+        )
+        self._conn.commit()
 
     def get_detections_by_case(self, case_id: str) -> list[dict[str, Any]]:
         """Return all detections for a given case."""

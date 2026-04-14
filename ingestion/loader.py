@@ -40,6 +40,7 @@ from backend.services.anomaly.scorer import AnomalyScorer, entity_key as _anomal
 from backend.services.ollama_client import OllamaClient
 from backend.stores.chroma_store import DEFAULT_COLLECTION
 from ingestion.entity_extractor import extract_entities_and_edges, extract_perimeter_entities
+from ingestion.hayabusa_scanner import scan_evtx, hayabusa_record_to_detection
 from ingestion.normalizer import normalize_event
 from ingestion.registry import get_parser
 
@@ -290,6 +291,7 @@ class IngestionResult:
     edges_created: int = 0
     errors: list[str] = field(default_factory=list)
     duration_seconds: float = 0.0
+    hayabusa_findings: int = 0  # Phase 48: Hayabusa threat hunting findings count
 
     def __str__(self) -> str:
         return (
@@ -334,6 +336,47 @@ def _set_job(
         "error": error,
         "updated_at": datetime.now(tz=timezone.utc).isoformat(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 48: Hayabusa EVTX scanning helper (sync — runs inside asyncio.to_thread)
+# ---------------------------------------------------------------------------
+
+
+def _run_hayabusa_scan(
+    file_path: str,
+    raw_sha256: str,
+    case_id: str | None,
+    stores,
+) -> int:
+    """Run Hayabusa against one EVTX file. Returns number of findings inserted.
+
+    Checks hayabusa_scanned_files dedup table first; skips without subprocess if
+    already scanned. Runs in asyncio.to_thread — must be purely synchronous.
+    """
+    sqlite = stores.sqlite
+    if sqlite.is_already_scanned(raw_sha256):
+        log.debug("Hayabusa scan skipped (already scanned)", file_path=file_path)
+        return 0
+    count = 0
+    for rec in scan_evtx(file_path):
+        det = hayabusa_record_to_detection(rec, file_path, case_id)
+        sqlite.insert_detection(
+            detection_id=det.id,
+            rule_id=det.rule_id or "",
+            rule_name=det.rule_name or "",
+            severity=det.severity,
+            matched_event_ids=det.matched_event_ids,
+            attack_technique=det.attack_technique,
+            attack_tactic=det.attack_tactic,
+            explanation=det.explanation,
+            case_id=det.case_id,
+            detection_source="hayabusa",
+        )
+        count += 1
+    sqlite.mark_scanned(raw_sha256, file_path, count)
+    log.info("Hayabusa scan complete", file_path=file_path, findings=count)
+    return count
 
 
 # ---------------------------------------------------------------------------
@@ -483,6 +526,17 @@ class IngestionLoader:
             except Exception as exc:
                 log.warning(
                     "Ingest provenance write failed (non-fatal)", error=str(exc)
+                )
+
+        # Phase 48: Hayabusa EVTX threat hunting (non-fatal — failure must not abort pipeline)
+        if _Path(file_path).suffix.lower() == ".evtx":
+            try:
+                result.hayabusa_findings = await asyncio.to_thread(
+                    _run_hayabusa_scan, file_path, raw_sha256, case_id, self._stores
+                )
+            except Exception as exc:
+                log.warning(
+                    "Hayabusa scan failed (non-fatal)", file_path=file_path, error=str(exc)
                 )
 
         result.duration_seconds = time.monotonic() - t0
