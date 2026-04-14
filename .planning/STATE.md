@@ -272,3 +272,5 @@ See: .planning/PROJECT.md
 - Phase 49 added: Chainsaw Windows Event Log Analysis (sourced from SOC_ThreatHunting_Tools_2026.xlsx review — 3,511 stars, complements Hayabusa with different rule coverage and MFT/journal parsing)
 - Phase 50 added: MISP Threat Intelligence Integration (sourced from SOC_ThreatHunting_Tools_2026.xlsx review — completes Phase 33 deferred TAXII/MISP work; self-hosted on GMKtec)
 - Note: RITA already planned as Phase 46; SpiderFoot-equivalent OSINT covered by Phase 32 (AbuseIPDB/Shodan/WHOIS pipeline)
+- Phase 51 added: SpiderFoot OSINT Investigation Platform + DNSTwist typosquatting detection (sourced from SOC threat hunting tools review — SpiderFoot 17,412 stars; distinct from Phase 32 reactive enrichment; analyst-triggered infrastructure mapping)
+- Note: Perplexity threat hunting doc reviewed — lower value than Excel spreadsheet, mostly overlaps with existing phases. DNSTwist the only net-new addition, folded into Phase 51.
