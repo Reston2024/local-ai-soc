@@ -111,7 +111,9 @@ class MalcolmCollector:
         event_dataset_filter and event_type_filter are independent — both may be set.
         """
         if last_ts is None:
-            since = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+            # First run: start from the beginning of available data for full backfill.
+            # Malcolm keeps ~30 days; use epoch start so cursor advances from first doc.
+            since = "2026-04-01T00:00:00Z"
         else:
             since = str(last_ts)
 
@@ -119,12 +121,13 @@ class MalcolmCollector:
         if event_dataset_filter:
             must_clauses.append({"term": {"event.dataset": "alert"}})
         if event_type_filter is not None:
-            must_clauses.append({"term": {"event.type": event_type_filter}})
+            # Malcolm uses event.dataset (not event.type) to categorise log types.
+            must_clauses.append({"term": {"event.dataset": event_type_filter}})
 
         return {
             "query": {"bool": {"must": must_clauses}},
             "sort": [{"@timestamp": "asc"}],
-            "size": 500,
+            "size": 2000,  # Increased from 500 for faster historical backfill
         }
 
     # ------------------------------------------------------------------
@@ -1370,53 +1373,9 @@ class MalcolmCollector:
                 await self._loader.ingest_events(syslog_batch)
                 self._syslog_ingested += len(syslog_batch)
 
-            # --- TLS events ---
-            tls_hits = await self._fetch_index(
-                "arkime_sessions3-*",
-                "malcolm.tls.last_timestamp",
-                event_dataset_filter=False,
-                event_type_filter="tls",
-            )
-            tls_batch: list[NormalizedEvent] = []
-            for hit in tls_hits:
-                event = self._normalize_tls(hit.get("_source", {}))
-                if event is not None:
-                    tls_batch.append(event)
-            if tls_batch and self._loader is not None:
-                await self._loader.ingest_events(tls_batch)
-                self._tls_ingested += len(tls_batch)
-
-            # --- DNS events ---
-            dns_hits = await self._fetch_index(
-                "arkime_sessions3-*",
-                "malcolm.dns.last_timestamp",
-                event_dataset_filter=False,
-                event_type_filter="dns",
-            )
-            dns_batch: list[NormalizedEvent] = []
-            for hit in dns_hits:
-                event = self._normalize_dns(hit.get("_source", {}))
-                if event is not None:
-                    dns_batch.append(event)
-            if dns_batch and self._loader is not None:
-                await self._loader.ingest_events(dns_batch)
-                self._dns_ingested += len(dns_batch)
-
-            # --- Fileinfo events ---
-            fileinfo_hits = await self._fetch_index(
-                "arkime_sessions3-*",
-                "malcolm.fileinfo.last_timestamp",
-                event_dataset_filter=False,
-                event_type_filter="fileinfo",
-            )
-            fileinfo_batch: list[NormalizedEvent] = []
-            for hit in fileinfo_hits:
-                event = self._normalize_fileinfo(hit.get("_source", {}))
-                if event is not None:
-                    fileinfo_batch.append(event)
-            if fileinfo_batch and self._loader is not None:
-                await self._loader.ingest_events(fileinfo_batch)
-                self._fileinfo_ingested += len(fileinfo_batch)
+            # NOTE: TLS, DNS, and Fileinfo are now handled by the richer Phase 36
+            # Zeek normalizers in the dispatch loop below (ssl→tls, dns_zeek→dns,
+            # files→fileinfo). Removing the Phase 31 duplicates prevents double-ingestion.
 
             # --- Anomaly events ---
             anomaly_hits = await self._fetch_index(
@@ -1457,30 +1416,34 @@ class MalcolmCollector:
                 self._weird_ingested += len(weird_batch)
 
             # --- Phase 36-02: remaining 21 Zeek log types ---
+            # event.dataset values from Malcolm OpenSearch (verified 2026-04-13):
+            # tls, dns, conn, http, fileinfo, anomaly, known_services, known_hosts,
+            # software, dhcp, weird, ssh. Malcolm uses "tls" for Zeek ssl.log and
+            # "fileinfo" for Zeek files.log. "known_hosts"/"known_services" are plural.
             for log_type, cursor_suffix, normalizer_fn, counter_attr in [
-                ("http",          "http",          self._normalize_http,          "_http_ingested"),
-                ("ssl",           "ssl",           self._normalize_ssl,           "_ssl_ingested"),
-                ("x509",          "x509",          self._normalize_x509,          "_x509_ingested"),
-                ("files",         "files",         self._normalize_files,         "_files_ingested"),
-                ("notice",        "notice",        self._normalize_notice,        "_notice_ingested"),
-                ("kerberos",      "kerberos",      self._normalize_kerberos,      "_kerberos_ingested"),
-                ("ntlm",          "ntlm",          self._normalize_ntlm,          "_ntlm_ingested"),
-                ("ssh",           "ssh",           self._normalize_ssh,           "_ssh_ingested"),
-                ("smb_mapping",   "smb_mapping",   self._normalize_smb_mapping,   "_smb_mapping_ingested"),
-                ("smb_files",     "smb_files",     self._normalize_smb_files,     "_smb_files_ingested"),
-                ("rdp",           "rdp",           self._normalize_rdp,           "_rdp_ingested"),
-                ("dce_rpc",       "dce_rpc",       self._normalize_dce_rpc,       "_dce_rpc_ingested"),
-                ("dhcp",          "dhcp",          self._normalize_dhcp,          "_dhcp_ingested"),
-                ("dns",           "dns_zeek",      self._normalize_dns_zeek,      "_dns_zeek_ingested"),
-                ("software",      "software",      self._normalize_software,      "_software_ingested"),
-                ("known_host",    "known_hosts",   self._normalize_known_host,    "_known_host_ingested"),
-                ("known_service", "known_services", self._normalize_known_service, "_known_service_ingested"),
-                ("sip",           "sip",           self._normalize_sip,           "_sip_ingested"),
-                ("ftp",           "ftp",           self._normalize_ftp,           "_ftp_ingested"),
-                ("smtp",          "smtp",          self._normalize_smtp,          "_smtp_ingested"),
-                ("socks",         "socks",         self._normalize_socks,         "_socks_ingested"),
-                ("tunnel",        "tunnel",        self._normalize_tunnel,        "_tunnel_ingested"),
-                ("pe",            "pe",            self._normalize_pe,            "_pe_ingested"),
+                ("http",           "http",          self._normalize_http,          "_http_ingested"),
+                ("tls",            "ssl",           self._normalize_ssl,           "_ssl_ingested"),
+                ("x509",           "x509",          self._normalize_x509,          "_x509_ingested"),
+                ("fileinfo",       "files",         self._normalize_files,         "_files_ingested"),
+                ("notice",         "notice",        self._normalize_notice,        "_notice_ingested"),
+                ("kerberos",       "kerberos",      self._normalize_kerberos,      "_kerberos_ingested"),
+                ("ntlm",           "ntlm",          self._normalize_ntlm,          "_ntlm_ingested"),
+                ("ssh",            "ssh",           self._normalize_ssh,           "_ssh_ingested"),
+                ("smb_mapping",    "smb_mapping",   self._normalize_smb_mapping,   "_smb_mapping_ingested"),
+                ("smb_files",      "smb_files",     self._normalize_smb_files,     "_smb_files_ingested"),
+                ("rdp",            "rdp",           self._normalize_rdp,           "_rdp_ingested"),
+                ("dce_rpc",        "dce_rpc",       self._normalize_dce_rpc,       "_dce_rpc_ingested"),
+                ("dhcp",           "dhcp",          self._normalize_dhcp,          "_dhcp_ingested"),
+                ("dns",            "dns_zeek",      self._normalize_dns_zeek,      "_dns_zeek_ingested"),
+                ("software",       "software",      self._normalize_software,      "_software_ingested"),
+                ("known_hosts",    "known_hosts",   self._normalize_known_host,    "_known_host_ingested"),
+                ("known_services", "known_services", self._normalize_known_service, "_known_service_ingested"),
+                ("sip",            "sip",           self._normalize_sip,           "_sip_ingested"),
+                ("ftp",            "ftp",           self._normalize_ftp,           "_ftp_ingested"),
+                ("smtp",           "smtp",          self._normalize_smtp,          "_smtp_ingested"),
+                ("socks",          "socks",         self._normalize_socks,         "_socks_ingested"),
+                ("tunnel",         "tunnel",        self._normalize_tunnel,        "_tunnel_ingested"),
+                ("pe",             "pe",            self._normalize_pe,            "_pe_ingested"),
             ]:
                 hits = await self._fetch_index(
                     "arkime_sessions3-*",

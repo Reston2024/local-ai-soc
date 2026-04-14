@@ -1,13 +1,18 @@
-"""Phase 38: CISA playbook content quality stubs."""
+"""Phase 38/39: CISA playbook content quality tests."""
 import re
 import pytest
 from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
 
 CONTROLLED_VOCAB = {
+    # Original Phase 38
     "isolate_host", "reset_credentials", "block_ip", "block_domain",
     "preserve_evidence", "notify_management", "engage_ir_team",
+    # Phase 39 expanded set (new playbooks)
+    "disable_account", "revoke_access", "patch_system",
+    "notify_legal",
 }
-EXPECTED_NAMES = {
+# Core 4 from Phase 38 — always expected
+CORE_NAMES = {
     "Phishing / BEC Response",
     "Ransomware Response",
     "Credential / Account Compromise Response",
@@ -15,10 +20,17 @@ EXPECTED_NAMES = {
 }
 T_PATTERN = re.compile(r'^T\d{4}(\.\d{3})?$')
 
+_EXPECTED_COUNT = 19  # Phase 39 expanded set
+
 
 def test_four_cisa_playbooks_exist():
+    """All core playbooks present and total count matches expected."""
     names = {pb["name"] for pb in BUILTIN_PLAYBOOKS}
-    assert names == EXPECTED_NAMES, f"Got: {names}"
+    missing = CORE_NAMES - names
+    assert not missing, f"Core playbooks missing: {missing}"
+    assert len(BUILTIN_PLAYBOOKS) == _EXPECTED_COUNT, (
+        f"Expected {_EXPECTED_COUNT} playbooks, got {len(BUILTIN_PLAYBOOKS)}"
+    )
 
 
 def test_technique_ids():
@@ -58,4 +70,7 @@ def test_containment_actions_vocab():
 def test_trigger_conditions_include_ttp():
     for pb in BUILTIN_PLAYBOOKS:
         ttps = [tc for tc in pb["trigger_conditions"] if T_PATTERN.match(tc)]
-        assert ttps, f"{pb['name']} trigger_conditions has no T-numbers"
+        assert ttps, (
+            f"{pb['name']} trigger_conditions has no ATT&CK T-numbers. "
+            f"Current trigger_conditions: {pb['trigger_conditions']}"
+        )

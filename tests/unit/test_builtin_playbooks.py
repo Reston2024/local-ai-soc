@@ -1,7 +1,8 @@
 """
 Unit tests for built-in CISA IR playbooks and seed_builtin_playbooks().
 
-Updated in Phase 38: NIST starters replaced with 4 CISA playbooks.
+Updated in Phase 38: NIST starters replaced with CISA playbooks.
+Updated in Phase 39: Expanded from 4 to 19 CISA playbooks.
 """
 
 import pytest
@@ -9,6 +10,8 @@ import pytest
 from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
 from backend.stores.sqlite_store import SQLiteStore
 
+# Total CISA playbooks in the library (update when adding new ones)
+_EXPECTED_PLAYBOOK_COUNT = 19
 
 @pytest.fixture()
 def store(tmp_path):
@@ -17,7 +20,7 @@ def store(tmp_path):
 
 class TestBuiltinPlaybooksData:
     def test_exactly_four_playbooks(self):
-        assert len(BUILTIN_PLAYBOOKS) == 4
+        assert len(BUILTIN_PLAYBOOKS) == _EXPECTED_PLAYBOOK_COUNT
 
     def test_all_marked_as_builtin(self):
         for pb in BUILTIN_PLAYBOOKS:
@@ -63,13 +66,18 @@ class TestBuiltinPlaybooksData:
 
     def test_known_playbook_names(self):
         names = {pb["name"] for pb in BUILTIN_PLAYBOOKS}
-        expected = {
+        # Core original 4 (Phase 38) — always present
+        core_expected = {
             "Phishing / BEC Response",
             "Ransomware Response",
             "Credential / Account Compromise Response",
             "Malware / Intrusion Response",
         }
-        assert names == expected
+        assert core_expected.issubset(names), (
+            f"Core playbooks missing: {core_expected - names}"
+        )
+        # Phase 39 expanded set — 19 total
+        assert len(names) == _EXPECTED_PLAYBOOK_COUNT
 
     def test_version_is_string(self):
         for pb in BUILTIN_PLAYBOOKS:
@@ -84,19 +92,19 @@ class TestSeedBuiltinPlaybooks:
         asyncio.run(seed_builtin_playbooks(store))
         playbooks = store.get_playbooks()
         builtin = [pb for pb in playbooks if pb["is_builtin"]]
-        assert len(builtin) == 4
+        assert len(builtin) == _EXPECTED_PLAYBOOK_COUNT
 
     def test_seed_is_idempotent(self, store):
         import asyncio
         from backend.api.playbooks import seed_builtin_playbooks
 
-        # Seed twice
+        # Seed twice — should not create duplicates
         asyncio.run(seed_builtin_playbooks(store))
         asyncio.run(seed_builtin_playbooks(store))
 
         playbooks = store.get_playbooks()
         builtin = [pb for pb in playbooks if pb["is_builtin"]]
-        assert len(builtin) == 4  # not 8
+        assert len(builtin) == _EXPECTED_PLAYBOOK_COUNT  # not doubled
 
     def test_seeded_playbooks_have_correct_names(self, store):
         import asyncio

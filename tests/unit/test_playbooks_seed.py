@@ -1,7 +1,9 @@
-"""Phase 38: CISA seeding and NIST replacement stubs."""
+"""Phase 38/39: CISA seeding tests (19 playbooks after Phase 39 expansion)."""
 import pytest
 import sqlite3
 from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
+
+_EXPECTED_COUNT = 19  # Phase 39 expanded set
 
 
 def _make_playbooks_table(conn: sqlite3.Connection) -> None:
@@ -22,8 +24,8 @@ def _make_playbooks_table(conn: sqlite3.Connection) -> None:
 
 
 def test_builtin_playbooks_is_four():
-    """BUILTIN_PLAYBOOKS must have exactly 4 CISA playbooks."""
-    assert len(BUILTIN_PLAYBOOKS) == 4
+    """BUILTIN_PLAYBOOKS must have the expected CISA playbook count."""
+    assert len(BUILTIN_PLAYBOOKS) == _EXPECTED_COUNT
 
 
 def test_all_builtins_have_source_cisa():
@@ -41,4 +43,6 @@ def test_all_builtins_have_is_builtin_true():
 def test_all_builtins_have_steps():
     """Every CISA playbook must have at least 6 steps."""
     for pb in BUILTIN_PLAYBOOKS:
-        assert len(pb.get("steps", [])) >= 6, f"{pb['name']} has fewer than 6 steps"
+        assert len(pb.get("steps", [])) >= 6, (
+            f"{pb['name']} has only {len(pb.get('steps', []))} steps (expected >= 6)"
+        )

@@ -209,18 +209,18 @@ async def test_poll_all_eve_types():
     with patch.object(collector, "_fetch_index", new=AsyncMock(return_value=[])) as mock_fetch:
         await collector._poll_and_ingest()
 
-    # Check all cursor keys were used (6 original + 2 Phase 36-01 conn/weird + 21 Phase 36-02)
+    # Check all cursor keys were used.
+    # Phase 36 fix: removed Phase 31 duplicate tls/dns/fileinfo keys (they were
+    # wrong event.type names). The correct event.dataset-based keys are now used:
+    #   - zeek_ssl (not tls), zeek_dns_zeek (not dns), zeek_files (not fileinfo)
     call_cursor_keys = [call.args[1] for call in mock_fetch.call_args_list]
     expected_keys = {
         "malcolm.alerts.last_timestamp",
-        "malcolm.tls.last_timestamp",
-        "malcolm.dns.last_timestamp",
-        "malcolm.fileinfo.last_timestamp",
         "malcolm.anomaly.last_timestamp",
         "malcolm.syslog.last_timestamp",
         "malcolm.zeek_conn.last_timestamp",
         "malcolm.zeek_weird.last_timestamp",
-        # Phase 36-02: 21 additional Zeek log types
+        # Phase 36-02: Zeek log types (using correct event.dataset values)
         "malcolm.zeek_http.last_timestamp",
         "malcolm.zeek_ssl.last_timestamp",
         "malcolm.zeek_x509.last_timestamp",
