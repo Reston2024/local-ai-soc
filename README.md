@@ -4,7 +4,7 @@
 
 A single-analyst, local-first cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally — no cloud, no telemetry, no external services.
 
-**Status:** v1.0 complete (30 phases). v1.1 complete (Phases 31-44). Phase 45 (Agentic Investigation) next.
+**Status:** v1.0 complete (30 phases). v1.1 complete (Phases 31-44). Phase 45 (Agentic Investigation) complete. Phase 46 (Playbook Library Expansion) complete.
 
 ---
 
@@ -50,7 +50,7 @@ A single-analyst, local-first cybersecurity workstation. All inference, detectio
 | **Investigation Chat Copilot** | Ready | SSE streaming chat per investigation |
 | **Attack Graph UI** | Ready | Cytoscape.js fCoSE, risk-scored nodes, Dijkstra attack paths |
 | **Svelte 5 Dashboard** | Ready | 11 views; Detections, Events, Graph, Investigation, Query, Ingest, Assets, Reports, Settings, Operators |
-| **SOAR Playbooks** | Ready | 5 NIST IR playbooks; analyst-gated step execution; SSE stream; audit trail |
+| **SOAR Playbooks** | Ready | 30 built-in IR playbooks (CISA, CERT-SG, AWS, Microsoft DART, GuardSight, community); category + source filtering; analyst-gated step execution; SSE stream; audit trail |
 | **Reporting & Compliance** | Ready | WeasyPrint PDF, MITRE ATT&CK heatmap, D3 KPI trends, NIST CSF 2.0, TheHive ZIP export |
 | **Bearer Token Auth + TOTP** | Ready | Startup validator rejects weak tokens; MFA-gated legacy admin path |
 | **Identity & RBAC** | Ready | Operator table, bcrypt, role-based route guards |
