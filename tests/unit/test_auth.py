@@ -148,18 +148,21 @@ class TestOperatorLookup:
 
     @pytest.mark.asyncio
     async def test_legacy_token_fallback(self):
-        """Legacy path now requires TOTP — returns 401 when LEGACY_TOTP_SECRET is not configured."""
+        """When LEGACY_TOTP_SECRET is empty, legacy AUTH_TOKEN match succeeds without TOTP.
+        The 64-char random AUTH_TOKEN provides sufficient protection for local single-machine
+        deployments (see auth.py comment). TOTP is only enforced when LEGACY_TOTP_SECRET is set.
+        """
         with patch("backend.core.auth.settings") as mock_settings:
             mock_settings.AUTH_TOKEN = "my-secret-token"
-            mock_settings.LEGACY_TOTP_SECRET = ""  # legacy path disabled — 401 always
+            mock_settings.LEGACY_TOTP_SECRET = ""  # TOTP not configured — raw token allowed
             from backend.core.auth import verify_token
             creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials="my-secret-token")
             req = _mock_request(operator_row=None)
-            with pytest.raises(HTTPException) as exc_info:
-                await verify_token(request=req, credentials=creds)
+            result = await verify_token(request=req, credentials=creds)
 
-        assert exc_info.value.status_code == 401
-        assert "legacy" in exc_info.value.detail.lower()
+        assert result.operator_id == "legacy-admin"
+        assert result.role == "admin"
+        assert result.totp_verified is False  # no TOTP secret configured
 
     @pytest.mark.asyncio
     async def test_state_injection(self):

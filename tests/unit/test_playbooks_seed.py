@@ -1,9 +1,10 @@
-"""Phase 38/39: CISA seeding tests (19 playbooks after Phase 39 expansion)."""
+"""Phase 38/39/46: Playbook seeding tests (30 playbooks after Phase 46 expansion)."""
 import pytest
 import sqlite3
 from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
 
-_EXPECTED_COUNT = 19  # Phase 39 expanded set
+_EXPECTED_COUNT = 30  # Phase 46 expanded set (added community/aws/cert_sg/guardsight/microsoft)
+_VALID_SOURCES = {"cisa", "aws", "cert_sg", "community", "guardsight", "microsoft"}
 
 
 def _make_playbooks_table(conn: sqlite3.Connection) -> None:
@@ -29,9 +30,14 @@ def test_builtin_playbooks_is_four():
 
 
 def test_all_builtins_have_source_cisa():
-    """Every entry in BUILTIN_PLAYBOOKS must have source='cisa'."""
+    """Every entry in BUILTIN_PLAYBOOKS must have a valid source.
+    Phase 46 expanded sources beyond 'cisa' to include aws, cert_sg, community, guardsight, microsoft.
+    """
     for pb in BUILTIN_PLAYBOOKS:
-        assert pb.get("source") == "cisa", f"Missing source=cisa on {pb['name']}"
+        src = pb.get("source")
+        assert src in _VALID_SOURCES, (
+            f"{pb['name']} has invalid source={src!r} (expected one of {_VALID_SOURCES})"
+        )
 
 
 def test_all_builtins_have_is_builtin_true():
@@ -41,8 +47,10 @@ def test_all_builtins_have_is_builtin_true():
 
 
 def test_all_builtins_have_steps():
-    """Every CISA playbook must have at least 6 steps."""
+    """Every playbook must have at least 4 steps.
+    CISA playbooks have >= 6; community/cert_sg/aws/guardsight/microsoft may have 4-5.
+    """
     for pb in BUILTIN_PLAYBOOKS:
-        assert len(pb.get("steps", [])) >= 6, (
-            f"{pb['name']} has only {len(pb.get('steps', []))} steps (expected >= 6)"
+        assert len(pb.get("steps", [])) >= 4, (
+            f"{pb['name']} has only {len(pb.get('steps', []))} steps (expected >= 4)"
         )

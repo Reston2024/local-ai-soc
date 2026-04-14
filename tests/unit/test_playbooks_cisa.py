@@ -20,7 +20,7 @@ CORE_NAMES = {
 }
 T_PATTERN = re.compile(r'^T\d{4}(\.\d{3})?$')
 
-_EXPECTED_COUNT = 19  # Phase 39 expanded set
+_EXPECTED_COUNT = 30  # Phase 46 expanded set (added community/aws/cert_sg/guardsight/microsoft)
 
 
 def test_four_cisa_playbooks_exist():

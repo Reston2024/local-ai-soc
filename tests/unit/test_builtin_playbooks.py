@@ -3,6 +3,7 @@ Unit tests for built-in CISA IR playbooks and seed_builtin_playbooks().
 
 Updated in Phase 38: NIST starters replaced with CISA playbooks.
 Updated in Phase 39: Expanded from 4 to 19 CISA playbooks.
+Updated in Phase 46: Expanded to 30 playbooks (added SOC reference library).
 """
 
 import pytest
@@ -11,7 +12,7 @@ from backend.data.builtin_playbooks import BUILTIN_PLAYBOOKS
 from backend.stores.sqlite_store import SQLiteStore
 
 # Total CISA playbooks in the library (update when adding new ones)
-_EXPECTED_PLAYBOOK_COUNT = 19
+_EXPECTED_PLAYBOOK_COUNT = 30
 
 @pytest.fixture()
 def store(tmp_path):
@@ -26,9 +27,16 @@ class TestBuiltinPlaybooksData:
         for pb in BUILTIN_PLAYBOOKS:
             assert pb["is_builtin"] is True, f"{pb['name']} missing is_builtin=True"
 
-    def test_all_have_source_cisa(self):
+    def test_all_have_source(self):
+        """All playbooks must have a non-empty source field. Sources expanded in
+        Phase 46 beyond 'cisa' to include aws, cert_sg, community, guardsight, microsoft.
+        """
+        _VALID_SOURCES = {"cisa", "aws", "cert_sg", "community", "guardsight", "microsoft"}
         for pb in BUILTIN_PLAYBOOKS:
-            assert pb.get("source") == "cisa", f"{pb['name']} missing source=cisa"
+            src = pb.get("source")
+            assert src in _VALID_SOURCES, (
+                f"{pb['name']} has invalid source={src!r} (expected one of {_VALID_SOURCES})"
+            )
 
     def test_all_have_required_fields(self):
         required = {"name", "description", "trigger_conditions", "steps", "version"}
@@ -37,9 +45,12 @@ class TestBuiltinPlaybooksData:
             assert not missing, f"{pb['name']} missing fields: {missing}"
 
     def test_all_have_steps(self):
+        """All playbooks must have at least 4 steps. CISA playbooks have >= 6;
+        community/cert_sg/aws/guardsight/microsoft playbooks may have 4-5.
+        """
         for pb in BUILTIN_PLAYBOOKS:
-            assert len(pb["steps"]) >= 6, (
-                f"{pb['name']} has only {len(pb['steps'])} steps (expected >= 6)"
+            assert len(pb["steps"]) >= 4, (
+                f"{pb['name']} has only {len(pb['steps'])} steps (expected >= 4)"
             )
 
     def test_all_have_trigger_conditions(self):
@@ -126,12 +137,19 @@ class TestSeedBuiltinPlaybooks:
             assert isinstance(pb["steps"], list)
             assert isinstance(pb["trigger_conditions"], list)
 
-    def test_seeded_playbooks_have_source_cisa(self, store):
+    def test_seeded_playbooks_have_valid_source(self, store):
+        """Seeded playbooks must have a valid source. Phase 46 expanded sources
+        beyond 'cisa' to include aws, cert_sg, community, guardsight, microsoft.
+        """
         import asyncio
         from backend.api.playbooks import seed_builtin_playbooks
 
+        _VALID_SOURCES = {"cisa", "aws", "cert_sg", "community", "guardsight", "microsoft"}
         asyncio.run(seed_builtin_playbooks(store))
         playbooks = store.get_playbooks()
         builtin = [pb for pb in playbooks if pb["is_builtin"]]
         for pb in builtin:
-            assert pb.get("source") == "cisa", f"{pb['name']} source is not 'cisa'"
+            src = pb.get("source")
+            assert src in _VALID_SOURCES, (
+                f"{pb['name']} has invalid source={src!r}"
+            )
