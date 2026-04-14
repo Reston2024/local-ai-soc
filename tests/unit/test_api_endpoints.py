@@ -40,6 +40,7 @@ def _make_mock_stores(sqlite_store=None):
         sqlite._conn = MagicMock()
         sqlite._conn.execute = MagicMock()
         sqlite._conn.execute.return_value.fetchall = MagicMock(return_value=[])
+        sqlite._conn.execute.return_value.fetchone = MagicMock(return_value=(0,))
     else:
         sqlite = sqlite_store
 

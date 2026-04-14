@@ -19,7 +19,7 @@
   let runningDetection = $state(false)
   let error = $state<string | null>(null)
   let severityFilter = $state('')
-  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA' | 'HAYABUSA'
+  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA' | 'HAYABUSA' | 'CHAINSAW'
 
   // Phase 44: Verdict state
   let verdicts = $state<Map<string, 'TP' | 'FP'>>(new Map())
@@ -47,6 +47,8 @@
         ? detections.filter(d => d.rule_id?.startsWith('anomaly-'))
         : typeFilter === 'HAYABUSA'
         ? detections.filter(d => d.detection_source === 'hayabusa')
+        : typeFilter === 'CHAINSAW'
+        ? detections.filter(d => d.detection_source === 'chainsaw')
         : typeFilter === 'SIGMA'
         ? detections.filter(d =>
             d.detection_source === 'sigma' ||
@@ -65,6 +67,8 @@
 
   // Phase 48: Hayabusa count for chip badge
   let hayabusaCount = $derived(detections.filter(d => d.detection_source === 'hayabusa').length)
+  // Phase 49: Chainsaw count for chip badge
+  let chainsawCount = $derived(detections.filter(d => d.detection_source === 'chainsaw').length)
 
   // Push posture to parent whenever it changes
   $effect(() => { onPostureUpdate?.(postureScore) })
@@ -420,6 +424,10 @@
           onclick={() => { typeFilter = typeFilter === 'HAYABUSA' ? '' : 'HAYABUSA'; }}
         >HAYABUSA {hayabusaCount > 0 ? `(${hayabusaCount})` : ''}</button>
         <button
+          class="chip chip-chainsaw {typeFilter === 'CHAINSAW' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = typeFilter === 'CHAINSAW' ? '' : 'CHAINSAW'; }}
+        >CHAINSAW {chainsawCount > 0 ? `(${chainsawCount})` : ''}</button>
+        <button
           class="chip filter-chip {verdictFilter ? 'chip-active chip-unreviewed' : ''}"
           onclick={() => verdictFilter = !verdictFilter}
         >Unreviewed</button>
@@ -526,6 +534,9 @@
                 {/if}
                 {#if d.detection_source === 'hayabusa'}
                   <span class="badge-hayabusa">HAYABUSA</span>
+                {/if}
+                {#if d.detection_source === 'chainsaw'}
+                  <span class="badge-chainsaw">CHAINSAW</span>
                 {/if}
               </td>
               <td><span class={severityClass(d.severity)}>{d.severity}</span></td>
@@ -1153,6 +1164,24 @@
     border: 1px solid #d97706;
     margin-left: 4px;
   }
+
+  /* Phase 49: Chainsaw detection row badge — teal */
+  .badge-chainsaw {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(20, 184, 166, 0.15);
+    color: #14b8a6;
+    border: 1px solid rgba(20, 184, 166, 0.4);
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+
+  .chip-chainsaw { border-color: #14b8a6; color: #14b8a6; }
+  .chip-chainsaw.chip-active { background: rgba(20, 184, 166, 0.15); }
+
   .verdict-row { display: flex; gap: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 12px; }
   .verdict-btn { padding: 6px 14px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 13px; }
   .verdict-btn:hover { background: rgba(255,255,255,0.06); }

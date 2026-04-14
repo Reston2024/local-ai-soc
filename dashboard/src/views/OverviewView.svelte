@@ -22,6 +22,10 @@
     (componentHealth?.components?.hayabusa?.detection_count as number | undefined) ?? 0
   )
 
+  let chainsawFindingCount = $derived(
+    (componentHealth?.components?.chainsaw?.detection_count as number | undefined) ?? 0
+  )
+
   /** Strip markdown bold/italic asterisks from LLM output */
   function stripMd(text: string): string {
     return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '')
@@ -250,6 +254,10 @@
               <span class="tile-value tile-hayabusa">{hayabusaFindingCount}</span>
               <span class="tile-label">Hayabusa<br>Findings</span>
             </div>
+            <div class="scorecard-tile">
+              <span class="tile-value tile-chainsaw">{chainsawFindingCount}</span>
+              <span class="tile-label">Chainsaw<br>Findings</span>
+            </div>
           </div>
         </div>
 
@@ -335,6 +343,23 @@
                 <span class="health-status hayabusa-status" title={hay.binary as string ?? 'binary not found'}>
                   {#if hay.status === 'ok'}
                     {hayCount > 0 ? `${hayCount} findings` : 'ready'}
+                  {:else}
+                    not found
+                  {/if}
+                </span>
+              </div>
+            {/if}
+
+            <!-- Chainsaw EVTX scanner (from /health component) -->
+            {#if componentHealth?.components?.chainsaw}
+              {@const saw = componentHealth.components.chainsaw}
+              {@const sawCount = (saw.detection_count as number) ?? 0}
+              <div class="health-row">
+                <span class="health-dot {saw.status === 'ok' ? 'dot-healthy' : 'dot-degraded'}"></span>
+                <span class="health-label">Chainsaw</span>
+                <span class="health-status chainsaw-status" title={saw.binary as string ?? 'binary not found'}>
+                  {#if saw.status === 'ok'}
+                    {sawCount > 0 ? `${sawCount} findings` : 'ready'}
                   {:else}
                     not found
                   {/if}
@@ -633,6 +658,7 @@
 
   .tile-ioc { color: var(--severity-high, #f97316); }
   .tile-hayabusa { color: #fbbf24; }  /* amber — matches HAYABUSA chip in DetectionsView */
+  .tile-chainsaw { color: #14b8a6; }  /* teal — matches CHAINSAW chip in DetectionsView */
 
   .tile-label {
     font-size: 10px;
@@ -677,6 +703,7 @@
   }
 
   .hayabusa-status { color: #fbbf24; }  /* amber accent for hayabusa findings count */
+  .chainsaw-status { color: #14b8a6; }  /* teal accent for chainsaw findings count */
 
   /* ── Triage result ── */
   .triage-result { display: flex; flex-direction: column; gap: 8px; }
