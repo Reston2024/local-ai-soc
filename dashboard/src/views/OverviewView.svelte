@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, type TelemetrySummary, type TriageResult, type Asset, type KpiSnapshot } from '../lib/api.ts'
+  import { api, type TelemetrySummary, type TriageResult, type Asset, type KpiSnapshot, type HealthResponse } from '../lib/api.ts'
 
   let {
     healthStatus,
@@ -12,10 +12,47 @@
   let summary = $state<TelemetrySummary | null>(null)
   let triageResult = $state<TriageResult | null>(null)
   let kpis = $state<KpiSnapshot | null>(null)
+  let componentHealth = $state<HealthResponse | null>(null)
   let loading = $state(true)
   let error = $state<string | null>(null)
   let triageExpanded = $state(false)
   let internalAssets = $state<Asset[]>([])
+
+  /** Strip markdown bold/italic asterisks from LLM output */
+  function stripMd(text: string): string {
+    return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '')
+  }
+
+  type CompStatus = 'ok' | 'warning' | 'error' | 'unknown'
+
+  /** Derive Malcolm health: ok if we see zeek/suricata event types in the summary */
+  function malcolmStatus(s: TelemetrySummary | null): CompStatus {
+    if (!s) return 'unknown'
+    const types = Object.keys(s.event_type_counts)
+    return types.some(t => t.includes('zeek') || t.includes('suricata') || t.includes('conn') || t.includes('dns'))
+      ? 'ok' : 'warning'
+  }
+
+  /** Derive Zeek health from event_type_counts */
+  function zeekStatus(s: TelemetrySummary | null): CompStatus {
+    if (!s) return 'unknown'
+    const types = Object.keys(s.event_type_counts)
+    return types.some(t => t.startsWith('zeek') || ['conn','dns','ssl','http','files','weird','notice'].includes(t))
+      ? 'ok' : 'warning'
+  }
+
+  function compDotClass(s: CompStatus | string): string {
+    if (s === 'ok' || s === 'up') return 'dot-healthy'
+    if (s === 'warning' || s === 'degraded') return 'dot-degraded'
+    if (s === 'error' || s === 'down') return 'dot-unhealthy'
+    return ''
+  }
+  function compStatusLabel(s: CompStatus | string): string {
+    if (s === 'ok' || s === 'up') return 'ok'
+    if (s === 'warning') return 'no data'
+    if (s === 'error' || s === 'down') return 'error'
+    return 'unknown'
+  }
 
   // ── Topology ──────────────────────────────────────────────────
   type TopoNode = {
@@ -104,15 +141,17 @@
 
   async function load() {
     try {
-      const [summaryData, triageData, allAssets, kpisData] = await Promise.all([
+      const [summaryData, triageData, allAssets, kpisData, healthData] = await Promise.all([
         api.telemetry.summary(),
         api.triage.latest(),
         api.assets.list(200),
         api.metrics.kpis().catch(() => null),
+        api.health().catch(() => null),
       ])
       summary = summaryData
       triageResult = triageData.result
       kpis = kpisData
+      componentHealth = healthData
       internalAssets = allAssets.filter(a =>
         a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.')
       )
@@ -243,24 +282,46 @@
         <div class="card">
           <h3 class="card-title">System Health</h3>
           <div class="health-list">
+            <!-- Backend overall -->
             <div class="health-row">
-              <span
-                class="health-dot"
-                class:dot-healthy={healthStatus === 'healthy'}
-                class:dot-degraded={healthStatus === 'degraded'}
-                class:dot-unhealthy={healthStatus === 'unhealthy' || healthStatus === 'loading'}
-              ></span>
+              <span class="health-dot" class:dot-healthy={healthStatus === 'healthy'} class:dot-degraded={healthStatus === 'degraded'} class:dot-unhealthy={healthStatus === 'unhealthy' || healthStatus === 'loading'}></span>
               <span class="health-label">API Backend</span>
               <span class="health-status">{healthStatus}</span>
             </div>
-            {#each [['router','Router'],['firewall','Firewall'],['gmktec','GMKtec']] as [key, label]}
+
+            <!-- Core service components from /health -->
+            {#if componentHealth}
+              {#each [['ollama','Ollama LLM'],['duckdb','DuckDB'],['chroma','ChromaDB'],['sqlite','SQLite']] as [key, label]}
+                {@const comp = componentHealth.components[key]}
+                {#if comp}
+                  <div class="health-row">
+                    <span class="health-dot {compDotClass(comp.status)}"></span>
+                    <span class="health-label">{label}</span>
+                    <span class="health-status">{comp.status === 'ok' ? 'ok' : comp.detail ?? comp.status}</span>
+                  </div>
+                {/if}
+              {/each}
+            {/if}
+
+            <!-- Malcolm NSM (inferred from event types) -->
+            <div class="health-row">
+              <span class="health-dot {compDotClass(malcolmStatus(summary))}"></span>
+              <span class="health-label">Malcolm NSM</span>
+              <span class="health-status" title="Inferred from event type presence">{compStatusLabel(malcolmStatus(summary))}</span>
+            </div>
+
+            <!-- Zeek (inferred from event types) -->
+            <div class="health-row">
+              <span class="health-dot {compDotClass(zeekStatus(summary))}"></span>
+              <span class="health-label">Zeek</span>
+              <span class="health-status" title="Inferred from event type presence">{compStatusLabel(zeekStatus(summary))}</span>
+            </div>
+
+            <!-- Network devices -->
+            {#each [['router','Router'],['firewall','Firewall'],['gmktec','GMKtec / Malcolm']] as [key, label]}
               {#if networkDevices[key] !== undefined}
                 <div class="health-row">
-                  <span
-                    class="health-dot"
-                    class:dot-healthy={networkDevices[key] === 'up'}
-                    class:dot-unhealthy={networkDevices[key] === 'down'}
-                  ></span>
+                  <span class="health-dot" class:dot-healthy={networkDevices[key] === 'up'} class:dot-unhealthy={networkDevices[key] === 'down'}></span>
                   <span class="health-label">{label}</span>
                   <span class="health-status">{networkDevices[key]}</span>
                 </div>
@@ -275,7 +336,7 @@
           {#if triageResult}
             <div class="triage-result">
               <div class="triage-summary-row">
-                <strong class="triage-sev">{triageResult.severity_summary}</strong>
+                <strong class="triage-sev">{stripMd(triageResult.severity_summary)}</strong>
                 <span class="triage-meta">
                   {triageResult.detection_count} detections
                   · {triageResult.model_name}
@@ -289,11 +350,11 @@
                 {triageExpanded ? 'Collapse' : 'View full analysis'} {triageExpanded ? '▲' : '▼'}
               </button>
               {#if triageExpanded}
-                <pre class="triage-text">{triageResult.result_text}</pre>
+                <pre class="triage-text">{stripMd(triageResult.result_text ?? '')}</pre>
               {/if}
             </div>
           {:else}
-            <p class="empty-msg">No triage results yet.</p>
+            <p class="empty-msg">No triage results yet. Run triage from the Detections page.</p>
           {/if}
         </div>
 

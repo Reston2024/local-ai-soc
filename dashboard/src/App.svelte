@@ -276,6 +276,8 @@
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.5C8 1.5 5 5 5 8a3 3 0 006 0c0-3-3-6.5-3-6.5z" stroke="currentColor" stroke-width="1.2"/><line x1="1.5" y1="8" x2="14.5" y2="8" stroke="currentColor" stroke-width="1" opacity="0.5"/></svg>
                 {:else if item.id === 'atomics'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="1.8" fill="currentColor"/><ellipse cx="8" cy="8" rx="6.5" ry="2.5" stroke="currentColor" stroke-width="1.1"/><ellipse cx="8" cy="8" rx="6.5" ry="2.5" stroke="currentColor" stroke-width="1.1" transform="rotate(60 8 8)"/><ellipse cx="8" cy="8" rx="6.5" ry="2.5" stroke="currentColor" stroke-width="1.1" transform="rotate(120 8 8)"/></svg>
+                {:else if item.id === 'anomaly'}
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M1 11 L3.5 6.5 L6 9 L8.5 3 L11 7.5 L13 5.5 L15 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="8.5" cy="3" r="1.5" fill="currentColor" opacity="0.9"/></svg>
                 {:else if item.id === 'playbooks'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/><line x1="6" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="6" y1="9" x2="9" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
                 {:else if item.id === 'recommendations'}
@@ -362,7 +364,9 @@
     {:else if currentView === 'settings'}
       <SettingsView />
     {:else if currentView === 'map'}
-      <MapView />
+      <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;">
+        <MapView />
+      </div>
     {:else if currentView === 'attack-coverage'}
       <AttackCoverageView />
     {:else if currentView === 'atomics'}

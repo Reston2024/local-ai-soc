@@ -5,6 +5,8 @@
   let feeds = $state<FeedStatus[]>([])
   let expandedId = $state<number | null>(null)
   let error = $state<string | null>(null)
+  let refreshing = $state(false)
+  let lastUpdated = $state<Date | null>(null)
 
   function toggleExpand(id: number) {
     expandedId = expandedId === id ? null : id
@@ -52,11 +54,24 @@
     }
   }
 
-  $effect(() => {
+  async function loadIntel() {
+    refreshing = true
     error = null
-    Promise.all([api.intel.feeds(), api.intel.iocHits()])
-      .then(([f, h]) => { feeds = f; hits = h })
-      .catch(e => { error = String(e); hits = [] })
+    try {
+      const [f, h] = await Promise.all([api.intel.feeds(), api.intel.iocHits()])
+      feeds = f
+      hits = h
+      lastUpdated = new Date()
+    } catch (e) {
+      error = String(e)
+      hits = hits ?? []
+    } finally {
+      refreshing = false
+    }
+  }
+
+  $effect(() => {
+    loadIntel()
   })
 </script>
 
@@ -69,6 +84,19 @@
         <path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h1>Threat Intelligence</h1>
+    </div>
+    <div class="header-right">
+      {#if lastUpdated}
+        <span class="last-updated">Updated {formatRelative(lastUpdated.toISOString())}</span>
+      {/if}
+      <button
+        class="btn-refresh"
+        onclick={loadIntel}
+        disabled={refreshing}
+        title="Refresh feeds and IOC hits"
+      >
+        {#if refreshing}⟳ Refreshing…{:else}⟳ Refresh{/if}
+      </button>
     </div>
   </div>
 
@@ -192,7 +220,26 @@
   }
 
   .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
   h1 { font-size: 15px; font-weight: 600; }
+
+  .last-updated {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .btn-refresh {
+    font-size: 12px;
+    padding: 4px 12px;
+    background: var(--bg-tertiary, #1f2937);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-refresh:hover:not(:disabled) { background: var(--bg-hover, #374151); color: var(--text-primary); }
+  .btn-refresh:disabled { opacity: 0.5; cursor: default; }
 
   /* Feed strip */
   .feed-strip {

@@ -126,6 +126,7 @@
               </div>
               <div class="technique-list">
                 {#each [...expandedData.techniques].sort((a, b) => (b.covered ? 1 : 0) - (a.covered ? 1 : 0)) as tech}
+                  {@const mitreUrl = `https://attack.mitre.org/techniques/${tech.tech_id.replace('.', '/')}/`}
                   <div class="technique-row {tech.covered ? 'covered' : 'uncovered'}">
                     <span class="tech-status">
                       {#if tech.covered}
@@ -136,8 +137,8 @@
                         <span class="dash">—</span>
                       {/if}
                     </span>
-                    <span class="tech-id mono">{tech.tech_id}</span>
-                    <span class="tech-name">{tech.name}</span>
+                    <a class="tech-id mono" href={mitreUrl} target="_blank" rel="noopener noreferrer">{tech.tech_id}</a>
+                    <a class="tech-name tech-link" href={mitreUrl} target="_blank" rel="noopener noreferrer">{tech.name}</a>
                     {#if tech.covered && tech.rule_titles.length > 0}
                       <span class="tech-rules">{tech.rule_titles[0]}{tech.rule_titles.length > 1 ? ` +${tech.rule_titles.length - 1}` : ''}</span>
                     {/if}
@@ -287,8 +288,10 @@
   }
   .dash { font-size: 14px; color: var(--text-muted); }
 
-  .tech-id   { color: var(--text-muted); min-width: 70px; flex-shrink: 0; }
-  .tech-name { flex: 1; color: var(--text-secondary); }
+  .tech-id   { color: var(--text-muted); min-width: 70px; flex-shrink: 0; text-decoration: none; }
+  .tech-id:hover { color: var(--accent, #60a5fa); text-decoration: underline; }
+  .tech-name { flex: 1; color: var(--text-secondary); text-decoration: none; }
+  .tech-link:hover { color: var(--accent, #60a5fa); text-decoration: underline; }
   .tech-rules {
     font-size: 10.5px; color: #22c55e; background: rgba(34,197,94,0.1);
     padding: 1px 7px; border-radius: 8px; white-space: nowrap;

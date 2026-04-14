@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
   import { api } from '../lib/api.ts'
   import type { HuntResult, HuntPreset, HuntRow, OsintResult, HuntHistoryItem } from '../lib/api.ts'
 
@@ -109,6 +110,13 @@
       osintLoading = false
     }
   }
+
+  onMount(async () => {
+    try {
+      const { hunts } = await api.hunts.history(20)
+      huntHistory = hunts
+    } catch { /* history fetch is non-critical */ }
+  })
 
   function isPrivateIp(ip: string): boolean {
     return (

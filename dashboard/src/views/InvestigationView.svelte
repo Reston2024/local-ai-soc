@@ -72,6 +72,7 @@
   }
 
   async function loadTimeline() {
+    if (!investigationId) return
     timelineLoading = true
     timelineError = ''
     try {

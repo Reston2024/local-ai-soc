@@ -15,6 +15,7 @@
   let loading = $state(false)
   let refreshPaused = $state(false)
   let refreshTimer: ReturnType<typeof setInterval> | null = null
+  let filterMode = $state<'all' | 'tor' | 'vpn' | 'datacenter'>('all')
 
   // --- Color helpers ---
   function markerColor(info: MapIpInfo): string {
@@ -32,6 +33,19 @@
   function ipRingWeight(info: MapIpInfo): number {
     if (info.ipsum_tier === null) return 1
     return Math.min(6, 1 + info.ipsum_tier)  // tier 1→2, tier 8→6 (max ring weight)
+  }
+
+  function matchesFilter(info: MapIpInfo): boolean {
+    if (filterMode === 'all') return true
+    if (filterMode === 'tor') return !!info.is_tor
+    if (filterMode === 'vpn') return !!info.is_proxy
+    if (filterMode === 'datacenter') return !!info.is_datacenter
+    return true
+  }
+
+  function setFilter(mode: 'all' | 'tor' | 'vpn' | 'datacenter') {
+    filterMode = mode
+    renderMap()
   }
 
   // --- Data loading ---
@@ -81,9 +95,10 @@
       map.setView([homeLat, homeLon], map.getZoom(), { animate: false })
     }
 
-    // External IP markers
+    // External IP markers — apply filterMode
     for (const [ip, info] of Object.entries(mapData.ips as Record<string, MapIpInfo>)) {
       if (!info.lat || !info.lon) continue
+      if (!matchesFilter(info)) continue
       const color = markerColor(info)
       const weight = ipRingWeight(info)
       const marker = L.circleMarker([info.lat, info.lon], {
@@ -192,8 +207,12 @@
     map.addLayer(clusterGroup)
     map.addLayer(arcLayer)
 
-    // Force Leaflet to recalculate container size after flex layout resolves
-    requestAnimationFrame(() => { map?.invalidateSize() })
+    // Force Leaflet to recalculate container size after flex layout resolves.
+    // Two rAF passes: first lets the DOM paint, second catches any reflow.
+    requestAnimationFrame(() => {
+      map?.invalidateSize()
+      requestAnimationFrame(() => { map?.invalidateSize() })
+    })
 
     // 6. Initial data load + start refresh timer
     await loadMapData()
@@ -213,13 +232,29 @@
   <div class="map-header">
     <div class="map-stats">
       {#if mapData}
-        <span>{mapData.stats.total_ips} IPs plotted</span>
+        <button
+          class="stat-filter-btn {filterMode === 'all' ? 'active' : ''}"
+          onclick={() => setFilter('all')}
+          title="Show all IPs"
+        >{mapData.stats.total_ips} IPs</button>
         <span class="sep">·</span>
-        <span class="stat-tor">{mapData.stats.tor_count} Tor</span>
+        <button
+          class="stat-filter-btn stat-tor {filterMode === 'tor' ? 'active' : ''}"
+          onclick={() => setFilter('tor')}
+          title="Filter: Tor exit nodes only"
+        >{mapData.stats.tor_count} Tor</button>
         <span class="sep">·</span>
-        <span class="stat-vpn">{mapData.stats.vpn_count} VPN/Proxy</span>
+        <button
+          class="stat-filter-btn stat-vpn {filterMode === 'vpn' ? 'active' : ''}"
+          onclick={() => setFilter('vpn')}
+          title="Filter: VPN/Proxy only"
+        >{mapData.stats.vpn_count} VPN/Proxy</button>
         <span class="sep">·</span>
-        <span class="stat-dc">{mapData.stats.datacenter_count} Datacenter</span>
+        <button
+          class="stat-filter-btn stat-dc {filterMode === 'datacenter' ? 'active' : ''}"
+          onclick={() => setFilter('datacenter')}
+          title="Filter: Datacenter IPs only"
+        >{mapData.stats.datacenter_count} Datacenter</button>
         {#if mapData.stats.top_src_country}
           <span class="sep">·</span>
           <span>Top source: {mapData.stats.top_src_country} ({mapData.stats.top_src_country_conn_count.toLocaleString()} conns)</span>
@@ -307,7 +342,8 @@
   .map-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
     position: relative;
   }
@@ -338,20 +374,35 @@
     color: var(--text-muted, rgba(255, 255, 255, 0.3));
   }
 
-  .stat-tor {
-    color: #ef4444;
+  /* Clickable filter buttons in stats bar */
+  .stat-filter-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+    padding: 1px 6px;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .stat-filter-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  .stat-filter-btn.active {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
     font-weight: 600;
   }
 
-  .stat-vpn {
-    color: #eab308;
-    font-weight: 600;
-  }
+  .stat-filter-btn.stat-tor { color: #ef4444; }
+  .stat-filter-btn.stat-tor.active { background: rgba(239,68,68,0.15); border-color: #ef4444; }
 
-  .stat-dc {
-    color: #f97316;
-    font-weight: 600;
-  }
+  .stat-filter-btn.stat-vpn { color: #eab308; }
+  .stat-filter-btn.stat-vpn.active { background: rgba(234,179,8,0.15); border-color: #eab308; }
+
+  .stat-filter-btn.stat-dc { color: #f97316; }
+  .stat-filter-btn.stat-dc.active { background: rgba(249,115,22,0.15); border-color: #f97316; }
 
   .stat-loading {
     color: var(--text-muted, rgba(255, 255, 255, 0.4));
@@ -391,7 +442,7 @@
   /* --- Map canvas --- */
   .map-canvas {
     flex: 1;
-    min-height: 500px;
+    min-height: 0;
   }
 
   /* --- Side panel --- */

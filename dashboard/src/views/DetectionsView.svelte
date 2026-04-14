@@ -191,6 +191,18 @@
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   }
 
+  function stripMd(text: string): string {
+    return text
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/__/g, '')
+      .replace(/_/g, '')
+      .trim()
+  }
+
+  // Toggle full triage report text
+  let triageExpanded = $state(false)
+
   // Phase 38: Suggested playbook CTA
   let availablePlaybooks = $state<Playbook[]>([])
   $effect(() => {
@@ -263,12 +275,21 @@
           <span class="triage-err">{triageError}</span>
         {:else if triageResult}
           <div class="triage-summary">
-            <strong>{triageResult.severity_summary}</strong>
+            <strong>{stripMd(triageResult.severity_summary)}</strong>
             <span class="triage-meta">
               {triageResult.detection_count} detections
               · {triageResult.model_name}
-              · {triageResult.created_at}
+              · {fmtUpdated(new Date(triageResult.created_at))}
             </span>
+            {#if triageResult.result_text}
+              <button
+                class="triage-expand-btn"
+                onclick={() => triageExpanded = !triageExpanded}
+              >{triageExpanded ? 'Hide Report ▲' : 'Show Full Report ▼'}</button>
+              {#if triageExpanded}
+                <pre class="triage-report">{stripMd(triageResult.result_text)}</pre>
+              {/if}
+            {/if}
           </div>
         {:else}
           <span class="triage-empty">
@@ -701,6 +722,33 @@
   .triage-err {
     font-size: 12px;
     color: var(--severity-high, #f97316);
+  }
+
+  .triage-expand-btn {
+    margin-top: 6px;
+    background: none;
+    border: none;
+    color: var(--accent, #60a5fa);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    display: block;
+  }
+  .triage-expand-btn:hover { text-decoration: underline; }
+
+  .triage-report {
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: var(--bg-tertiary, #111827);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow-y: auto;
   }
 
   .btn-sm {
