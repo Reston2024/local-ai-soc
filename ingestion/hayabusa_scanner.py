@@ -40,6 +40,24 @@ _LEVEL_MAP: dict[str, str] = {
     "info": "informational",
 }
 
+# Hayabusa verbose profile abbreviates tactic names — expand to full ATT&CK names
+_TACTIC_EXPAND: dict[str, str] = {
+    "Recon": "Reconnaissance",
+    "ResDev": "Resource Development",
+    "InitAccess": "Initial Access",
+    "Exec": "Execution",
+    "Persis": "Persistence",
+    "PrivEsc": "Privilege Escalation",
+    "DefEvas": "Defense Evasion",
+    "CredAccess": "Credential Access",
+    "Discov": "Discovery",
+    "LatMov": "Lateral Movement",
+    "Collect": "Collection",
+    "C2": "Command and Control",
+    "Exfil": "Exfiltration",
+    "Impact": "Impact",
+}
+
 if not HAYABUSA_BIN:
     log.warning("hayabusa binary not found on PATH — Hayabusa EVTX scanning disabled")
 
@@ -154,7 +172,8 @@ def hayabusa_record_to_detection(
     )
 
     mitre_tactics: list[str] = rec.get("MitreTactics") or []
-    attack_tactic: str | None = mitre_tactics[0] if mitre_tactics else None
+    _raw_tactic: str | None = mitre_tactics[0] if mitre_tactics else None
+    attack_tactic: str | None = _TACTIC_EXPAND.get(_raw_tactic, _raw_tactic) if _raw_tactic else None
 
     details: dict = rec.get("Details") or {}
     detail_str = " | ".join(f"{k}={v}" for k, v in details.items() if v)

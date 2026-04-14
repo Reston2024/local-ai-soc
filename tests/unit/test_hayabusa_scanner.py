@@ -71,6 +71,40 @@ def test_level_normalization():
 
 
 # ---------------------------------------------------------------------------
+# HAY-02b: Tactic expansion (abbreviated → full ATT&CK name)
+# ---------------------------------------------------------------------------
+def test_tactic_expansion():
+    """Hayabusa verbose profile emits abbreviated tactic names (e.g. 'Persis').
+    _TACTIC_EXPAND maps them to full ATT&CK names (e.g. 'Persistence').
+    Unknown abbreviations pass through unchanged.
+    """
+    from ingestion.hayabusa_scanner import hayabusa_record_to_detection, _TACTIC_EXPAND
+
+    # Spot-check the map
+    assert _TACTIC_EXPAND["Persis"] == "Persistence"
+    assert _TACTIC_EXPAND["DefEvas"] == "Defense Evasion"
+    assert _TACTIC_EXPAND["PrivEsc"] == "Privilege Escalation"
+    assert _TACTIC_EXPAND["C2"] == "Command and Control"
+
+    # Mapper expands abbreviated tactic
+    rec = {
+        "RuleTitle": "Suspicious Service",
+        "RuleID": "cc429813-21db-4019-b520-2f19648e1ef1",
+        "Level": "high",
+        "MitreTags": ["T1543.003"],
+        "MitreTactics": ["Persis"],
+        "Details": {},
+    }
+    det = hayabusa_record_to_detection(rec, "test.evtx")
+    assert det.attack_tactic == "Persistence"
+
+    # Unknown abbreviation passes through unchanged
+    rec2 = dict(rec, MitreTactics=["Unknown"])
+    det2 = hayabusa_record_to_detection(rec2, "test.evtx")
+    assert det2.attack_tactic == "Unknown"
+
+
+# ---------------------------------------------------------------------------
 # HAY-03: MITRE tag filter
 # ---------------------------------------------------------------------------
 def test_mitre_tag_filter():
