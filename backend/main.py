@@ -26,7 +26,7 @@ import duckdb
 from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -959,12 +959,23 @@ def create_app() -> FastAPI:
     # -----------------------------------------------------------------------
     dashboard_dist = Path("dashboard") / "dist"
     if dashboard_dist.is_dir():
+        # Mount under /app for backward compat (Caddy /app/* still works)
         app.mount(
             "/app",
             StaticFiles(directory=str(dashboard_dist), html=True),
             name="dashboard",
         )
         log.info("Dashboard static files mounted", path=str(dashboard_dist))
+
+        # SPA catch-all: serve index.html for any path not matched by an API route.
+        # This enables direct navigation to /detections, /overview, /events etc.
+        # Must be registered AFTER all API routes so it only catches unmatched paths.
+        _spa_index = dashboard_dist / "index.html"
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str) -> FileResponse:  # noqa: RUF029
+            return FileResponse(str(_spa_index))
+
     else:
         log.info("Dashboard not built — skipping static file mount", path=str(dashboard_dist))
 
