@@ -72,4 +72,5 @@ testpaths = ["tests"]
 markers = [
     "unit: unit tests (no external I/O)",
     "hayabusa: integration tests requiring the hayabusa binary on PATH",
+    "chainsaw: integration tests requiring the chainsaw binary on PATH",
 ]
