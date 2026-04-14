@@ -25,7 +25,11 @@ log = get_logger(__name__)
 # Module-level constants
 # ---------------------------------------------------------------------------
 
-HAYABUSA_BIN: str | None = shutil.which("hayabusa") or shutil.which("hayabusa.exe")
+HAYABUSA_BIN: str | None = (
+    shutil.which("hayabusa")
+    or shutil.which("hayabusa.exe")
+    or (r"C:\Tools\hayabusa\hayabusa.exe" if Path(r"C:\Tools\hayabusa\hayabusa.exe").exists() else None)
+)
 
 _LEVEL_MAP: dict[str, str] = {
     "crit": "critical",
@@ -76,6 +80,7 @@ def scan_evtx(evtx_path: str) -> Iterator[dict]:
             "-q",
             "-C",
             "--min-level", "medium",
+            "--profile", "verbose",   # includes MitreTactics, MitreTags, RuleFile, EvtxFile
         ]
         proc = subprocess.run(
             cmd,
@@ -161,8 +166,9 @@ def hayabusa_record_to_detection(
         else f"[Hayabusa] {rule_title}"
     )
 
-    rule_file: str = rec.get("RuleFile") or "unknown"
-    rule_id = f"hayabusa-{rule_file}"
+    # RuleID is the stable sigma UUID; RuleFile is the .yml filename — prefer RuleID
+    rule_id_raw: str = rec.get("RuleID") or rec.get("RuleFile") or "unknown"
+    rule_id = f"hayabusa-{rule_id_raw}"
 
     return DetectionRecord(
         id=str(uuid4()),
