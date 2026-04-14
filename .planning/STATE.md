@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 46
-status: ready
-last_updated: "2026-04-13T15:00:00Z"
+status: Ready for next phase
+last_updated: "2026-04-14T20:26:32.613Z"
 progress:
-  total_phases: 48
-  completed_phases: 45
-  total_plans: 216
-  completed_plans: 226
+  total_phases: 53
+  completed_phases: 44
+  total_plans: 219
+  completed_plans: 222
 ---
 
 # Session State
@@ -68,8 +68,13 @@ See: .planning/PROJECT.md
 - **45-UAT:** Task prompt enriched with hostname from matched events so query_events/get_entity_profile get real results
 - **45-UAT:** Tight system prompt (≤5 tool calls, no prose between calls) reduces investigation to ~230s fitting within 300s timeout
 
+- **48-01:** pytest.importorskip at module level (not per-test) so entire unit file skips atomically when ingestion.hayabusa_scanner absent
+- **48-01:** hayabusa marker added to pyproject.toml markers list to avoid PytestUnknownMarkWarning
+- **48-01:** shutil.which checks both 'hayabusa' and 'hayabusa.exe' for Windows PATH compatibility
+
 ## Session Log
 
+- 2026-04-14: Plan 48-01 complete — Wave 0 TDD stubs: test_hayabusa_scanner.py (6 stubs, importorskip pattern) + test_hayabusa_e2e.py (1 integration stub gated on binary). hayabusa marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
 - 2026-04-13: Phase 45 UAT complete — agent runs end-to-end: spinner → tool_call cards (hostname=WORKSTATION-01, 51 events, mimikatz.exe detected) → verdict SSE event emitted and rendered. All bugs fixed: think=False, DuckDB connection config, FinalAnswerStep capture, hostname enrichment, verdict JSON in reasoning filtered.
 - 2026-04-13: Plan 45-05 complete — dashboard/src/lib/api.ts: 5 Phase 45 interfaces + api.investigations.runAgentic() SSE client (dispatch-by-shape). dashboard/src/views/InvestigationView.svelte: [Summary][Agent] tabs, Agent panel with streaming trace cards, call counter, limit/error banners, Verdict section + Confirm buttons wired to Phase 44 feedback. TypeScript 0 errors. Auto-approved checkpoint (auto_advance=true).
 - 2026-04-13: Plan 45-04 complete — backend/api/investigate.py: POST /investigate/agentic route added with AgenticInvestigateRequest, EventSourceResponse wrapping run_investigation() async generator, deferred smolagents import + error handling. test_agentic_endpoint_exists + test_agentic_sse_content_type GREEN (fixed test URL /agentic→/investigate/agentic). 1092 unit tests passing.
