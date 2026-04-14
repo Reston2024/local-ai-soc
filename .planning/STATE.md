@@ -274,3 +274,4 @@ See: .planning/PROJECT.md
 - Note: RITA already planned as Phase 46; SpiderFoot-equivalent OSINT covered by Phase 32 (AbuseIPDB/Shodan/WHOIS pipeline)
 - Phase 51 added: SpiderFoot OSINT Investigation Platform + DNSTwist typosquatting detection (sourced from SOC threat hunting tools review — SpiderFoot 17,412 stars; distinct from Phase 32 reactive enrichment; analyst-triggered infrastructure mapping)
 - Note: Perplexity threat hunting doc reviewed — lower value than Excel spreadsheet, mostly overlaps with existing phases. DNSTwist the only net-new addition, folded into Phase 51.
+- Phase 52 added: TheHive Case Management Integration (4,531 stars; Docker on GMKtec alongside Malcolm; auto-case creation from High/Critical detections; Cortex for automated observable enrichment; MISP native integration from Phase 50)
