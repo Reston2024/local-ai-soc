@@ -19,7 +19,7 @@
   let runningDetection = $state(false)
   let error = $state<string | null>(null)
   let severityFilter = $state('')
-  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA'
+  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA' | 'HAYABUSA'
 
   // Phase 44: Verdict state
   let verdicts = $state<Map<string, 'TP' | 'FP'>>(new Map())
@@ -45,8 +45,13 @@
         ? detections.filter(d => d.rule_id?.startsWith('corr-'))
         : typeFilter === 'ANOMALY'
         ? detections.filter(d => d.rule_id?.startsWith('anomaly-'))
+        : typeFilter === 'HAYABUSA'
+        ? detections.filter(d => d.detection_source === 'hayabusa')
         : typeFilter === 'SIGMA'
-        ? detections.filter(d => !d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-'))
+        ? detections.filter(d =>
+            d.detection_source === 'sigma' ||
+            (!d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-') && !d.rule_id?.startsWith('hayabusa-') && d.detection_source !== 'hayabusa')
+          )
         : detections
       if (verdictFilter) {
         base = base.filter(d => !verdicts.has(getDetectionId(d)))
@@ -57,6 +62,9 @@
 
   // Correlation count for badge
   let corrCount = $derived(detections.filter(d => d.rule_id?.startsWith('corr-')).length)
+
+  // Phase 48: Hayabusa count for chip badge
+  let hayabusaCount = $derived(detections.filter(d => d.detection_source === 'hayabusa').length)
 
   // Push posture to parent whenever it changes
   $effect(() => { onPostureUpdate?.(postureScore) })
@@ -408,6 +416,10 @@
           onclick={() => { typeFilter = typeFilter === 'SIGMA' ? '' : 'SIGMA'; }}
         >SIGMA</button>
         <button
+          class="chip chip-hayabusa {typeFilter === 'HAYABUSA' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = typeFilter === 'HAYABUSA' ? '' : 'HAYABUSA'; }}
+        >HAYABUSA {hayabusaCount > 0 ? `(${hayabusaCount})` : ''}</button>
+        <button
           class="chip filter-chip {verdictFilter ? 'chip-active chip-unreviewed' : ''}"
           onclick={() => verdictFilter = !verdictFilter}
         >Unreviewed</button>
@@ -511,6 +523,9 @@
                   <span class="verdict-badge verdict-tp">TP</span>
                 {:else if verdicts.get(getDetectionId(d)) === 'FP'}
                   <span class="verdict-badge verdict-fp">FP</span>
+                {/if}
+                {#if d.detection_source === 'hayabusa'}
+                  <span class="badge-hayabusa">HAYABUSA</span>
                 {/if}
               </td>
               <td><span class={severityClass(d.severity)}>{d.severity}</span></td>
@@ -1048,6 +1063,9 @@
   .chip-corr.chip-active { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.5); color: #fca5a5; }
   .chip-anomaly.chip-active { background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.4); color: #fcd34d; }
   .chip-sigma.chip-active { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+  /* Phase 48: Hayabusa chip — amber accent */
+  .chip-hayabusa { border-color: #d97706; color: #fbbf24; }
+  .chip-hayabusa.chip-active { background: #92400e; color: #fef3c7; }
 
   /* Phase 43: Correlation type badge on detection rows */
   .corr-type-badge {
@@ -1122,6 +1140,19 @@
   .verdict-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 4px; }
   .verdict-tp { background: rgba(34,197,94,0.2); color: #22c55e; }
   .verdict-fp { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+  /* Phase 48: Hayabusa detection row badge — amber */
+  .badge-hayabusa {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #92400e;
+    color: #fef3c7;
+    border: 1px solid #d97706;
+    margin-left: 4px;
+  }
   .verdict-row { display: flex; gap: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 12px; }
   .verdict-btn { padding: 6px 14px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 13px; }
   .verdict-btn:hover { background: rgba(255,255,255,0.06); }

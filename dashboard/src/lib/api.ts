@@ -103,6 +103,7 @@ export interface Detection {
   correlation_type?: string       // 'PORT_SCAN' | 'BRUTE_FORCE' | 'BEACON' | 'CHAIN'
   matched_event_count?: number    // convenience count for row badge
   verdict?: string | null         // Phase 44: 'TP' | 'FP' | null
+  detection_source?: string | null  // Phase 48: 'sigma' | 'hayabusa' | 'correlation' | null
 }
 
 export interface GraphEntity {
