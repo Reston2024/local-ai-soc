@@ -71,4 +71,5 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "unit: unit tests (no external I/O)",
+    "hayabusa: integration tests requiring the hayabusa binary on PATH",
 ]
