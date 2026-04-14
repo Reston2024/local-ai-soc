@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 48
-status: In progress (48-02 complete)
-last_updated: "2026-04-14T20:38:00.000Z"
+status: Phase 48 complete (48-03 done)
+last_updated: "2026-04-14T20:48:00.000Z"
 progress:
   total_phases: 53
-  completed_phases: 44
+  completed_phases: 45
   total_plans: 219
-  completed_plans: 223
+  completed_plans: 224
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 48
 **Previous phase:** 47-live-performance-gauges — COMPLETE ✅
-**Status:** Phase 48 in progress — Plan 48-02 complete
+**Status:** Phase 48 COMPLETE — Plan 48-03 complete (HAY-07 fulfilled)
 
 ## Key Decisions
 
@@ -75,9 +75,12 @@ See: .planning/PROJECT.md
 - **48-02:** hayabusa_findings: int = 0 field added to IngestionResult dataclass for type-safe scan count tracking
 - **48-02:** Hayabusa scan block in ingest_file() wrapped non-fatally (try/except) — EVTX parse must never be aborted by Hayabusa failures
 - **48-02:** detection_source default='sigma' in insert_detection() ensures 100% backward compat with all existing callers
+- **48-03:** SIGMA filter uses backward-compat dual condition: detection_source==='sigma' OR (no corr-/anomaly-/hayabusa- prefix AND not hayabusa) — pre-Phase-48 detections still appear under SIGMA
+- **48-03:** HAYABUSA chip filter uses detection_source==='hayabusa' directly (not rule_id prefix) for correctness; badge-hayabusa placed alongside verdict-badge in detection row
 
 ## Session Log
 
+- 2026-04-14: Plan 48-03 complete — Wave 2 frontend: Detection interface extended with detection_source, HAYABUSA chip (amber) + hayabusaCount $derived + corrected SIGMA filter + amber badge-hayabusa on detection rows. TypeScript 0 errors. Phase 48 COMPLETE — all requirements HAY-01 through HAY-07 fulfilled.
 - 2026-04-14: Plan 48-02 complete — Wave 1 implementation: ingestion/hayabusa_scanner.py (scan_evtx, hayabusa_record_to_detection, _LEVEL_MAP, HAYABUSA_BIN), SQLite hayabusa_scanned_files dedup table, detection_source column migration, insert_detection() extended, loader.py wired. All 6 unit tests GREEN.
 - 2026-04-14: Plan 48-01 complete — Wave 0 TDD stubs: test_hayabusa_scanner.py (6 stubs, importorskip pattern) + test_hayabusa_e2e.py (1 integration stub gated on binary). hayabusa marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
 - 2026-04-13: Phase 45 UAT complete — agent runs end-to-end: spinner → tool_call cards (hostname=WORKSTATION-01, 51 events, mimikatz.exe detected) → verdict SSE event emitted and rendered. All bugs fixed: think=False, DuckDB connection config, FinalAnswerStep capture, hostname enrichment, verdict JSON in reasoning filtered.
