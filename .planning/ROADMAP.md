@@ -648,10 +648,12 @@ Plans:
 **Goal:** Integrate Chainsaw (Rust-based, 3,511 stars, actively maintained) as a complementary Windows Event Log analysis layer to Phase 48's Hayabusa. Where Hayabusa excels at timeline generation and MITRE tagging, Chainsaw's strengths are MFT/EVTX/journal parsing, lateral movement hunting, and persistence detection with different rule coverage. Run both tools against the same EVTX sources; merge deduplicated findings into the detections pipeline. Together Hayabusa + Chainsaw provide near-complete coverage of Windows-based attacker TTPs from event logs alone.
 **Requirements**: Chainsaw binary on PATH; Phase 48 Hayabusa integration complete; EVTX ingest pipeline.
 **Depends on:** Phase 48
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 49 to break down)
+- [ ] 49-01-PLAN.md — Wave 0 TDD stubs: test_chainsaw_scanner.py (7 unit stubs), test_chainsaw_e2e.py (1 integration stub), chainsaw marker in pyproject.toml
+- [ ] 49-02-PLAN.md — Wave 1 Backend: chainsaw_scanner.py, SQLite dedup table, loader.py wiring, health.py chainsaw component (CHA-01 to CHA-05, CHA-07)
+- [ ] 49-03-PLAN.md — Wave 2 Frontend: CHAINSAW chip + teal badge in DetectionsView, Chainsaw Findings tile in OverviewView, api.ts type update (CHA-06)
 
 ### Phase 50: MISP Threat Intelligence Integration
 
