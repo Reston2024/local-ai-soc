@@ -109,15 +109,20 @@ def scan_evtx(evtx_path: str) -> Iterator[dict]:
     os.close(tmp_fd)  # close file descriptor; Chainsaw will write the file
 
     try:
-        # Build command conditionally — only add optional flags if paths exist
-        cmd: list[str] = [CHAINSAW_BIN, "hunt", evtx_path]
+        # Build command: chainsaw hunt [RULES] [PATH] [options]
+        # [RULES] is the first positional arg (the rules directory), then the EVTX path.
+        # -s adds sigma rules; --mapping wires sigma field names to Windows event fields.
+        cmd: list[str] = [CHAINSAW_BIN, "hunt"]
+
+        if _RULES_DIR:
+            cmd.append(_RULES_DIR)   # positional RULES directory (built-in chainsaw rules)
+
+        cmd.append(evtx_path)        # positional PATH (the EVTX file)
 
         if _SIGMA_DIR:
             cmd += ["-s", _SIGMA_DIR]
         if _MAPPING_FILE:
             cmd += ["--mapping", _MAPPING_FILE]
-        if _RULES_DIR:
-            cmd += ["-r", _RULES_DIR]
 
         cmd += ["--json", "-o", tmp_path, "-q"]
 
