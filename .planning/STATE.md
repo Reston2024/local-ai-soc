@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 48
-status: planning
-last_updated: "2026-04-14T20:46:28.858Z"
+current_phase: 49
+status: in-progress
+last_updated: "2026-04-14T22:22:00Z"
 progress:
   total_phases: 53
   completed_phases: 45
-  total_plans: 219
-  completed_plans: 224
+  total_plans: 222
+  completed_plans: 225
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 48
-**Previous phase:** 47-live-performance-gauges — COMPLETE ✅
-**Status:** Ready to plan
+**Current phase:** 49
+**Previous phase:** 48-hayabusa-windows-event-log-analysis — COMPLETE ✅
+**Status:** In progress — Plan 49-01 complete, Plan 49-02 (Wave 1 implementation) next
 
 ## Key Decisions
 
@@ -78,8 +78,13 @@ See: .planning/PROJECT.md
 - **48-03:** SIGMA filter uses backward-compat dual condition: detection_source==='sigma' OR (no corr-/anomaly-/hayabusa- prefix AND not hayabusa) — pre-Phase-48 detections still appear under SIGMA
 - **48-03:** HAYABUSA chip filter uses detection_source==='hayabusa' directly (not rule_id prefix) for correctness; badge-hayabusa placed alongside verdict-badge in detection row
 
+- **49-01:** pytest.importorskip at module level (not per-test) so entire unit file skips atomically when ingestion.chainsaw_scanner absent — mirrors Phase 48 hayabusa pattern exactly
+- **49-01:** chainsaw marker added to pyproject.toml markers list to avoid PytestUnknownMarkWarning
+- **49-01:** shutil.which checks both 'chainsaw' and 'chainsaw.exe' for Windows PATH compatibility
+
 ## Session Log
 
+- 2026-04-14: Plan 49-01 complete — Wave 0 TDD stubs: test_chainsaw_scanner.py (7 stubs, importorskip pattern) + test_chainsaw_e2e.py (1 integration stub gated on binary). chainsaw marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
 - 2026-04-14: Plan 48-03 complete — Wave 2 frontend: Detection interface extended with detection_source, HAYABUSA chip (amber) + hayabusaCount $derived + corrected SIGMA filter + amber badge-hayabusa on detection rows. TypeScript 0 errors. Phase 48 COMPLETE — all requirements HAY-01 through HAY-07 fulfilled.
 - 2026-04-14: Plan 48-02 complete — Wave 1 implementation: ingestion/hayabusa_scanner.py (scan_evtx, hayabusa_record_to_detection, _LEVEL_MAP, HAYABUSA_BIN), SQLite hayabusa_scanned_files dedup table, detection_source column migration, insert_detection() extended, loader.py wired. All 6 unit tests GREEN.
 - 2026-04-14: Plan 48-01 complete — Wave 0 TDD stubs: test_hayabusa_scanner.py (6 stubs, importorskip pattern) + test_hayabusa_e2e.py (1 integration stub gated on binary). hayabusa marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
