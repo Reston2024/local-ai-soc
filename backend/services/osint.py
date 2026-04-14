@@ -169,7 +169,9 @@ class OsintService:
         # Step 2: check cache
         cached_entry = await asyncio.to_thread(self._store.get_osint_cache, ip)
         if cached_entry and _is_cache_valid(cached_entry.get("fetched_at")):
-            data = cached_entry["data"]
+            # get_osint_cache now returns a flat row dict; parse result_json here
+            _raw = cached_entry.get("result_json") or "{}"
+            data: dict = json.loads(_raw) if isinstance(_raw, str) else (_raw or {})
             return OsintResult(
                 ip=ip,
                 whois=data.get("whois"),

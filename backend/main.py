@@ -467,6 +467,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.info("Malcolm collection disabled (MALCOLM_ENABLED=False)")
         app.state.malcolm_collector = None
 
+    # 8d. Windows Event Log live collector (Sysmon + Security + PowerShell + WMI)
+    winevent_task: asyncio.Task | None = None
+    if getattr(settings, "WINEVENT_ENABLED", True):
+        try:
+            from ingestion.jobs.winevent_collector import WinEventCollector as _WECollector
+            from ingestion.loader import IngestionLoader as _WELoader
+            _we_loader = _WELoader(stores=stores, ollama_client=ollama, asset_store=asset_store)
+            _we_collector = _WECollector(
+                loader=_we_loader,
+                sqlite_store=sqlite_store,
+                interval_sec=getattr(settings, "WINEVENT_POLL_INTERVAL", 30),
+            )
+            winevent_task = asyncio.ensure_future(_we_collector.start())
+            app.state.winevent_collector = _we_collector
+            log.info("WinEventCollector started (interval=%ds)", getattr(settings, "WINEVENT_POLL_INTERVAL", 30))
+        except Exception as exc:
+            log.warning("WinEventCollector not available — skipping: %s", exc)
+            app.state.winevent_collector = None
+    else:
+        log.info("Windows Event Log collection disabled (WINEVENT_ENABLED=False)")
+        app.state.winevent_collector = None
+
     # 8a. Daily KPI snapshot scheduler (midnight cron job)
     global _daily_snapshot_scheduler
     _daily_snapshot_scheduler = AsyncIOScheduler()
@@ -548,6 +570,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         malcolm_task.cancel()
         try:
             await malcolm_task
+        except asyncio.CancelledError:
+            pass
+
+    # Cancel winevent collector task if running
+    if winevent_task is not None and not winevent_task.done():
+        winevent_task.cancel()
+        try:
+            await winevent_task
         except asyncio.CancelledError:
             pass
 
@@ -914,6 +944,13 @@ def create_app() -> FastAPI:
         log.info("Feedback router mounted at /api/feedback (Phase 44)")
     except Exception as exc:
         log.warning("Feedback router not available: %s", exc)
+
+    try:
+        from backend.api.coverage import router as coverage_router
+        app.include_router(coverage_router, dependencies=[Depends(verify_token)])
+        log.info("Coverage router mounted at /api/coverage (Phase 40)")
+    except Exception as exc:
+        log.warning("Coverage router not available: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built

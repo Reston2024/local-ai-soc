@@ -23,6 +23,70 @@ from backend.models.provenance import (
 router = APIRouter(prefix="/api/provenance", tags=["provenance"])
 
 
+@router.get("/recent")
+async def get_recent_provenance(
+    request: Request,
+    limit: int = 20,
+    stores: Stores = Depends(get_stores),
+) -> dict:
+    """
+    Return recent provenance records across all four tables (ingest, detection, LLM, playbook),
+    sorted by created_at DESC. Used by the UI to auto-populate the recent records list.
+    """
+    def _query() -> dict:
+        conn = stores.sqlite._conn
+
+        def safe_query(sql: str, params: tuple = ()) -> list[dict]:
+            try:
+                rows = conn.execute(sql, params).fetchall()
+                return [dict(r) for r in rows]
+            except Exception:
+                return []
+
+        detections = safe_query(
+            """
+            SELECT detection_id AS record_id, rule_id, rule_title AS label,
+                   detected_at AS created_at, 'detection' AS record_type
+            FROM detection_provenance
+            ORDER BY detected_at DESC LIMIT ?
+            """,
+            (limit,),
+        )
+        llm = safe_query(
+            """
+            SELECT audit_id AS record_id, model_id AS label, prompt_template_name,
+                   created_at, 'llm' AS record_type
+            FROM llm_audit_provenance
+            ORDER BY created_at DESC LIMIT ?
+            """,
+            (limit,),
+        )
+        playbook = safe_query(
+            """
+            SELECT run_id AS record_id, playbook_id AS label,
+                   created_at, 'playbook' AS record_type
+            FROM playbook_run_provenance
+            ORDER BY created_at DESC LIMIT ?
+            """,
+            (limit,),
+        )
+        ingest = safe_query(
+            """
+            SELECT ip.prov_id AS record_id, ip.source_file AS label,
+                   ip.ingested_at AS created_at, 'ingest' AS record_type
+            FROM ingest_provenance ip
+            ORDER BY ip.ingested_at DESC LIMIT ?
+            """,
+            (limit,),
+        )
+
+        combined = detections + llm + playbook + ingest
+        combined.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+        return {"records": combined[:limit]}
+
+    return await asyncio.to_thread(_query)
+
+
 @router.get(
     "/ingest/{event_id}",
     response_model=IngestProvenanceRecord,

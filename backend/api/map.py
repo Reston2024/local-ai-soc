@@ -241,13 +241,32 @@ async def get_map_data(
 
             # Classification columns (added in Plan 03; may be None on pre-41 cache)
             ip_type = cached.get("ip_type") or _resolve_ip_type({**cached, "result_json": cached.get("result_json")})
+
+            # Geo data lives in result["geo"] sub-dict (OsintService format).
+            # Keys are "latitude"/"longitude"/"country_name"/"country_iso_code"/"city".
+            # Older/fallback caches may store flat "lat"/"lon"/"country" at top level.
+            geo = result.get("geo") or {}
+            lat = geo.get("latitude") or geo.get("lat") or result.get("lat")
+            lon = geo.get("longitude") or geo.get("lon") or result.get("lon")
+            country = (geo.get("country_name") or geo.get("country")
+                       or result.get("country"))
+            country_iso = (geo.get("country_iso_code") or geo.get("countryCode")
+                           or result.get("countryCode"))
+            city = geo.get("city") or result.get("city")
+            asn = (geo.get("autonomous_system_organization") or geo.get("org")
+                   or result.get("as") or result.get("asn"))
+
+            # If geo is missing from cache, queue a re-enrichment so next load has data
+            if not lat or not lon:
+                missing_ips.append(ip)
+
             ip_data[ip] = {
-                "lat": result.get("lat"),
-                "lon": result.get("lon"),
-                "country": result.get("country"),
-                "country_iso": result.get("countryCode"),
-                "city": result.get("city"),
-                "asn": result.get("as") or result.get("asn"),
+                "lat": lat,
+                "lon": lon,
+                "country": country,
+                "country_iso": country_iso,
+                "city": city,
+                "asn": asn,
                 "ip_type": ip_type,
                 "ipsum_tier": cached.get("ipsum_tier"),
                 "is_tor": bool(cached.get("is_tor")),

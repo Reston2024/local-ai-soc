@@ -77,6 +77,32 @@ class Settings(BaseSettings):
     MALCOLM_OPENSEARCH_VERIFY_SSL: bool = False  # Intentional — Malcolm uses self-signed TLS
     MALCOLM_POLL_INTERVAL: int = 30  # seconds between OpenSearch polls
 
+    # Windows Event Log live collection (Sysmon + Security + PowerShell + WMI)
+    WINEVENT_ENABLED: bool = True   # ON by default — works on any Windows host
+    WINEVENT_POLL_INTERVAL: int = 30  # seconds between Get-WinEvent polls
+
+    # IPFire enforcement (SSH-based iptables block actions)
+    # Set IPFIRE_ENABLED=true once SSH key is provisioned on IPFire
+    IPFIRE_ENABLED: bool = False   # OFF until SSH key configured
+    IPFIRE_HOST: str = "192.168.1.1"
+    IPFIRE_SSH_PORT: int = 22
+    IPFIRE_SSH_USER: str = "root"
+    IPFIRE_SSH_KEY: str = ""  # e.g. C:/Users/Admin/.ssh/id_ed25519_ipfire
+
+    # Phase 40 — Enforcement Policy Gate (response control)
+    # Conservative defaults per NIST SP 800-61r2 §3.1 and CISA SOAR guidance.
+    # Learning mode ON by default for first 30 days — observe without executing.
+    # Transition plan:
+    #   Days  1–30: ENFORCEMENT_LEARNING_MODE=true  (observe only)
+    #   Days 31–60: ENFORCEMENT_LEARNING_MODE=false, ENFORCEMENT_REQUIRE_APPROVAL=true (human-in-loop)
+    #   Day  60+:   Selective automation after documented signal validation
+    ENFORCEMENT_LEARNING_MODE: bool = True       # NIST 800-61r2 §3.1 baseline period
+    ENFORCEMENT_MIN_CONFIDENCE: float = 0.85     # 85% — conservative per CISA SOAR guidance
+    ENFORCEMENT_RATE_LIMIT: int = 3              # conservative cap during baseline period
+    ENFORCEMENT_RATE_WINDOW_SEC: int = 3600      # rolling window = 1 hour
+    ENFORCEMENT_SAFELIST_CIDRS: str = ""         # comma-sep CIDRs; blank = use RFC-1918 defaults
+    ENFORCEMENT_REQUIRE_APPROVAL: bool = True    # always require human confirm
+
     # Ubuntu normalization pipeline (Phase 31)
     # Set UBUNTU_NORMALIZER_URL=http://192.168.1.22:8080 in .env to enable.
     # Empty string = Ubuntu poll disabled (default for systems without Ubuntu N150).

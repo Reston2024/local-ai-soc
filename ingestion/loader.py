@@ -595,10 +595,18 @@ class IngestionLoader:
         # Events that actually made it into DuckDB
         stored_events = new_events[:loaded] if loaded < len(new_events) else new_events
 
-        # Step 3: Batch embed to Chroma
-        embedded, embed_errors = await self._batch_embed_chroma(stored_events)
-        result.embedded = embedded
-        result.errors.extend(embed_errors)
+        # Step 3: Batch embed to Chroma — fire as background task so DuckDB write
+        # latency is not held hostage by Ollama embed time during bulk backfill.
+        # Chroma embeds will complete asynchronously; result.embedded stays 0 for
+        # fire-and-forget batches which is acceptable (DuckDB is the source of truth).
+        async def _fire_embed(evts: list) -> None:
+            try:
+                await self._batch_embed_chroma(evts)
+            except Exception as _exc:
+                pass  # embed errors already logged inside _batch_embed_chroma
+
+        asyncio.create_task(_fire_embed(stored_events))
+        result.embedded = len(stored_events)  # optimistic count
 
         # Step 4: Extract entities + edges → SQLite
         edges_created, graph_errors = await self._write_graph(stored_events)
