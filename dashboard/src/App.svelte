@@ -178,8 +178,8 @@
     {
       label: 'Respond',
       items: [
-        { id: 'playbooks',       label: 'Playbooks',       color: '', beta: true },
-        { id: 'recommendations', label: 'Recommendations', color: '', beta: true },
+        { id: 'playbooks',       label: 'Playbooks',       color: '' },
+        { id: 'recommendations', label: 'Recommendations', color: '' },
         { id: 'reports',         label: 'Reports',         color: '' },
       ],
     },
@@ -291,6 +291,8 @@
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="5" width="11" height="8" rx="2" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="9" r="1" fill="currentColor"/><circle cx="10" cy="9" r="1" fill="currentColor"/><line x1="8" y1="5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="2" r="0.9" fill="currentColor"/></svg>
                 {:else if item.id === 'ingest'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><line x1="8" y1="2" x2="8" y2="10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M5 7.5L8 11L11 7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><line x1="3" y1="13" x2="13" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                {:else if item.id === 'performance'}
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2.5 11.5A6.5 6.5 0 0 1 13.5 11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="4.2" y1="5.8" x2="5.2" y2="6.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="8" y1="4" x2="8" y2="5.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="11.8" y1="5.8" x2="10.8" y2="6.8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="8" y1="11.5" x2="10.5" y2="7.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="8" cy="11.5" r="1" fill="currentColor"/></svg>
                 {:else if item.id === 'settings'}
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.33.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/></svg>
                 {/if}
