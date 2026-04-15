@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 50
 status: executing
-last_updated: "2026-04-15T05:25:00.000Z"
+last_updated: "2026-04-15T05:26:16.522Z"
 progress:
   total_phases: 54
   completed_phases: 46
   total_plans: 225
-  completed_plans: 228
+  completed_plans: 229
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 50
 **Previous phase:** 49-performance-monitoring (Plans 49-01, 49-02 — status per prior session)
-**Status:** In progress — Plan 50-01 complete (Wave 0 stubs + infra), Plan 50-02 (Wave 1 implementation) next
+**Status:** In progress — Plan 50-02 complete (Wave 1: MispSyncService + MispWorker), Plan 50-03 (Wave 2: /api/intel/misp-events endpoint) next
 
 ## Key Decisions
 
@@ -88,9 +88,14 @@ See: .planning/PROJECT.md
 - **50-01:** MispSyncService stub uses lazy PyMISP import inside fetch_ioc_attributes — allows module import without live pymisp wheel at module level; Wave 1 adds the live import
 - **50-01:** MISP Docker Compose targets GMKtec N100 (not Windows host) — NOT merged into root compose; N100 memory-constrained: 256MB mariadb pool, 256MB valkey cap, NUM_WORKERS_EMAIL=0, NUM_WORKERS_UPDATE=1
 - **50-01:** customize_misp.sh is a guidance script (echo instructions) rather than automated feed-enable — prevents accidental download of all 80+ feeds exhausting N100 memory on first start
+- **50-02:** PyMISP lazy import via _load_pymisp() sets module-level PyMISP/MISPAttribute names — enables patch('backend.services.intel.misp_sync.PyMISP') in tests while keeping module importable without pymisp installed
+- **50-02:** isinstance(attr, MISPAttribute) guard skipped when MISPAttribute is None (test env where only PyMISP was patched) — prevents TypeError in unit tests
+- **50-02:** asyncio.run() replaces deprecated get_event_loop().run_until_complete() in test stubs — fixes RuntimeError in full pytest suite after pytest-asyncio closes event loop
+- **50-02:** MispWorker only starts when MISP_ENABLED=True — prevents connection errors on dev hosts without MISP deployed
 
 ## Session Log
 
+- 2026-04-15: Plan 50-02 complete — Wave 1: MispSyncService.fetch_ioc_attributes() fully implemented (lazy _load_pymisp(), PyMISP/MISPAttribute at module scope for patching), MispWorker added to feed_sync.py (6h interval, retroactive scan on new IOCs), MISP_ENABLED/URL/KEY/SSL_VERIFY/SYNC_INTERVAL_SEC/SYNC_LAST_HOURS added to Settings, main.py wired (conditional start). All 5 test_misp_sync.py tests GREEN. 1151 unit tests passing.
 - 2026-04-14: Plan 49-02 complete — Wave 1 implementation: ingestion/chainsaw_scanner.py (CHAINSAW_BIN, scan_evtx, chainsaw_record_to_detection, _LEVEL_MAP), SQLite chainsaw_scanned_files dedup table + is_chainsaw_scanned/mark_chainsaw_scanned, IngestionResult.chainsaw_findings, _run_chainsaw_scan() + non-fatal loader block, _check_chainsaw() health component. All 7 unit tests GREEN.
 - 2026-04-14: Plan 49-01 complete — Wave 0 TDD stubs: test_chainsaw_scanner.py (7 stubs, importorskip pattern) + test_chainsaw_e2e.py (1 integration stub gated on binary). chainsaw marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
 - 2026-04-14: Plan 48-03 complete — Wave 2 frontend: Detection interface extended with detection_source, HAYABUSA chip (amber) + hayabusaCount $derived + corrected SIGMA filter + amber badge-hayabusa on detection rows. TypeScript 0 errors. Phase 48 COMPLETE — all requirements HAY-01 through HAY-07 fulfilled.
