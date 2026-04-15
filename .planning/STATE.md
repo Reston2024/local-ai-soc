@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 49
+current_phase: 50
 status: executing
-last_updated: "2026-04-14T22:26:32.019Z"
+last_updated: "2026-04-15T05:25:00.000Z"
 progress:
-  total_phases: 53
-  completed_phases: 45
-  total_plans: 222
-  completed_plans: 226
+  total_phases: 54
+  completed_phases: 46
+  total_plans: 225
+  completed_plans: 228
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 49
-**Previous phase:** 48-hayabusa-windows-event-log-analysis — COMPLETE ✅
-**Status:** In progress — Plan 49-01 complete, Plan 49-02 (Wave 1 implementation) next
+**Current phase:** 50
+**Previous phase:** 49-performance-monitoring (Plans 49-01, 49-02 — status per prior session)
+**Status:** In progress — Plan 50-01 complete (Wave 0 stubs + infra), Plan 50-02 (Wave 1 implementation) next
 
 ## Key Decisions
 
@@ -84,6 +84,10 @@ See: .planning/PROJECT.md
 - **49-02:** _extract_technique() helper used for MITRE technique extraction to handle both T1003 and T1003.001 sub-technique formats (last segment length check failed for 3-char subtechnique IDs like "001")
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
+
+- **50-01:** MispSyncService stub uses lazy PyMISP import inside fetch_ioc_attributes — allows module import without live pymisp wheel at module level; Wave 1 adds the live import
+- **50-01:** MISP Docker Compose targets GMKtec N100 (not Windows host) — NOT merged into root compose; N100 memory-constrained: 256MB mariadb pool, 256MB valkey cap, NUM_WORKERS_EMAIL=0, NUM_WORKERS_UPDATE=1
+- **50-01:** customize_misp.sh is a guidance script (echo instructions) rather than automated feed-enable — prevents accidental download of all 80+ feeds exhausting N100 memory on first start
 
 ## Session Log
 
@@ -297,3 +301,4 @@ See: .planning/PROJECT.md
 - Phase 51 added: SpiderFoot OSINT Investigation Platform + DNSTwist typosquatting detection (sourced from SOC threat hunting tools review — SpiderFoot 17,412 stars; distinct from Phase 32 reactive enrichment; analyst-triggered infrastructure mapping)
 - Note: Perplexity threat hunting doc reviewed — lower value than Excel spreadsheet, mostly overlaps with existing phases. DNSTwist the only net-new addition, folded into Phase 51.
 - Phase 52 added: TheHive Case Management Integration (4,531 stars; Docker on GMKtec alongside Malcolm; auto-case creation from High/Critical detections; Cortex for automated observable enrichment; MISP native integration from Phase 50)
+- Phase 53 added: Network Privacy Monitoring — Suricata cookie exfil detection + email tracking pixel correlation via Zeek HTTP logs, enriched against EasyPrivacy/Disconnect.me blocklists; pixel-timing correlation (email delivery → pixel GET → C2) is differentiating SOC value; slots into Malcolm/Zeek → Logstash → OpenSearch pipeline

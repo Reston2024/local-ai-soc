@@ -660,7 +660,7 @@ Plans:
 **Goal:** Integrate a self-hosted MISP (Malware Information Sharing Platform) instance on the GMKtec as the project's structured threat intelligence backbone — completing the work deferred from Phase 33. MISP provides STIX/TAXII 2.1 ingestion, IOC relationship graphs, TLP-aware sharing, and a REST API. Connect MISP to the existing ioc_store via scheduled sync: pull MISP events → normalize to the internal IOC schema → retroactive hunt against historical events. Surface MISP-sourced intelligence distinctly in ThreatIntelView with confidence scores and event context. Unlocks community feed subscriptions (CIRCL, MISPProject defaults) at no cost.
 **Requirements**: Docker on GMKtec (Malcolm already running there); Phase 33 IOC pipeline; existing ThreatIntelView.
 **Depends on:** Phase 49
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 50-01-PLAN.md — Wave 0: pymisp dep, MispSyncService stub, unit test stubs (test_misp_sync.py, test_intel_api_misp.py), MISP Docker Compose infra scaffold
