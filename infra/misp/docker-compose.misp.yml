@@ -1,0 +1,77 @@
+# MISP Threat Intelligence Platform — GMKtec N100 deployment
+# Deploy: docker compose -f docker-compose.misp.yml --env-file .env.misp up -d
+# Note: This runs on the GMKtec alongside Malcolm. NOT merged into root compose.
+# Memory budget: misp-core ~1.5GB, mariadb ~256MB, redis ~256MB = ~2GB idle
+
+services:
+  misp-db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MISP_DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: misp
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: "${MISP_DB_PASSWORD}"
+    volumes:
+      - misp_db_data:/var/lib/mysql
+    command: >
+      --innodb_buffer_pool_size=256M
+      --innodb_io_capacity=200
+      --innodb_flush_log_at_trx_commit=2
+    healthcheck:
+      test: ["CMD", "mysqladmin", "status", "-u", "root", "-p${MISP_DB_ROOT_PASSWORD}"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 30s
+
+  misp-redis:
+    image: valkey/valkey:7.2
+    restart: unless-stopped
+    # Cap at 256MB to coexist with Malcolm's OpenSearch on the N100
+    command: valkey-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - misp_cache_data:/data
+
+  misp-core:
+    image: ghcr.io/misp/misp-docker/misp-core:latest
+    restart: unless-stopped
+    ports:
+      - "8080:80"   # LAN HTTP only — no public exposure
+    depends_on:
+      misp-db:
+        condition: service_healthy
+      misp-redis:
+        condition: service_started
+    environment:
+      BASE_URL: "http://${GMKTEC_IP:-192.168.1.22}:8080"
+      MYSQL_HOST: misp-db
+      MYSQL_USER: misp
+      MYSQL_PASSWORD: "${MISP_DB_PASSWORD}"
+      MYSQL_DATABASE: misp
+      REDIS_HOST: misp-redis
+      ADMIN_EMAIL: "${MISP_ADMIN_EMAIL}"
+      ADMIN_PASSWORD: "${MISP_ADMIN_PASSWORD}"
+      ENCRYPTION_KEY: "${MISP_ENCRYPTION_KEY}"
+      # Minimal workers — N100 is single-threaded heavy under Malcolm
+      NUM_WORKERS_DEFAULT: 2
+      NUM_WORKERS_PRIO: 2
+      NUM_WORKERS_CACHE: 2
+      NUM_WORKERS_EMAIL: 0
+      NUM_WORKERS_UPDATE: 1
+    volumes:
+      - misp_files:/var/www/MISP/app/files
+      - misp_config:/var/www/MISP/app/Config
+      - ./customize_misp.sh:/var/www/MISP/app/files/customize_misp.sh:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost/users/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s  # MISP takes 60-90s on N100 (PHP/DB migrations)
+
+volumes:
+  misp_db_data:
+  misp_cache_data:
+  misp_files:
+  misp_config:

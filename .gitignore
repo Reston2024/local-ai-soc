@@ -90,3 +90,6 @@ artifacts/
 *.swp
 
 .claude/settings.local.json
+
+# MISP secrets
+infra/misp/.env.misp
