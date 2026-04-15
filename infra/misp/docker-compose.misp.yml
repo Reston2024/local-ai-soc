@@ -29,7 +29,8 @@ services:
     image: valkey/valkey:7.2
     restart: unless-stopped
     # Cap at 256MB to coexist with Malcolm's OpenSearch on the N100
-    command: valkey-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # requirepass matches MISP's hardcoded default redis auth in config.php
+    command: valkey-server --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass redispassword
     volumes:
       - misp_cache_data:/data
 
@@ -37,14 +38,15 @@ services:
     image: ghcr.io/misp/misp-docker/misp-core:latest
     restart: unless-stopped
     ports:
-      - "8080:80"   # LAN HTTP only — no public exposure
+      - "8080:80"   # HTTP (nginx redirects to HTTPS)
+      - "8443:443"  # HTTPS — self-signed cert, use ssl_verify=False
     depends_on:
       misp-db:
         condition: service_healthy
       misp-redis:
         condition: service_started
     environment:
-      BASE_URL: "http://${GMKTEC_IP:-192.168.1.22}:8080"
+      BASE_URL: "https://${GMKTEC_IP:-192.168.1.22}:8443"
       MYSQL_HOST: misp-db
       MYSQL_USER: misp
       MYSQL_PASSWORD: "${MISP_DB_PASSWORD}"
