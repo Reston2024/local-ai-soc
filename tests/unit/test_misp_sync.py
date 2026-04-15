@@ -46,7 +46,6 @@ def test_confidence_mapping():
     assert THREAT_LEVEL_CONFIDENCE[4] == 30
 
 
-@pytest.mark.skipif(True, reason="Wave 0 stub — fetch_ioc_attributes raises NotImplementedError until Plan 50-02")
 def test_fetch_ioc_attributes_returns_list():
     """fetch_ioc_attributes() returns a list of normalized dicts."""
     mock_attr = MagicMock()
