@@ -42,6 +42,7 @@ dependencies = [
     "smolagents[litellm]>=1.24.0",
     # Performance metrics
     "psutil>=6.0.0",
+    "pymisp>=2.5.33.1",
 ]
 
 [dependency-groups]
