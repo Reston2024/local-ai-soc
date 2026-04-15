@@ -154,6 +154,14 @@ class Settings(BaseSettings):
     # with TOTP MFA. Leave empty (default) to disable the legacy path completely.
     LEGACY_TOTP_SECRET: str = ""
 
+    # Phase 50: MISP Threat Intelligence
+    MISP_ENABLED: bool = False            # OFF until MISP is deployed on GMKtec
+    MISP_URL: str = "http://192.168.1.22:8080"
+    MISP_KEY: str = ""                    # 40-char hex API key from MISP web UI
+    MISP_SSL_VERIFY: bool = False         # False for LAN self-signed cert
+    MISP_SYNC_INTERVAL_SEC: int = 21600   # 6-hour sync cycle
+    MISP_SYNC_LAST_HOURS: int = 24        # Pull attrs updated in last N hours
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000

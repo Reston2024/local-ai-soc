@@ -63,7 +63,7 @@ from backend.api.perf import router as perf_router  # noqa: E402
 from backend.api.query import router as query_router  # noqa: E402
 from backend.services.attack.asset_store import AssetStore  # noqa: E402
 from backend.services.attack.attack_store import AttackStore  # noqa: E402
-from backend.services.intel.feed_sync import CisaKevWorker, FeodoWorker, ThreatFoxWorker  # noqa: E402
+from backend.services.intel.feed_sync import CisaKevWorker, FeodoWorker, MispWorker, ThreatFoxWorker  # noqa: E402
 from backend.services.intel.ioc_store import IocStore  # noqa: E402
 from backend.services.ollama_client import OllamaClient  # noqa: E402
 from backend.services.metrics_service import MetricsService  # noqa: E402
@@ -291,15 +291,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     feodo_worker = FeodoWorker(ioc_store, sqlite_store._conn, duckdb_store=duckdb_store)
     cisa_kev_worker = CisaKevWorker(ioc_store, sqlite_store._conn, duckdb_store=duckdb_store)
     threatfox_worker = ThreatFoxWorker(ioc_store, sqlite_store._conn, duckdb_store=duckdb_store)
+    misp_worker = MispWorker(
+        ioc_store,
+        sqlite_store._conn,
+        interval_sec=settings.MISP_SYNC_INTERVAL_SEC,
+        duckdb_store=duckdb_store,
+        misp_url=settings.MISP_URL,
+        misp_key=settings.MISP_KEY,
+        misp_ssl=settings.MISP_SSL_VERIFY,
+        last_hours=settings.MISP_SYNC_LAST_HOURS,
+    )
 
     # Register feed workers as asyncio background tasks (run immediately on event loop)
     asyncio.ensure_future(feodo_worker.run())
     asyncio.ensure_future(cisa_kev_worker.run())
     asyncio.ensure_future(threatfox_worker.run())
+    if settings.MISP_ENABLED:
+        asyncio.create_task(misp_worker.run(), name="misp_worker")
 
     # Store ioc_store on app.state for use by the intel API router
     app.state.ioc_store = ioc_store
-    log.info("Phase 33 feed workers registered (Feodo, CISA KEV, ThreatFox)")
+    log.info("Phase 33 feed workers registered (Feodo, CISA KEV, ThreatFox, MISP=%s)", settings.MISP_ENABLED)
 
     # CRITICAL (P33-T06): Wire ioc_store into EventIngester so at-ingest IOC matching
     # is active in production. EventIngester is added in Plan 02 (ingestion/loader.py).

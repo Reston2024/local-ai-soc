@@ -375,3 +375,77 @@ class ThreatFoxWorker(_BaseWorker):
         except Exception as exc:
             log.warning("ThreatFox feed parse failed: %s", exc)
             return False
+
+
+# ---------------------------------------------------------------------------
+# Phase 50: MISP Worker
+# ---------------------------------------------------------------------------
+
+class MispWorker(_BaseWorker):
+    """
+    Syncs IOC attributes from a self-hosted MISP instance via PyMISP.
+
+    MISP must be deployed and reachable before this worker starts.
+    Set MISP_ENABLED=True in settings to activate.
+    PyMISP uses the blocking ``requests`` library — all calls via asyncio.to_thread().
+    """
+
+    _kv_key = "intel.misp.last_sync"
+    _feed_name = "misp"
+
+    def __init__(
+        self,
+        ioc_store: "IocStore",
+        sqlite_store_conn: sqlite3.Connection,
+        interval_sec: int = 21600,       # 6 hours default
+        duckdb_store: Optional["DuckDBStore"] = None,
+        misp_url: str = "",
+        misp_key: str = "",
+        misp_ssl: bool = False,
+        last_hours: int = 24,
+    ) -> None:
+        super().__init__(ioc_store, sqlite_store_conn, interval_sec, duckdb_store)
+        self._misp_url = misp_url
+        self._misp_key = misp_key
+        self._misp_ssl = misp_ssl
+        self._last_hours = last_hours
+
+    async def _sync(self) -> bool:
+        from backend.services.intel.misp_sync import MispSyncService
+
+        svc = MispSyncService(self._misp_url, self._misp_key, ssl=self._misp_ssl)
+        last_param = f"{self._last_hours}h"
+        try:
+            attributes = await asyncio.to_thread(
+                svc.fetch_ioc_attributes,
+                to_ids=True,
+                limit=5000,
+                last=last_param,
+            )
+        except Exception as exc:
+            log.warning("MISP sync failed: %s", exc)
+            return False
+
+        for attr in attributes:
+            is_new = self._ioc_store.upsert_ioc(
+                value=attr["value"],
+                ioc_type=attr["ioc_type"],
+                confidence=attr["confidence"],
+                first_seen=attr["first_seen"],
+                last_seen=attr["last_seen"],
+                malware_family=attr["malware_family"],
+                actor_tag=attr["actor_tag"],
+                feed_source="misp",
+                extra_json=attr["extra_json"],
+            )
+            if is_new:
+                await self._trigger_retroactive_scan(
+                    ioc_value=attr["value"],
+                    ioc_type=attr["ioc_type"],
+                    bare_ip=None,
+                    confidence=attr["confidence"],
+                )
+
+        _kv_set(self._conn, self._kv_key, _now_iso())
+        log.info("MISP sync complete: %d attributes processed", len(attributes))
+        return True

@@ -98,7 +98,7 @@ def test_misp_worker_sync():
         "backend.services.intel.misp_sync.MispSyncService.fetch_ioc_attributes",
         return_value=fake_attrs,
     ):
-        result = asyncio.get_event_loop().run_until_complete(worker._sync())
+        result = asyncio.run(worker._sync())
     assert result is True
     ioc_store.upsert_ioc.assert_called_once()
 
@@ -130,5 +130,5 @@ def test_retroactive_trigger():
         "backend.services.intel.misp_sync.MispSyncService.fetch_ioc_attributes",
         return_value=fake_attrs,
     ), patch.object(worker, "_trigger_retroactive_scan", return_value=None) as mock_retro:
-        asyncio.get_event_loop().run_until_complete(worker._sync())
+        asyncio.run(worker._sync())
     mock_retro.assert_called_once()
