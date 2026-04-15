@@ -967,17 +967,12 @@ def create_app() -> FastAPI:
         )
         log.info("Dashboard static files mounted", path=str(dashboard_dist))
 
-        # SPA catch-all: serve index.html for any path not matched by an API route.
-        # This enables direct navigation to /detections, /overview, /events etc.
-        # Must be registered AFTER all API routes so it only catches unmatched paths.
+        # Store index path for SPA 404 handler below
         _spa_index = dashboard_dist / "index.html"
-
-        @app.get("/{full_path:path}", include_in_schema=False)
-        async def serve_spa(full_path: str) -> FileResponse:  # noqa: RUF029
-            return FileResponse(str(_spa_index))
 
     else:
         log.info("Dashboard not built — skipping static file mount", path=str(dashboard_dist))
+        _spa_index = None
 
     # -----------------------------------------------------------------------
     # Exception handlers
@@ -1001,10 +996,20 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(404)
-    async def not_found_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def not_found_handler(request: Request, exc: Exception) -> FileResponse | JSONResponse:
+        # Serve the SPA index.html for any non-API, non-health path so that
+        # client-side routes like /detections, /overview, /events work on direct navigation.
+        path = request.url.path
+        if (
+            _spa_index is not None
+            and not path.startswith("/api")
+            and not path.startswith("/health")
+            and not path.startswith("/app")
+        ):
+            return FileResponse(str(_spa_index))
         return JSONResponse(
             status_code=404,
-            content={"detail": "Not found", "path": str(request.url.path)},
+            content={"detail": "Not found", "path": path},
         )
 
     @app.exception_handler(500)
