@@ -372,13 +372,26 @@ export interface IocHit {
   actor_tag: string | null;
   malware_family: string | null;
   matched_at: string;
+  extra_json?: string | null;  // present when ioc_source='misp' — JSON context
 }
 
 export interface FeedStatus {
-  feed: string;        // "feodo" | "cisa_kev" | "threatfox"
+  feed: 'feodo' | 'cisa_kev' | 'threatfox' | 'misp' | string;
   last_sync: string | null;
   ioc_count: number;
   status: 'ok' | 'stale' | 'never' | 'error';
+}
+
+export interface MispIoc {
+  ioc_value: string;
+  ioc_type: string;
+  confidence: number;
+  feed_source: string;
+  actor_tag: string | null;
+  malware_family: string | null;
+  extra_json: string | null;   // JSON string: {misp_event_id, misp_tags, misp_category, misp_comment}
+  last_seen: string | null;
+  first_seen: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1089,6 +1102,13 @@ export const api = {
         headers: authHeaders(),
       });
       if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    mispEvents: async (limit = 50): Promise<MispIoc[]> => {
+      const res = await fetch(`${BASE}/api/intel/misp-events?limit=${limit}`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) return [];
       return res.json();
     },
   },

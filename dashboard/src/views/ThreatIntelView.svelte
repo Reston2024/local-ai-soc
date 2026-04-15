@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { api, type IocHit, type FeedStatus } from '../lib/api.ts'
+  import { api, type IocHit, type FeedStatus, type MispIoc } from '../lib/api.ts'
 
   let hits = $state<IocHit[] | null>(null)
   let feeds = $state<FeedStatus[]>([])
+  let mispIocs = $state<MispIoc[] | null>(null)
   let expandedId = $state<number | null>(null)
   let error = $state<string | null>(null)
   let refreshing = $state(false)
@@ -16,6 +17,7 @@
     if (feed === 'feodo') return 'Feodo Tracker'
     if (feed === 'cisa_kev') return 'CISA KEV'
     if (feed === 'threatfox') return 'ThreatFox'
+    if (feed === 'misp') return 'MISP'
     return feed
   }
 
@@ -58,13 +60,19 @@
     refreshing = true
     error = null
     try {
-      const [f, h] = await Promise.all([api.intel.feeds(), api.intel.iocHits()])
+      const [f, h, m] = await Promise.all([
+        api.intel.feeds(),
+        api.intel.iocHits(),
+        api.intel.mispEvents(),
+      ])
       feeds = f
       hits = h
+      mispIocs = m
       lastUpdated = new Date()
     } catch (e) {
       error = String(e)
       hits = hits ?? []
+      mispIocs = mispIocs ?? []
     } finally {
       refreshing = false
     }
@@ -195,6 +203,23 @@
                       <span class="detail-label">Dst IP:</span>
                       <span class="detail-val mono">{hit.dst_ip ?? '—'}</span>
                     </div>
+                    {#if hit.ioc_source === 'misp'}
+                      {@const ctx = (() => { try { return JSON.parse(hit.extra_json ?? '{}') } catch { return {} } })()}
+                      <div class="detail-section misp-context">
+                        <span class="detail-label misp-badge">MISP</span>
+                        <span class="detail-sep">|</span>
+                        <span class="detail-label">Event:</span>
+                        <span class="detail-val mono">{ctx.misp_event_id ?? '—'}</span>
+                        <span class="detail-sep">|</span>
+                        <span class="detail-label">Category:</span>
+                        <span class="detail-val">{ctx.misp_category ?? '—'}</span>
+                        {#if ctx.misp_tags?.length}
+                          <span class="detail-sep">|</span>
+                          <span class="detail-label">Tags:</span>
+                          <span class="detail-val">{ctx.misp_tags.join(', ')}</span>
+                        {/if}
+                      </div>
+                    {/if}
                   </div>
                 </td>
               </tr>
@@ -203,6 +228,58 @@
         </tbody>
       </table>
     {/if}
+
+    <!-- MISP Intel section -->
+    <div class="misp-section">
+      <div class="misp-section-header">
+        <span class="misp-badge-header">MISP</span>
+        <span class="misp-section-title">MISP Threat Intelligence</span>
+        <span class="misp-count">
+          {mispIocs ? `${mispIocs.length} IOC${mispIocs.length !== 1 ? 's' : ''}` : ''}
+        </span>
+      </div>
+      {#if mispIocs === null}
+        <div class="misp-loading">Loading MISP intel…</div>
+      {:else if mispIocs.length === 0}
+        <div class="misp-empty">
+          MISP not yet deployed — see <code>infra/misp/docker-compose.misp.yml</code> to deploy on GMKtec.
+        </div>
+      {:else}
+        <table class="misp-table">
+          <thead>
+            <tr>
+              <th>IOC Value</th>
+              <th>Type</th>
+              <th>Confidence</th>
+              <th>Actor</th>
+              <th>MISP Event</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each mispIocs as ioc}
+              {@const ctx = (() => { try { return JSON.parse(ioc.extra_json ?? '{}') } catch { return {} } })()}
+              <tr class="misp-row">
+                <td class="mono">{ioc.ioc_value}</td>
+                <td><span class="ioc-type-badge">{ioc.ioc_type}</span></td>
+                <td>
+                  <span class="confidence-badge {ioc.confidence >= 75 ? 'high' : ioc.confidence >= 50 ? 'med' : 'low'}">
+                    {ioc.confidence}
+                  </span>
+                </td>
+                <td>{ioc.actor_tag ?? '—'}</td>
+                <td class="mono">{ctx.misp_event_id ?? '—'}</td>
+                <td class="misp-tags">
+                  {#each (ctx.misp_tags ?? []).slice(0, 3) as tag}
+                    <span class="tag-chip">{tag}</span>
+                  {/each}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -350,4 +427,84 @@
   .detail-label { color: var(--text-muted); font-weight: 600; font-size: 11px; }
   .detail-val { color: var(--text-primary); }
   .detail-sep { color: var(--border); }
+
+  /* MISP section */
+  .misp-section {
+    border-top: 1px solid var(--border);
+    margin-top: 16px;
+    padding: 12px 20px 20px;
+  }
+  .misp-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .misp-badge-header {
+    background: #6d28d9;
+    color: #ede9fe;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+  }
+  .misp-section-title { font-weight: 600; color: var(--text-primary); }
+  .misp-count { font-size: 11px; color: var(--text-muted); margin-left: auto; }
+  .misp-loading, .misp-empty { font-size: 12px; color: var(--text-muted); padding: 12px 0; }
+  .misp-empty code { font-family: monospace; color: #8b5cf6; }
+  .misp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .misp-table th {
+    text-align: left;
+    padding: 6px 10px;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+  }
+  .misp-row td { padding: 6px 10px; border-bottom: 1px solid var(--border-subtle, #1f2937); }
+  .misp-row:hover td { background: var(--bg-hover, #1a1f2e); }
+  .ioc-type-badge {
+    background: var(--bg-tertiary, #1f2937);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: monospace;
+  }
+  .confidence-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .confidence-badge.high { background: #450a0a; color: #fca5a5; }
+  .confidence-badge.med { background: #431407; color: #fdba74; }
+  .confidence-badge.low { background: #1c1917; color: #a8a29e; }
+  .misp-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag-chip {
+    background: #2e1065;
+    color: #c4b5fd;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .misp-badge {
+    background: #6d28d9;
+    color: #ede9fe;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+  }
+  .misp-context { border-top: 1px dashed #6d28d9; margin-top: 6px; padding-top: 6px; }
 </style>

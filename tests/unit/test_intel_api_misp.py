@@ -40,7 +40,7 @@ def test_misp_events_endpoint():
     from backend.core.auth import verify_token
     from backend.core.rbac import OperatorContext
     app.dependency_overrides[verify_token] = lambda: OperatorContext(
-        user_id="test", role="analyst", token="test"
+        operator_id="test", username="test", role="analyst"
     )
 
     client = TestClient(app, raise_server_exceptions=False)
