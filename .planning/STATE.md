@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 50
 status: executing
-last_updated: "2026-04-15T05:26:16.522Z"
+last_updated: "2026-04-15T05:34:59.484Z"
 progress:
   total_phases: 54
-  completed_phases: 46
+  completed_phases: 47
   total_plans: 225
-  completed_plans: 229
+  completed_plans: 230
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 50
 **Previous phase:** 49-performance-monitoring (Plans 49-01, 49-02 — status per prior session)
-**Status:** In progress — Plan 50-02 complete (Wave 1: MispSyncService + MispWorker), Plan 50-03 (Wave 2: /api/intel/misp-events endpoint) next
+**Status:** In progress — Plan 50-03 complete (Wave 2: /api/intel/misp-events, MispIoc type, ThreatIntelView MISP panel), Phase 50 plans 01-03 complete
 
 ## Key Decisions
 
@@ -92,9 +92,14 @@ See: .planning/PROJECT.md
 - **50-02:** isinstance(attr, MISPAttribute) guard skipped when MISPAttribute is None (test env where only PyMISP was patched) — prevents TypeError in unit tests
 - **50-02:** asyncio.run() replaces deprecated get_event_loop().run_until_complete() in test stubs — fixes RuntimeError in full pytest suite after pytest-asyncio closes event loop
 - **50-02:** MispWorker only starts when MISP_ENABLED=True — prevents connection errors on dev hosts without MISP deployed
+- **50-03:** IocHit.extra_json added as optional TypeScript field for MISP context display in expand panel
+- **50-03:** OperatorContext test kwargs corrected to operator_id/username (was user_id/token in Wave 0 stub)
+- **50-03:** Per-feed stale threshold dict: misp=8h (6h sync + 2h buffer), others=2h
+- **50-03:** mispEvents() returns [] on non-ok (not throw) — graceful when MISP not yet deployed on GMKtec
 
 ## Session Log
 
+- 2026-04-15: Plan 50-03 complete — Wave 2: list_misp_iocs() + get_feed_status() extended to 4 feeds, GET /api/intel/misp-events endpoint, MispIoc TypeScript interface + api.intel.mispEvents(), ThreatIntelView MISP Intel panel with violet accent + expand panel MISP context. All 6 MISP tests GREEN (5 test_misp_sync + 1 test_intel_api_misp). 1152 unit tests passing.
 - 2026-04-15: Plan 50-02 complete — Wave 1: MispSyncService.fetch_ioc_attributes() fully implemented (lazy _load_pymisp(), PyMISP/MISPAttribute at module scope for patching), MispWorker added to feed_sync.py (6h interval, retroactive scan on new IOCs), MISP_ENABLED/URL/KEY/SSL_VERIFY/SYNC_INTERVAL_SEC/SYNC_LAST_HOURS added to Settings, main.py wired (conditional start). All 5 test_misp_sync.py tests GREEN. 1151 unit tests passing.
 - 2026-04-14: Plan 49-02 complete — Wave 1 implementation: ingestion/chainsaw_scanner.py (CHAINSAW_BIN, scan_evtx, chainsaw_record_to_detection, _LEVEL_MAP), SQLite chainsaw_scanned_files dedup table + is_chainsaw_scanned/mark_chainsaw_scanned, IngestionResult.chainsaw_findings, _run_chainsaw_scan() + non-fatal loader block, _check_chainsaw() health component. All 7 unit tests GREEN.
 - 2026-04-14: Plan 49-01 complete — Wave 0 TDD stubs: test_chainsaw_scanner.py (7 stubs, importorskip pattern) + test_chainsaw_e2e.py (1 integration stub gated on binary). chainsaw marker added to pyproject.toml. All stubs SKIP cleanly, zero regressions.
