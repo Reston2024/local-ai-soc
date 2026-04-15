@@ -660,10 +660,12 @@ Plans:
 **Goal:** Integrate a self-hosted MISP (Malware Information Sharing Platform) instance on the GMKtec as the project's structured threat intelligence backbone — completing the work deferred from Phase 33. MISP provides STIX/TAXII 2.1 ingestion, IOC relationship graphs, TLP-aware sharing, and a REST API. Connect MISP to the existing ioc_store via scheduled sync: pull MISP events → normalize to the internal IOC schema → retroactive hunt against historical events. Surface MISP-sourced intelligence distinctly in ThreatIntelView with confidence scores and event context. Unlocks community feed subscriptions (CIRCL, MISPProject defaults) at no cost.
 **Requirements**: Docker on GMKtec (Malcolm already running there); Phase 33 IOC pipeline; existing ThreatIntelView.
 **Depends on:** Phase 49
-**Plans:** 0 plans
+**Plans:** 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 50 to break down)
+- [ ] 50-01-PLAN.md — Wave 0: pymisp dep, MispSyncService stub, unit test stubs (test_misp_sync.py, test_intel_api_misp.py), MISP Docker Compose infra scaffold
+- [ ] 50-02-PLAN.md — Wave 1: Full MispSyncService implementation, MispWorker in feed_sync.py, MISP config settings, main.py wiring
+- [ ] 50-03-PLAN.md — Wave 2: list_misp_iocs() in IocStore, /api/intel/misp-events endpoint, api.ts MispIoc + mispEvents(), ThreatIntelView MISP badge + Intel panel
 
 ### Phase 51: SpiderFoot OSINT Investigation Platform
 
@@ -684,6 +686,16 @@ Plans:
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 52 to break down)
+
+### Phase 53: Network Privacy Monitoring
+
+**Goal:** Suricata cookie exfil detection and email tracking pixel correlation via Zeek HTTP logs, enriched against EasyPrivacy/Disconnect.me domain lists, surfaced in the AI-SOC triage pipeline.
+**Requirements**: TBD
+**Depends on:** Phase 49
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 53 to break down)
 
 ---
 
