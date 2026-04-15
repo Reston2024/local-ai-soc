@@ -161,13 +161,17 @@ class IocStore:
         """
         from datetime import timedelta
 
-        feeds = ["feodo", "cisa_kev", "threatfox"]
+        feeds = ["feodo", "cisa_kev", "threatfox", "misp"]
         result = []
 
         now = datetime.now(tz=timezone.utc)
-        stale_threshold = timedelta(hours=2)
+        # feed-specific stale thresholds (misp syncs every 6h, so stale at 8h)
+        stale_hours = {"misp": 8}
+        default_stale_hours = 2
 
         for feed in feeds:
+            threshold_h = stale_hours.get(feed, default_stale_hours)
+            stale_threshold = timedelta(hours=threshold_h)
             kv_key = f"intel.{feed}.last_sync"
             cursor = self._conn.execute(
                 "SELECT value FROM system_kv WHERE key=?", (kv_key,)
@@ -203,6 +207,30 @@ class IocStore:
             })
 
         return result
+
+    # ------------------------------------------------------------------
+    # MISP IOC listing
+    # ------------------------------------------------------------------
+
+    def list_misp_iocs(self, limit: int = 50) -> list[dict]:
+        """
+        Return IOCs sourced from MISP, ordered by confidence descending.
+        Used by GET /api/intel/misp-events to populate ThreatIntelView MISP panel.
+        extra_json is returned as a raw string — caller parses for display.
+        """
+        cursor = self._conn.execute(
+            """
+            SELECT ioc_value, ioc_type, confidence, feed_source,
+                   actor_tag, malware_family, extra_json, last_seen, first_seen
+            FROM ioc_store
+            WHERE feed_source = 'misp'
+            ORDER BY confidence DESC, last_seen DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
     # ------------------------------------------------------------------
     # Decay
