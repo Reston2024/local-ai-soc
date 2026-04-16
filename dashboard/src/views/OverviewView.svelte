@@ -367,6 +367,28 @@
               </div>
             {/if}
 
+            <!-- MISP Threat Intelligence feed -->
+            {#if componentHealth?.components?.misp}
+              {@const misp = componentHealth.components.misp}
+              <div class="health-row">
+                <span class="health-dot {misp.status === 'ok' ? 'dot-healthy' : misp.status === 'disabled' || misp.status === 'never' ? '' : 'dot-degraded'}"></span>
+                <span class="health-label">MISP TI</span>
+                <span class="health-status misp-status">
+                  {#if misp.status === 'disabled'}
+                    disabled
+                  {:else if misp.status === 'never'}
+                    never synced
+                  {:else if misp.status === 'ok'}
+                    {(misp.ioc_count as number).toLocaleString()} IOCs
+                  {:else if misp.status === 'stale'}
+                    {(misp.ioc_count as number).toLocaleString()} IOCs · stale
+                  {:else}
+                    {misp.status}
+                  {/if}
+                </span>
+              </div>
+            {/if}
+
             <!-- Network devices -->
             {#each [['router','Router'],['firewall','Firewall'],['gmktec','GMKtec / Malcolm']] as [key, label]}
               {#if networkDevices[key] !== undefined}
@@ -704,6 +726,7 @@
 
   .hayabusa-status { color: #fbbf24; }  /* amber accent for hayabusa findings count */
   .chainsaw-status { color: #14b8a6; }  /* teal accent for chainsaw findings count */
+  .misp-status     { color: #a78bfa; }  /* purple accent for MISP IOC count */
 
   /* ── Triage result ── */
   .triage-result { display: flex; flex-direction: column; gap: 8px; }

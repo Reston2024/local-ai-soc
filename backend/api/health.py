@@ -107,6 +107,26 @@ async def _check_hayabusa(request: Request) -> dict[str, Any]:
         return {"status": "warning", "binary": None, "detection_count": 0, "detail": "check failed"}
 
 
+async def _check_misp(request: Request) -> dict[str, Any]:
+    """Report MISP feed status: enabled/disabled, IOC count, last sync age."""
+    if not settings.MISP_ENABLED:
+        return {"status": "disabled", "ioc_count": 0, "last_sync": None}
+    try:
+        ioc_store = request.app.state.ioc_store
+        feed_statuses = await asyncio.to_thread(ioc_store.get_feed_status)
+        misp = next((f for f in feed_statuses if f["feed"] == "misp"), None)
+        if not misp:
+            return {"status": "never", "ioc_count": 0, "last_sync": None}
+        return {
+            "status": misp["status"],
+            "ioc_count": misp["ioc_count"],
+            "last_sync": misp["last_sync"],
+        }
+    except Exception as exc:
+        log.error("Health check failed for misp: %s", str(exc))
+        return {"status": "error", "ioc_count": 0, "last_sync": None, "detail": "check failed"}
+
+
 async def _check_chainsaw(request: Request) -> dict[str, Any]:
     """Report Chainsaw binary availability and detection count from SQLite."""
     try:
@@ -191,13 +211,14 @@ async def health(request: Request) -> JSONResponse:
     - degraded:  some components ok (Ollama failures are degraded, not fatal)
     - unhealthy: core storage components (DuckDB, SQLite) failed
     """
-    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result = await asyncio.gather(
+    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result, misp_result = await asyncio.gather(
         _check_ollama(request),
         _check_duckdb(request),
         _check_chroma(request),
         _check_sqlite(request),
         _check_hayabusa(request),
         _check_chainsaw(request),
+        _check_misp(request),
         return_exceptions=False,
     )
 
@@ -208,6 +229,7 @@ async def health(request: Request) -> JSONResponse:
         "sqlite": sqlite_result,
         "hayabusa": hayabusa_result,
         "chainsaw": chainsaw_result,
+        "misp": misp_result,
     }
 
     # Determine overall status:
