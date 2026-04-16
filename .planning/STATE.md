@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 51
 **Previous phase:** 50-misp-threat-intelligence-integration (Plans 50-01, 50-02, 50-03 — complete)
-**Status:** In progress — Plan 51-01 complete, Plans 51-02 through 51-05 pending
+**Status:** In progress — Plans 51-01 and 51-02 complete, Plans 51-03 through 51-05 pending
 
 ## Key Decisions
 
@@ -85,6 +85,9 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **51-02:** OsintInvestigationStore includes self-bootstrapping _OSINT_DDL executescript in __init__ — unit tests using sqlite3.connect(':memory:') directly bypass SQLiteStore.__init__, so the store must create its own tables
+- **51-02:** httpx_mock stubs (test_start_scan_uses_form_encoding, test_get_status_extracts_index_6, test_stop_scan_posts_form_id) marked @pytest.mark.skip(reason="deferred to Plan 51-03") — now that SpiderFootClient exists, _SF_AVAILABLE=True would activate them and fail on assert False
+- **51-02:** get_findings() orders by event_type, id — test_get_findings_since must use min(r["id"]) as cursor, not all_rows[0]["id"] (first row is alphabetically first event_type, not lowest id)
 - **51-01:** dnstwist base package used (not [full]) — py-tlsh C extension requires MSVC build tools not present on Windows; base dnstwist covers all fuzzer algorithms needed for lookalike detection
 - **51-01:** sse-starlette already at 3.0.3 in pyproject.toml (plan spec said >=2.1) — no change needed
 - **51-01:** OsintInvestigationStore fixture uses sqlite3.connect(':memory:') directly — store takes raw Connection (not SQLiteStore wrapper) for clean unit testability
@@ -102,6 +105,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 51-02 complete — Wave 1: OsintInvestigationStore (9 CRUD methods, self-bootstrapping DDL), SpiderFootClient (8 async httpx methods, form-encoded POSTs), DNSTwist async service (asyncio.to_thread wrapper), OSINT SQLite DDL appended to sqlite_store.py, infra/docker-compose.spiderfoot.yml created. All 8 test_osint_store.py stubs GREEN; test_ping_returns_false_when_unreachable + test_spiderfoot_client_has_expected_methods GREEN; 3 httpx_mock stubs deferred to Plan 51-03. 1162 unit tests passing, zero new failures.
 - 2026-04-16: Plan 51-01 complete — Wave 0 TDD stubs: test_spiderfoot_client.py (5 stubs), test_osint_store.py (8 stubs), test_osint_investigate_api.py (7 stubs). dnstwist==20250130 installed (base, not [full] — py-tlsh C extension requires MSVC not present on Windows). All 20 stubs SKIP cleanly, 1152 unit tests passing.
 - 2026-04-15: Plan 50-03 complete — Wave 2: list_misp_iocs() + get_feed_status() extended to 4 feeds, GET /api/intel/misp-events endpoint, MispIoc TypeScript interface + api.intel.mispEvents(), ThreatIntelView MISP Intel panel with violet accent + expand panel MISP context. All 6 MISP tests GREEN (5 test_misp_sync + 1 test_intel_api_misp). 1152 unit tests passing.
 - 2026-04-15: Plan 50-02 complete — Wave 1: MispSyncService.fetch_ioc_attributes() fully implemented (lazy _load_pymisp(), PyMISP/MISPAttribute at module scope for patching), MispWorker added to feed_sync.py (6h interval, retroactive scan on new IOCs), MISP_ENABLED/URL/KEY/SSL_VERIFY/SYNC_INTERVAL_SEC/SYNC_LAST_HOURS added to Settings, main.py wired (conditional start). All 5 test_misp_sync.py tests GREEN. 1151 unit tests passing.
