@@ -159,15 +159,26 @@
       triageResult = triageData.result
       kpis = kpisData
       componentHealth = healthData
-      // Sort 192.168.1.x first, then other RFC-1918 ranges, then numeric within each group
-      internalAssets = allAssets
-        .filter(a => a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.'))
-        .sort((a, b) => {
-          const aLan = a.ip.startsWith('192.168.1.') ? 0 : 1
-          const bLan = b.ip.startsWith('192.168.1.') ? 0 : 1
-          if (aLan !== bLan) return aLan - bLan
-          return a.ip.localeCompare(b.ip, undefined, { numeric: true })
-        })
+      // Deduplicate by hostname keeping best IP, filter out Docker bridge ranges
+      const ipPriority = (ip: string) =>
+        ip.startsWith('192.168.1.') ? 0 : ip.startsWith('192.168.') ? 1 : ip.startsWith('10.') ? 2 : 3
+      const isRealLan = (ip: string) =>
+        ip.startsWith('192.168.') || ip.startsWith('10.') ||
+        (ip.startsWith('172.') && !ip.startsWith('172.16.') && !ip.startsWith('172.17.') &&
+         !ip.startsWith('172.18.') && !ip.startsWith('172.19.') &&
+         !ip.startsWith('172.2') && !ip.startsWith('172.3'))
+      const hostMap = new Map<string, Asset>()
+      for (const a of allAssets.filter(a => isRealLan(a.ip))) {
+        const key = a.hostname || a.ip
+        const prev = hostMap.get(key)
+        if (!prev || ipPriority(a.ip) < ipPriority(prev.ip)) hostMap.set(key, a)
+      }
+      internalAssets = [...hostMap.values()].sort((a, b) => {
+        const aLan = a.ip.startsWith('192.168.1.') ? 0 : 1
+        const bLan = b.ip.startsWith('192.168.1.') ? 0 : 1
+        if (aLan !== bLan) return aLan - bLan
+        return a.ip.localeCompare(b.ip, undefined, { numeric: true })
+      })
       error = null
     } catch (e) {
       error = String(e)
