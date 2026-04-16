@@ -160,9 +160,9 @@
       triageResult = triageData.result
       kpis = kpisData
       componentHealth = healthData
-      internalAssets = allAssets.filter(a =>
-        a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.')
-      )
+      internalAssets = allAssets
+        .filter(a => a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.'))
+        .sort((a, b) => a.ip.localeCompare(b.ip, undefined, { numeric: true }))
       error = null
     } catch (e) {
       error = String(e)
