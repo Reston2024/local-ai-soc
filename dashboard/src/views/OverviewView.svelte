@@ -323,7 +323,28 @@
 
             <!-- Core service components from /health -->
             {#if componentHealth}
-              {#each [['ollama','Ollama LLM'],['duckdb','DuckDB'],['chroma','ChromaDB'],['sqlite','SQLite']] as [key, label]}
+              <!-- Ollama — shows version + update badge -->
+              {#if componentHealth.components.ollama}
+                {@const ol = componentHealth.components.ollama}
+                <div class="health-row">
+                  <span class="health-dot {compDotClass(ol.status)}"></span>
+                  <span class="health-label">Ollama LLM</span>
+                  <span class="health-status">
+                    {#if ol.status === 'ok' && ol.version}
+                      v{ol.version}
+                      {#if ol.update_available}
+                        <span class="version-badge update" title="v{ol.latest} available — run: winget upgrade Ollama.Ollama">⬆ update</span>
+                      {:else if ol.latest}
+                        <span class="version-badge current">✓ latest</span>
+                      {/if}
+                    {:else}
+                      {ol.status === 'ok' ? 'ok' : ol.detail ?? ol.status}
+                    {/if}
+                  </span>
+                </div>
+              {/if}
+              <!-- Other core components -->
+              {#each [['duckdb','DuckDB'],['chroma','ChromaDB'],['sqlite','SQLite']] as [key, label]}
                 {@const comp = componentHealth.components[key]}
                 {#if comp}
                   <div class="health-row">
@@ -402,6 +423,16 @@
                     {misp.status}
                   {/if}
                 </span>
+              </div>
+            {/if}
+
+            <!-- SpiderFoot OSINT (Phase 51) -->
+            {#if componentHealth?.components?.spiderfoot}
+              {@const sf = componentHealth.components.spiderfoot}
+              <div class="health-row">
+                <span class="health-dot {sf.status === 'ok' ? 'dot-healthy' : 'dot-degraded'}"></span>
+                <span class="health-label">SpiderFoot</span>
+                <span class="health-status">{sf.status === 'ok' ? 'ready' : 'offline'}</span>
               </div>
             {/if}
 
@@ -743,6 +774,20 @@
   .hayabusa-status { color: #fbbf24; }  /* amber accent for hayabusa findings count */
   .chainsaw-status { color: #14b8a6; }  /* teal accent for chainsaw findings count */
   .misp-status     { color: #a78bfa; }  /* purple accent for MISP IOC count */
+
+  .version-badge {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+  }
+  .version-badge.update  { background: #f59e0b22; color: #f59e0b; border: 1px solid #f59e0b44; }
+  .version-badge.current { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
 
   /* ── Triage result ── */
   .triage-result { display: flex; flex-direction: column; gap: 8px; }

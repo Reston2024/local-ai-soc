@@ -21,6 +21,7 @@ import socket
 from datetime import datetime, timezone
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -30,15 +31,77 @@ from backend.core.logging import get_logger
 log = get_logger(__name__)
 router = APIRouter(tags=["health"])
 
+# ---------------------------------------------------------------------------
+# Ollama version cache — GitHub is checked at most once per hour
+# ---------------------------------------------------------------------------
+_ollama_version_cache: dict[str, Any] = {
+    "current": None,       # version string from local Ollama
+    "latest": None,        # version string from GitHub
+    "update_available": False,
+    "last_github_check": None,  # datetime of last GitHub query
+}
+_GITHUB_CHECK_INTERVAL = 3600  # seconds (1 hour)
+
+
+async def _fetch_ollama_versions(ollama) -> None:
+    """Populate _ollama_version_cache with current and latest Ollama versions."""
+    global _ollama_version_cache
+
+    # --- current version from local Ollama ---
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            r = await client.get(f"{ollama.base_url}/api/version")
+            if r.status_code == 200:
+                _ollama_version_cache["current"] = r.json().get("version")
+    except Exception:
+        pass
+
+    # --- latest version from GitHub (rate-limited to once per hour) ---
+    now = datetime.now(tz=timezone.utc)
+    last = _ollama_version_cache["last_github_check"]
+    if last is None or (now - last).total_seconds() > _GITHUB_CHECK_INTERVAL:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(
+                    "https://api.github.com/repos/ollama/ollama/releases/latest",
+                    headers={"Accept": "application/vnd.github+json"},
+                )
+                if r.status_code == 200:
+                    tag = r.json().get("tag_name", "")          # e.g. "v0.6.5"
+                    _ollama_version_cache["latest"] = tag.lstrip("v")
+                    _ollama_version_cache["last_github_check"] = now
+        except Exception:
+            pass
+
+    # --- compare ---
+    cur = _ollama_version_cache["current"]
+    lat = _ollama_version_cache["latest"]
+    if cur and lat:
+        try:
+            from packaging.version import Version  # noqa: PLC0415
+            _ollama_version_cache["update_available"] = Version(lat) > Version(cur)
+        except Exception:
+            _ollama_version_cache["update_available"] = lat != cur
+
 
 async def _check_ollama(request: Request) -> dict[str, Any]:
-    """Verify Ollama is reachable by calling GET /api/tags."""
+    """Verify Ollama is reachable by calling GET /api/tags; include version info."""
     try:
         ollama = request.app.state.ollama
         ok = await ollama.health_check()
-        if ok:
-            return {"status": "ok"}
-        return {"status": "error", "detail": "GET /api/tags returned no models or failed"}
+        if not ok:
+            return {"status": "error", "detail": "GET /api/tags returned no models or failed"}
+
+        # Fetch version info (current always; GitHub latest at most once/hour)
+        await _fetch_ollama_versions(ollama)
+
+        result: dict[str, Any] = {"status": "ok"}
+        if _ollama_version_cache["current"]:
+            result["version"] = _ollama_version_cache["current"]
+        if _ollama_version_cache["latest"]:
+            result["latest"] = _ollama_version_cache["latest"]
+            result["update_available"] = _ollama_version_cache["update_available"]
+        return result
     except Exception as exc:
         log.error("Health check failed for ollama: %s", str(exc))
         return {"status": "error", "detail": "component unavailable"}
