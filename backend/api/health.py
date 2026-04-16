@@ -127,6 +127,18 @@ async def _check_misp(request: Request) -> dict[str, Any]:
         return {"status": "error", "ioc_count": 0, "last_sync": None, "detail": "check failed"}
 
 
+async def _check_spiderfoot() -> dict:
+    """Ping SpiderFoot container on port 5001."""
+    try:
+        from backend.services.spiderfoot_client import SpiderFootClient
+        from backend.core.config import settings
+        client = SpiderFootClient(base_url=settings.SPIDERFOOT_BASE_URL)
+        alive = await client.ping()
+        return {"status": "ok" if alive else "unreachable", "port": 5001}
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 async def _check_chainsaw(request: Request) -> dict[str, Any]:
     """Report Chainsaw binary availability and detection count from SQLite."""
     try:
@@ -211,7 +223,7 @@ async def health(request: Request) -> JSONResponse:
     - degraded:  some components ok (Ollama failures are degraded, not fatal)
     - unhealthy: core storage components (DuckDB, SQLite) failed
     """
-    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result, misp_result = await asyncio.gather(
+    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result, misp_result, spiderfoot_result = await asyncio.gather(
         _check_ollama(request),
         _check_duckdb(request),
         _check_chroma(request),
@@ -219,6 +231,7 @@ async def health(request: Request) -> JSONResponse:
         _check_hayabusa(request),
         _check_chainsaw(request),
         _check_misp(request),
+        _check_spiderfoot(),
         return_exceptions=False,
     )
 
@@ -230,6 +243,7 @@ async def health(request: Request) -> JSONResponse:
         "hayabusa": hayabusa_result,
         "chainsaw": chainsaw_result,
         "misp": misp_result,
+        "spiderfoot": spiderfoot_result,
     }
 
     # Determine overall status:
