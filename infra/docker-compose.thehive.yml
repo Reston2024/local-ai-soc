@@ -1,0 +1,162 @@
+# TheHive 5 + Cortex 3 — Phase 52 GMKtec N100 Deployment
+#
+# Run (from AI-SOC-Brain repo root):
+#   docker compose -f infra/docker-compose.thehive.yml --env-file .env.thehive up -d
+#
+# Stop:
+#   docker compose -f infra/docker-compose.thehive.yml down
+#
+# Logs:
+#   docker compose -f infra/docker-compose.thehive.yml logs -f
+#
+# UIs:
+#   TheHive: http://192.168.1.22:9000    (default admin: admin@thehive.local / secret)
+#   Cortex:  http://192.168.1.22:9001    (create admin on first boot)
+#
+# Required .env.thehive variables:
+#   THEHIVE_SECRET          — random 32+ char secret (generate: openssl rand -hex 32)
+#   THEHIVE_MINIO_PASSWORD  — MinIO root password (generate: openssl rand -hex 16)
+#   THEHIVE_MINIO_USER      — MinIO root user (optional, default: thehive)
+#   CORTEX_JOB_DIR          — path for Cortex analyser job outputs (optional, default: /tmp/cortex-jobs)
+#
+# Post-deploy steps:
+#   1. Cortex setup (http://192.168.1.22:9001):
+#      - Create admin account on first start
+#      - Create organisation "SOC Brain"
+#      - Create analyst user → generate API key
+#      - Enable analysers: AbuseIPDB, VirusTotal_GetReport_3_1, MaxMind_GeoIP_3_0, MISP_2_0
+#        Enter ABUSEIPDB_API_KEY and VT_API_KEY from .env
+#   2. TheHive → MISP integration (http://192.168.1.22:9000):
+#      - Platform Management → Connectors → MISP → Add server
+#      - URL: https://192.168.1.22:8443  |  API Key: (from Phase 50 .env.misp)
+#      - SSL verification: Disabled (self-signed cert on GMKtec)
+#   3. TheHive → Cortex wiring:
+#      - Platform Management → Connectors → Cortex → Add server
+#      - URL: http://cortex:9001  |  API Key: (from Cortex step above)
+#
+# Memory budget (GMKtec N100, 16 GB total):
+#   Cassandra: 600 MB (JVM capped at 512 M)
+#   TheHive ES: 700 MB (JVM capped at 512 M)
+#   MinIO: 300 MB
+#   TheHive: 900 MB (JVM capped at 512-768 M)
+#   Cortex ES: 700 MB (JVM capped at 512 M)
+#   Cortex: 500 MB
+#   Total additional: ~3.7 GB (leaves ~8 GB for Malcolm + MISP + OS)
+#
+# NOTE: This file is NOT merged into the root docker-compose.yml.
+# It is deployed manually on the GMKtec N100 via SSH, mirroring the MISP pattern.
+
+services:
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: thehive-cassandra
+    restart: unless-stopped
+    mem_limit: 600m
+    environment:
+      - CASSANDRA_CLUSTER_NAME=TheHive
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=100M
+    volumes:
+      - thehive_cassandra:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.14
+    container_name: thehive-elasticsearch
+    restart: unless-stopped
+    mem_limit: 700m
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=hive
+    volumes:
+      - thehive_elasticsearch:/usr/share/elasticsearch/data
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: thehive-minio
+    restart: unless-stopped
+    mem_limit: 300m
+    command: minio server /data --console-address ":9002"
+    environment:
+      - MINIO_ROOT_USER=${THEHIVE_MINIO_USER:-thehive}
+      - MINIO_ROOT_PASSWORD=${THEHIVE_MINIO_PASSWORD}
+    volumes:
+      - thehive_minio:/data
+
+  thehive:
+    image: strangebee/thehive:5.5
+    container_name: thehive-app
+    restart: unless-stopped
+    mem_limit: 900m
+    depends_on:
+      cassandra:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+      - "9000:9000"
+    environment:
+      - JVM_OPTS=-Xms512m -Xmx768m
+    command:
+      - --secret
+      - "${THEHIVE_SECRET}"
+      - --cql-hostnames
+      - cassandra
+      - --index-backend
+      - elasticsearch
+      - --es-hostnames
+      - elasticsearch
+      - --s3-endpoint
+      - http://minio:9000
+      - --s3-access-key
+      - "${THEHIVE_MINIO_USER:-thehive}"
+      - --s3-secret-key
+      - "${THEHIVE_MINIO_PASSWORD}"
+      - --s3-use-path-access-style
+
+  cortex_elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.14
+    container_name: cortex-elasticsearch
+    restart: unless-stopped
+    mem_limit: 700m
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=cortex
+    volumes:
+      - cortex_elasticsearch:/usr/share/elasticsearch/data
+
+  cortex:
+    image: thehiveproject/cortex:3.1.8
+    container_name: cortex-app
+    restart: unless-stopped
+    mem_limit: 500m
+    depends_on:
+      - cortex_elasticsearch
+    ports:
+      - "9001:9001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CORTEX_JOB_DIR:-/tmp/cortex-jobs}:${CORTEX_JOB_DIR:-/tmp/cortex-jobs}
+    environment:
+      - job_directory=${CORTEX_JOB_DIR:-/tmp/cortex-jobs}
+    command:
+      - --es-uri
+      - http://cortex_elasticsearch:9200
+
+volumes:
+  thehive_cassandra:
+  thehive_elasticsearch:
+  thehive_minio:
+  cortex_elasticsearch:
