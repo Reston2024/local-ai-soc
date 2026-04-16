@@ -43,6 +43,8 @@ dependencies = [
     # Performance metrics
     "psutil>=6.0.0",
     "pymisp>=2.5.33.1",
+    "paramiko>=4.0.0",
+    "dnstwist>=20250130",
 ]
 
 [dependency-groups]
