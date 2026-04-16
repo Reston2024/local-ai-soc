@@ -29,6 +29,20 @@ router = APIRouter(prefix="/osint", tags=["osint"])
 
 
 # ---------------------------------------------------------------------------
+# Phase 51: Investigations list — MUST be registered before GET /{ip}
+# to prevent "investigations" being captured as an IP parameter.
+# ---------------------------------------------------------------------------
+
+@router.get("/investigations", summary="List all OSINT investigations")
+async def list_investigations(request: Request) -> JSONResponse:
+    osint_store = getattr(request.app.state, "osint_store", None)
+    if osint_store is None:
+        return JSONResponse(status_code=503, content={"error": "OSINT store not initialized"})
+    rows = await asyncio.to_thread(osint_store.list_investigations)
+    return JSONResponse(status_code=200, content={"investigations": rows})
+
+
+# ---------------------------------------------------------------------------
 # Phase 32: IP enrichment
 # ---------------------------------------------------------------------------
 
@@ -211,15 +225,6 @@ async def get_investigation(job_id: str, request: Request) -> JSONResponse:
         "findings_count": len(findings),
         "dnstwist_findings": dnstwist_findings,
     })
-
-
-@router.get("/investigations", summary="List all OSINT investigations")
-async def list_investigations(request: Request) -> JSONResponse:
-    osint_store = getattr(request.app.state, "osint_store", None)
-    if osint_store is None:
-        return JSONResponse(status_code=503, content={"error": "OSINT store not initialized"})
-    rows = await asyncio.to_thread(osint_store.list_investigations)
-    return JSONResponse(status_code=200, content={"investigations": rows})
 
 
 @router.delete("/investigate/{job_id:path}", summary="Cancel and delete OSINT investigation")
