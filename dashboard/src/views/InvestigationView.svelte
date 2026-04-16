@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import { api } from '../lib/api.ts'
-  import type { TimelineItem, ChatHistoryMessage, CARAnalytic, SimilarCase, AgentStep, AgentVerdict } from '../lib/api.ts'
+  import type { TimelineItem, ChatHistoryMessage, CARAnalytic, SimilarCase, AgentStep, AgentVerdict, OsintJob, OsintInvestigationDetail, OsintFinding } from '../lib/api.ts'
 
 
   let {
@@ -19,8 +20,8 @@
   // Phase 44: similar confirmed cases
   let similarCases = $state<SimilarCase[]>([])
 
-  // Phase 45: Agent tab state
-  let activeTab = $state<'summary' | 'agent'>('summary')
+  // Phase 45/51: Agent tab state (extended to include 'osint')
+  let activeTab = $state<'summary' | 'agent' | 'osint'>('summary')
   let agentSteps = $state<AgentStep[]>([])
   let agentReasoningChunks = $state<string[]>([])
   let agentVerdict = $state<AgentVerdict | null>(null)
@@ -30,6 +31,21 @@
   let agentError = $state<string | null>(null)
   let agentExpandedSteps = $state<Set<number>>(new Set())
   let agentAbortController: AbortController | null = null
+
+  // Phase 51: OSINT tab state
+  let osintSeed = $state('')           // pre-populated from detection.src_ip
+  let osintUsecase = $state<'passive' | 'all'>('passive')
+  let osintJob = $state<OsintJob | null>(null)
+  let osintDetail = $state<OsintInvestigationDetail | null>(null)
+  let osintRunning = $state(false)
+  let osintError = $state<string | null>(null)
+  let osintTimedOut = $state(false)
+  let osintPollHandle: ReturnType<typeof setInterval> | null = null
+  let osintExpandedTypes = $state<Set<string>>(new Set(['IP_ADDRESS', 'DOMAIN_NAME']))
+  let osintExpandedDomains = $state<Set<string>>(new Set())
+  let osintShowGraph = $state(false)
+  let osintGraphData = $state<{ nodes: any[]; edges: any[] } | null>(null)
+  let osintEventSource: EventSource | null = null
 
   // Timeline state
   let timelineItems = $state<TimelineItem[]>([])
@@ -49,6 +65,14 @@
     loadTimeline()
     loadChatHistory()
     loadInvestigation()
+  })
+
+  // Phase 51: pre-populate OSINT seed from detection src_ip
+  $effect(() => {
+    if (investigationResult?.detection && !osintSeed) {
+      const det = investigationResult.detection as any
+      if (det.src_ip) osintSeed = det.src_ip
+    }
   })
 
   // Phase 44: load similar confirmed cases when investigationId changes
@@ -235,6 +259,133 @@
       await api.feedback.submit({ detection_id: investigationId, verdict })
     } catch { /* silent on error */ }
   }
+
+  // Phase 51: cleanup on unmount
+  onDestroy(() => {
+    if (osintPollHandle) clearInterval(osintPollHandle)
+    if (osintEventSource) osintEventSource.close()
+  })
+
+  // Phase 51: run OSINT investigation with SSE streaming for live findings
+  async function runOsintInvestigation() {
+    if (!osintSeed.trim() || osintRunning) return
+    osintRunning = true
+    osintError = null
+    osintTimedOut = false
+    osintJob = null
+    osintDetail = null
+    osintGraphData = null
+
+    try {
+      const job = await api.osint.startInvestigation(osintSeed.trim(), osintUsecase)
+      osintJob = { ...job, job_id: job.job_id ?? (job as any).id ?? '' }
+
+      // ── Live findings: SSE stream ─────────────────────────────────────
+      if (osintEventSource) osintEventSource.close()
+      const streamUrl = `/api/osint/investigate/${encodeURIComponent(osintJob.job_id)}/stream`
+      osintEventSource = new EventSource(streamUrl)
+
+      osintEventSource.addEventListener('finding', (e: MessageEvent) => {
+        const row = JSON.parse(e.data)
+        if (!osintDetail) {
+          osintDetail = {
+            ...osintJob!,
+            findings: [],
+            findings_by_type: {},
+            findings_count: 0,
+            dnstwist_findings: {},
+          }
+        }
+        osintDetail.findings = [...osintDetail.findings, row]
+        const et = row.event_type as string
+        osintDetail.findings_by_type = {
+          ...osintDetail.findings_by_type,
+          [et]: [...(osintDetail.findings_by_type[et] ?? []), row],
+        }
+        osintDetail.findings_count = osintDetail.findings.length
+      })
+
+      osintEventSource.addEventListener('status', (e: MessageEvent) => {
+        const { status } = JSON.parse(e.data)
+        osintJob = { ...osintJob!, status }
+        osintEventSource?.close()
+        osintEventSource = null
+        osintRunning = false
+        if (status === 'TIMEOUT') osintTimedOut = true
+        if (status === 'ERROR-FAILED') osintError = 'Scan failed'
+        // Fetch final detail to capture dnstwist_findings once scan is done
+        api.osint.getInvestigation(osintJob!.job_id).then(d => { osintDetail = d }).catch(() => {})
+      })
+
+      osintEventSource.onerror = () => {
+        // SSE connection dropped — fall back to a one-shot status fetch
+        osintEventSource?.close()
+        osintEventSource = null
+      }
+
+      // ── Status safety poll: 10s interval ─────────────────────────────
+      if (osintPollHandle) clearInterval(osintPollHandle)
+      const startTime = Date.now()
+      const MAX_POLL_MS = 32 * 60 * 1000
+      const TERMINAL = ['FINISHED', 'ERROR-FAILED', 'ABORTED', 'TIMEOUT']
+
+      osintPollHandle = setInterval(async () => {
+        if (!osintRunning) { clearInterval(osintPollHandle!); osintPollHandle = null; return }
+        try {
+          const detail = await api.osint.getInvestigation(osintJob!.job_id)
+          osintJob = { ...osintJob!, status: detail.status }
+          if (TERMINAL.includes(detail.status)) {
+            clearInterval(osintPollHandle!)
+            osintPollHandle = null
+            osintRunning = false
+            osintDetail = detail   // final snapshot with dnstwist_findings
+            if (detail.status === 'TIMEOUT') osintTimedOut = true
+            if (detail.status === 'ERROR-FAILED') osintError = detail.error ?? 'Scan failed'
+          }
+          if (Date.now() - startTime > MAX_POLL_MS) {
+            clearInterval(osintPollHandle!)
+            osintPollHandle = null
+            osintRunning = false
+            osintTimedOut = true
+          }
+        } catch (_) { /* polling errors are non-fatal */ }
+      }, 10_000)
+    } catch (e: any) {
+      osintRunning = false
+      osintError = e?.message ?? 'Failed to start investigation'
+    }
+  }
+
+  // Phase 51: Cytoscape graph effects
+  $effect(() => {
+    if (!osintShowGraph || !osintJob) return
+    api.osint.getInvestigation(osintJob.job_id).then(detail => {
+      const nodes = (detail.findings ?? []).map((f: OsintFinding) => ({
+        data: { id: f.data, label: f.data, type: f.event_type, misp: f.misp_hit }
+      }))
+      osintGraphData = { nodes, edges: [] }
+    }).catch(() => {})
+  })
+
+  $effect(() => {
+    if (!osintShowGraph || !osintGraphData) return
+    import('cytoscape').then(({ default: cytoscape }) => {
+      const container = document.getElementById('osint-cytoscape')
+      if (!container) return
+      cytoscape({
+        container,
+        elements: [
+          ...osintGraphData!.nodes,
+          ...osintGraphData!.edges,
+        ],
+        style: [
+          { selector: 'node', style: { label: 'data(label)', 'font-size': 10, 'background-color': '#6366f1' } },
+          { selector: 'node[misp = 1]', style: { 'background-color': '#ef4444' } },
+        ],
+        layout: { name: 'cose', animate: false },
+      })
+    })
+  })
 </script>
 
 <script module lang="ts">
