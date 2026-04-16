@@ -677,7 +677,7 @@ Plans:
 Plans:
 - [x] 51-01-PLAN.md — Wave 0: dnstwist dep, TDD stubs (test_spiderfoot_client.py, test_osint_store.py, test_osint_investigate_api.py)
 - [x] 51-02-PLAN.md — Wave 1: SpiderFootClient, OsintInvestigationStore, SQLite DDL, DNSTwist service, Docker Compose
-- [ ] 51-03-PLAN.md — Wave 2: OSINT investigate API routes, dnstwist endpoint, SSE stream
+- [x] 51-03-PLAN.md — Wave 2: OSINT investigate API routes, dnstwist endpoint, SSE stream
 - [x] 51-04-PLAN.md — Wave 2 (parallel): Frontend OSINT tab — api.ts interfaces + api.osint methods, InvestigationView OSINT panel with SSE stream, entity list, MISP badge, DNSTwist expand, Cytoscape graph
 - [ ] 51-05-PLAN.md — Wave 3: SpiderFoot Docker Compose infra + backend wiring
 
