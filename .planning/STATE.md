@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 52
 status: executing
-last_updated: "2026-04-16T15:10:52.350Z"
+last_updated: "2026-04-16T15:19:15.881Z"
 progress:
   total_phases: 56
   completed_phases: 48
   total_plans: 234
-  completed_plans: 237
+  completed_plans: 238
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 52
 **Previous phase:** 51-spiderfoot-osint-investigation-platform (Plans 51-01 through 51-05 — complete)
-**Status:** In Progress — Plan 52-02 complete, Plan 52-03 next
+**Status:** In Progress — Plan 52-03 complete, Phase 52 COMPLETE
 
 ## Key Decisions
 
@@ -85,6 +85,10 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **52-03:** sync_thehive_closures/drain_pending_cases are synchronous — Wave 0 tests call directly without event loop; APScheduler uses lambda wrappers; production callers use asyncio.to_thread if needed
+- **52-03:** drain_pending_cases handles dual detection_json schema: raw detection dict (Wave 0 test) and nested {"detection_id": ..., "payload": {...}} (production _enqueue_pending_case format)
+- **52-03:** Dedicated AsyncIOScheduler for TheHive sync jobs — avoids coupling to metrics.py scheduler (lazily started) or daily snapshot scheduler (different job cadence)
+- **52-03:** asyncio.to_thread(client.ping) in _check_thehive() — ping() is synchronous, health endpoint is async; thehive added to optional_keys so disabled/unreachable never degrades overall health
 - **52-02:** _maybe_create_thehive_case is synchronous (not async) — Wave 0 stubs test with synchronous mock_client; Plan 52-03 wiring into detect.py wraps in asyncio.to_thread()
 - **52-02:** thehive_pending_cases uses detection_json TEXT column (combined JSON blob) not separate detection_id + payload_json — Wave 0 test creates minimal schema with detection_json; production DDL matches
 - **52-02:** ping() is synchronous — used for health checks from non-async contexts; async callers wrap with asyncio.to_thread if needed
@@ -124,6 +128,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 52-03 complete — TheHive pipeline wiring: thehive_sync.py (sync_thehive_closures + drain_pending_cases synchronous, dual-schema drain for Wave 0 test + production formats), detect.py fire-and-forget hook (asyncio.create_task + asyncio.to_thread wrapper for High/Critical detections + SpiderFoot enrichment), health.py _check_thehive() in gather + optional_keys, main.py THEHIVE_ENABLED guard + dedicated AsyncIOScheduler (300s sync/drain jobs). All 8 Phase 52 stubs GREEN. 1181 unit tests passing. Phase 52 COMPLETE.
 - 2026-04-16: Plan 52-02 complete — TheHive infrastructure layer: 4 THEHIVE_* settings, 5 thehive_* SQLite columns on detections + thehive_pending_cases table, TheHiveClient async wrapper (build_case_payload high->3/critical->4, build_observables ip/other dataTypes, _maybe_create_thehive_case synchronous with retry queue), infra/docker-compose.thehive.yml (6 services, memory-capped for N100). All 5 Wave 0 client stubs GREEN, 3 sync stubs SKIP (Plan 52-03).
 - 2026-04-16: Plan 52-01 complete — Wave 0 TDD stubs: test_thehive_client.py (5 stubs), test_thehive_sync.py (3 stubs). thehive4py==2.0.3 installed. All 8 stubs SKIP cleanly, 1177 unit tests passing. Phase 52 Plan 01 complete.
 - 2026-04-16: Plan 51-05 complete — Wave 3 unit tests: test_spiderfoot_client.py (5 GREEN), test_osint_investigate_api.py (9 GREEN, fixed /investigations routing bug shadowed by /{ip}), test_dnstwist_service.py (3 GREEN). 1177 unit tests passing. Phase 51 COMPLETE.
