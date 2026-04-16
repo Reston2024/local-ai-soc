@@ -4,6 +4,21 @@
   import type { TimelineItem, ChatHistoryMessage, CARAnalytic, SimilarCase, AgentStep, AgentVerdict, OsintJob, OsintInvestigationDetail, OsintFinding } from '../lib/api.ts'
 
 
+  // Phase 52: TheHive case badge helpers
+  const THEHIVE_CASE_URL = (caseNum: number) => `http://192.168.1.22:9000/cases/${caseNum}`
+
+  function thehiveBadgeLabel(status: string | null | undefined): string {
+    if (!status) return 'New'
+    if (status === 'TruePositive') return 'True Positive'
+    if (status === 'FalsePositive') return 'False Positive'
+    return status
+  }
+  function thehiveBadgeClass(status: string | null | undefined): string {
+    if (status === 'Resolved' || status === 'TruePositive') return 'badge-thehive badge-thehive-resolved'
+    if (status === 'FalsePositive') return 'badge-thehive badge-thehive-fp'
+    return 'badge-thehive badge-thehive-open'
+  }
+
   let {
     investigationId = '',
     onOpenInGraph = undefined,
@@ -15,7 +30,7 @@
   } = $props()
 
   // Investigation result — holds car_analytics from POST /api/investigate
-  let investigationResult = $state<{ car_analytics?: CARAnalytic[]; detection?: { attack_technique?: string; rule_id?: string; rule_name?: string } } | null>(null)
+  let investigationResult = $state<{ car_analytics?: CARAnalytic[]; detection?: { attack_technique?: string; rule_id?: string; rule_name?: string; src_ip?: string | null; thehive_case_id?: string | null; thehive_case_num?: number | null; thehive_status?: string | null } } | null>(null)
 
   // Phase 44: similar confirmed cases
   let similarCases = $state<SimilarCase[]>([])
@@ -400,6 +415,19 @@
   <div class="panel timeline-panel">
     <div class="panel-header">
       <h2>Evidence Timeline</h2>
+      {#if investigationResult?.detection?.thehive_case_num}
+        <div class="thehive-header-badge">
+          <span class={thehiveBadgeClass(investigationResult.detection.thehive_status)}>
+            Case #{investigationResult.detection.thehive_case_num} · {thehiveBadgeLabel(investigationResult.detection.thehive_status)}
+          </span>
+          <button
+            class="btn-thehive"
+            onclick={() => window.open(THEHIVE_CASE_URL(investigationResult!.detection!.thehive_case_num!), '_blank')}
+          >
+            Open in TheHive
+          </button>
+        </div>
+      {/if}
       <div class="header-actions">
         {#if onOpenInGraph && investigationId}
           <button class="btn-secondary" onclick={() => onOpenInGraph?.(investigationId)}>Open in Graph</button>
@@ -1143,4 +1171,13 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
   font-size: 0.75rem;
   color: rgba(255,255,255,0.42);
 }
+
+/* Phase 52: TheHive case badge + button */
+.badge-thehive { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge-thehive-open     { background: #92400e; color: #fef3c7; }
+.badge-thehive-resolved { background: #065f46; color: #d1fae5; }
+.badge-thehive-fp       { background: #7f1d1d; color: #fee2e2; }
+.thehive-header-badge { display: flex; align-items: center; gap: 8px; margin-right: 12px; }
+.btn-thehive { padding: 4px 12px; border-radius: 4px; background: #1a1a2e; border: 1px solid #374151; color: #e5e7eb; cursor: pointer; font-size: 12px; }
+.btn-thehive:hover { background: #2d2d44; }
 </style>
