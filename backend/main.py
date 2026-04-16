@@ -406,6 +406,40 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         log.warning("osint_investigation_store init failed", error=str(exc))
         app.state.osint_store = None
 
+    # 7j. Phase 52: TheHive case management
+    _thehive_scheduler = None
+    try:
+        if settings.THEHIVE_ENABLED:
+            from backend.services.thehive_client import TheHiveClient as _TheHiveClient
+            from backend.services.thehive_sync import sync_thehive_closures, drain_pending_cases
+            from datetime import timedelta as _timedelta
+            from datetime import datetime as _datetime
+            _thehive_client = _TheHiveClient(url=settings.THEHIVE_URL, api_key=settings.THEHIVE_API_KEY)
+            app.state.thehive_client = _thehive_client
+            # Dedicated APScheduler for TheHive sync jobs (300s interval)
+            _thehive_scheduler = AsyncIOScheduler()
+            _thehive_scheduler.add_job(
+                lambda: sync_thehive_closures(_thehive_client, sqlite_store._conn),
+                "interval",
+                seconds=300,
+                id="thehive_sync",
+            )
+            _thehive_scheduler.add_job(
+                lambda: drain_pending_cases(_thehive_client, sqlite_store._conn),
+                "interval",
+                seconds=300,
+                start_date=_datetime.now() + _timedelta(seconds=30),
+                id="thehive_drain",
+            )
+            _thehive_scheduler.start()
+            log.info("TheHive client + APScheduler sync jobs started (300s interval)")
+        else:
+            app.state.thehive_client = None
+            log.info("TheHive disabled (THEHIVE_ENABLED=False)")
+    except Exception as exc:
+        app.state.thehive_client = None
+        log.warning("TheHive setup failed (non-fatal): %s", exc)
+
     # 8. Conditional osquery live telemetry collector
     osquery_task: asyncio.Task | None = None
     if settings.OSQUERY_ENABLED:
@@ -571,6 +605,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Stop daily KPI snapshot scheduler
     if _daily_snapshot_scheduler is not None:
         _daily_snapshot_scheduler.shutdown(wait=False)
+
+    # Stop TheHive APScheduler if running (Phase 52)
+    if _thehive_scheduler is not None:
+        _thehive_scheduler.shutdown(wait=False)
 
     # Cancel osquery collector task if running
     if osquery_task is not None and not osquery_task.done():

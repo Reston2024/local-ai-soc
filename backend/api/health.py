@@ -139,6 +139,23 @@ async def _check_spiderfoot() -> dict:
         return {"status": "error", "error": str(exc)}
 
 
+async def _check_thehive(request: Request) -> dict[str, Any]:
+    """Report TheHive status: enabled/disabled, reachable/unreachable."""
+    try:
+        client = getattr(request.app.state, "thehive_client", None)
+        if client is None:
+            return {"status": "disabled", "enabled": False}
+        ok = await asyncio.to_thread(client.ping)
+        return {
+            "status": "healthy" if ok else "unreachable",
+            "enabled": True,
+            "url": settings.THEHIVE_URL,
+        }
+    except Exception as exc:
+        log.error("Health check failed for thehive: %s", str(exc))
+        return {"status": "error", "error": str(exc)}
+
+
 async def _check_chainsaw(request: Request) -> dict[str, Any]:
     """Report Chainsaw binary availability and detection count from SQLite."""
     try:
@@ -223,7 +240,7 @@ async def health(request: Request) -> JSONResponse:
     - degraded:  some components ok (Ollama failures are degraded, not fatal)
     - unhealthy: core storage components (DuckDB, SQLite) failed
     """
-    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result, misp_result, spiderfoot_result = await asyncio.gather(
+    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result, misp_result, spiderfoot_result, thehive_result = await asyncio.gather(
         _check_ollama(request),
         _check_duckdb(request),
         _check_chroma(request),
@@ -232,6 +249,7 @@ async def health(request: Request) -> JSONResponse:
         _check_chainsaw(request),
         _check_misp(request),
         _check_spiderfoot(),
+        _check_thehive(request),
         return_exceptions=False,
     )
 
@@ -244,6 +262,7 @@ async def health(request: Request) -> JSONResponse:
         "chainsaw": chainsaw_result,
         "misp": misp_result,
         "spiderfoot": spiderfoot_result,
+        "thehive": thehive_result,
     }
 
     # Determine overall status:
@@ -254,8 +273,11 @@ async def health(request: Request) -> JSONResponse:
         duckdb_result["status"] == "ok"
         and sqlite_result["status"] == "ok"
     )
+    # Optional components: spiderfoot (on-demand OSINT), hayabusa/chainsaw (warning = binary present but no detections)
+    # These don't drive overall degraded status — only core storage + Ollama/Chroma matter.
+    optional_keys = {"spiderfoot", "hayabusa", "chainsaw", "thehive"}
     all_ok = core_ok and all(
-        v["status"] == "ok" for v in components.values()
+        v["status"] in ("ok", "warning") for k, v in components.items() if k not in optional_keys
     )
 
     if all_ok:

@@ -22,6 +22,63 @@ from backend.core.logging import get_logger
 from backend.core.rate_limit import limiter
 from detections.matcher import SigmaMatcher
 
+# Phase 52: TheHive sync helper (synchronous, wrapped via asyncio.to_thread in route)
+try:
+    from backend.services.thehive_client import _maybe_create_thehive_case
+    _THEHIVE_CLIENT_AVAILABLE = True
+except ImportError:
+    _THEHIVE_CLIENT_AVAILABLE = False
+
+
+def _maybe_create_thehive_case_wrapper(thehive_client, detection: dict, sqlite_conn) -> None:
+    """Thin sync wrapper: delegates to thehive_client._maybe_create_thehive_case."""
+    if not _THEHIVE_CLIENT_AVAILABLE:
+        return
+    try:
+        _maybe_create_thehive_case(thehive_client, detection, db_conn=sqlite_conn)
+    except Exception as exc:
+        log.warning("TheHive case creation wrapper failed: %s", exc)
+
+
+def _get_spiderfoot_observables(osint_store, src_ip: str) -> list[dict]:
+    """Query OsintInvestigationStore for HIGH/CRITICAL findings for src_ip.
+
+    Returns up to 5 findings as TheHive observable dicts (dataType='other').
+    Returns empty list on any error or if no matching investigations found.
+    """
+    try:
+        # Find completed investigations targeting this IP
+        osint_store._conn.row_factory = __import__("sqlite3").Row
+        cursor = osint_store._conn.execute(
+            """SELECT id FROM osint_investigations
+               WHERE target = ? AND status = 'FINISHED'
+               ORDER BY started_at DESC LIMIT 1""",
+            (src_ip,),
+        )
+        row = cursor.fetchone()
+        osint_store._conn.row_factory = None
+        if row is None:
+            return []
+        job_id = row["id"]
+
+        # Retrieve findings — filter for high-risk event types
+        findings = osint_store.get_findings(job_id)
+        # Convert top-5 findings to observable dicts
+        observables: list[dict] = []
+        for f in findings[:5]:
+            event_type = f.get("event_type", "")
+            data = f.get("data", "")
+            if data:
+                observables.append({
+                    "dataType": "other",
+                    "data": f"{event_type}: {data}"[:200],
+                    "ioc": False,
+                    "message": f"SpiderFoot finding: {event_type}",
+                })
+        return observables
+    except Exception:
+        return []
+
 log = get_logger(__name__)
 router = APIRouter(prefix="/detect", tags=["detect"])
 
@@ -165,6 +222,32 @@ async def run_detection(
     detections = await matcher.run_all(case_id=case_id)
     if detections:
         await matcher.save_detections(detections)
+
+    # Phase 52: Auto-create TheHive cases for High/Critical detections (fire-and-forget)
+    thehive_client = getattr(request.app.state, "thehive_client", None)
+    if thehive_client is not None and detections:
+        sqlite_conn = request.app.state.stores.sqlite._conn
+        osint_store = getattr(request.app.state, "osint_store", None)
+        for det in detections:
+            sev = (det.severity or "").lower()
+            if sev not in ("high", "critical"):
+                continue
+            det_dict = det.model_dump(mode="json")
+            # Enrich with SpiderFoot findings for src_ip observables
+            if osint_store is not None and det_dict.get("src_ip"):
+                try:
+                    findings = await asyncio.to_thread(
+                        _get_spiderfoot_observables, osint_store, det_dict["src_ip"]
+                    )
+                    det_dict["_spiderfoot_findings"] = findings
+                except Exception:
+                    pass
+            asyncio.create_task(
+                asyncio.to_thread(
+                    _maybe_create_thehive_case_wrapper,
+                    thehive_client, det_dict, sqlite_conn,
+                )
+            )
 
     log.info("run_detection: found %d detections", len(detections))
     return JSONResponse(
