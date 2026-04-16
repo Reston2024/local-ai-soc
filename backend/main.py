@@ -396,6 +396,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         log.warning("Auto-triage worker failed to start: %s", exc)
 
+    # 7i. Phase 51: OSINT investigation store
+    try:
+        from backend.services.osint_investigation_store import OsintInvestigationStore
+        osint_store = OsintInvestigationStore(sqlite_store._conn)
+        app.state.osint_store = osint_store
+        log.info("osint_investigation_store ready")
+    except Exception as exc:
+        log.warning("osint_investigation_store init failed", error=str(exc))
+        app.state.osint_store = None
+
     # 8. Conditional osquery live telemetry collector
     osquery_task: asyncio.Task | None = None
     if settings.OSQUERY_ENABLED:
