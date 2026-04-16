@@ -4,12 +4,12 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 52
 status: executing
-last_updated: "2026-04-16T15:19:15.881Z"
+last_updated: "2026-04-16T15:26:20.771Z"
 progress:
   total_phases: 56
-  completed_phases: 48
+  completed_phases: 49
   total_plans: 234
-  completed_plans: 238
+  completed_plans: 239
 ---
 
 # Session State
@@ -85,6 +85,9 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **52-04:** THEHIVE_URL hardcoded as http://192.168.1.22:9000 in DetectionsView and InvestigationView — per CONTEXT.md decision, no settings endpoint needed
+- **52-04:** investigationResult.detection type extended inline with thehive_case_id/num/status rather than new interface — avoids proliferating small ad-hoc interfaces
+- **52-04:** TheHive badge placed in both corr expand panel and CAR expand panel — ensures all detection types see Open in TheHive button regardless of detection source
 - **52-03:** sync_thehive_closures/drain_pending_cases are synchronous — Wave 0 tests call directly without event loop; APScheduler uses lambda wrappers; production callers use asyncio.to_thread if needed
 - **52-03:** drain_pending_cases handles dual detection_json schema: raw detection dict (Wave 0 test) and nested {"detection_id": ..., "payload": {...}} (production _enqueue_pending_case format)
 - **52-03:** Dedicated AsyncIOScheduler for TheHive sync jobs — avoids coupling to metrics.py scheduler (lazily started) or daily snapshot scheduler (different job cadence)
@@ -128,6 +131,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 52-04 complete — TheHive frontend integration: Detection interface extended with thehive_case_id/num/status in api.ts; DetectionsView shows amber/green/red case badge (#N · status) on collapsed rows + Open in TheHive deep-link button in expanded panels (both corr and CAR paths); InvestigationView Evidence Timeline header shows case badge + button when detection has thehive_case_num. TypeScript 0 errors, 1181 unit tests passing. Phase 52 COMPLETE (all 4 plans done).
 - 2026-04-16: Plan 52-03 complete — TheHive pipeline wiring: thehive_sync.py (sync_thehive_closures + drain_pending_cases synchronous, dual-schema drain for Wave 0 test + production formats), detect.py fire-and-forget hook (asyncio.create_task + asyncio.to_thread wrapper for High/Critical detections + SpiderFoot enrichment), health.py _check_thehive() in gather + optional_keys, main.py THEHIVE_ENABLED guard + dedicated AsyncIOScheduler (300s sync/drain jobs). All 8 Phase 52 stubs GREEN. 1181 unit tests passing. Phase 52 COMPLETE.
 - 2026-04-16: Plan 52-02 complete — TheHive infrastructure layer: 4 THEHIVE_* settings, 5 thehive_* SQLite columns on detections + thehive_pending_cases table, TheHiveClient async wrapper (build_case_payload high->3/critical->4, build_observables ip/other dataTypes, _maybe_create_thehive_case synchronous with retry queue), infra/docker-compose.thehive.yml (6 services, memory-capped for N100). All 5 Wave 0 client stubs GREEN, 3 sync stubs SKIP (Plan 52-03).
 - 2026-04-16: Plan 52-01 complete — Wave 0 TDD stubs: test_thehive_client.py (5 stubs), test_thehive_sync.py (3 stubs). thehive4py==2.0.3 installed. All 8 stubs SKIP cleanly, 1177 unit tests passing. Phase 52 Plan 01 complete.
