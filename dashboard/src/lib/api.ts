@@ -661,6 +661,48 @@ export interface MapData {
   home_lon: number | null
 }
 
+// ── Phase 51: OSINT Investigation ──────────────────────────────────────────
+
+export interface OsintJob {
+  job_id: string
+  status: 'RUNNING' | 'FINISHED' | 'ERROR-FAILED' | 'ABORTED' | 'TIMEOUT'
+  target: string
+  usecase: string
+  started_at: string
+  completed_at?: string
+  error?: string
+}
+
+export interface OsintFinding {
+  id: number
+  investigation_id: string
+  event_type: string
+  data: string
+  source_module?: string
+  confidence: number
+  created_at: string
+  misp_hit: number          // 1 if matches MISP ioc_store
+  misp_event_ids: string    // JSON string of event source tags
+}
+
+export interface OsintInvestigationDetail extends OsintJob {
+  findings: OsintFinding[]
+  findings_by_type: Record<string, OsintFinding[]>
+  findings_count: number
+  dnstwist_findings?: Record<string, DnsTwistLookalike[]>
+}
+
+export interface DnsTwistLookalike {
+  fuzzer: string
+  domain?: string           // raw dnstwist library field (standalone /dnstwist endpoint)
+  lookalike_domain?: string // SQLite row field (from GET /investigate/{job_id})
+  dns_a?: string
+  dns_ns?: string
+  dns_mx?: string
+  whois_registrar?: string
+  whois_created?: string
+}
+
 const BASE = ''  // proxied via Vite dev server, or same origin in prod
 
 /** Returns the current API token from localStorage or Vite env fallback. */
@@ -1087,6 +1129,42 @@ export const api = {
   osint: {
     get: (ip: string) =>
       request<OsintResult>(`/api/osint/${ip}`, { headers: authHeaders() }),
+
+    startInvestigation: async (target: string, usecase: string = 'passive'): Promise<OsintJob> => {
+      const r = await fetch('/api/osint/investigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ target, usecase }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      return r.json()
+    },
+
+    getInvestigation: async (jobId: string): Promise<OsintInvestigationDetail> => {
+      const r = await fetch(`/api/osint/investigate/${encodeURIComponent(jobId)}`, { headers: authHeaders() })
+      if (!r.ok) throw new Error(await r.text())
+      return r.json()
+    },
+
+    listInvestigations: async (): Promise<{ investigations: OsintJob[] }> => {
+      const r = await fetch('/api/osint/investigations', { headers: authHeaders() })
+      if (!r.ok) throw new Error(await r.text())
+      return r.json()
+    },
+
+    cancelInvestigation: async (jobId: string): Promise<void> => {
+      await fetch(`/api/osint/investigate/${encodeURIComponent(jobId)}`, { method: 'DELETE', headers: authHeaders() })
+    },
+
+    runDnsTwist: async (domain: string): Promise<{ domain: string; lookalikes: DnsTwistLookalike[] }> => {
+      const r = await fetch('/api/osint/dnstwist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ domain }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      return r.json()
+    },
   },
 
   intel: {
