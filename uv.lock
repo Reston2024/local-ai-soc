@@ -40,6 +40,7 @@ dependencies = [
     { name = "slowapi" },
     { name = "smolagents", extra = ["litellm"] },
     { name = "sse-starlette" },
+    { name = "thehive4py" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "weasyprint" },
 ]
@@ -82,6 +83,7 @@ requires-dist = [
     { name = "slowapi", specifier = "==0.1.9" },
     { name = "smolagents", extras = ["litellm"], specifier = ">=1.24.0" },
     { name = "sse-starlette", specifier = "==3.0.3" },
+    { name = "thehive4py", specifier = "==2.0.3" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.34.3" },
     { name = "weasyprint", specifier = ">=68.1" },
 ]
@@ -2324,6 +2326,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/47/c6/ee486fd809e357697ee8a44d3d69222b344920433d3b6666ccd9b374630c/tenacity-9.1.4.tar.gz", hash = "sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a", size = 49413, upload-time = "2026-02-07T10:45:33.841Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d7/c1/eb8f9debc45d3b7918a32ab756658a0904732f75e555402972246b0b8e71/tenacity-9.1.4-py3-none-any.whl", hash = "sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55", size = 28926, upload-time = "2026-02-07T10:45:32.24Z" },
+]
+
+[[package]]
+name = "thehive4py"
+version = "2.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/de/71ab438f5f500b7925cb5d4d6e15864e8159cd64bfa215c81716bdd21234/thehive4py-2.0.3.tar.gz", hash = "sha256:bdbebb086de8a5971e705c08ae98b4ca1d624122ec16fb46f3ac90357fd0196d", size = 86848, upload-time = "2025-10-29T07:25:44.579Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/c3/ed2fb45dcf71a9b49e9be8d60d61401606a518a63eac9fe775228fa18a50/thehive4py-2.0.3-py3-none-any.whl", hash = "sha256:c40dcdb5ccb85a5f84e1addaa75dac32406b3aef4a590f7c1dd048a536f1d255", size = 51052, upload-time = "2025-10-29T07:25:43.44Z" },
 ]
 
 [[package]]

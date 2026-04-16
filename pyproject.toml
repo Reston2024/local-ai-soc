@@ -45,6 +45,7 @@ dependencies = [
     "pymisp>=2.5.33.1",
     "paramiko>=4.0.0",
     "dnstwist>=20250130",
+    "thehive4py==2.0.3",
 ]
 
 [dependency-groups]
