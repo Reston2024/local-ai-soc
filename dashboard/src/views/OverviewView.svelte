@@ -99,14 +99,13 @@
     }
 
     const leafY = prev.y + 85
-    const knownIPs = new Set(['192.168.1.1'])
+    const knownIPs = new Set(['192.168.1.1', '192.168.1.22', '192.168.1.100'])
 
     type Leaf = Omit<TopoNode,'x'|'y'>
     const leaves: Leaf[] = []
 
     if (networkDevices.gmktec !== undefined) {
       leaves.push({ id:'gmktec', label:'GMKtec', sub:'192.168.1.22 · Malcolm', kind:'server', status:st('gmktec') })
-      knownIPs.add('192.168.1.22'); knownIPs.add('192.168.1.100')
     }
 
     for (const a of internalAssets) {
@@ -160,9 +159,15 @@
       triageResult = triageData.result
       kpis = kpisData
       componentHealth = healthData
+      // Sort 192.168.1.x first, then other RFC-1918 ranges, then numeric within each group
       internalAssets = allAssets
         .filter(a => a.ip.startsWith('192.168.') || a.ip.startsWith('10.') || a.ip.startsWith('172.'))
-        .sort((a, b) => a.ip.localeCompare(b.ip, undefined, { numeric: true }))
+        .sort((a, b) => {
+          const aLan = a.ip.startsWith('192.168.1.') ? 0 : 1
+          const bLan = b.ip.startsWith('192.168.1.') ? 0 : 1
+          if (aLan !== bLan) return aLan - bLan
+          return a.ip.localeCompare(b.ip, undefined, { numeric: true })
+        })
       error = null
     } catch (e) {
       error = String(e)
