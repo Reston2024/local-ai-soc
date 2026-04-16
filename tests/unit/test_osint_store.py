@@ -109,4 +109,17 @@ def test_list_investigations(mem_store):
 @_skip
 def test_get_findings_since(mem_store):
     """get_findings_since() returns only rows with id > last_seen_id."""
-    assert False, "implement in Plan 51-02"
+    job_id = mem_store.create_investigation("1.2.3.4", "investigate")
+    findings = [
+        {"investigation_id": job_id, "event_type": "IP_ADDRESS", "data": "5.6.7.8"},
+        {"investigation_id": job_id, "event_type": "DOMAIN_NAME", "data": "evil.com"},
+        {"investigation_id": job_id, "event_type": "EMAIL_ADDRESS", "data": "bad@evil.com"},
+    ]
+    mem_store.bulk_insert_osint_findings(findings)
+    all_rows = mem_store.get_findings(job_id)
+    assert len(all_rows) == 3
+    # Use the minimum id as the cursor; get_findings_since returns id > cursor
+    min_id = min(r["id"] for r in all_rows)
+    since_rows = mem_store.get_findings_since(job_id, min_id)
+    assert len(since_rows) == 2
+    assert all(r["id"] > min_id for r in since_rows)
