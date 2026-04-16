@@ -672,7 +672,7 @@ Plans:
 **Goal:** Integrate SpiderFoot (17,412 stars, Python, actively maintained) as a deliberate investigation tool for mapping attacker infrastructure — distinct from Phase 32's reactive per-IP enrichment. Where Phase 32 runs 5 passive API lookups automatically at detection time, SpiderFoot is analyst-triggered: given a seed (IP, domain, email, ASN), it orchestrates 200+ modules to build a full entity relationship map across WHOIS, DNS, BGP, certificate transparency, passive DNS, Shodan, AbuseIPDB, ThreatMiner, and more. Run SpiderFoot as a local server on this machine (no cloud dependency). Add a POST /api/osint/investigate endpoint that triggers a SpiderFoot scan and stores findings in SQLite. Surface investigation results in a new OSINT Investigation panel within InvestigationView — analyst clicks "Investigate Infrastructure" on any IP/domain and gets back a relationship graph of the attacker's footprint. Also integrate DNSTwist (typosquatting/lookalike domain detection) as a lightweight complement — given any domain SpiderFoot identifies, DNSTwist checks for phishing infrastructure targeting it. Both tools run locally with no paid API keys required.
 **Requirements**: SpiderFoot installed locally (pip install spiderfoot or binary); DNSTwist (pip install dnstwist); Phase 32 OSINT cache schema; InvestigationView existing; Phase 50 MISP (for cross-referencing found IOCs).
 **Depends on:** Phase 50
-**Plans:** 3/5 plans complete
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 51-01-PLAN.md — Wave 0: dnstwist dep, TDD stubs (test_spiderfoot_client.py, test_osint_store.py, test_osint_investigate_api.py)
