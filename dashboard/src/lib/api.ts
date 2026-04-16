@@ -111,6 +111,9 @@ export interface Detection {
   matched_event_count?: number    // convenience count for row badge
   verdict?: string | null         // Phase 44: 'TP' | 'FP' | null
   detection_source?: string | null  // Phase 48/49: 'sigma' | 'hayabusa' | 'chainsaw' | 'correlation' | null
+  thehive_case_id?: string | null    // Phase 52: internal TheHive _id (for API calls)
+  thehive_case_num?: number | null   // Phase 52: sequential case number for display (#42) and URL
+  thehive_status?: string | null     // Phase 52: "New" | "InProgress" | "Resolved" | "TruePositive" | "FalsePositive"
 }
 
 export interface GraphEntity {

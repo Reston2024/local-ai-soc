@@ -77,6 +77,21 @@
   let kpis = $state<KpiSnapshot | null>(null)
   let kpiError = $state<string | null>(null)
   let kpiPollingInterval: ReturnType<typeof setInterval> | null = null
+  // Phase 52: TheHive case badge helpers
+  const THEHIVE_CASE_URL = (caseNum: number) => `http://192.168.1.22:9000/cases/${caseNum}`
+
+  function thehiveBadgeLabel(status: string | null | undefined): string {
+    if (!status) return 'New'
+    if (status === 'TruePositive') return 'True Positive'
+    if (status === 'FalsePositive') return 'False Positive'
+    return status
+  }
+  function thehiveBadgeClass(status: string | null | undefined): string {
+    if (status === 'Resolved' || status === 'TruePositive') return 'badge-thehive badge-thehive-resolved'
+    if (status === 'FalsePositive') return 'badge-thehive badge-thehive-fp'
+    return 'badge-thehive badge-thehive-open'
+  }
+
   // Keep activeCases as a fallback for open_cases when kpis is null
   let activeCases = $state(0)
   let ingestionOk = $state<boolean | null>(null)
@@ -538,6 +553,11 @@
                 {#if d.detection_source === 'chainsaw'}
                   <span class="badge-chainsaw">CHAINSAW</span>
                 {/if}
+                {#if d.thehive_case_num}
+                  <span class={thehiveBadgeClass(d.thehive_status)} title="TheHive case">
+                    #{d.thehive_case_num} · {thehiveBadgeLabel(d.thehive_status)}
+                  </span>
+                {/if}
               </td>
               <td><span class={severityClass(d.severity)}>{d.severity}</span></td>
               <td class="tactic">
@@ -614,6 +634,19 @@
                           onclick={() => submitVerdict(d, 'FP')}
                         >&#10007; False Positive</button>
                       </div>
+                      {#if d.thehive_case_num}
+                        <div class="thehive-case-row">
+                          <span class={thehiveBadgeClass(d.thehive_status)}>
+                            Case #{d.thehive_case_num} · {thehiveBadgeLabel(d.thehive_status)}
+                          </span>
+                          <button
+                            class="btn-thehive"
+                            onclick={() => window.open(THEHIVE_CASE_URL(d.thehive_case_num!), '_blank')}
+                          >
+                            Open in TheHive
+                          </button>
+                        </div>
+                      {/if}
                     </div>
                   {:else}
                     <!-- Existing CAR analytics panel -->
@@ -656,6 +689,19 @@
                         onclick={() => submitVerdict(d, 'FP')}
                       >&#10007; False Positive</button>
                     </div>
+                    {#if d.thehive_case_num}
+                      <div class="thehive-case-row">
+                        <span class={thehiveBadgeClass(d.thehive_status)}>
+                          Case #{d.thehive_case_num} · {thehiveBadgeLabel(d.thehive_status)}
+                        </span>
+                        <button
+                          class="btn-thehive"
+                          onclick={() => window.open(THEHIVE_CASE_URL(d.thehive_case_num!), '_blank')}
+                        >
+                          Open in TheHive
+                        </button>
+                      </div>
+                    {/if}
                   {/if}
                 </td>
               </tr>
@@ -1189,4 +1235,22 @@
   .verdict-active-fp { border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.1); }
   .verdict-toast { position: fixed; bottom: 24px; right: 24px; background: rgba(30,30,30,0.95); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 18px; color: rgba(255,255,255,0.9); font-size: 13px; z-index: 1000; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
   .chip-unreviewed.chip-active { background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.4); color: #a5b4fc; }
+
+  /* Phase 52: TheHive case badge + button */
+  .badge-thehive {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+    margin-left: 4px;
+  }
+  .badge-thehive-open     { background: #92400e; color: #fef3c7; }
+  .badge-thehive-resolved { background: #065f46; color: #d1fae5; }
+  .badge-thehive-fp       { background: #7f1d1d; color: #fee2e2; }
+  .thehive-case-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .btn-thehive {
+    padding: 4px 12px; border-radius: 4px;
+    background: #1a1a2e; border: 1px solid #374151; color: #e5e7eb;
+    cursor: pointer; font-size: 12px;
+  }
+  .btn-thehive:hover { background: #2d2d44; }
 </style>
