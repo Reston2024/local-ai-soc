@@ -697,6 +697,26 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd:plan-phase 53 to break down)
 
+### Phase 54: SecOps LLM Fine-Tuning
+
+**Goal:** Fine-tune Foundation-Sec-8B on Phase 44 analyst verdict data (TP/FP labels, investigation notes, triage decisions) collected from real SOC Brain detections. Use HuggingFace PEFT/LoRA to produce a domain-adapted model that outperforms the base Foundation-Sec-8B on SOC-specific triage tasks — alert triage, severity classification, and investigation summarisation. Train on the RTX 5080 (16GB VRAM) locally, push adapter weights to HuggingFace Hub, and hot-swap into Ollama for A/B comparison against the baseline. Track improvement via the existing Phase 14 eval harness (data/eval_results.jsonl).
+**Requirements**: Phase 44 analyst feedback data (TP/FP verdicts + investigation notes in SQLite); RTX 5080 with CUDA; HuggingFace account + Hub access; Phase 14 eval harness; `transformers`, `peft`, `trl`, `bitsandbytes` dependencies.
+**Depends on:** Phase 44
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 54 to break down)
+
+### Phase 55: Outbound Alerting
+
+**Goal:** Push critical detections out of the dashboard and into the analyst's hands — email, Slack, and/or PagerDuty notifications when High/Critical severity detections fire, auto-triage completes, or MISP IOC matches are found. Zero-missed-detection guarantee when the analyst is away from the dashboard. Configurable per-severity thresholds, rate limiting (no alert storms), and a 15-minute digest mode for non-urgent events. Backend-driven: FastAPI background task evaluates each detection against alert rules and dispatches via pluggable notifier classes (SMTP, Slack webhook, PagerDuty Events API v2). Configuration via .env — no secrets in code.
+**Requirements**: SMTP server or Slack workspace or PagerDuty account (at least one); Phase 35 auto-triage loop; Phase 50 MISP IOC match events; existing detections pipeline.
+**Depends on:** Phase 50
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 55 to break down)
+
 ---
 
 ## Phase 14: LLMOps Evaluation & Investigation AI Copilot
