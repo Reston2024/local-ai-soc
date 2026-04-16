@@ -381,6 +381,50 @@ CREATE TABLE IF NOT EXISTS chainsaw_scanned_files (
 )
 """
 
+# Phase 51: OSINT investigation tables
+_OSINT_INVESTIGATION_DDL = """
+CREATE TABLE IF NOT EXISTS osint_investigations (
+    id              TEXT PRIMARY KEY,
+    target          TEXT NOT NULL,
+    target_type     TEXT,
+    usecase         TEXT DEFAULT 'investigate',
+    status          TEXT DEFAULT 'RUNNING',
+    started_at      TEXT NOT NULL,
+    completed_at    TEXT,
+    result_summary  TEXT,
+    error           TEXT
+);
+
+CREATE TABLE IF NOT EXISTS osint_findings (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    investigation_id    TEXT NOT NULL REFERENCES osint_investigations(id),
+    event_type          TEXT NOT NULL,
+    data                TEXT NOT NULL,
+    source_module       TEXT,
+    confidence          REAL DEFAULT 1.0,
+    created_at          TEXT NOT NULL,
+    misp_hit            INTEGER DEFAULT 0,
+    misp_event_ids      TEXT DEFAULT '[]'
+);
+
+CREATE TABLE IF NOT EXISTS dnstwist_findings (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    investigation_id    TEXT NOT NULL REFERENCES osint_investigations(id),
+    seed_domain         TEXT NOT NULL,
+    fuzzer              TEXT,
+    lookalike_domain    TEXT NOT NULL,
+    dns_a               TEXT,
+    dns_mx              TEXT,
+    whois_registrar     TEXT,
+    whois_created       TEXT,
+    created_at          TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_osint_findings_inv ON osint_findings(investigation_id);
+CREATE INDEX IF NOT EXISTS idx_dnstwist_findings_inv ON dnstwist_findings(investigation_id);
+CREATE INDEX IF NOT EXISTS idx_osint_inv_started ON osint_investigations(started_at DESC);
+"""
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -510,6 +554,10 @@ class SQLiteStore:
 
         # Phase 49: Chainsaw scanned files dedup table (idempotent — CREATE IF NOT EXISTS)
         self._conn.execute(_CHAINSAW_DDL)
+        self._conn.commit()
+
+        # Phase 51: OSINT investigation tables (idempotent — CREATE IF NOT EXISTS)
+        self._conn.executescript(_OSINT_INVESTIGATION_DDL)
         self._conn.commit()
 
         # Phase 48: detection_source column on detections
