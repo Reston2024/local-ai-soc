@@ -511,6 +511,11 @@
         class:active={activeTab === 'agent'}
         onclick={() => { activeTab = 'agent'; if (!agentRunning && !agentVerdict && agentSteps.length === 0 && !agentError) startAgent() }}
       >Agent</button>
+      <button
+        class="tab-btn"
+        class:active={activeTab === 'osint'}
+        onclick={() => activeTab = 'osint'}
+      >OSINT</button>
     </div>
 
     {#if activeTab === 'summary'}
@@ -693,6 +698,148 @@
       {/if}
 
     </div>
+    {/if}
+
+    {#if activeTab === 'osint'}
+      <div class="osint-panel">
+        <!-- Seed + controls -->
+        <div class="osint-controls">
+          <label class="osint-label">Target</label>
+          <input
+            class="osint-seed-input"
+            type="text"
+            bind:value={osintSeed}
+            placeholder="IP address or domain"
+            disabled={osintRunning}
+          />
+          <div class="osint-mode-group">
+            <label class="osint-radio">
+              <input type="radio" bind:group={osintUsecase} value="passive" disabled={osintRunning} />
+              Quick (~2 min, passive)
+            </label>
+            <label class="osint-radio">
+              <input type="radio" bind:group={osintUsecase} value="all" disabled={osintRunning} />
+              Full (~30 min, all modules)
+            </label>
+          </div>
+          <button
+            class="btn-run-osint"
+            onclick={runOsintInvestigation}
+            disabled={osintRunning || !osintSeed.trim()}
+          >
+            {osintRunning ? 'Running…' : 'Run OSINT'}
+          </button>
+          {#if osintRunning}
+            <span class="osint-status-badge running">● {osintJob?.status ?? 'RUNNING'}</span>
+          {:else if osintJob}
+            <span class="osint-status-badge {osintJob.status.toLowerCase().replace('-','').replace('_','')}">
+              ● {osintJob.status}
+            </span>
+          {/if}
+        </div>
+
+        <!-- Timeout warning banner -->
+        {#if osintTimedOut}
+          <div class="warn-banner">
+            Scan stopped — 30-min limit reached. Partial results shown.
+          </div>
+        {/if}
+
+        <!-- Error banner -->
+        {#if osintError}
+          <div class="error-banner">{osintError}</div>
+        {/if}
+
+        <!-- Results: list view by default -->
+        {#if osintDetail && osintDetail.findings_count > 0}
+          <div class="osint-results-header">
+            <span class="osint-count">{osintDetail.findings_count} entities found</span>
+            <button
+              class="btn-graph-toggle"
+              onclick={() => osintShowGraph = !osintShowGraph}
+            >
+              {osintShowGraph ? 'List View' : 'Graph View'}
+            </button>
+          </div>
+
+          {#if osintShowGraph}
+            <!-- Graph view: Cytoscape.js -->
+            <div class="osint-graph-container" id="osint-cytoscape"></div>
+          {:else}
+            <!-- List view: grouped by entity type -->
+            {#each Object.entries(osintDetail.findings_by_type).sort(([a],[b]) => a.localeCompare(b)) as [etype, entities]}
+              <div class="osint-type-group">
+                <button
+                  class="osint-type-header"
+                  onclick={() => {
+                    const s = new Set(osintExpandedTypes)
+                    s.has(etype) ? s.delete(etype) : s.add(etype)
+                    osintExpandedTypes = s
+                  }}
+                >
+                  <span class="osint-type-chevron">{osintExpandedTypes.has(etype) ? '▾' : '▸'}</span>
+                  <span class="osint-type-name">{etype}</span>
+                  <span class="osint-type-count">{entities.length}</span>
+                </button>
+                {#if osintExpandedTypes.has(etype)}
+                  <ul class="osint-entity-list">
+                    {#each entities as entity}
+                      <li class="osint-entity-row">
+                        <span class="osint-entity-data">{entity.data}</span>
+                        {#if entity.misp_hit}
+                          <span class="badge-misp-hit" title="Matched MISP IOC cache">⚠ MISP</span>
+                        {/if}
+                        {#if entity.source_module}
+                          <span class="osint-module-tag">{entity.source_module}</span>
+                        {/if}
+                        <!-- DNSTwist expand for domains -->
+                        {#if etype === 'DOMAIN_NAME'}
+                          <button
+                            class="btn-dnstwist-expand"
+                            onclick={async () => {
+                              const key = entity.data
+                              const s = new Set(osintExpandedDomains)
+                              if (s.has(key)) {
+                                s.delete(key)
+                                osintExpandedDomains = s
+                              } else {
+                                s.add(key)
+                                osintExpandedDomains = s
+                              }
+                            }}
+                          >
+                            Lookalikes ▸
+                          </button>
+                          {#if osintExpandedDomains.has(entity.data) && osintDetail}
+                            {@const dnsRows = osintDetail.dnstwist_findings?.[entity.data] ?? []}
+                            {#if dnsRows.length > 0}
+                              <ul class="dnstwist-list">
+                                {#each dnsRows as lk}
+                                  <li class="dnstwist-row">
+                                    <span class="dnstwist-domain">{lk.lookalike_domain}</span>
+                                    {#if lk.dns_a}<span class="dnstwist-ip">{lk.dns_a}</span>{/if}
+                                    {#if lk.fuzzer}<span class="dnstwist-fuzzer">{lk.fuzzer}</span>{/if}
+                                  </li>
+                                {/each}
+                              </ul>
+                            {:else}
+                              <p class="dnstwist-empty">No registered lookalike domains found.</p>
+                            {/if}
+                          {/if}
+                        {/if}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </div>
+            {/each}
+          {/if}
+        {:else if osintDetail && osintDetail.findings_count === 0}
+          <p class="osint-empty">No findings returned by SpiderFoot.</p>
+        {:else if !osintRunning && !osintJob}
+          <p class="osint-idle">Enter a target and click Run OSINT to start an investigation.</p>
+        {/if}
+      </div>
     {/if}
 
   </div>
@@ -923,6 +1070,43 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .btn-confirm-tp:hover { background: rgba(34,197,94,0.25); }
 .btn-mark-fp { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #f87171; padding: 0.35rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
 .btn-mark-fp:hover { background: rgba(239,68,68,0.22); }
+
+/* ── Phase 51 OSINT Tab ─────────────────────── */
+.osint-panel { display: flex; flex-direction: column; gap: 12px; padding: 16px 0; overflow-y: auto; flex: 1; }
+.osint-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 0.75rem; }
+.osint-label { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+.osint-seed-input { flex: 1; min-width: 180px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; padding: 6px 10px; color: #fff; font-size: 0.85rem; }
+.osint-mode-group { display: flex; gap: 12px; }
+.osint-radio { font-size: 0.8rem; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.btn-run-osint { background: #6366f1; color: #fff; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.85rem; cursor: pointer; }
+.btn-run-osint:disabled { opacity: 0.45; cursor: not-allowed; }
+.osint-status-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; }
+.osint-status-badge.running { color: #fbbf24; }
+.osint-status-badge.finished { color: #34d399; }
+.osint-status-badge.timeout { color: #f59e0b; }
+.warn-banner { background: rgba(251,191,36,0.1); border: 1px solid #f59e0b; border-radius: 6px; padding: 8px 12px; color: #fbbf24; font-size: 0.82rem; margin: 0 0.75rem; }
+.error-banner { background: rgba(239,68,68,0.1); border: 1px solid #ef4444; border-radius: 6px; padding: 8px 12px; color: #fca5a5; font-size: 0.82rem; margin: 0 0.75rem; }
+.osint-results-header { display: flex; align-items: center; justify-content: space-between; padding: 0 0.75rem; }
+.osint-count { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+.btn-graph-toggle { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.8); border-radius: 5px; padding: 4px 10px; font-size: 0.78rem; cursor: pointer; }
+.osint-graph-container { width: 100%; height: 340px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.03); margin: 0 0.75rem; }
+.osint-type-group { border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; margin: 0 0.75rem; }
+.osint-type-header { width: 100%; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: none; padding: 8px 12px; color: rgba(255,255,255,0.85); cursor: pointer; font-size: 0.82rem; }
+.osint-type-chevron { font-size: 0.7rem; color: rgba(255,255,255,0.5); }
+.osint-type-count { margin-left: auto; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 1px 7px; font-size: 0.72rem; }
+.osint-entity-list { list-style: none; margin: 0; padding: 0; }
+.osint-entity-row { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.8rem; flex-wrap: wrap; }
+.osint-entity-data { color: #e2e8f0; font-family: monospace; }
+.badge-misp-hit { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; font-weight: 600; }
+.osint-module-tag { color: rgba(255,255,255,0.35); font-size: 0.72rem; }
+.btn-dnstwist-expand { background: none; border: none; color: #818cf8; font-size: 0.75rem; cursor: pointer; padding: 0 4px; }
+.dnstwist-list { list-style: none; margin: 0; padding: 4px 12px 8px 28px; }
+.dnstwist-row { display: flex; gap: 10px; align-items: center; padding: 3px 0; font-size: 0.78rem; }
+.dnstwist-domain { color: #fbbf24; font-family: monospace; }
+.dnstwist-ip { color: rgba(255,255,255,0.45); font-size: 0.72rem; }
+.dnstwist-fuzzer { color: rgba(255,255,255,0.3); font-size: 0.7rem; font-style: italic; }
+.dnstwist-empty { padding: 6px 16px 10px; font-size: 0.78rem; color: rgba(255,255,255,0.35); }
+.osint-idle, .osint-empty { font-size: 0.82rem; color: rgba(255,255,255,0.4); padding: 12px 0.75rem; }
 
 /* Phase 45: Waiting / thinking indicator */
 .agent-thinking {
