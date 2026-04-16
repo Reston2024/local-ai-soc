@@ -686,7 +686,7 @@ Plans:
 **Goal:** Integrate TheHive (4,531 stars, Scala/Python, actively maintained) as a dedicated case management and incident workflow platform running alongside the SOC Brain stack — replacing the ad-hoc investigation tracking currently in InvestigationView with a proper case lifecycle system. TheHive provides structured case creation, task assignment, observable management (IOCs, artifacts, TTPs), timeline reconstruction, and analyst collaboration. Run TheHive as a local Docker container on the GMKtec (alongside Malcolm). Wire the SOC Brain backend to TheHive's REST API: when a detection fires above a severity threshold (High/Critical), auto-create a TheHive case with observables pre-populated from the detection (src_ip, rule_name, ATT&CK technique, MISP-matched IOCs from Phase 50, SpiderFoot findings from Phase 51). Add a "Open in TheHive" button to DetectionsView and InvestigationView. Cases flow: Detection → auto-case in TheHive → analyst works case in TheHive → closure synced back to SOC Brain SQLite. Also integrate Cortex (TheHive's companion analyser engine) for automated observable enrichment — Cortex calls the same OSINT sources as Phase 32 but within TheHive's workflow, keeping enrichment consistent across both systems.
 **Requirements**: Docker on GMKtec; TheHive 5.x + Cortex (Docker Compose); Phase 50 MISP (TheHive natively integrates with MISP); Phase 51 SpiderFoot findings available in SQLite; existing detections pipeline.
 **Depends on:** Phase 51
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 - [ ] 52-01-PLAN.md -- Wave 0 TDD stubs + thehive4py install (test_thehive_client.py, test_thehive_sync.py)

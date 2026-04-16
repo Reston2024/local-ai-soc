@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 51
-status: planning
-last_updated: "2026-04-16T13:07:56.928Z"
+current_phase: 52
+status: in-progress
+last_updated: "2026-04-16T15:01:56.100Z"
 progress:
   total_phases: 56
   completed_phases: 48
-  total_plans: 230
-  completed_plans: 235
+  total_plans: 234
+  completed_plans: 236
 ---
 
 # Session State
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 51
+**Current phase:** 52
 **Previous phase:** 51-spiderfoot-osint-investigation-platform (Plans 51-01 through 51-05 — complete)
-**Status:** Ready to plan
+**Status:** In Progress — Plan 52-01 complete, Plan 52-02 next
 
 ## Key Decisions
 
@@ -85,6 +85,11 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **52-01:** Per-test skipif guard (if not _TH_AVAILABLE: pytest.skip()) rather than module-level pytestmark — matches Phase 44/45/48 pattern so individual tests fail RED independently when source exists but broken
+- **52-01:** Separate _TH_AVAILABLE and _TH_SYNC_AVAILABLE flags for thehive_client.py vs thehive_sync.py — each test file tracks its own source module availability
+- **52-01:** test_ping_returns_false_when_unreachable patches client._api.case.find — implies TheHiveClient wraps TheHiveApi as self._api; Plan 52-02 must implement accordingly
+- **52-01:** test_enqueue_on_failure creates in-memory SQLite with thehive_pending_cases DDL — establishes retry queue schema contract for Plan 52-02
+
 - **51-05:** check_same_thread=False required on in-memory SQLite when asyncio.to_thread accesses connection created in the main thread (unit test fixture context)
 - **51-05:** TestClient(app, raise_server_exceptions=False) without context manager is the correct lifespan-free unit test pattern — avoids DuckDB file-lock IOException from full lifespan
 - **51-05:** GET /investigations must be registered before GET /{ip} in FastAPI router — literal path segments only win when registered first; moved /investigations before /{ip} in osint_api.py
@@ -116,6 +121,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 52-01 complete — Wave 0 TDD stubs: test_thehive_client.py (5 stubs), test_thehive_sync.py (3 stubs). thehive4py==2.0.3 installed. All 8 stubs SKIP cleanly, 1177 unit tests passing. Phase 52 Plan 01 complete.
 - 2026-04-16: Plan 51-05 complete — Wave 3 unit tests: test_spiderfoot_client.py (5 GREEN), test_osint_investigate_api.py (9 GREEN, fixed /investigations routing bug shadowed by /{ip}), test_dnstwist_service.py (3 GREEN). 1177 unit tests passing. Phase 51 COMPLETE.
 - 2026-04-16: Plan 51-03 complete — Wave 2 Backend: SPIDERFOOT_BASE_URL setting, osint_poller.py (deadline-based poll_to_completion + _harvest_and_store with MISP cross-ref + auto-DNSTwist), 6 investigation routes in osint_api.py (POST/GET/DELETE/SSE stream/investigations list/DNSTwist endpoint), SpiderFoot health check in GET /health, OsintInvestigationStore wired as app.state.osint_store. 7 test stubs SKIP cleanly (client fixture deferred to Plan 51-04). 1162 unit tests passing, zero new failures.
 - 2026-04-16: Plan 51-04 complete — Wave 2 Frontend OSINT Tab: OsintJob/OsintFinding/OsintInvestigationDetail/DnsTwistLookalike interfaces + api.osint 5-method group in api.ts; InvestigationView.svelte extended with activeTab='osint', 13 OSINT state vars, SSE stream (EventSource /stream endpoint), 10s safety-poll fallback, 32-min timeout guard, onDestroy cleanup, Cytoscape graph effects; OSINT panel HTML (seed input pre-populated from src_ip, Quick/Full radio, Run button, live status badge, entity list grouped by type, MISP badge, DNSTwist expand, graph toggle); 38 CSS rules. TypeScript 0 errors, 1162 unit tests passing.
