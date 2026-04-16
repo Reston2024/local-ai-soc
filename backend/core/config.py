@@ -154,6 +154,9 @@ class Settings(BaseSettings):
     # with TOTP MFA. Leave empty (default) to disable the legacy path completely.
     LEGACY_TOTP_SECRET: str = ""
 
+    # Phase 51: SpiderFoot OSINT investigation platform
+    SPIDERFOOT_BASE_URL: str = "http://localhost:5001"
+
     # Phase 50: MISP Threat Intelligence
     MISP_ENABLED: bool = False            # OFF until MISP is deployed on GMKtec
     MISP_URL: str = "http://192.168.1.22:8080"
