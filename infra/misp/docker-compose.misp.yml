@@ -37,6 +37,9 @@ services:
   misp-core:
     image: ghcr.io/misp/misp-docker/misp-core:latest
     restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "8080:80"   # HTTP (nginx redirects to HTTPS)
       - "8443:443"  # HTTPS — self-signed cert, use ssl_verify=False
