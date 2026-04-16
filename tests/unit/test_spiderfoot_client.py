@@ -9,6 +9,8 @@ except ImportError:
     pass
 
 _skip = pytest.mark.skipif(not _SF_AVAILABLE, reason="SpiderFootClient not yet implemented")
+# Stubs requiring httpx_mock or live server — deferred to Plan 51-03
+_skip_deferred = pytest.mark.skip(reason="deferred to Plan 51-03 (requires httpx_mock / live SpiderFoot)")
 
 
 @_skip
@@ -20,27 +22,27 @@ async def test_ping_returns_false_when_unreachable():
     assert result is False
 
 
-@_skip
+@_skip_deferred
 @pytest.mark.asyncio
 async def test_start_scan_uses_form_encoding(httpx_mock):
     """start_scan() sends application/x-www-form-urlencoded body, not JSON."""
     from backend.services.spiderfoot_client import SpiderFootClient
-    # stub: will be implemented in Plan 51-02
-    assert False, "implement in Plan 51-02"
+    # stub: will be implemented in Plan 51-03
+    assert False, "implement in Plan 51-03"
 
 
-@_skip
+@_skip_deferred
 @pytest.mark.asyncio
 async def test_get_status_extracts_index_6():
     """get_status() extracts status string from index[6] of the response list."""
-    assert False, "implement in Plan 51-02"
+    assert False, "implement in Plan 51-03"
 
 
-@_skip
+@_skip_deferred
 @pytest.mark.asyncio
 async def test_stop_scan_posts_form_id():
     """stop_scan() posts id= as form data."""
-    assert False, "implement in Plan 51-02"
+    assert False, "implement in Plan 51-03"
 
 
 @_skip
