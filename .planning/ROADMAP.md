@@ -679,7 +679,7 @@ Plans:
 - [x] 51-02-PLAN.md — Wave 1: SpiderFootClient, OsintInvestigationStore, SQLite DDL, DNSTwist service, Docker Compose
 - [x] 51-03-PLAN.md — Wave 2: OSINT investigate API routes, dnstwist endpoint, SSE stream
 - [x] 51-04-PLAN.md — Wave 2 (parallel): Frontend OSINT tab — api.ts interfaces + api.osint methods, InvestigationView OSINT panel with SSE stream, entity list, MISP badge, DNSTwist expand, Cytoscape graph
-- [ ] 51-05-PLAN.md — Wave 3: SpiderFoot Docker Compose infra + backend wiring
+- [x] 51-05-PLAN.md — Wave 3: Unit tests + integration verification (1177 tests passing)
 
 ### Phase 52: TheHive Case Management Integration
 

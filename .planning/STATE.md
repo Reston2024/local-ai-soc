@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 51
+current_phase: 52
 status: in_progress
-last_updated: "2026-04-15T05:40:41.684Z"
+last_updated: "2026-04-16T12:45:00.000Z"
 progress:
   total_phases: 54
-  completed_phases: 47
+  completed_phases: 48
   total_plans: 225
-  completed_plans: 230
+  completed_plans: 235
 ---
 
 # Session State
@@ -22,8 +22,8 @@ See: .planning/PROJECT.md
 
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 51
-**Previous phase:** 50-misp-threat-intelligence-integration (Plans 50-01, 50-02, 50-03 — complete)
-**Status:** In progress — Plans 51-01, 51-02, 51-03, and 51-04 complete; Plan 51-05 pending
+**Previous phase:** 51-spiderfoot-osint-investigation-platform (Plans 51-01 through 51-05 — complete)
+**Status:** Complete — Plans 51-01 through 51-05 complete; Phase 51 DONE
 
 ## Key Decisions
 
@@ -85,6 +85,11 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **51-05:** check_same_thread=False required on in-memory SQLite when asyncio.to_thread accesses connection created in the main thread (unit test fixture context)
+- **51-05:** TestClient(app, raise_server_exceptions=False) without context manager is the correct lifespan-free unit test pattern — avoids DuckDB file-lock IOException from full lifespan
+- **51-05:** GET /investigations must be registered before GET /{ip} in FastAPI router — literal path segments only win when registered first; moved /investigations before /{ip} in osint_api.py
+- **51-05:** Health test asserts data["components"]["spiderfoot"] not data["spiderfoot"] — health response wraps all checks under "components" key
+- **51-05:** dnstwist ImportError test uses sys.modules injection (set to None) rather than builtins.__import__ patch — cleaner and more reliable for lazy imports inside asyncio.to_thread
 - **51-04:** osintEventSource declared at script scope (not inside runOsintInvestigation) so onDestroy cleanup can reach it; safety poll only updates osintJob.status while SSE active to avoid stomping live findings
 - **51-04:** Cytoscape dynamically imported (`import('cytoscape')`) to match GraphView.svelte pattern; nodes-only render for now (edges require /scanviz endpoint, stretch goal)
 - **51-04:** OSINT panel overflow-y: auto; flex: 1 so it scrolls independently within the copilot column
@@ -111,6 +116,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 51-05 complete — Wave 3 unit tests: test_spiderfoot_client.py (5 GREEN), test_osint_investigate_api.py (9 GREEN, fixed /investigations routing bug shadowed by /{ip}), test_dnstwist_service.py (3 GREEN). 1177 unit tests passing. Phase 51 COMPLETE.
 - 2026-04-16: Plan 51-03 complete — Wave 2 Backend: SPIDERFOOT_BASE_URL setting, osint_poller.py (deadline-based poll_to_completion + _harvest_and_store with MISP cross-ref + auto-DNSTwist), 6 investigation routes in osint_api.py (POST/GET/DELETE/SSE stream/investigations list/DNSTwist endpoint), SpiderFoot health check in GET /health, OsintInvestigationStore wired as app.state.osint_store. 7 test stubs SKIP cleanly (client fixture deferred to Plan 51-04). 1162 unit tests passing, zero new failures.
 - 2026-04-16: Plan 51-04 complete — Wave 2 Frontend OSINT Tab: OsintJob/OsintFinding/OsintInvestigationDetail/DnsTwistLookalike interfaces + api.osint 5-method group in api.ts; InvestigationView.svelte extended with activeTab='osint', 13 OSINT state vars, SSE stream (EventSource /stream endpoint), 10s safety-poll fallback, 32-min timeout guard, onDestroy cleanup, Cytoscape graph effects; OSINT panel HTML (seed input pre-populated from src_ip, Quick/Full radio, Run button, live status badge, entity list grouped by type, MISP badge, DNSTwist expand, graph toggle); 38 CSS rules. TypeScript 0 errors, 1162 unit tests passing.
 - 2026-04-16: Plan 51-02 complete — Wave 1: OsintInvestigationStore (9 CRUD methods, self-bootstrapping DDL), SpiderFootClient (8 async httpx methods, form-encoded POSTs), DNSTwist async service (asyncio.to_thread wrapper), OSINT SQLite DDL appended to sqlite_store.py, infra/docker-compose.spiderfoot.yml created. All 8 test_osint_store.py stubs GREEN; test_ping_returns_false_when_unreachable + test_spiderfoot_client_has_expected_methods GREEN; 3 httpx_mock stubs deferred to Plan 51-03. 1162 unit tests passing, zero new failures.
