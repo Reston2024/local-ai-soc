@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 50
-status: planning
+current_phase: 51
+status: in_progress
 last_updated: "2026-04-15T05:40:41.684Z"
 progress:
   total_phases: 54
@@ -21,9 +21,9 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 50
-**Previous phase:** 49-performance-monitoring (Plans 49-01, 49-02 — status per prior session)
-**Status:** Ready to plan
+**Current phase:** 51
+**Previous phase:** 50-misp-threat-intelligence-integration (Plans 50-01, 50-02, 50-03 — complete)
+**Status:** In progress — Plan 51-01 complete, Plans 51-02 through 51-05 pending
 
 ## Key Decisions
 
@@ -85,6 +85,9 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **51-01:** dnstwist base package used (not [full]) — py-tlsh C extension requires MSVC build tools not present on Windows; base dnstwist covers all fuzzer algorithms needed for lookalike detection
+- **51-01:** sse-starlette already at 3.0.3 in pyproject.toml (plan spec said >=2.1) — no change needed
+- **51-01:** OsintInvestigationStore fixture uses sqlite3.connect(':memory:') directly — store takes raw Connection (not SQLiteStore wrapper) for clean unit testability
 - **50-01:** MispSyncService stub uses lazy PyMISP import inside fetch_ioc_attributes — allows module import without live pymisp wheel at module level; Wave 1 adds the live import
 - **50-01:** MISP Docker Compose targets GMKtec N100 (not Windows host) — NOT merged into root compose; N100 memory-constrained: 256MB mariadb pool, 256MB valkey cap, NUM_WORKERS_EMAIL=0, NUM_WORKERS_UPDATE=1
 - **50-01:** customize_misp.sh is a guidance script (echo instructions) rather than automated feed-enable — prevents accidental download of all 80+ feeds exhausting N100 memory on first start
@@ -99,6 +102,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 51-01 complete — Wave 0 TDD stubs: test_spiderfoot_client.py (5 stubs), test_osint_store.py (8 stubs), test_osint_investigate_api.py (7 stubs). dnstwist==20250130 installed (base, not [full] — py-tlsh C extension requires MSVC not present on Windows). All 20 stubs SKIP cleanly, 1152 unit tests passing.
 - 2026-04-15: Plan 50-03 complete — Wave 2: list_misp_iocs() + get_feed_status() extended to 4 feeds, GET /api/intel/misp-events endpoint, MispIoc TypeScript interface + api.intel.mispEvents(), ThreatIntelView MISP Intel panel with violet accent + expand panel MISP context. All 6 MISP tests GREEN (5 test_misp_sync + 1 test_intel_api_misp). 1152 unit tests passing.
 - 2026-04-15: Plan 50-02 complete — Wave 1: MispSyncService.fetch_ioc_attributes() fully implemented (lazy _load_pymisp(), PyMISP/MISPAttribute at module scope for patching), MispWorker added to feed_sync.py (6h interval, retroactive scan on new IOCs), MISP_ENABLED/URL/KEY/SSL_VERIFY/SYNC_INTERVAL_SEC/SYNC_LAST_HOURS added to Settings, main.py wired (conditional start). All 5 test_misp_sync.py tests GREEN. 1151 unit tests passing.
 - 2026-04-14: Plan 49-02 complete — Wave 1 implementation: ingestion/chainsaw_scanner.py (CHAINSAW_BIN, scan_evtx, chainsaw_record_to_detection, _LEVEL_MAP), SQLite chainsaw_scanned_files dedup table + is_chainsaw_scanned/mark_chainsaw_scanned, IngestionResult.chainsaw_findings, _run_chainsaw_scan() + non-fatal loader block, _check_chainsaw() health component. All 7 unit tests GREEN.

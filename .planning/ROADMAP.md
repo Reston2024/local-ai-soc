@@ -672,10 +672,14 @@ Plans:
 **Goal:** Integrate SpiderFoot (17,412 stars, Python, actively maintained) as a deliberate investigation tool for mapping attacker infrastructure — distinct from Phase 32's reactive per-IP enrichment. Where Phase 32 runs 5 passive API lookups automatically at detection time, SpiderFoot is analyst-triggered: given a seed (IP, domain, email, ASN), it orchestrates 200+ modules to build a full entity relationship map across WHOIS, DNS, BGP, certificate transparency, passive DNS, Shodan, AbuseIPDB, ThreatMiner, and more. Run SpiderFoot as a local server on this machine (no cloud dependency). Add a POST /api/osint/investigate endpoint that triggers a SpiderFoot scan and stores findings in SQLite. Surface investigation results in a new OSINT Investigation panel within InvestigationView — analyst clicks "Investigate Infrastructure" on any IP/domain and gets back a relationship graph of the attacker's footprint. Also integrate DNSTwist (typosquatting/lookalike domain detection) as a lightweight complement — given any domain SpiderFoot identifies, DNSTwist checks for phishing infrastructure targeting it. Both tools run locally with no paid API keys required.
 **Requirements**: SpiderFoot installed locally (pip install spiderfoot or binary); DNSTwist (pip install dnstwist); Phase 32 OSINT cache schema; InvestigationView existing; Phase 50 MISP (for cross-referencing found IOCs).
 **Depends on:** Phase 50
-**Plans:** 0 plans
+**Plans:** 1/5 plans complete
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 51 to break down)
+- [x] 51-01-PLAN.md — Wave 0: dnstwist dep, TDD stubs (test_spiderfoot_client.py, test_osint_store.py, test_osint_investigate_api.py)
+- [ ] 51-02-PLAN.md — Wave 1: SpiderFootClient, OsintInvestigationStore, SQLite DDL
+- [ ] 51-03-PLAN.md — Wave 2: OSINT investigate API routes, dnstwist endpoint, SSE stream
+- [ ] 51-04-PLAN.md — Wave 3: SpiderFoot Docker Compose infra + backend wiring
+- [ ] 51-05-PLAN.md — Wave 4: Frontend InvestigationView OSINT panel + DNSTwist UI
 
 ### Phase 52: TheHive Case Management Integration
 
