@@ -165,6 +165,12 @@ class Settings(BaseSettings):
     MISP_SYNC_INTERVAL_SEC: int = 21600   # 6-hour sync cycle
     MISP_SYNC_LAST_HOURS: int = 24        # Pull attrs updated in last N hours
 
+    # Phase 52: TheHive Case Management
+    THEHIVE_URL: str = "http://192.168.1.22:9000"
+    THEHIVE_API_KEY: str = ""                 # Set in .env when TheHive deployed
+    THEHIVE_ENABLED: bool = False             # Set True when TheHive running on GMKtec
+    THEHIVE_SUPPRESS_RULES: list[str] = []   # Rule IDs that skip auto-case creation
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000

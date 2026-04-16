@@ -381,6 +381,27 @@ CREATE TABLE IF NOT EXISTS chainsaw_scanned_files (
 )
 """
 
+# Phase 52: TheHive pending cases retry queue
+_THEHIVE_PENDING_DDL = """
+CREATE TABLE IF NOT EXISTS thehive_pending_cases (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    detection_id   TEXT NOT NULL,
+    payload_json   TEXT NOT NULL,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    attempts       INTEGER NOT NULL DEFAULT 0,
+    last_error     TEXT
+)
+"""
+
+# Phase 52: TheHive case tracking columns on detections
+_THEHIVE_COLUMNS: list[tuple[str, str]] = [
+    ("thehive_case_id",   "TEXT"),
+    ("thehive_case_num",  "INTEGER"),
+    ("thehive_status",    "TEXT"),
+    ("thehive_closed_at", "TEXT"),
+    ("thehive_analyst",   "TEXT"),
+]
+
 # Phase 51: OSINT investigation tables
 _OSINT_INVESTIGATION_DDL = """
 CREATE TABLE IF NOT EXISTS osint_investigations (
@@ -558,6 +579,20 @@ class SQLiteStore:
 
         # Phase 51: OSINT investigation tables (idempotent — CREATE IF NOT EXISTS)
         self._conn.executescript(_OSINT_INVESTIGATION_DDL)
+        self._conn.commit()
+
+        # Phase 52: TheHive pending cases retry queue (idempotent — CREATE IF NOT EXISTS)
+        self._conn.execute(_THEHIVE_PENDING_DDL)
+        self._conn.commit()
+
+        # Phase 52: TheHive case tracking columns on detections
+        for col, dtype in _THEHIVE_COLUMNS:
+            try:
+                self._conn.execute(
+                    f"ALTER TABLE detections ADD COLUMN {col} {dtype}"
+                )
+            except Exception:
+                pass  # column already exists — idempotent
         self._conn.commit()
 
         # Phase 48: detection_source column on detections
