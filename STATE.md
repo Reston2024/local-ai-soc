@@ -1,27 +1,26 @@
 # AI-SOC-Brain — Live Project State
 
-**Last updated:** 2026-04-09
-**Current milestone:** v1.0 COMPLETE — v1.1 in progress
+**Last updated:** 2026-04-16
+**Current milestone:** v1.0 COMPLETE — v1.1 COMPLETE (Phases 31-46) — Phase 50 COMPLETE
 **Overall status:** SOC BRAIN OPERATIONAL
 
 ---
 
 ## Active Work
 
-**v1.1 — Phases 31-36**
+**v1.2 — Next phases queued**
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **31** | **Malcolm Real Telemetry + Evidence Archive** | **Ready to execute** |
-| 32 | Real Threat Hunting — HuntingView backend API | Planned |
-| 33 | Real Threat Intelligence — IOC matching, live feeds | Planned |
-| 34 | Asset Inventory — auto-derived from telemetry | Planned |
-| 35 | SOC Completeness + Auto AI Triage loop | Planned |
-| 36 | Zeek Full Telemetry | Blocked — requires managed switch with SPAN port |
+| 51 | Outbound Alerting — email/Slack/PagerDuty for critical detections | Planned |
+| 52 | Firewalla Gold Integration — bridge device REST API ingestion | Blocked — hardware in transit |
+| 53 | IPFire SSH Health Stats — live router/firewall stats in Overview | Planned |
+| 54 | LLM Fine-tuning — Foundation-Sec-8B on Phase 44 verdict data (HuggingFace) | Planned |
+| 55 | GMKtec MISP Backup — mysqldump + Valkey backup strategy over SSH | Planned |
 
 ---
 
-## Phase Completion — v1.0 (All 30 Phases)
+## Phase Completion — v1.1 + v1.2 (Phases 31-50)
 
 | Phase | Description | Status | Date |
 |-------|-------------|--------|------|
@@ -57,6 +56,30 @@
 | Phase 28: Dashboard Integration Fixes | RAG SSE endpoint, event search shape, ingest status route, SettingsView routing | ✅ DONE | 2026-04-08 |
 | Phase 29: Missing Phase Verifiers | VERIFICATION.md for all 30 phases | ✅ DONE | 2026-04-08 |
 | Phase 30: Final Security + Sign-Off | Sigma guard, Caddy digest pin, Phase 22 UI sign-off | ✅ DONE | 2026-04-08 |
+| Phase 31: Malcolm Real Telemetry | EVE JSON ingestion expanded; Malcolm collector wired to all EVE types | ✅ DONE | 2026-04-09 |
+| Phase 32: Real Threat Hunting | HuntingView backend API; live hunt queries against DuckDB | ✅ DONE | 2026-04-09 |
+| Phase 33: Real Threat Intelligence | IOC matching, OSINT feed enrichment (Feodo, CISA KEV, ThreatFox) | ✅ DONE | 2026-04-09 |
+| Phase 34: Asset Inventory | Auto-derived asset inventory from Malcolm telemetry; AssetsView wired | ✅ DONE | 2026-04-10 |
+| Phase 35: Auto AI Triage | Auto AI triage background loop; `/api/triage/run` endpoint | ✅ DONE | 2026-04-10 |
+| Phase 36: Zeek Full Telemetry | Netgear GS308E SPAN port (port 1→5) active; Zeek live telemetry flowing | ✅ DONE | 2026-04-10 |
+| Phase 37: Report Templates | Analyst report templates, structured case export, evidence archive | ✅ DONE | 2026-04-11 |
+| Phase 38: CISA Playbook Library | Expanded CISA playbook library; multi-source playbooks | ✅ DONE | 2026-04-11 |
+| Phase 39: CAR Analytics | MITRE CAR descriptions + coverage badges in DetectionsView | ✅ DONE | 2026-04-11 |
+| Phase 40: Threat Map | Geolocated attacker IP map; OSINT enrichment via ipinfo.io | ✅ DONE | 2026-04-12 |
+| Phase 41: Anomaly Baseline | DuckDB sliding-window statistical baselines; severity heat map | ✅ DONE | 2026-04-12 |
+| Phase 42: Behavioral Profiles | River online anomaly scoring; score trend sparklines in AnomalyView | ✅ DONE | 2026-04-12 |
+| Phase 43: Sigma v2 Correlations | Port scan, brute force, beaconing, multi-stage chain detection via YAML | ✅ DONE | 2026-04-12 |
+| Phase 44: Analyst Feedback Loop | TP/FP verdicts; River online classifier; k-NN similar incidents; feedback KPIs | ✅ DONE | 2026-04-12 |
+| Phase 45: Agentic Investigation | Autonomous investigation pipeline; `/api/investigate/auto` | ✅ DONE | 2026-04-13 |
+| Phase 46: Playbook Library Expansion | 30 playbooks; multi-source; category filtering | ✅ DONE | 2026-04-13 |
+| Phase 47: SPA Routing Hardening | Caddy + backend SPA catch-all; direct URL navigation fixed | ✅ DONE | 2026-04-14 |
+| Phase 48: Hayabusa EVTX Hunting | Hayabusa binary integration; MITRE tag extraction; amber chip in DetectionsView; Overview health signal | ✅ DONE | 2026-04-14 |
+| Phase 49: Chainsaw EVTX Analysis | Chainsaw Windows event analysis; SQLite dedup; teal chip; health row | ✅ DONE | 2026-04-15 |
+| Phase 50: MISP Threat Intel | MISP Docker on GMKtec; PyMISP sync; 4,568 IOCs; MISP panel in ThreatIntelView; purple health row in Overview | ✅ DONE | 2026-04-16 |
+
+---
+
+## Phase Completion — v1.0 (All 30 Phases)
 
 ---
 
@@ -138,16 +161,21 @@ Full audit: `.planning/v1.0-v1.0-MILESTONE-AUDIT.md`
 | Docker + Compose | 29.2.1 + 5.0.2 | ✅ |
 | Ollama | 0.18.2 + running | ✅ |
 | supportTAK-server | Ubuntu (GMKtec N150) — 192.168.1.22 | ✅ |
-| Malcolm NSM | 17 containers (Ubuntu) | Running — partial telemetry |
+| Malcolm NSM | 17 containers (Ubuntu) | Running — full telemetry (Zeek + Suricata + syslog) |
 | osquery | Optional (OSQUERY_ENABLED=False default) | ✅ |
+| Netgear GS308E | 8-port managed switch — SPAN port 1→5 active | ✅ |
+| MISP | Docker on GMKtec — 192.168.1.22:8443 | Running — 4,568 IOCs synced |
+| Backup drive | F: (1.82TB) — robocopy incremental backup daily 02:00 | ✅ |
+| Firewalla Gold | Bridge device — REST API integration planned (Phase 52) | In transit |
 
 ---
 
 ## Blockers
 
-| Blocker | Phase | Workaround |
-|---------|-------|-----------|
-| No managed switch with SPAN port | Phase 36 (Zeek) | Buy ~$50-80 switch. Phase 36 deferred. |
+| Blocker | Phase | Status |
+|---------|-------|--------|
+| ~~No managed switch with SPAN port~~ | ~~Phase 36 (Zeek)~~ | ✅ RESOLVED — Netgear GS308E arrived 2026-04-10, SPAN port 1→5 active |
+| Firewalla Gold not yet arrived | Phase 52 | Ordered — hardware in transit |
 
 ---
 
@@ -207,3 +235,11 @@ uv run pytest tests/unit/ -q --tb=short
 - 2026-04-08: Phase 30 — Final Security + Sign-Off: Sigma guard, Caddy digest pin; 938+ tests pass
 - 2026-04-08: v1.0 milestone audit complete — 59/59 requirements, 8/8 E2E flows, 0 blocking gaps
 - 2026-04-09: Docs updated to reflect v1.0 complete + v1.1 state
+- 2026-04-09 to 2026-04-12: Phases 31-44 completed — Malcolm telemetry, hunting, IOC feeds, asset inventory, auto-triage, anomaly engine, Sigma v2 correlations, analyst feedback loop
+- 2026-04-10: Netgear GS308E SPAN switch arrived; Phase 36 (Zeek) unblocked and completed
+- 2026-04-13: Phase 45 — Agentic investigation pipeline; Phase 46 — 30-playbook library expansion
+- 2026-04-14: Phase 47 — SPA routing hardened (Caddy + backend catch-all); Phase 48 — Hayabusa EVTX threat hunting integration
+- 2026-04-15: Phase 49 — Chainsaw Windows event log analysis integrated
+- 2026-04-16: Phase 50 — MISP threat intelligence: Docker on GMKtec, 4 iptables/DNS fixes, 4,568 IOCs synced, ThreatIntelView panel, purple health row in Overview
+- 2026-04-16: Backup drive F: (1.82TB) arrived; incremental robocopy script with daily scheduled task
+- 2026-04-16: Network topology: hostname deduplication, Docker bridge IP filtering, DESKTOP-R5MSQJQ correctly shown at 192.168.1.102
