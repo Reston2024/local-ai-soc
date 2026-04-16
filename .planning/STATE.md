@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 52
-status: in-progress
-last_updated: "2026-04-16T15:01:56.100Z"
+status: executing
+last_updated: "2026-04-16T15:10:52.350Z"
 progress:
   total_phases: 56
   completed_phases: 48
   total_plans: 234
-  completed_plans: 236
+  completed_plans: 237
 ---
 
 # Session State
@@ -23,7 +23,7 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 52
 **Previous phase:** 51-spiderfoot-osint-investigation-platform (Plans 51-01 through 51-05 — complete)
-**Status:** In Progress — Plan 52-01 complete, Plan 52-02 next
+**Status:** In Progress — Plan 52-02 complete, Plan 52-03 next
 
 ## Key Decisions
 
@@ -85,6 +85,9 @@ See: .planning/PROJECT.md
 - **49-02:** int() cast on detection_count in _check_chainsaw() prevents MagicMock JSON serialization in health unit tests (same fix needed in _check_hayabusa — deferred as pre-existing failure)
 - **49-02:** test_health_returns_200 confirmed pre-existing failure via git stash — out of scope, logged to deferred-items
 
+- **52-02:** _maybe_create_thehive_case is synchronous (not async) — Wave 0 stubs test with synchronous mock_client; Plan 52-03 wiring into detect.py wraps in asyncio.to_thread()
+- **52-02:** thehive_pending_cases uses detection_json TEXT column (combined JSON blob) not separate detection_id + payload_json — Wave 0 test creates minimal schema with detection_json; production DDL matches
+- **52-02:** ping() is synchronous — used for health checks from non-async contexts; async callers wrap with asyncio.to_thread if needed
 - **52-01:** Per-test skipif guard (if not _TH_AVAILABLE: pytest.skip()) rather than module-level pytestmark — matches Phase 44/45/48 pattern so individual tests fail RED independently when source exists but broken
 - **52-01:** Separate _TH_AVAILABLE and _TH_SYNC_AVAILABLE flags for thehive_client.py vs thehive_sync.py — each test file tracks its own source module availability
 - **52-01:** test_ping_returns_false_when_unreachable patches client._api.case.find — implies TheHiveClient wraps TheHiveApi as self._api; Plan 52-02 must implement accordingly
@@ -121,6 +124,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 52-02 complete — TheHive infrastructure layer: 4 THEHIVE_* settings, 5 thehive_* SQLite columns on detections + thehive_pending_cases table, TheHiveClient async wrapper (build_case_payload high->3/critical->4, build_observables ip/other dataTypes, _maybe_create_thehive_case synchronous with retry queue), infra/docker-compose.thehive.yml (6 services, memory-capped for N100). All 5 Wave 0 client stubs GREEN, 3 sync stubs SKIP (Plan 52-03).
 - 2026-04-16: Plan 52-01 complete — Wave 0 TDD stubs: test_thehive_client.py (5 stubs), test_thehive_sync.py (3 stubs). thehive4py==2.0.3 installed. All 8 stubs SKIP cleanly, 1177 unit tests passing. Phase 52 Plan 01 complete.
 - 2026-04-16: Plan 51-05 complete — Wave 3 unit tests: test_spiderfoot_client.py (5 GREEN), test_osint_investigate_api.py (9 GREEN, fixed /investigations routing bug shadowed by /{ip}), test_dnstwist_service.py (3 GREEN). 1177 unit tests passing. Phase 51 COMPLETE.
 - 2026-04-16: Plan 51-03 complete — Wave 2 Backend: SPIDERFOOT_BASE_URL setting, osint_poller.py (deadline-based poll_to_completion + _harvest_and_store with MISP cross-ref + auto-DNSTwist), 6 investigation routes in osint_api.py (POST/GET/DELETE/SSE stream/investigations list/DNSTwist endpoint), SpiderFoot health check in GET /health, OsintInvestigationStore wired as app.state.osint_store. 7 test stubs SKIP cleanly (client fixture deferred to Plan 51-04). 1162 unit tests passing, zero new failures.
