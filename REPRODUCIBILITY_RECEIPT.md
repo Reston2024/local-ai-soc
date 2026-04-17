@@ -247,6 +247,51 @@ Install pip-audit as a dev dependency if CI enforcement is required. As of 2026-
 
 ---
 
+## Phase 54 — GPU Migration (2026-04-16)
+
+### GPU Migration Summary
+
+| Field | Value |
+|-------|-------|
+| Date of migration | 2026-04-16 |
+| GPU | NVIDIA RTX 5080 (16 GB VRAM) |
+| CUDA version | 13.1 |
+| System env var set | `OLLAMA_VULKAN=true` (Machine scope permanent) |
+| `CUDA_VISIBLE_DEVICES` | Unset at all scopes (was blocking Vulkan discovery) |
+| Ollama version | 0.18.2 |
+| TTFT before (CPU) | ~300s for qwen3:14b short prompt |
+| TTFT after (GPU via Vulkan) | <30s, GPU Layers 40+ for qwen3:14b |
+| GPU warning block added to | `scripts/_start-backend.ps1` (advisory-only try/catch) |
+
+### Root Cause
+
+`CUDA_VISIBLE_DEVICES=0` set at Machine scope was blocking Vulkan discovery. RTX 5080 (Blackwell sm_120) is NOT supported by Ollama's bundled CUDA runtime. Vulkan backend (`vulkan/ggml-vulkan.dll`) is the permanent solution for Blackwell GPUs.
+
+### Workaround for RTX 5080 (Blackwell sm_120)
+
+```powershell
+# Permanent fix (Machine scope):
+[System.Environment]::SetEnvironmentVariable("OLLAMA_VULKAN", "true", "Machine")
+# Also unset CUDA_VISIBLE_DEVICES at Machine/User/Process scope if set:
+[System.Environment]::SetEnvironmentVariable("CUDA_VISIBLE_DEVICES", $null, "Machine")
+```
+
+### Live Snapshot (captured 2026-04-16, updated 2026-04-17)
+
+- `ollama --version`: 0.21.0 (was 0.18.2 at time of migration)
+- `nvidia-smi`: NVIDIA GeForce RTX 5080, Driver 591.74, 16303 MiB VRAM
+- GPU utilization confirmed via `ollama ps`: 11% CPU / 89% GPU split
+- Cross-reference: GPU warning block in `scripts/_start-backend.ps1`
+
+### Files Changed in 54-01 / 54-02
+
+- `backend/core/config.py` — RERANKER_URL, RERANKER_TOP_K, RERANKER_ENABLED settings added
+- `scripts/_start-backend.ps1` — GPU pre-flight warning block (advisory-only try/catch)
+- `tests/unit/test_reranker.py` — wave-0 stubs (3 tests, SKIP until 54-08)
+- `tests/unit/test_chroma_store.py` — bge-m3 dimension stub appended (SKIP until 54-05)
+
+---
+
 ## Phase 8 — Verified Dependency Versions (2026-03-17)
 
 | Package | Version |
