@@ -127,11 +127,11 @@ async def verify_token(
         # Constant-time dummy verify to prevent timing oracle
         verify_api_key(raw, _dummy_hash)
 
-    # LEGACY ADMIN PATH — Deprecation target: Phase 26 (2026-Q2)
-    # This path exists for backward compatibility with pre-operator-table deployments.
+    # DEPRECATED — scheduled for removal 2026-07-01 (see DEPRECATION.md)
+    # This path remains for backward compatibility only. Use the operator table auth path.
     # New deployments must use the operator table (POST /api/auth/login).
-    # This path will be removed in Phase 26. ADR-025 documents the security controls.
-    # Tracking: https://github.com/Reston2024/local-ai-soc/issues (S-02)
+    # Migrate: create an operator via POST /api/operators and switch to per-operator API keys.
+    # ADR-025 documents the security controls. Tracking: S-02.
     # --- Legacy AUTH_TOKEN fallback ---
     if hmac.compare_digest(raw, configured):
         # TOTP enforcement is conditional on LEGACY_TOTP_SECRET being configured.

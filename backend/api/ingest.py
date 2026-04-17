@@ -315,7 +315,8 @@ async def upload_file(
 
 
 # ---------------------------------------------------------------------------
-# Legacy upload endpoint (preserved for backwards compatibility)
+# DEPRECATED — scheduled for removal 2026-07-01 (see DEPRECATION.md)
+# This endpoint remains for backward compatibility only. Use POST /api/ingest/file instead.
 # ---------------------------------------------------------------------------
 
 
