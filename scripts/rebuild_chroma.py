@@ -94,16 +94,25 @@ async def _rebuild_soc_evidence(
     total_added = 0
     for batch_start in range(0, len(rows), BATCH_SIZE):
         batch = rows[batch_start:batch_start + BATCH_SIZE]
-        ids = [str(row[0]) for row in batch]
-        texts = [str(row[1]) if row[1] else "" for row in batch]
+        # Skip rows with NULL/empty raw_event — models return empty vecs for empty input
+        filtered = [(str(row[0]), str(row[1])) for row in batch if row[1]]
+        if not filtered:
+            continue
+        ids = [r[0] for r in filtered]
+        texts = [r[1] for r in filtered]
 
         try:
             embeddings = await ollama.embed_batch(texts)
+            # Drop any items where the model returned an empty vector
+            valid = [(i, t, e) for i, t, e in zip(ids, texts, embeddings) if e]
+            if not valid:
+                continue
+            ids, texts, embeddings = zip(*valid)
             chroma.add_documents(
                 collection_name="soc_evidence",
-                ids=ids,
-                documents=texts,
-                embeddings=embeddings,
+                ids=list(ids),
+                documents=list(texts),
+                embeddings=list(embeddings),
             )
             total_added += len(ids)
             log.info(
@@ -168,16 +177,23 @@ async def _rebuild_feedback_verdicts(
     total_added = 0
     for batch_start in range(0, len(rows), BATCH_SIZE):
         batch = rows[batch_start:batch_start + BATCH_SIZE]
-        ids = [row[0] for row in batch]
-        texts = [row[1] for row in batch]
+        filtered = [(row[0], row[1]) for row in batch if row[1]]
+        if not filtered:
+            continue
+        ids = [r[0] for r in filtered]
+        texts = [r[1] for r in filtered]
 
         try:
             embeddings = await ollama.embed_batch(texts)
+            valid = [(i, t, e) for i, t, e in zip(ids, texts, embeddings) if e]
+            if not valid:
+                continue
+            ids, texts, embeddings = zip(*valid)
             chroma.add_documents(
                 collection_name="feedback_verdicts",
-                ids=ids,
-                documents=texts,
-                embeddings=embeddings,
+                ids=list(ids),
+                documents=list(texts),
+                embeddings=list(embeddings),
             )
             total_added += len(ids)
             log.info("Progress", collection="feedback_verdicts", added=total_added, total=len(rows))
@@ -205,7 +221,7 @@ async def main() -> None:
     log.info("rebuild_chroma starting", mode=mode, embed_model=settings.OLLAMA_EMBED_MODEL)
 
     chroma = _get_chroma_store()
-    ollama = OllamaClient(base_url=settings.OLLAMA_HOST, model=settings.OLLAMA_EMBED_MODEL)
+    ollama = OllamaClient(base_url=settings.OLLAMA_HOST, embed_model=settings.OLLAMA_EMBED_MODEL)
 
     # Initialize DuckDB for event fetching (full run only)
     duckdb: Any = None
