@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 52
+current_phase: 54
 status: planning
-last_updated: "2026-04-16T15:32:29.940Z"
+last_updated: "2026-04-17T05:52:35.640Z"
 progress:
-  total_phases: 56
+  total_phases: 57
   completed_phases: 49
-  total_plans: 234
-  completed_plans: 239
+  total_plans: 244
+  completed_plans: 240
 ---
 
 # Session State
@@ -21,11 +21,16 @@ See: .planning/PROJECT.md
 ## Position
 
 **Milestone:** v1.0 milestone — In Progress
-**Current phase:** 52
-**Previous phase:** 51-spiderfoot-osint-investigation-platform (Plans 51-01 through 51-05 — complete)
-**Status:** Ready to plan
+**Current phase:** 54
+**Previous phase:** 52-thehive-case-management (Plans 52-01 through 52-04 — complete)
+**Current plan:** 54-01 complete — Test stubs + config additions
+**Status:** In progress (54-01 done, 54-02 next)
 
 ## Key Decisions
+
+- **54-01:** Double-guard stub pattern (@pytest.mark.skip decorator + pytest.skip() body) used for wave-0 reranker stubs — prevents accidental execution if linter strips decorator
+- **54-01:** RERANKER_ENABLED=False default ensures zero behavior change on existing deployments; RERANKER_URL='' empty-string is the graceful-degradation sentinel (no URL = no HTTP calls)
+- **54-01:** bge-m3 stub placed as module-level function outside TestChromaStore class — logically separate from store unit tests; tests Ollama embedding behavior not store methods
 
 - **43-02:** entity_key added to DetectionRecord model as Optional[str] for correlation dedup key
 - **43-02:** save_detections() uses getattr(det, entity_key, None) for backward compat with existing callers
@@ -131,6 +136,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 54-01 complete — Test stubs + config additions: RERANKER_URL/TOP_K/ENABLED added to Settings (safe defaults, zero behavior change); test_reranker.py with 3 wave-0 stubs (sorted_scores, graceful_degradation, empty_passages); bge-m3 dimension stub appended to test_chroma_store.py. 20 chroma tests passing, 4 stubs SKIPPED. Phase 54 wave-0 scaffold complete.
 - 2026-04-16: Plan 52-04 complete — TheHive frontend integration: Detection interface extended with thehive_case_id/num/status in api.ts; DetectionsView shows amber/green/red case badge (#N · status) on collapsed rows + Open in TheHive deep-link button in expanded panels (both corr and CAR paths); InvestigationView Evidence Timeline header shows case badge + button when detection has thehive_case_num. TypeScript 0 errors, 1181 unit tests passing. Phase 52 COMPLETE (all 4 plans done).
 - 2026-04-16: Plan 52-03 complete — TheHive pipeline wiring: thehive_sync.py (sync_thehive_closures + drain_pending_cases synchronous, dual-schema drain for Wave 0 test + production formats), detect.py fire-and-forget hook (asyncio.create_task + asyncio.to_thread wrapper for High/Critical detections + SpiderFoot enrichment), health.py _check_thehive() in gather + optional_keys, main.py THEHIVE_ENABLED guard + dedicated AsyncIOScheduler (300s sync/drain jobs). All 8 Phase 52 stubs GREEN. 1181 unit tests passing. Phase 52 COMPLETE.
 - 2026-04-16: Plan 52-02 complete — TheHive infrastructure layer: 4 THEHIVE_* settings, 5 thehive_* SQLite columns on detections + thehive_pending_cases table, TheHiveClient async wrapper (build_case_payload high->3/critical->4, build_observables ip/other dataTypes, _maybe_create_thehive_case synchronous with retry queue), infra/docker-compose.thehive.yml (6 services, memory-capped for N100). All 5 Wave 0 client stubs GREEN, 3 sync stubs SKIP (Plan 52-03).

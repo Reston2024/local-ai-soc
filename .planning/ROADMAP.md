@@ -709,7 +709,7 @@ Plans:
 **Goal:** Three highest-ROI HuggingFace upgrades for the SOC stack, executed in dependency order. (1) Migrate Ollama from CPU to RTX 5080 GPU — prerequisite for everything else, 10-20x inference speedup. (2) Upgrade the embedding model from mxbai-embed-large to BAAI/bge-m3 — hybrid dense+sparse retrieval, 8192-token context, better chunk recall over runbooks, Sigma rules, and prior incidents. (3) Add a BAAI/bge-reranker-v2-m3 reranking micro-service between ChromaDB retrieval and LLM inference — the single biggest RAG quality improvement available, filters top-20 retrieved chunks down to top-5 before the expensive LLM call. All three changes are infrastructure (no new dependencies on analyst verdict data) and measurable against the Phase 14 eval harness.
 **Requirements**: RTX 5080 with CUDA 13.1 (present); Ollama 0.18.2+ (installed); ChromaDB on GMKtec (running at 192.168.1.22:8200); existing RAG pipeline in backend/stores/chroma_store.py + backend/services/; Phase 14 eval harness (data/eval_results.jsonl).
 **Depends on:** Phase 52
-**Plans:** 0 plans
+**Plans:** 1/10 plans executed
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 54 to break down)
