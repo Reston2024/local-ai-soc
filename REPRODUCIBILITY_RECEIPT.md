@@ -292,6 +292,43 @@ Install pip-audit as a dev dependency if CI enforcement is required. As of 2026-
 
 ---
 
+## Phase 54 — HF Model Integration Completion (2026-04-17)
+
+| Field | Value |
+|-------|-------|
+| Date completed | 2026-04-17 |
+| bge-m3 embedding | BAAI/bge-m3 via Ollama (`ollama pull bge-m3`), output dimension: 1024 |
+| bge-reranker-v2-m3 | BAAI/bge-reranker-v2-m3 via HuggingFace transformers (cross-encoder) |
+| GPU | RTX 5080 (16 GB VRAM, 16303 MiB), Driver 591.74, Vulkan backend |
+| Ollama version | 0.21.0 |
+| transformers version | 4.57.6 (installed via uv sync) |
+| sentencepiece version | 0.2.1 |
+| ChromaDB rebuild script | `scripts/rebuild_chroma.py` — deletes and re-embeds collections with bge-m3 |
+| Reranker service | FastAPI on port 8100, RERANKER_ENABLED=False by default (passthrough) |
+| Eval harness | Extended with embed_model, reranker_enabled, embed_latency_ms, rerank_latency_ms, recall_at_5 |
+
+### Plans Completed (54-01 through 54-10)
+
+| Plan | Description | Status |
+|------|-------------|--------|
+| 54-01 | Wave-0 TDD stubs (config + test stubs) | Complete |
+| 54-02 | Ollama GPU migration (Vulkan/RTX 5080) | Complete |
+| 54-03 | GPU migration documentation + regression gate | Complete |
+| 54-04 | bge-m3 .env update + rebuild_chroma.py script | Complete |
+| 54-05 | bge-m3 dimension test (unskipped, passing) | Complete |
+| 54-06 | bge-reranker-v2-m3 FastAPI microservice + launcher | Complete |
+| 54-07 | Reranker client, RAG wiring, health check | Complete |
+| 54-08 | Reranker unit tests (3 tests passing) | Complete |
+| 54-09 | Eval harness extended with embedding/reranker fields | Complete |
+| 54-10 | Dashboard health dot + docs + regression gate | Complete |
+
+### Final Test Count (Phase 54)
+
+1201 unit + security tests passing; 4 skipped; 0 Phase 54-specific failures.
+Pre-existing failures: test_metrics_api (static file handler) + test_legacy_path_requires_totp (both pre-Phase 54).
+
+---
+
 ## Phase 8 — Verified Dependency Versions (2026-03-17)
 
 | Package | Version |

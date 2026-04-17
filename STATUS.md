@@ -11,7 +11,7 @@
 |-----------|--------|-----------|------|------|
 | **v1.0** | 1–30 | ✅ COMPLETE | 2026-04-08 | 59/59 requirements · 8/8 E2E flows · 938+ tests |
 | **v1.1** | 31–46 | ✅ COMPLETE | 2026-04-13 | Malcolm, hunting, IOC feeds, asset inventory, agentic investigation |
-| **v1.2 (in progress)** | 47–53+ | 🔄 Phases 47–52 complete | 2026-04-16 | Hayabusa, Chainsaw, MISP, SpiderFoot, TheHive live |
+| **v1.2 (in progress)** | 47–54+ | 🔄 Phases 47–54 complete | 2026-04-17 | Hayabusa, Chainsaw, MISP, SpiderFoot, TheHive, bge-m3, Reranker |
 
 ---
 
@@ -99,6 +99,7 @@
 | 51 | SpiderFoot OSINT Investigation — Docker, API, InvestigationView | ✅ | 2026-04-16 |
 | 52 | TheHive Case Management — Cortex, MISP connector, auto-cases | ✅ | 2026-04-16 |
 | 53 | Network Privacy Monitoring | 🔲 Not yet planned | — |
+| 54 | HF Model Integration — bge-m3 + Reranker + GPU migration | ✅ | 2026-04-17 |
 
 ---
 
@@ -112,7 +113,7 @@
 | Cortex (Analysers) | ✅ Live | 192.168.1.22:9001 | MISP connector wired |
 | SpiderFoot OSINT | ✅ Live | 192.168.1.22:9002 | OSINT scan API |
 | Zeek (SPAN) | ✅ Live | GMKtec/Malcolm | Netgear GS308E port 1→5 |
-| Ollama LLM | ✅ Live | 127.0.0.1:11434 | qwen3:14b · CPU (GPU migration pending) |
+| Ollama LLM | ✅ Live | 127.0.0.1:11434 | qwen3:14b · GPU (RTX 5080 via Vulkan) · bge-m3 embed |
 | ChromaDB RAG | ✅ Live | 192.168.1.22:8200 | Remote vector store |
 
 ---
@@ -144,7 +145,7 @@
 
 | Item | Impact | Notes |
 |------|--------|-------|
-| Ollama on CPU | Performance | RTX 5080 available — GPU migration not yet started |
+| Reranker on CPU | Performance | bge-reranker-v2-m3 service ready, RERANKER_ENABLED=False by default; enable after ollama pull bge-m3 + torch install |
 | Malcolm auto-start on reboot | Ops | Requires manual `python3 scripts/start` after LUKS decrypt |
 | Cortex analysers not configured | Feature gap | AbuseIPDB/VT/MaxMind keys needed via Cortex UI |
 | Dead code in api.ts / ThreatGraph.svelte | Maintenance | Cleanup deferred to Phase 53+ |

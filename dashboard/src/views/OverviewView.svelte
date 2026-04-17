@@ -436,6 +436,16 @@
               </div>
             {/if}
 
+            <!-- Reranker (Phase 54) -->
+            {#if componentHealth?.components?.reranker}
+              {@const rr = componentHealth.components.reranker}
+              <div class="health-row">
+                <span class="health-dot {rr.status === 'ok' ? 'dot-healthy' : rr.status === 'disabled' ? '' : 'dot-degraded'}"></span>
+                <span class="health-label">Reranker</span>
+                <span class="health-status">{rr.status === 'ok' ? 'ready' : rr.status === 'disabled' ? 'disabled' : 'offline'}</span>
+              </div>
+            {/if}
+
             <!-- Network devices -->
             {#each [['router','Router'],['firewall','Firewall'],['gmktec','GMKtec / Malcolm']] as [key, label]}
               {#if networkDevices[key] !== undefined}
