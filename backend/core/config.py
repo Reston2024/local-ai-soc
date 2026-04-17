@@ -171,6 +171,11 @@ class Settings(BaseSettings):
     THEHIVE_ENABLED: bool = False             # Set True when TheHive running on GMKtec
     THEHIVE_SUPPRESS_RULES: list[str] = []   # Rule IDs that skip auto-case creation
 
+    # Phase 54: Reranker microservice (bge-reranker-v2-m3)
+    RERANKER_URL: str = ""          # e.g. "http://127.0.0.1:8100" — empty disables reranking
+    RERANKER_TOP_K: int = 5         # number of passages to return after reranking
+    RERANKER_ENABLED: bool = False  # set True once reranker service is confirmed running
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
