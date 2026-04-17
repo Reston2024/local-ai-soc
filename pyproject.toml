@@ -19,14 +19,14 @@ dependencies = [
     "duckdb==1.3.0",
     "chromadb==1.5.5",
     # LLM / RAG
-    "langgraph==1.1.2",
-    "langchain-ollama==1.0.1",
+    # langgraph and langchain-ollama removed — not imported in any runtime path.
+    # Direct httpx calls to Ollama API used instead (see docs/dependency-rationale.md).
     # Detection
     "pySigma==1.2.0",
     "PyYAML==6.0.3",
     # Ingestion
     "evtx==0.11.0",
-    # Data seeding
+    # Data seeding (used by scripts/seed_siem_data.py only — not a backend runtime dep)
     "datasets>=2.21.0",
     # Metrics scheduling
     "apscheduler==3.11.2",
