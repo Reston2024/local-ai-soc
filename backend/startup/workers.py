@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import duckdb
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from backend.core.config import Settings
+from backend.core.config import Settings, settings
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
 from backend.services.metrics_service import MetricsService
@@ -94,8 +94,17 @@ async def _daily_parquet_backup(stores: Stores, data_dir: str) -> None:
         log.warning("Daily Parquet backup failed: %s", exc)
 
 
-async def _purge_old_events(stores: Stores, retention_days: int = 90) -> None:
-    """R-13: Delete events older than retention_days from DuckDB."""
+async def _purge_old_events(
+    stores: Stores, retention_days: int | None = None
+) -> None:
+    """R-13: Delete events older than retention_days from DuckDB.
+
+    After a successful purge, runs VACUUM to reclaim space when
+    settings.VACUUM_ENABLED is True. Vacuum is skipped on purge failure
+    so we do not compound errors.
+    """
+    if retention_days is None:
+        retention_days = settings.RETENTION_DAYS
     cutoff_sql = f"CURRENT_TIMESTAMP - INTERVAL '{retention_days} days'"
     try:
         await stores.duckdb.execute_write(
@@ -105,6 +114,16 @@ async def _purge_old_events(stores: Stores, retention_days: int = 90) -> None:
         log.info("Event retention purge complete", retention_days=retention_days)
     except Exception as exc:
         log.warning("Event retention purge failed: %s", exc)
+        return
+
+    if settings.VACUUM_ENABLED:
+        try:
+            await stores.duckdb.vacuum()
+            log.info("DuckDB VACUUM complete", retention_days=retention_days)
+        except Exception as exc:
+            log.warning("DuckDB VACUUM failed: %s", exc)
+    else:
+        log.info("DuckDB VACUUM skipped (VACUUM_ENABLED=False)")
 
 
 # ---------------------------------------------------------------------------
@@ -160,13 +179,13 @@ async def init_workers(
         id="daily_ioc_decay",
         replace_existing=True,
     )
-    # R-13: 90-day DuckDB event retention purge (00:10)
+    # R-13: Configurable DuckDB event retention purge (00:10)
     _daily_snapshot_scheduler.add_job(
         _purge_old_events,
         "cron",
         hour=0,
         minute=10,
-        args=[stores],
+        args=[stores, settings.RETENTION_DAYS],
         id="daily_event_retention",
         replace_existing=True,
     )

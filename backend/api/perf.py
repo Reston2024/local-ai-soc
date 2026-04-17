@@ -40,6 +40,8 @@ router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 def _soc_brain_metrics() -> dict[str, Any]:
     """Collect CPU / RAM / disk for the local machine via psutil."""
+    from backend.api.ingest import _ingest_counters
+
     cpu = psutil.cpu_percent(interval=0.3)
 
     ram = psutil.virtual_memory()
@@ -56,13 +58,15 @@ def _soc_brain_metrics() -> dict[str, Any]:
     disk_used_gb = disk.used / 1024 ** 3
     disk_total_gb = disk.total / 1024 ** 3
 
-    return {
+    result: dict[str, Any] = {
         "cpu_pct": round(cpu, 1),
         "ram_pct": round(ram_pct, 1),
         "disk_pct": round(disk_pct, 1),
         "ram_detail": f"{ram_used_gb:.1f} / {ram_total_gb:.1f} GB",
         "disk_detail": f"{disk_used_gb:.0f} / {disk_total_gb:.0f} GB",
     }
+    result["ingest"] = dict(_ingest_counters)  # snapshot copy
+    return result
 
 
 async def _gmktec_metrics() -> dict[str, Any]:

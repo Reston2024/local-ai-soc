@@ -182,6 +182,13 @@ class Settings(BaseSettings):
     PRIVACY_PIXEL_MAX_BODY_BYTES: int = 200
     PRIVACY_ENABLED: bool = True
 
+    # DuckDB event retention + VACUUM (R-13)
+    # RETENTION_DAYS controls how long events live in DuckDB before the daily
+    # purge deletes them. VACUUM_ENABLED gates whether VACUUM runs after a
+    # successful purge to reclaim space.
+    RETENTION_DAYS: int = 90
+    VACUUM_ENABLED: bool = True
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000

@@ -76,6 +76,19 @@
 
 **NIST CSF:** Protect — Data Security (PR.DS).
 
+**AR-04 — WORM / Encrypted-at-rest Storage**
+Risk: DuckDB, SQLite, and ChromaDB data files are not encrypted at rest and are not write-once
+(WORM). An attacker with physical access or OS-level access could modify or exfiltrate event data
+without leaving a cryptographic trace.
+Current mitigations: Windows NTFS ACLs restrict data/ directory to the analyst account; BitLocker
+drive encryption is recommended but not enforced by the application; Caddy TLS prevents network
+exfiltration; SHA-256 audit hashing detects post-hoc tampering of exported records.
+Residual risk: Accepted for the single-analyst local deployment context. WORM enforcement (e.g.,
+Windows VSS shadow-copy policy + BitLocker + read-only DB snapshots) is a 90-day engineering
+project tracked in the remediation backlog.
+Compliance note: This accepted risk makes the platform non-conformant with FDA 21 CFR Part 11
+and similar regulated-industry WORM mandates without additional OS-level controls.
+
 ---
 
 ### T-03: Ollama Exposed to Network

@@ -490,6 +490,11 @@ POST /api/rerank
 - `handleNavigateInvestigation(caseId)` — Graph → InvestigationView
 - `handleRunPlaybook(investigationId)` — InvestigationView → PlaybooksView
 
+**Accessibility:** The dashboard has not undergone a formal WCAG 2.2 AA audit. Known gaps: no
+explicit aria-label coverage on Cytoscape graph nodes, no keyboard-navigable graph canvas, colour
+contrast untested against AA thresholds. Target: conduct audit and remediate before any regulated-
+industry deployment.
+
 ---
 
 ## Internal Boundaries

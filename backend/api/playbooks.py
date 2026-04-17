@@ -191,6 +191,120 @@ async def create_playbook(
     return JSONResponse(content=created, status_code=201)
 
 
+@router.get("/mttr")
+async def get_playbook_mttr(request: Request) -> JSONResponse:
+    """
+    GET /api/playbooks/mttr — return MTTR (Mean Time To Resolve) metrics.
+
+    Aggregates duration (completed_at - started_at) over playbook runs whose
+    status is 'completed' or 'failed' and whose timestamps are present.
+
+    Returns:
+        {
+            "mttr_seconds": float | None,
+            "p50_seconds":  float | None,
+            "p95_seconds":  float | None,
+            "sample_size":  int,
+            "by_playbook":  [
+                {"playbook_id", "name", "mttr_seconds", "sample_size"}, ...
+            ]
+        }
+
+    Never raises 500 — returns zero/null payload on error.
+    """
+    stores = request.app.state.stores
+
+    def _query(store: SQLiteStore) -> list[dict[str, Any]]:
+        rows = store._conn.execute(
+            """
+            SELECT r.run_id, r.playbook_id, r.started_at, r.completed_at,
+                   COALESCE(p.name, '') AS playbook_name
+            FROM playbook_runs r
+            LEFT JOIN playbooks p ON r.playbook_id = p.playbook_id
+            WHERE r.status IN ('completed', 'failed')
+              AND r.completed_at IS NOT NULL
+              AND r.started_at IS NOT NULL
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    empty_payload: dict[str, Any] = {
+        "mttr_seconds": None,
+        "p50_seconds": None,
+        "p95_seconds": None,
+        "sample_size": 0,
+        "by_playbook": [],
+    }
+
+    try:
+        rows: list[dict[str, Any]] = await asyncio.to_thread(_query, stores.sqlite)
+
+        # Compute duration_seconds per row. Skip any row with unparseable timestamps.
+        durations: list[float] = []
+        per_pb: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            started_raw = row.get("started_at")
+            completed_raw = row.get("completed_at")
+            if not started_raw or not completed_raw:
+                continue
+            try:
+                started = datetime.fromisoformat(started_raw)
+                completed = datetime.fromisoformat(completed_raw)
+            except (ValueError, TypeError):
+                continue
+            delta = (completed - started).total_seconds()
+            if delta < 0:
+                continue
+            durations.append(delta)
+
+            pb_id = row.get("playbook_id") or ""
+            bucket = per_pb.setdefault(
+                pb_id,
+                {"playbook_id": pb_id, "name": row.get("playbook_name") or "", "durations": []},
+            )
+            bucket["durations"].append(delta)
+
+        if not durations:
+            return JSONResponse(content=empty_payload)
+
+        def _mean(values: list[float]) -> float:
+            return sum(values) / len(values)
+
+        def _percentile(values: list[float], p: float) -> float:
+            # Nearest-rank percentile — simple, dependency-free.
+            if not values:
+                return 0.0
+            s = sorted(values)
+            k = max(0, min(len(s) - 1, int(round((p / 100.0) * (len(s) - 1)))))
+            return s[k]
+
+        by_playbook: list[dict[str, Any]] = []
+        for pb_id, bucket in per_pb.items():
+            pb_durs = bucket["durations"]
+            by_playbook.append(
+                {
+                    "playbook_id": pb_id,
+                    "name": bucket["name"],
+                    "mttr_seconds": _mean(pb_durs),
+                    "sample_size": len(pb_durs),
+                }
+            )
+        by_playbook.sort(key=lambda d: d["playbook_id"])
+
+        return JSONResponse(
+            content={
+                "mttr_seconds": _mean(durations),
+                "p50_seconds": _percentile(durations, 50),
+                "p95_seconds": _percentile(durations, 95),
+                "sample_size": len(durations),
+                "by_playbook": by_playbook,
+            }
+        )
+    except Exception as exc:
+        log.warning("MTTR computation failed (returning empty payload)", error=str(exc))
+        return JSONResponse(content=empty_payload)
+
+
 @router.get("/{playbook_id}")
 async def get_playbook(playbook_id: str, request: Request) -> JSONResponse:
     """

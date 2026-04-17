@@ -15,6 +15,7 @@ embedding, and SQLite graph extraction in one pipeline call.
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,16 @@ from ingestion.loader import IngestionLoader, get_job_status
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/ingest", tags=["ingest"])
+
+# Module-level ingest metrics (reset on restart — in-memory only)
+_ingest_counters: dict[str, Any] = {
+    "events_total": 0,          # total individual events ingested (single + batch)
+    "batches_total": 0,         # total batch ingest calls
+    "errors_total": 0,          # total ingest errors
+    "files_queued_total": 0,    # total file jobs queued
+    "last_batch_latency_ms": 0.0,   # ms for last batch write to DuckDB
+    "last_event_latency_ms": 0.0,   # ms for last single event write to DuckDB
+}
 
 # DuckDB INSERT statement matching NormalizedEvent column order
 _INSERT_EVENT_SQL = """
@@ -128,8 +139,12 @@ async def ingest_event(event: NormalizedEvent, request: Request) -> JSONResponse
         event = event.model_copy(update={"event_id": str(uuid4())})
 
     try:
+        t0 = time.monotonic()
         await _store_event_direct(event, request)
+        _ingest_counters["last_event_latency_ms"] = (time.monotonic() - t0) * 1000
+        _ingest_counters["events_total"] += 1
     except Exception as exc:
+        _ingest_counters["errors_total"] += 1
         log.error("Event ingest failed", event_id=event.event_id, error=str(exc))
         raise HTTPException(status_code=500, detail=f"Ingest failed: {exc}") from exc
 
@@ -176,8 +191,13 @@ async def ingest_events(
 
     loader = _get_loader(request)
     try:
+        t0 = time.monotonic()
         result = await loader.ingest_events(events)
+        _ingest_counters["last_batch_latency_ms"] = (time.monotonic() - t0) * 1000
+        _ingest_counters["events_total"] += len(events)
+        _ingest_counters["batches_total"] += 1
     except Exception as exc:
+        _ingest_counters["errors_total"] += 1
         log.error("Batch ingest failed", count=len(events), error=str(exc))
         raise HTTPException(status_code=500, detail=f"Batch ingest failed: {exc}") from exc
 
@@ -290,6 +310,7 @@ async def upload_file(
     # Mark job as queued in the in-memory tracker
     from ingestion.loader import _set_job
     _set_job(job_id, "queued", filename=filename)
+    _ingest_counters["files_queued_total"] += 1
 
     # Schedule background ingestion
     background_tasks.add_task(
