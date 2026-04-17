@@ -38,6 +38,9 @@ _SCHEMA_COLUMNS = (
 # ---------------------------------------------------------------------------
 
 PRESET_HUNTS = [
+    # -----------------------------------------------------------------------
+    # Original 6
+    # -----------------------------------------------------------------------
     {
         "id": "ps-child",
         "name": "PowerShell child processes",
@@ -79,6 +82,107 @@ PRESET_HUNTS = [
         "mitre": "T1003",
         "desc": "Access to LSASS memory or SAM database from unexpected processes",
         "query": "Show process events where a process accessed lsass.exe memory or the SAM database",
+    },
+    # -----------------------------------------------------------------------
+    # 14 new hunts — added 2026-04-17
+    # -----------------------------------------------------------------------
+    {
+        "id": "dns-tunnel",
+        "name": "DNS tunneling / long subdomains",
+        "mitre": "T1071.004",
+        "desc": "DNS queries with abnormally long subdomains or high query rate may indicate C2 tunneling",
+        "query": "Show DNS events where the dns_query length exceeds 50 characters or where the same source IP made more than 20 DNS queries",
+    },
+    {
+        "id": "tls-ja3",
+        "name": "Suspicious TLS JA3 fingerprints",
+        "mitre": "T1573",
+        "desc": "TLS client fingerprints (JA3) associated with known malware or C2 frameworks",
+        "query": "Show TLS or network events where tls_ja3 is not null, ordered by most recent, to review unusual client fingerprints",
+    },
+    {
+        "id": "http-ua",
+        "name": "Suspicious HTTP user agents",
+        "mitre": "T1071.001",
+        "desc": "HTTP requests using tool-like or malformed user agent strings (curl, python-requests, Go-http, empty)",
+        "query": "Show HTTP events where http_user_agent contains curl, python-requests, Go-http-client, wget, or powershell, or where http_user_agent is null",
+    },
+    {
+        "id": "exfil-upload",
+        "name": "Large outbound HTTP uploads",
+        "mitre": "T1048",
+        "desc": "HTTP POST requests with bodies over 1 MB may indicate staged data exfiltration",
+        "query": "Show HTTP events where http_request_body_len is greater than 1000000 and event_type is http, ordered by http_request_body_len descending",
+    },
+    {
+        "id": "ssh-brute",
+        "name": "SSH brute force attempts",
+        "mitre": "T1110.004",
+        "desc": "Multiple failed SSH authentication attempts from the same source IP",
+        "query": "Show SSH events where ssh_auth_success is false or dst_port is 22, grouped to find source IPs with more than 5 failed attempts",
+    },
+    {
+        "id": "rdp-lateral",
+        "name": "Internal RDP lateral movement",
+        "mitre": "T1021.001",
+        "desc": "RDP connections between internal hosts may indicate attacker pivoting",
+        "query": "Show network events where dst_port is 3389 and src_ip starts with 10. or 192.168. or 172., ordered by timestamp descending",
+    },
+    {
+        "id": "smb-enum",
+        "name": "SMB share enumeration",
+        "mitre": "T1135",
+        "desc": "SMB tree connect and directory listing activity indicating network share discovery",
+        "query": "Show SMB events where smb_action contains tree_connect or list or where smb_path is not null, ordered by timestamp descending",
+    },
+    {
+        "id": "ioc-hits",
+        "name": "Known-bad IOC matches",
+        "mitre": "T1566",
+        "desc": "Events where the source or destination matched a known malicious IOC from threat feeds",
+        "query": "Show events where ioc_matched is true, ordered by ioc_confidence descending and timestamp descending",
+    },
+    {
+        "id": "zeek-notice",
+        "name": "Zeek notices and anomalies",
+        "mitre": "T1040",
+        "desc": "Network anomalies flagged by Zeek's notice framework including scan detection and protocol violations",
+        "query": "Show events where zeek_notice_note is not null or zeek_weird_name is not null, ordered by timestamp descending",
+    },
+    {
+        "id": "encoded-cmd",
+        "name": "Encoded / obfuscated commands",
+        "mitre": "T1027",
+        "desc": "Base64, XOR, or caret-obfuscated command lines used to evade detection",
+        "query": "Show process events where command_line contains base64 or -enc or -encodedcommand or ^, ordered by timestamp descending",
+    },
+    {
+        "id": "schtask-persist",
+        "name": "Scheduled task persistence",
+        "mitre": "T1053.005",
+        "desc": "Scheduled task creation or modification via schtasks.exe, at.exe, or WMI",
+        "query": "Show process events where process_name contains schtasks or at.exe or where command_line contains schtasks and create or /sc",
+    },
+    {
+        "id": "port-scan",
+        "name": "Internal port scanning",
+        "mitre": "T1046",
+        "desc": "Single source IP connecting to many distinct destination ports, indicating reconnaissance",
+        "query": "Show network events from the last 24 hours grouped by src_ip where the count of distinct dst_port values exceeds 20, ordered by port count descending",
+    },
+    {
+        "id": "ntlm-relay",
+        "name": "NTLM relay / pass-the-hash",
+        "mitre": "T1557.001",
+        "desc": "NTLM authentication from unexpected source IPs or to unusual destinations may indicate relay attacks",
+        "query": "Show events where ntlm_username is not null or event_type contains ntlm, ordered by timestamp descending",
+    },
+    {
+        "id": "av-kill",
+        "name": "Security tool tampering",
+        "mitre": "T1562.001",
+        "desc": "Process or command activity targeting AV, EDR, or Windows Defender to disable endpoint protection",
+        "query": "Show process events where command_line contains defender or MpCmdRun or sc stop or net stop or taskkill and process_name is not null",
     },
 ]
 

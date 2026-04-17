@@ -3,50 +3,8 @@
   import { api } from '../lib/api.ts'
   import type { HuntResult, HuntPreset, HuntRow, OsintResult, HuntHistoryItem } from '../lib/api.ts'
 
-  const presetHunts: HuntPreset[] = [
-    {
-      id: 'ps-child',
-      name: 'PowerShell child processes',
-      mitre: 'T1059.001',
-      desc: 'Identify unusual processes spawned by powershell.exe or pwsh.exe',
-      query: 'Show processes where parent process is powershell.exe or pwsh.exe that are not common child processes',
-    },
-    {
-      id: 'beaconing',
-      name: 'Suspicious network beaconing',
-      mitre: 'T1071',
-      desc: 'Detect regular outbound connections with jitter < 5s to external IPs',
-      query: 'Show network events with repeated connections to the same external IP within short intervals',
-    },
-    {
-      id: 'auth-hours',
-      name: 'Unusual auth hour patterns',
-      mitre: 'T1078',
-      desc: 'Logins outside business hours or from new geolocation',
-      query: 'Show authentication events that occurred outside business hours (before 07:00 or after 19:00)',
-    },
-    {
-      id: 'lolbin',
-      name: 'LOLBin abuse (certutil/mshta)',
-      mitre: 'T1218',
-      desc: 'Living-off-the-land binaries used for payload delivery or evasion',
-      query: 'Show process events where process_name contains certutil, mshta, regsvr32, rundll32, or wscript',
-    },
-    {
-      id: 'lateral',
-      name: 'Lateral movement via WMI/PsExec',
-      mitre: 'T1021',
-      desc: 'Remote execution patterns indicating lateral movement',
-      query: 'Show network or process events indicating WMI remote execution or PsExec usage',
-    },
-    {
-      id: 'cred-dump',
-      name: 'Credential dumping indicators',
-      mitre: 'T1003',
-      desc: 'Access to LSASS memory or SAM database from unexpected processes',
-      query: 'Show process events where a process accessed lsass.exe memory or the SAM database',
-    },
-  ]
+  // Fetched from /api/hunts/presets on mount — single source of truth
+  let presetHunts = $state<HuntPreset[]>([])
 
   let query = $state('')
   let isRunning = $state(false)
@@ -112,6 +70,10 @@
   }
 
   onMount(async () => {
+    try {
+      const { presets } = await api.hunts.presets()
+      presetHunts = presets
+    } catch { /* presets fetch is non-critical — grid stays empty */ }
     try {
       const { hunts } = await api.hunts.history(20)
       huntHistory = hunts

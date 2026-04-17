@@ -103,7 +103,7 @@ async def run_hunt_query(body: HuntQueryRequest, request: Request) -> JSONRespon
 
 @router.get("/presets")
 async def get_hunt_presets() -> JSONResponse:
-    """Return the 6 preset hunt definitions with MITRE tags."""
+    """Return all preset hunt definitions with MITRE tags."""
     return JSONResponse(content={"presets": PRESET_HUNTS})
 
 
