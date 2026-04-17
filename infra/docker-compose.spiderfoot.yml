@@ -1,15 +1,19 @@
 # SpiderFoot OSINT Platform — Phase 51
-# Run: docker compose -f infra/docker-compose.spiderfoot.yml up -d
-# Stop: docker compose -f infra/docker-compose.spiderfoot.yml down
-# Logs: docker compose -f infra/docker-compose.spiderfoot.yml logs -f
+# Built from cloned source at C:\Users\Admin\spiderfoot-src\
+# Run: docker compose -f C:\Users\Admin\AI-SOC-Brain\infra\docker-compose.spiderfoot.yml up -d
+# Stop: docker compose -f C:\Users\Admin\AI-SOC-Brain\infra\docker-compose.spiderfoot.yml down
+# Logs: docker compose -f C:\Users\Admin\AI-SOC-Brain\infra\docker-compose.spiderfoot.yml logs -f
 #
-# Data persisted at: C:/Users/Admin/spiderfoot-data/
+# First run builds image (~2 min). Subsequent starts are instant.
 # Web UI (optional): http://localhost:5001
-# FastAPI connects: http://localhost:5001 (native process, no host.docker.internal needed)
+# FastAPI connects: http://localhost:5001
 
 services:
   spiderfoot:
-    image: smicallef/spiderfoot:latest
+    build:
+      context: C:\Users\Admin\spiderfoot-src
+      dockerfile: Dockerfile
+    image: spiderfoot:local
     container_name: ai-soc-spiderfoot
     restart: unless-stopped
     ports:
@@ -23,7 +27,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
 volumes:
   spiderfoot_data:
@@ -31,4 +35,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: C:/Users/Admin/spiderfoot-data
+      device: C:\Users\Admin\spiderfoot-data

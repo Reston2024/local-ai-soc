@@ -1,6 +1,7 @@
 # AI-SOC-Brain — Caddyfile
 # Caddy handles TLS termination for localhost HTTPS.
-# FastAPI runs on host at port 8000.
+# FastAPI runs on host at port 8001.
+# (Port 8000 is reserved by Docker Desktop's com.docker.backend process.)
 # Dashboard static files served from /srv/dashboard.
 
 {
@@ -33,7 +34,7 @@ localhost {
     # flush_interval -1 disables response buffering so tokens stream to the browser.
     # No request_body limit here: query payloads are small JSON and SSE needs unbuffered response.
     handle /api/query/* {
-        reverse_proxy host.docker.internal:8000 {
+        reverse_proxy host.docker.internal:8001 {
             flush_interval -1
             header_up Host {host}
             header_up X-Real-IP {remote_host}
@@ -44,7 +45,7 @@ localhost {
 
     # Agentic investigation SSE stream — flush_interval -1 required for real-time tool call streaming.
     handle /api/investigate/agentic {
-        reverse_proxy host.docker.internal:8000 {
+        reverse_proxy host.docker.internal:8001 {
             flush_interval -1
             header_up Host {host}
             header_up X-Real-IP {remote_host}
@@ -55,7 +56,7 @@ localhost {
 
     # Investigations chat stream — flush_interval -1 required for token streaming.
     handle /api/investigations/chat-stream/* {
-        reverse_proxy host.docker.internal:8000 {
+        reverse_proxy host.docker.internal:8001 {
             flush_interval -1
             header_up Host {host}
             header_up X-Real-IP {remote_host}
@@ -70,7 +71,7 @@ localhost {
         request_body {
             max_size 100MB
         }
-        reverse_proxy host.docker.internal:8000 {
+        reverse_proxy host.docker.internal:8001 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -84,7 +85,7 @@ localhost {
         request_body {
             max_size 10MB
         }
-        reverse_proxy host.docker.internal:8000 {
+        reverse_proxy host.docker.internal:8001 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
@@ -97,7 +98,7 @@ localhost {
     }
 
     handle /health* {
-        reverse_proxy host.docker.internal:8000
+        reverse_proxy host.docker.internal:8001
     }
 
     # Dashboard SPA — served under /app/ subpath.
@@ -119,7 +120,7 @@ localhost {
     # FastAPI serves dashboard/dist/index.html for any non-API route,
     # so client-side paths like /detections, /overview, /events work directly.
     handle {
-        reverse_proxy host.docker.internal:8000 {
+        reverse_proxy host.docker.internal:8001 {
             header_up Host {host}
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}

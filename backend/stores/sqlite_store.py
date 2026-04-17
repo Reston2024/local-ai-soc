@@ -385,8 +385,7 @@ CREATE TABLE IF NOT EXISTS chainsaw_scanned_files (
 _THEHIVE_PENDING_DDL = """
 CREATE TABLE IF NOT EXISTS thehive_pending_cases (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    detection_id   TEXT NOT NULL,
-    payload_json   TEXT NOT NULL,
+    detection_json TEXT NOT NULL,
     created_at     TEXT NOT NULL DEFAULT (datetime('now')),
     attempts       INTEGER NOT NULL DEFAULT 0,
     last_error     TEXT
