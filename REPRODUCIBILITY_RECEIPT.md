@@ -3,6 +3,37 @@
 
 **Status:** VERIFIED
 **Date:** 2026-04-09
+**Updated:** 2026-04-16 (Phase 52 complete — Phases 47–52 added)
+
+---
+
+## Regulated Compliance Note (2026-04-16)
+
+This receipt supports **NIST RMF Step 3 (Implement)** and **Step 6 (Monitor)** for a local-first, single-analyst AI-assisted SOC.
+
+| Control | Evidence in this Receipt |
+|---------|--------------------------|
+| CM-2 (Baseline Configuration) | Pinned versions table + `uv.lock` + Ollama model checksums |
+| CM-6 (Configuration Settings) | `.env` example + Docker Compose version pins |
+| SI-2 (Flaw Remediation) | pip-audit baseline + CVE exception log |
+| AU-9 (Audit Protection) | SHA-256 hash commands for all data stores |
+| SA-24 (Cyber Resiliency — new in SP 800-53 Rev 5.2.0) | Local-first architecture; no cloud dependency; offline Ollama |
+
+All hashes and commands were re-validated against commit `3c11c16` (2026-04-16).
+
+To generate a full evidence bundle for RMF Step 4 assessment, run:
+
+```powershell
+# Collect environment snapshot, test report, dependency hashes, and log export
+uv run pytest tests/unit/ tests/security/ --junitxml=evidence/junit.xml --cov=backend --cov-report=xml:evidence/coverage.xml -q
+uv export --no-hashes > evidence/requirements-snapshot.txt
+git log --oneline -20 > evidence/recent-commits.txt
+Get-FileHash data\events.duckdb -Algorithm SHA256 | Out-File evidence\duckdb-hash.txt
+```
+
+**Note:** `evidence/` is gitignored (contains runtime data). Store output in a local evidence archive for audit purposes.
+
+---
 
 > Pinned via uv.lock — run `uv export --no-hashes` to reproduce
 
