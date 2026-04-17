@@ -26,6 +26,16 @@ from backend.models.event import NormalizedEvent
 log = get_logger(__name__)
 
 
+def _safe_int(val) -> int | None:
+    """Safely convert a value to int, returning None on failure."""
+    if val is None:
+        return None
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None
+
+
 class MalcolmCollector:
     """Background asyncio task: poll Malcolm OpenSearch indices and ingest events."""
 
@@ -681,6 +691,8 @@ class MalcolmCollector:
         req_obj = http_obj.get("request") or {}
         resp_obj = http_obj.get("response") or {}
         url_obj = doc.get("url") or {}
+        # Triple-fallback pattern (Phase 36): nested dict → dotted flat key → Arkime flat key
+        zeek_http = (doc.get("zeek") or {}).get("http") or {}
         raw_ts = doc.get("@timestamp", "")
         try:
             ts = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
@@ -701,6 +713,26 @@ class MalcolmCollector:
             http_status_code=int(c) if (c := resp_obj.get("status_code") or doc.get("zeek.http.status_code")) else None,
             http_user_agent=(doc.get("user_agent") or {}).get("original") or doc.get("user_agent.original"),
             domain=(doc.get("destination") or {}).get("domain") or (url_obj.get("domain")),
+            # Phase 53: extended HTTP fields (triple-fallback: ECS → Zeek → Arkime flat)
+            http_referrer=(
+                req_obj.get("referrer")
+                or zeek_http.get("referrer")
+                or doc.get("zeek.http.referrer")
+            ),
+            http_request_body_len=_safe_int(
+                (req_obj.get("body") or {}).get("bytes")
+                or zeek_http.get("request_body_len")
+                or doc.get("zeek.http.request_body_len")
+            ),
+            http_response_body_len=_safe_int(
+                (resp_obj.get("body") or {}).get("bytes")
+                or zeek_http.get("response_body_len")
+                or doc.get("zeek.http.response_body_len")
+            ),
+            http_resp_mime_type=(
+                next(iter(zeek_http.get("resp_mime_types") or []), None)
+                or doc.get("zeek.http.resp_mime_types")
+            ),
         )
 
     def _normalize_ssl(self, doc: dict) -> NormalizedEvent | None:
@@ -1530,3 +1562,17 @@ class MalcolmCollector:
             "tunnel_ingested": self._tunnel_ingested,
             "pe_ingested": self._pe_ingested,
         }
+
+
+# ---------------------------------------------------------------------------
+# Phase 53: Module-level convenience wrapper for unit testing
+# ---------------------------------------------------------------------------
+
+def _normalize_http(doc: dict):
+    """Module-level wrapper around MalcolmCollector._normalize_http for unit tests.
+
+    Allows ``from ingestion.jobs.malcolm_collector import _normalize_http`` in tests.
+    The method does not use self, so instantiation is skipped.
+    """
+    collector = MalcolmCollector.__new__(MalcolmCollector)
+    return collector._normalize_http(doc)

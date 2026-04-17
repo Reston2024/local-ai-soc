@@ -154,9 +154,7 @@ def test_feed_meta_updated_after_sync():
 # ---------------------------------------------------------------------------
 # PRIV-11: HTTP normalizer extended fields
 # Note: Tests ingestion/jobs/malcolm_collector._normalize_http extension.
-#       Uses @pytest.mark.skip alone (separate module concern from blocklist).
 # ---------------------------------------------------------------------------
-@pytest.mark.skip(reason="Wave 0 stub — implement in Plan 53-02 Task 3")
 def test_normalize_http_extended_fields():
     """_normalize_http(doc) maps zeek HTTP extended fields to NormalizedEvent.
 
@@ -168,6 +166,7 @@ def test_normalize_http_extended_fields():
     from ingestion.jobs.malcolm_collector import _normalize_http
 
     doc = {
+        "source": {"ip": "10.0.0.1"},  # required by _normalize_http (returns None without src_ip)
         "zeek": {
             "http": {
                 "referrer": "https://mail.example.com",
@@ -178,6 +177,7 @@ def test_normalize_http_extended_fields():
         }
     }
     event = _normalize_http(doc)
+    assert event is not None
     assert event.http_referrer == "https://mail.example.com"
     assert event.http_request_body_len == 8192
     assert event.http_response_body_len == 45
