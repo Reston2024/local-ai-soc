@@ -9,7 +9,7 @@ progress:
   total_phases: 57
   completed_phases: 49
   total_plans: 244
-  completed_plans: 240
+  completed_plans: 241
 ---
 
 # Session State
@@ -23,10 +23,15 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 54
 **Previous phase:** 52-thehive-case-management (Plans 52-01 through 52-04 — complete)
-**Current plan:** 54-01 complete — Test stubs + config additions
-**Status:** In progress (54-01 done, 54-02 next)
+**Current plan:** 54-02 complete — Ollama GPU migration (Vulkan workaround for Blackwell sm_120)
+**Status:** In progress (54-02 done, 54-03 next)
 
 ## Key Decisions
+
+- **54-02:** CUDA_VISIBLE_DEVICES=0 at Machine scope was the root cause of GPU failure — it blocked Vulkan discovery; unsetting it was step one of the fix
+- **54-02:** RTX 5080 (Blackwell sm_120) not supported by Ollama's bundled CUDA runtime; Vulkan backend (vulkan/ggml-vulkan.dll) works and achieves GPU acceleration
+- **54-02:** OLLAMA_VULKAN=true at Machine scope is the permanent Vulkan fix for Ollama on Windows running as a service
+- **54-02:** Pre-flight GPU warning in _start-backend.ps1 is advisory-only (non-fatal try/catch) — slow inference never blocks backend launch
 
 - **54-01:** Double-guard stub pattern (@pytest.mark.skip decorator + pytest.skip() body) used for wave-0 reranker stubs — prevents accidental execution if linter strips decorator
 - **54-01:** RERANKER_ENABLED=False default ensures zero behavior change on existing deployments; RERANKER_URL='' empty-string is the graceful-degradation sentinel (no URL = no HTTP calls)
@@ -136,6 +141,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-16: Plan 54-02 complete — Ollama GPU migration: diagnosed CUDA_VISIBLE_DEVICES=0 (Machine scope) as Vulkan-blocking root cause; unset at all scopes; set OLLAMA_VULKAN=true (Machine scope); RTX 5080 confirmed via ollama ps 11%/89% CPU/GPU. CUDA path unavailable for Blackwell sm_120 — Vulkan path is the permanent solution. Pre-flight GPU warning added to _start-backend.ps1 (339c4c4).
 - 2026-04-16: Plan 54-01 complete — Test stubs + config additions: RERANKER_URL/TOP_K/ENABLED added to Settings (safe defaults, zero behavior change); test_reranker.py with 3 wave-0 stubs (sorted_scores, graceful_degradation, empty_passages); bge-m3 dimension stub appended to test_chroma_store.py. 20 chroma tests passing, 4 stubs SKIPPED. Phase 54 wave-0 scaffold complete.
 - 2026-04-16: Plan 52-04 complete — TheHive frontend integration: Detection interface extended with thehive_case_id/num/status in api.ts; DetectionsView shows amber/green/red case badge (#N · status) on collapsed rows + Open in TheHive deep-link button in expanded panels (both corr and CAR paths); InvestigationView Evidence Timeline header shows case badge + button when detection has thehive_case_num. TypeScript 0 errors, 1181 unit tests passing. Phase 52 COMPLETE (all 4 plans done).
 - 2026-04-16: Plan 52-03 complete — TheHive pipeline wiring: thehive_sync.py (sync_thehive_closures + drain_pending_cases synchronous, dual-schema drain for Wave 0 test + production formats), detect.py fire-and-forget hook (asyncio.create_task + asyncio.to_thread wrapper for High/Critical detections + SpiderFoot enrichment), health.py _check_thehive() in gather + optional_keys, main.py THEHIVE_ENABLED guard + dedicated AsyncIOScheduler (300s sync/drain jobs). All 8 Phase 52 stubs GREEN. 1181 unit tests passing. Phase 52 COMPLETE.
