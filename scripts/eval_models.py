@@ -54,6 +54,12 @@ class EvalResult:
     eval_count: int       # token count from Ollama response JSON eval_count field
     keyword_recall: float # 0.0–1.0
     timestamp: str        # ISO-8601 UTC
+    # Phase 54: embedding and reranker metadata (all optional, backward-compatible)
+    embed_model: Optional[str] = None           # e.g. "bge-m3" or "mxbai-embed-large"
+    reranker_enabled: Optional[bool] = None     # True/False/None
+    embed_latency_ms: Optional[int] = None      # ms to produce embedding for the eval query
+    rerank_latency_ms: Optional[int] = None     # ms for reranker call (0 if disabled)
+    recall_at_5: Optional[bool] = None          # True if ground-truth passage in top-5
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +163,11 @@ async def _eval_one_row(
             eval_count=0,
             keyword_recall=1.0,
             timestamp=ts,
+            embed_model=settings.OLLAMA_EMBED_MODEL,
+            reranker_enabled=settings.RERANKER_ENABLED,
+            embed_latency_ms=0,
+            rerank_latency_ms=0,
+            recall_at_5=None,
         )
 
     # Build the prompt using the appropriate template
@@ -177,6 +188,33 @@ async def _eval_one_row(
     }
 
     base_url = ollama_base_url.rstrip("/")
+
+    # Phase 54: time embed call for embed_latency_ms
+    embed_latency_ms = 0
+    try:
+        t_embed_start = time.monotonic_ns()
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=5.0, read=30.0, write=5.0, pool=5.0)
+        ) as embed_client:
+            embed_resp = await embed_client.post(
+                f"{base_url}/api/embeddings",
+                json={"model": settings.OLLAMA_EMBED_MODEL, "prompt": event_type},
+            )
+        embed_latency_ms = int((time.monotonic_ns() - t_embed_start) / 1_000_000)
+    except Exception:
+        embed_latency_ms = -1  # unavailable
+
+    # Phase 54: time rerank call for rerank_latency_ms
+    rerank_latency_ms = 0
+    if settings.RERANKER_ENABLED and settings.RERANKER_URL:
+        try:
+            from backend.services.reranker_client import rerank_passages  # noqa: PLC0415
+            t_rerank_start = time.monotonic_ns()
+            await rerank_passages(prompt[:200], [event_type, hostname], top_k=2)
+            rerank_latency_ms = int((time.monotonic_ns() - t_rerank_start) / 1_000_000)
+        except Exception:
+            rerank_latency_ms = -1  # unavailable
+
     t0 = time.monotonic_ns()
 
     async with httpx.AsyncClient(
@@ -192,6 +230,12 @@ async def _eval_one_row(
     eval_count = data.get("eval_count", 0)
     keyword_recall = score_response(response_text, ground_truth_keywords)
 
+    # Phase 54: recall_at_5 (ground_truth check — None when no ground_truth available)
+    recall_at_5: Optional[bool] = None
+    if attack_technique and attack_technique != "unknown":
+        # Check if attack_technique appears in top-5 context passages (simplified)
+        recall_at_5 = attack_technique.lower() in response_text.lower()
+
     return EvalResult(
         model=model,
         prompt_id=prompt_id,
@@ -200,6 +244,11 @@ async def _eval_one_row(
         eval_count=eval_count,
         keyword_recall=keyword_recall,
         timestamp=ts,
+        embed_model=settings.OLLAMA_EMBED_MODEL,
+        reranker_enabled=settings.RERANKER_ENABLED,
+        embed_latency_ms=embed_latency_ms,
+        rerank_latency_ms=rerank_latency_ms,
+        recall_at_5=recall_at_5,
     )
 
 
@@ -220,10 +269,12 @@ def _print_summary_table(results: list[EvalResult]) -> None:
     sorted_keys = sorted(groups.keys(), key=lambda k: (k[0], k[1]))
 
     header = (
-        "| Model | Prompt Type | Rows | Avg Latency (ms) | Avg Keyword Recall | Total Tokens |"
+        "| Model | Prompt Type | Rows | Avg Latency (ms) | Avg Keyword Recall | Total Tokens"
+        " | Embed Model | Avg Embed Latency (ms) | Reranker |"
     )
     separator = (
         "|-------|-------------|------|-----------------|-------------------|--------------|"
+        "-------------|----------------------|----------|"
     )
 
     print("\n" + header)
@@ -235,7 +286,17 @@ def _print_summary_table(results: list[EvalResult]) -> None:
         avg_latency = int(sum(r.latency_ms for r in group) / rows) if rows else 0
         avg_recall = round(sum(r.keyword_recall for r in group) / rows, 2) if rows else 0.0
         total_tokens = sum(r.eval_count for r in group)
-        print(f"| {model} | {prompt_type} | {rows} | {avg_latency} | {avg_recall} | {total_tokens} |")
+        # Phase 54 new columns
+        embed_models = {r.embed_model for r in group if r.embed_model}
+        embed_model_str = ", ".join(sorted(embed_models)) if embed_models else "—"
+        embed_latencies = [r.embed_latency_ms for r in group if r.embed_latency_ms is not None]
+        avg_embed_latency = int(sum(embed_latencies) / len(embed_latencies)) if embed_latencies else 0
+        reranker_values = {r.reranker_enabled for r in group if r.reranker_enabled is not None}
+        reranker_str = "enabled" if True in reranker_values else ("disabled" if False in reranker_values else "—")
+        print(
+            f"| {model} | {prompt_type} | {rows} | {avg_latency} | {avg_recall}"
+            f" | {total_tokens} | {embed_model_str} | {avg_embed_latency} | {reranker_str} |"
+        )
 
     print()
 
@@ -346,6 +407,11 @@ async def main() -> None:
                             eval_count=0,
                             keyword_recall=0.0,
                             timestamp=datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            embed_model=settings.OLLAMA_EMBED_MODEL,
+                            reranker_enabled=settings.RERANKER_ENABLED,
+                            embed_latency_ms=None,
+                            rerank_latency_ms=None,
+                            recall_at_5=None,
                         )
 
                     results.append(result)
