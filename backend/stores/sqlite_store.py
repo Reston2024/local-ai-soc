@@ -445,6 +445,22 @@ CREATE INDEX IF NOT EXISTS idx_dnstwist_findings_inv ON dnstwist_findings(invest
 CREATE INDEX IF NOT EXISTS idx_osint_inv_started ON osint_investigations(started_at DESC);
 """
 
+# Phase 53: Privacy monitoring blocklist tables
+_PRIVACY_BLOCKLIST_DDL = """
+CREATE TABLE IF NOT EXISTS privacy_blocklist (
+    domain      TEXT PRIMARY KEY,
+    category    TEXT NOT NULL,
+    company     TEXT,
+    updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_privacy_domain ON privacy_blocklist (domain);
+CREATE TABLE IF NOT EXISTS privacy_feed_meta (
+    feed         TEXT PRIMARY KEY,
+    last_sync    TEXT,
+    domain_count INTEGER DEFAULT 0
+);
+"""
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -582,6 +598,10 @@ class SQLiteStore:
 
         # Phase 52: TheHive pending cases retry queue (idempotent — CREATE IF NOT EXISTS)
         self._conn.execute(_THEHIVE_PENDING_DDL)
+        self._conn.commit()
+
+        # Phase 53: Privacy monitoring blocklist tables (idempotent — CREATE IF NOT EXISTS)
+        self._conn.executescript(_PRIVACY_BLOCKLIST_DDL)
         self._conn.commit()
 
         # Phase 52: TheHive case tracking columns on detections

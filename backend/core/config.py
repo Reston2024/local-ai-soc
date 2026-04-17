@@ -176,6 +176,12 @@ class Settings(BaseSettings):
     RERANKER_TOP_K: int = 5         # number of passages to return after reranking
     RERANKER_ENABLED: bool = False  # set True once reranker service is confirmed running
 
+    # Phase 53: Privacy monitoring
+    PRIVACY_BLOCKLIST_REFRESH_INTERVAL_SEC: int = 86400   # 24 hours
+    PRIVACY_COOKIE_EXFIL_THRESHOLD_BYTES: int = 4096
+    PRIVACY_PIXEL_MAX_BODY_BYTES: int = 200
+    PRIVACY_ENABLED: bool = True
+
     # Server
     HOST: str = "127.0.0.1"
     PORT: int = 8000
