@@ -396,14 +396,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         log.warning("Auto-triage worker failed to start: %s", exc)
 
-    # Phase 53: Privacy scan loop (300s interval)
-    try:
-        from backend.api.privacy import _privacy_scan_loop as _priv_loop
-        if getattr(app.state, "privacy_store", None) is not None:
-            asyncio.create_task(_priv_loop(app, interval_sec=300))
-            log.info("Privacy scan loop started (300s interval, Phase 53)")
-    except Exception as _exc:
-        log.warning("Phase 53 privacy scan loop failed to start: %s", _exc)
 
     # 7i. Phase 51: OSINT investigation store
     try:
@@ -462,7 +454,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 interval_sec=settings.PRIVACY_BLOCKLIST_REFRESH_INTERVAL_SEC,
             )
             asyncio.create_task(_privacy_worker.run())
-            log.info("Privacy blocklist store + worker started (Phase 53)")
+            # Start privacy scan loop here (after privacy_store is ready)
+            from backend.api.privacy import _privacy_scan_loop as _priv_loop
+            asyncio.create_task(_priv_loop(app, interval_sec=300))
+            log.info("Privacy blocklist store + worker + scan loop started (Phase 53)")
         else:
             app.state.privacy_store = None
             log.info("Privacy monitoring disabled (PRIVACY_ENABLED=False)")

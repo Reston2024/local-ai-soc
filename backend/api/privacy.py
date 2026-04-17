@@ -127,9 +127,9 @@ def run_privacy_scan(app) -> list[dict]:
         event_id, domain, body_len, mime_type (optional)
     """
     try:
-        duckdb_store = app.state.duckdb_store
+        duckdb_store = app.state.stores.duckdb
         privacy_store = app.state.privacy_store
-        sqlite_store = app.state.sqlite_store
+        sqlite_store = app.state.stores.sqlite
     except AttributeError as exc:
         logger.warning("privacy_scan: missing app.state attribute: %s", exc)
         return []
@@ -272,7 +272,7 @@ async def _privacy_scan_loop(app, interval_sec: int = 300) -> None:
 async def get_privacy_hits(request: Request):
     """Return recent privacy detections (detection_source='privacy')."""
     try:
-        sqlite_store = request.app.state.sqlite_store
+        sqlite_store = request.app.state.stores.sqlite
         rows = await asyncio.to_thread(
             lambda: sqlite_store._conn.execute(_HITS_SQL).fetchall()
         )
