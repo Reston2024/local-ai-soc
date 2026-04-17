@@ -219,6 +219,25 @@ async def _check_thehive(request: Request) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
 
+async def _check_reranker() -> dict[str, Any]:
+    """Report reranker microservice status (disabled when RERANKER_URL is empty)."""
+    if not settings.RERANKER_URL:
+        return {"status": "disabled", "detail": "RERANKER_URL not configured"}
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(f"{settings.RERANKER_URL}/health")
+            if resp.status_code == 200:
+                rj = resp.json()
+                return {
+                    "status": "ok",
+                    "model": rj.get("model"),
+                    "device": rj.get("device"),
+                }
+            return {"status": "unreachable", "detail": f"HTTP {resp.status_code}"}
+    except Exception as exc:
+        return {"status": "unreachable", "detail": str(exc)}
+
+
 async def _check_chainsaw(request: Request) -> dict[str, Any]:
     """Report Chainsaw binary availability and detection count from SQLite."""
     try:
@@ -303,7 +322,11 @@ async def health(request: Request) -> JSONResponse:
     - degraded:  some components ok (Ollama failures are degraded, not fatal)
     - unhealthy: core storage components (DuckDB, SQLite) failed
     """
-    ollama_result, duckdb_result, chroma_result, sqlite_result, hayabusa_result, chainsaw_result, misp_result, spiderfoot_result, thehive_result = await asyncio.gather(
+    (
+        ollama_result, duckdb_result, chroma_result, sqlite_result,
+        hayabusa_result, chainsaw_result, misp_result, spiderfoot_result,
+        thehive_result, reranker_result,
+    ) = await asyncio.gather(
         _check_ollama(request),
         _check_duckdb(request),
         _check_chroma(request),
@@ -313,6 +336,7 @@ async def health(request: Request) -> JSONResponse:
         _check_misp(request),
         _check_spiderfoot(),
         _check_thehive(request),
+        _check_reranker(),
         return_exceptions=False,
     )
 
@@ -326,6 +350,7 @@ async def health(request: Request) -> JSONResponse:
         "misp": misp_result,
         "spiderfoot": spiderfoot_result,
         "thehive": thehive_result,
+        "reranker": reranker_result,
     }
 
     # Determine overall status:
@@ -338,7 +363,7 @@ async def health(request: Request) -> JSONResponse:
     )
     # Optional components: spiderfoot (on-demand OSINT), hayabusa/chainsaw (warning = binary present but no detections)
     # These don't drive overall degraded status — only core storage + Ollama/Chroma matter.
-    optional_keys = {"spiderfoot", "hayabusa", "chainsaw", "thehive"}
+    optional_keys = {"spiderfoot", "hayabusa", "chainsaw", "thehive", "reranker"}
     all_ok = core_ok and all(
         v["status"] in ("ok", "warning") for k, v in components.items() if k not in optional_keys
     )

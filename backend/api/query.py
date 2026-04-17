@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from backend.core.config import settings
 from backend.core.logging import get_logger
 from backend.core.rate_limit import limiter
 from backend.stores.chroma_store import DEFAULT_COLLECTION
@@ -185,18 +186,28 @@ async def ask(body: AskRequest, request: Request) -> JSONResponse:
             detail=f"Embedding generation failed: {exc}",
         ) from exc
 
-    # Retrieve context from Chroma
+    # Retrieve context from Chroma (with optional reranking)
     where_filter: Optional[dict[str, Any]] = None
     if body.case_id:
         where_filter = {"case_id": {"$eq": body.case_id}}
 
     try:
-        results = await stores.chroma.query_async(
-            collection_name=DEFAULT_COLLECTION,
-            query_embeddings=[q_embedding],
-            n_results=body.n_context_events,
-            where=where_filter,
-        )
+        if settings.RERANKER_ENABLED:
+            results = await stores.chroma.query_with_rerank(
+                collection_name=DEFAULT_COLLECTION,
+                query_text=body.question,
+                query_embeddings=[q_embedding],
+                n_results=20,
+                where=where_filter,
+                top_k=settings.RERANKER_TOP_K,
+            )
+        else:
+            results = await stores.chroma.query_async(
+                collection_name=DEFAULT_COLLECTION,
+                query_embeddings=[q_embedding],
+                n_results=body.n_context_events,
+                where=where_filter,
+            )
     except Exception as exc:
         log.warning("RAG context retrieval failed", error=str(exc))
         results = {}
@@ -313,12 +324,22 @@ async def ask_stream(body: AskRequest, request: Request) -> StreamingResponse:
         where_filter = {"case_id": {"$eq": body.case_id}}
 
     try:
-        results = await stores.chroma.query_async(
-            collection_name=DEFAULT_COLLECTION,
-            query_embeddings=[q_embedding],
-            n_results=body.n_context_events,
-            where=where_filter,
-        )
+        if settings.RERANKER_ENABLED:
+            results = await stores.chroma.query_with_rerank(
+                collection_name=DEFAULT_COLLECTION,
+                query_text=body.question,
+                query_embeddings=[q_embedding],
+                n_results=20,
+                where=where_filter,
+                top_k=settings.RERANKER_TOP_K,
+            )
+        else:
+            results = await stores.chroma.query_async(
+                collection_name=DEFAULT_COLLECTION,
+                query_embeddings=[q_embedding],
+                n_results=body.n_context_events,
+                where=where_filter,
+            )
     except Exception:
         results = {}
 

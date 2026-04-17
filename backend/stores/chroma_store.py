@@ -225,6 +225,85 @@ class ChromaStore:
             where,
         )
 
+    async def query_with_rerank(
+        self,
+        collection_name: str,
+        query_text: str,
+        query_embeddings: list[list[float]],
+        n_results: int = 20,
+        where: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+    ) -> dict[str, Any]:
+        """
+        Perform a nearest-neighbour search and optionally rerank results.
+
+        Retrieves n_results candidates from Chroma, then calls the reranker
+        microservice to reorder by cross-encoder score, returning the top
+        top_k results.
+
+        Falls back to query_async() ordering when the reranker is in
+        passthrough mode (RERANKER_URL empty or RERANKER_ENABLED=False).
+
+        Args:
+            collection_name:  Collection to search.
+            query_text:       Raw query string passed to the reranker.
+            query_embeddings: Embedding vectors for the query.
+            n_results:        Number of candidates to retrieve from Chroma.
+            where:            Optional Chroma metadata filter.
+            top_k:            Number of results to return after reranking.
+                              Defaults to settings.RERANKER_TOP_K.
+
+        Returns:
+            Dict with the same shape as Chroma query results (ids, documents,
+            metadatas, distances) but truncated/reordered to match reranked order.
+        """
+        from backend.core.config import settings  # noqa: PLC0415
+        from backend.services.reranker_client import rerank_passages  # noqa: PLC0415
+
+        effective_top_k = top_k if top_k is not None else settings.RERANKER_TOP_K
+
+        # Step 1: Retrieve candidates from ChromaDB
+        results = await self.query_async(
+            collection_name,
+            query_embeddings,
+            n_results=n_results,
+            where=where,
+        )
+
+        documents: list[str] = (results.get("documents") or [[]])[0]
+        ids: list[str] = (results.get("ids") or [[]])[0]
+        distances: list[float] = (results.get("distances") or [[]])[0]
+        metadatas: list[Any] = (results.get("metadatas") or [[]])[0]
+
+        if not documents:
+            return results
+
+        # Step 2: Rerank (passthrough when reranker disabled)
+        reranked_passages = await rerank_passages(query_text, documents, top_k=effective_top_k)
+
+        # Step 3: Reorder result arrays to match reranked passage order
+        doc_to_index = {doc: i for i, doc in enumerate(documents)}
+        reordered_ids: list[str] = []
+        reordered_docs: list[str] = []
+        reordered_distances: list[float] = []
+        reordered_metadatas: list[Any] = []
+
+        for passage in reranked_passages:
+            orig_idx = doc_to_index.get(passage)
+            if orig_idx is None:
+                continue
+            reordered_docs.append(documents[orig_idx])
+            reordered_ids.append(ids[orig_idx] if orig_idx < len(ids) else "")
+            reordered_distances.append(distances[orig_idx] if orig_idx < len(distances) else 0.0)
+            reordered_metadatas.append(metadatas[orig_idx] if orig_idx < len(metadatas) else {})
+
+        return {
+            "ids": [reordered_ids],
+            "documents": [reordered_docs],
+            "distances": [reordered_distances],
+            "metadatas": [reordered_metadatas],
+        }
+
     # ------------------------------------------------------------------
     # Admin / introspection
     # ------------------------------------------------------------------
