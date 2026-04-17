@@ -114,6 +114,7 @@
 | SpiderFoot OSINT | ✅ Live | 192.168.1.22:9002 | OSINT scan API |
 | Zeek (SPAN) | ✅ Live | GMKtec/Malcolm | Netgear GS308E port 1→5 |
 | Ollama LLM | ✅ Live | 127.0.0.1:11434 | qwen3:14b · GPU (RTX 5080 via Vulkan) · bge-m3 embed |
+| Reranker | ✅ Live | 127.0.0.1:8100 | BAAI/bge-reranker-v2-m3 · CUDA · torch 2.11.0+cu128 |
 | ChromaDB RAG | ✅ Live | 192.168.1.22:8200 | Remote vector store |
 
 ---
@@ -145,11 +146,12 @@
 
 | Item | Impact | Notes |
 |------|--------|-------|
-| Reranker on CPU | Performance | bge-reranker-v2-m3 service ready, RERANKER_ENABLED=False by default; enable after ollama pull bge-m3 + torch install |
 | Malcolm auto-start on reboot | Ops | Requires manual `python3 scripts/start` after LUKS decrypt |
 | Cortex analysers not configured | Feature gap | AbuseIPDB/VT/MaxMind keys needed via Cortex UI |
 | Dead code in api.ts / ThreatGraph.svelte | Maintenance | Cleanup deferred to Phase 53+ |
 | `STATE.md` — stale | Documentation | Superseded by this file; do not update |
+| PORT conflict on reboot | Ops | Docker Desktop owns :8000; backend runs on :8001 (Caddyfile already updated). Ensure `.env` PORT=8001 on restarts. |
+| Reranker needs manual start | Ops | `uv run python scripts/start_reranker.py` — not daemonized; must be restarted after reboot |
 
 ---
 
