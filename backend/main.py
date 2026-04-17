@@ -396,6 +396,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         log.warning("Auto-triage worker failed to start: %s", exc)
 
+    # Phase 53: Privacy scan loop (300s interval)
+    try:
+        from backend.api.privacy import _privacy_scan_loop as _priv_loop
+        if getattr(app.state, "privacy_store", None) is not None:
+            asyncio.create_task(_priv_loop(app, interval_sec=300))
+            log.info("Privacy scan loop started (300s interval, Phase 53)")
+    except Exception as _exc:
+        log.warning("Phase 53 privacy scan loop failed to start: %s", _exc)
+
     # 7i. Phase 51: OSINT investigation store
     try:
         from backend.services.osint_investigation_store import OsintInvestigationStore
@@ -439,6 +448,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         app.state.thehive_client = None
         log.warning("TheHive setup failed (non-fatal): %s", exc)
+
+    # 7k. Phase 53: Privacy monitoring — PrivacyBlocklistStore + background worker
+    try:
+        from backend.services.intel.privacy_blocklist import (
+            PrivacyBlocklistStore as _PrivacyBlocklistStore,
+            PrivacyWorker as _PrivacyWorker,
+        )
+        if settings.PRIVACY_ENABLED:
+            app.state.privacy_store = _PrivacyBlocklistStore(sqlite_store._conn)
+            _privacy_worker = _PrivacyWorker(
+                app.state.privacy_store,
+                interval_sec=settings.PRIVACY_BLOCKLIST_REFRESH_INTERVAL_SEC,
+            )
+            asyncio.create_task(_privacy_worker.run())
+            log.info("Privacy blocklist store + worker started (Phase 53)")
+        else:
+            app.state.privacy_store = None
+            log.info("Privacy monitoring disabled (PRIVACY_ENABLED=False)")
+    except Exception as _exc:
+        log.warning("Phase 53 privacy store init failed (non-fatal): %s", _exc)
+        app.state.privacy_store = None
 
     # 8. Conditional osquery live telemetry collector
     osquery_task: asyncio.Task | None = None
@@ -1013,6 +1043,13 @@ def create_app() -> FastAPI:
         log.info("Coverage router mounted at /api/coverage (Phase 40)")
     except Exception as exc:
         log.warning("Coverage router not available: %s", exc)
+
+    try:
+        from backend.api.privacy import privacy_router as _privacy_router
+        app.include_router(_privacy_router)
+        log.info("Privacy router mounted at /api/privacy (Phase 53)")
+    except Exception as exc:
+        log.warning("Phase 53 privacy router failed to load: %s", exc)
 
     # -----------------------------------------------------------------------
     # Static files — serve the Svelte dashboard if built
