@@ -19,7 +19,7 @@
   let runningDetection = $state(false)
   let error = $state<string | null>(null)
   let severityFilter = $state('')
-  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA' | 'HAYABUSA' | 'CHAINSAW'
+  let typeFilter = $state('')   // '' | 'CORR' | 'ANOMALY' | 'SIGMA' | 'HAYABUSA' | 'CHAINSAW' | 'PRIVACY'
 
   // Phase 44: Verdict state
   let verdicts = $state<Map<string, 'TP' | 'FP'>>(new Map())
@@ -49,10 +49,14 @@
         ? detections.filter(d => d.detection_source === 'hayabusa')
         : typeFilter === 'CHAINSAW'
         ? detections.filter(d => d.detection_source === 'chainsaw')
+        : typeFilter === 'PRIVACY'
+        ? detections.filter(d => d.detection_source === 'privacy')
         : typeFilter === 'SIGMA'
         ? detections.filter(d =>
             d.detection_source === 'sigma' ||
-            (!d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-') && !d.rule_id?.startsWith('hayabusa-') && d.detection_source !== 'hayabusa')
+            (!d.rule_id?.startsWith('corr-') && !d.rule_id?.startsWith('anomaly-') &&
+             !d.rule_id?.startsWith('hayabusa-') && d.detection_source !== 'hayabusa' &&
+             d.detection_source !== 'chainsaw' && d.detection_source !== 'privacy')
           )
         : detections
       if (verdictFilter) {
@@ -69,6 +73,8 @@
   let hayabusaCount = $derived(detections.filter(d => d.detection_source === 'hayabusa').length)
   // Phase 49: Chainsaw count for chip badge
   let chainsawCount = $derived(detections.filter(d => d.detection_source === 'chainsaw').length)
+  // Phase 53: Privacy detection count for chip badge
+  let privacyCount = $derived(detections.filter(d => d.detection_source === 'privacy').length)
 
   // Push posture to parent whenever it changes
   $effect(() => { onPostureUpdate?.(postureScore) })
@@ -443,6 +449,10 @@
           onclick={() => { typeFilter = typeFilter === 'CHAINSAW' ? '' : 'CHAINSAW'; }}
         >CHAINSAW {chainsawCount > 0 ? `(${chainsawCount})` : ''}</button>
         <button
+          class="chip chip-privacy {typeFilter === 'PRIVACY' ? 'chip-active' : ''}"
+          onclick={() => { typeFilter = typeFilter === 'PRIVACY' ? '' : 'PRIVACY'; }}
+        >PRIVACY {privacyCount > 0 ? `(${privacyCount})` : ''}</button>
+        <button
           class="chip filter-chip {verdictFilter ? 'chip-active chip-unreviewed' : ''}"
           onclick={() => verdictFilter = !verdictFilter}
         >Unreviewed</button>
@@ -552,6 +562,9 @@
                 {/if}
                 {#if d.detection_source === 'chainsaw'}
                   <span class="badge-chainsaw">CHAINSAW</span>
+                {/if}
+                {#if d.detection_source === 'privacy'}
+                  <span class="badge-privacy">PRIVACY</span>
                 {/if}
                 {#if d.thehive_case_num}
                   <span class={thehiveBadgeClass(d.thehive_status)} title="TheHive case">
@@ -1227,6 +1240,21 @@
 
   .chip-chainsaw { border-color: #14b8a6; color: #14b8a6; }
   .chip-chainsaw.chip-active { background: rgba(20, 184, 166, 0.15); }
+
+  /* Phase 53: Privacy chip — cyan accent */
+  .chip-privacy { border-color: #0891b2; color: #22d3ee; }
+  .chip-privacy.chip-active { background: #164e63; color: #a5f3fc; }
+  .badge-privacy {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: rgba(8,145,178,0.15);
+    color: #22d3ee;
+    border: 1px solid rgba(8,145,178,0.4);
+  }
 
   .verdict-row { display: flex; gap: 8px; padding: 12px 0 4px; border-top: 1px solid rgba(255,255,255,0.08); margin-top: 12px; }
   .verdict-btn { padding: 6px 14px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 13px; }

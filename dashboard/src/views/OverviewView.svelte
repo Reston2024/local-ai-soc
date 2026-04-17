@@ -26,6 +26,9 @@
     (componentHealth?.components?.chainsaw?.detection_count as number | undefined) ?? 0
   )
 
+  // Phase 53: Privacy detection count — loaded from /api/privacy/hits
+  let privacyDetectionCount = $state(0)
+
   /** Strip markdown bold/italic asterisks from LLM output */
   function stripMd(text: string): string {
     return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '')
@@ -180,6 +183,8 @@
         return a.ip.localeCompare(b.ip, undefined, { numeric: true })
       })
       error = null
+      // Phase 53: Load privacy detection count (fire-and-forget, graceful fallback)
+      api.privacy.hits().then(r => { privacyDetectionCount = r.hits.length }).catch(() => null)
     } catch (e) {
       error = String(e)
     } finally {
@@ -273,6 +278,10 @@
             <div class="scorecard-tile">
               <span class="tile-value tile-chainsaw">{chainsawFindingCount}</span>
               <span class="tile-label">Chainsaw<br>Findings</span>
+            </div>
+            <div class="scorecard-tile">
+              <span class="tile-value tile-privacy">{privacyDetectionCount}</span>
+              <span class="tile-label">Privacy<br>Detections</span>
             </div>
           </div>
         </div>
@@ -738,6 +747,7 @@
   .tile-ioc { color: var(--severity-high, #f97316); }
   .tile-hayabusa { color: #fbbf24; }  /* amber — matches HAYABUSA chip in DetectionsView */
   .tile-chainsaw { color: #14b8a6; }  /* teal — matches CHAINSAW chip in DetectionsView */
+  .tile-privacy { color: #22d3ee; }   /* cyan — matches PRIVACY chip in DetectionsView */
 
   .tile-label {
     font-size: 10px;
