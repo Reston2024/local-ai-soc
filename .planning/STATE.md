@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 53
-current_plan: 53-02 complete — Phase 53 blocklist infrastructure + schema extension (PRIV-01..04, PRIV-11 GREEN)
-status: in-progress
-last_updated: "2026-04-17T10:00:00.000Z"
+current_phase: 54
+current_plan: 53-03 complete — privacy scanner + API endpoints (PRIV-05..10 GREEN)
+status: executing
+last_updated: "2026-04-17T09:52:33.326Z"
 progress:
   total_phases: 57
   completed_phases: 49
@@ -24,11 +24,15 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 54
 **Previous phase:** 52-thehive-case-management (Plans 52-01 through 52-04 — complete)
-**Current plan:** 53-02 complete — blocklist infrastructure + schema extension (PRIV-01..04, PRIV-11 GREEN)
-**Status:** In progress — Phase 53 Plan 03 next (scanner + API)
+**Current plan:** 53-03 complete — privacy scanner + API endpoints (PRIV-05..10 GREEN)
+**Status:** In progress — Phase 53 complete (all 3 plans done)
 
 ## Key Decisions
 
+- **53-03:** run_privacy_scan() is synchronous (not async) — Wave-0 stubs call without await; async _privacy_scan_loop wraps via asyncio.to_thread; same pattern as PrivacyWorker._sync()
+- **53-03:** _query_http_events() and _is_tracker() exposed as module-level functions — test stubs patch these directly (backend.api.privacy._query_http_events); pure async not patchable without asyncio overhead
+- **53-03:** router alias added as privacy_router — test stubs import 'router', plan wiring uses 'privacy_router'; both names exported from same APIRouter object
+- **53-03:** Wave-0 stubs rewritten as real tests — stubs had @pytest.mark.skip + assert False; converted to concrete tests with mock patching of module-level helpers
 - **53-02:** to_duckdb_row() is 80 elements (not 79 as plan stated) — [0]-[75] were already 76 elements (0-indexed), +4 Phase 53 fields = 80; plan had off-by-one in its own count
 - **53-02:** _parse_disconnect() returns 2-tuples (domain, category) not 3-tuples — Wave-0 test stubs use (d, _) / (_, c) unpacking; 3-tuples cause ValueError at unpack time
 - **53-02:** PrivacyWorker._sync() is synchronous (not async) — Wave-0 stubs call worker._sync() without await; async run() background loop wraps _sync via asyncio.to_thread()
@@ -160,6 +164,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-17: Plan 53-03 complete — Privacy scanner + API endpoints: run_privacy_scan() (synchronous, module-level patchable helpers _query_http_events/_is_tracker), cookie exfil + tracking pixel detection paths, SQLite insert_detection() calls, GET /api/privacy/hits + /api/privacy/feeds endpoints, _privacy_scan_loop() background worker (300s), main.py wiring (7k block + scan loop + router). PRIV-05..10 all GREEN (6/6). Full suite: 1271 passed, 6 skipped. Phase 53 COMPLETE.
 - 2026-04-17: Plan 53-02 complete — Privacy blocklist infrastructure + schema extension: PrivacyBlocklistStore (SQLite, upsert_domain/is_tracker/get_feed_status), PrivacyWorker (sync _sync() + async run()), _parse_easyprivacy/_parse_disconnect parsers, 4 new DuckDB columns (http_referrer/http_request_body_len/http_response_body_len/http_resp_mime_type), _normalize_http() extended with triple-fallback for all 4 fields. PRIV-01..04 + PRIV-11 stubs all GREEN (6/6). Full suite: 1265 passed, 8 skipped.
 - 2026-04-17: Plan 53-01 complete — Wave-0 TDD stubs for Phase 53 network privacy monitoring: test_privacy_blocklist.py (6 stubs: PRIV-01..04, PRIV-04b, PRIV-11), test_privacy_detection.py (4 stubs: PRIV-05..08), test_privacy_api.py (2 stubs: PRIV-09..10). All 11 stubs SKIP cleanly via module-level importorskip. Suite: 1259 passed, 9 skipped (3 new), 13 pre-existing failures unchanged.
 - 2026-04-17: Plans 54-03 through 54-10 complete — Phase 54 HF Model Integration: bge-m3 embedding upgrade (OLLAMA_EMBED_MODEL=bge-m3), rebuild_chroma.py script, bge-reranker-v2-m3 FastAPI microservice (port 8100, disabled by default), reranker_client.py with graceful degradation, ChromaStore.query_with_rerank(), query.py RERANKER_ENABLED branch, reranker health check, 3 reranker unit tests GREEN, eval harness extended (embed_model/reranker_enabled/embed_latency_ms/rerank_latency_ms/recall_at_5), reranker health dot in OverviewView.svelte. Regression gate: 1201 passed, 4 skipped (2 pre-existing failures). Phase 54 COMPLETE.
