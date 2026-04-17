@@ -731,6 +731,26 @@ export function getDownloadUrl(path: string): string {
   return `${BASE}${path}${sep}token=${encodeURIComponent(token)}`
 }
 
+// ---------------------------------------------------------------------------
+// Phase 53: Privacy monitoring interfaces
+// ---------------------------------------------------------------------------
+
+export interface PrivacyHit {
+  id: string
+  rule_id: string
+  rule_name: string
+  severity: string
+  matched_event_ids: string[]
+  created_at: string
+  entity_key: string | null
+}
+
+export interface PrivacyFeedStatus {
+  feed: string
+  last_sync: string | null
+  domain_count: number
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options?.headers },
@@ -1264,6 +1284,12 @@ export const api = {
       if (rule_name) params.set('rule_name', rule_name)
       return request<SimilarCasesResponse>(`/api/feedback/similar?${params}`)
     },
+  },
+
+  // Phase 53: Privacy monitoring endpoints
+  privacy: {
+    hits: () => request<{ hits: PrivacyHit[] }>('/api/privacy/hits'),
+    feeds: () => request<{ feeds: PrivacyFeedStatus[] }>('/api/privacy/feeds'),
   },
 }
 
