@@ -297,3 +297,10 @@ def mount_routers(app: "FastAPI") -> None:
         log.info("Privacy router mounted at /api/privacy (Phase 53)")
     except Exception as exc:
         log.warning("Phase 53 privacy router failed to load: %s", exc)
+
+    try:
+        from backend.api.detection_quality import router as detection_quality_router
+        app.include_router(detection_quality_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Detection quality router mounted at /api/detections/quality")
+    except Exception as exc:
+        log.warning("Detection quality router not available: %s", exc)
