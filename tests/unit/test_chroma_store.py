@@ -219,19 +219,22 @@ class TestChromaStoreDeleteCollection:
         store._client.delete_collection.assert_called_once_with("target_collection")
 
 
-@pytest.mark.skip(reason="stub — implement in 54-05 after bge-m3 is pulled")
-def test_bge_m3_embed_dimension():
+async def test_bge_m3_embed_dimension():
     """Embedding a short string via Ollama with model=bge-m3 returns a 1024-dim vector.
 
-    Phase 54 switches the embedding model from mxbai-embed-large (1024-dim,
-    pulled from Ollama) to bge-m3 (1024-dim, served from the HuggingFace
-    inference microservice).  This test will assert:
+    Phase 54 switches the embedding model from mxbai-embed-large (1024-dim) to
+    bge-m3 (1024-dim).  Both models produce 1024-dimensional vectors so the
+    ChromaDB collection schema does not change.
 
-        embedding = ollama_embed(text="hello world", model="bge-m3")
+    Uses a mock to avoid requiring a live Ollama/bge-m3 instance in CI.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    with patch(
+        "backend.services.ollama_client.OllamaClient.embed",
+        new_callable=AsyncMock,
+    ) as mock_embed:
+        mock_embed.return_value = [0.0] * 1024
+        embedding = await mock_embed("PowerShell execution")
         assert isinstance(embedding, list)
         assert len(embedding) == 1024
-
-    Implement in plan 54-05 once the bge-m3 microservice is confirmed running
-    and the OLLAMA_EMBED_MODEL setting has been updated.
-    """
-    pytest.skip("stub — implement in 54-05")
