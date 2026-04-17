@@ -267,6 +267,11 @@ _ECS_MIGRATION_COLUMNS: list[tuple[str, str]] = [
     ("rdp_security_protocol",  "TEXT"),
     # Phase 42: online anomaly scoring
     ("anomaly_score",          "FLOAT"),
+    # Phase 53: Privacy monitoring — extended HTTP fields
+    ("http_referrer",            "TEXT"),
+    ("http_request_body_len",    "INTEGER"),
+    ("http_response_body_len",   "INTEGER"),
+    ("http_resp_mime_type",      "TEXT"),
 ]
 
 

@@ -84,7 +84,8 @@ INSERT OR IGNORE INTO normalized_events (
     ntlm_domain, ntlm_username,
     smb_path, smb_action,
     rdp_cookie, rdp_security_protocol,
-    anomaly_score
+    anomaly_score,
+    http_referrer, http_request_body_len, http_response_body_len, http_resp_mime_type
 ) VALUES (
     ?, ?, ?, ?, ?,
     ?, ?, ?, ?,
@@ -108,7 +109,8 @@ INSERT OR IGNORE INTO normalized_events (
     ?, ?,
     ?, ?,
     ?, ?,
-    ?
+    ?,
+    ?, ?, ?, ?
 )
 """
 

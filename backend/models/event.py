@@ -178,11 +178,16 @@ class NormalizedEvent(BaseModel):
     rdp_security_protocol: Optional[str] = None # [74] zeek.rdp.security_protocol
     # Phase 42: Online anomaly scoring (River HalfSpaceTrees)
     anomaly_score: Optional[float] = None       # [75] float in [0.0, 1.0] or None
+    # Phase 53: Privacy monitoring — extended HTTP fields
+    http_referrer: Optional[str] = None          # [76] Referer header value
+    http_request_body_len: Optional[int] = None  # [77] zeek.http.request_body_len
+    http_response_body_len: Optional[int] = None # [78] zeek.http.response_body_len
+    http_resp_mime_type: Optional[str] = None    # [79] zeek.http.resp_mime_types[0]
 
     def to_duckdb_row(self) -> tuple[Any, ...]:
         """Return a tuple of values matching the _INSERT_SQL column order in loader.py.
 
-        Column order (75 elements total):
+        Column order (79 elements total):
             [0]  event_id
             [1]  timestamp
             [2]  ingested_at
@@ -264,6 +269,11 @@ class NormalizedEvent(BaseModel):
             [74] rdp_security_protocol
             --- Phase 42: anomaly scoring ---
             [75] anomaly_score
+            --- Phase 53: extended HTTP fields ---
+            [76] http_referrer
+            [77] http_request_body_len
+            [78] http_response_body_len
+            [79] http_resp_mime_type
         """
         def _ts(v: Union[datetime, str, None]) -> Optional[str]:
             if v is None:
@@ -353,6 +363,11 @@ class NormalizedEvent(BaseModel):
             self.rdp_security_protocol,
             # Phase 42: anomaly scoring (position 75)
             self.anomaly_score,
+            # Phase 53: extended HTTP fields (positions 76-79)
+            self.http_referrer,
+            self.http_request_body_len,
+            self.http_response_body_len,
+            self.http_resp_mime_type,
         )
 
     def to_embedding_text(self) -> str:
