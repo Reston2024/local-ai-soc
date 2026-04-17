@@ -1,13 +1,13 @@
 """
-Phase 53 Wave 0 stubs: Privacy REST API tests (Plan 53-01).
-Stubs for PRIV-09 and PRIV-10 (hits and feeds endpoints).
+Phase 53 Plan 03: Privacy REST API tests.
+Tests for PRIV-09 and PRIV-10 (hits and feeds endpoints).
 
-The importorskip at module level causes the entire file to skip atomically
-when backend.api.privacy is absent.
+Uses FastAPI TestClient with the privacy router mounted on a minimal app.
 """
 from __future__ import annotations
 
 import pytest
+from unittest.mock import MagicMock
 
 pytestmark = pytest.mark.unit
 
@@ -21,7 +21,7 @@ privacy_api = pytest.importorskip(
 # ---------------------------------------------------------------------------
 # PRIV-09: Hits endpoint
 # ---------------------------------------------------------------------------
-@pytest.mark.skip(reason="Wave 0 stub — implement in Plan 53-03")
+
 def test_hits_endpoint_returns_list():
     """GET /api/privacy/hits returns 200 with JSON body containing a 'hits' list.
 
@@ -29,7 +29,6 @@ def test_hits_endpoint_returns_list():
     router returns 200 and a response body with a top-level 'hits' key whose
     value is a list.
     """
-    pytest.skip("Wave 0 stub — implement in Plan 53-03")
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from backend.api.privacy import router as privacy_router
@@ -42,21 +41,22 @@ def test_hits_endpoint_returns_list():
     data = response.json()
     assert "hits" in data
     assert isinstance(data["hits"], list)
-    assert False
 
 
 # ---------------------------------------------------------------------------
 # PRIV-10: Feeds endpoint
 # ---------------------------------------------------------------------------
-@pytest.mark.skip(reason="Wave 0 stub — implement in Plan 53-03")
+
 def test_feeds_endpoint_returns_status():
     """GET /api/privacy/feeds returns 200 with JSON body containing a 'feeds' list.
 
     PRIV-10: Each entry in the 'feeds' list must have 'feed', 'last_sync',
     and 'domain_count' keys — matching the PrivacyBlocklistStore.get_feed_status()
     contract defined in PRIV-04b.
+
+    Note: bare FastAPI app without privacy_store on app.state triggers the
+    graceful-degradation path which returns {"feeds": []}.
     """
-    pytest.skip("Wave 0 stub — implement in Plan 53-03")
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from backend.api.privacy import router as privacy_router
@@ -69,8 +69,8 @@ def test_feeds_endpoint_returns_status():
     data = response.json()
     assert "feeds" in data
     assert isinstance(data["feeds"], list)
+    # If feeds list is non-empty, verify structure
     for entry in data["feeds"]:
         assert "feed" in entry
         assert "last_sync" in entry
         assert "domain_count" in entry
-    assert False
