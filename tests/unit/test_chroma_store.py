@@ -217,3 +217,21 @@ class TestChromaStoreDeleteCollection:
             cs_module.log = original_log
 
         store._client.delete_collection.assert_called_once_with("target_collection")
+
+
+@pytest.mark.skip(reason="stub — implement in 54-05 after bge-m3 is pulled")
+def test_bge_m3_embed_dimension():
+    """Embedding a short string via Ollama with model=bge-m3 returns a 1024-dim vector.
+
+    Phase 54 switches the embedding model from mxbai-embed-large (1024-dim,
+    pulled from Ollama) to bge-m3 (1024-dim, served from the HuggingFace
+    inference microservice).  This test will assert:
+
+        embedding = ollama_embed(text="hello world", model="bge-m3")
+        assert isinstance(embedding, list)
+        assert len(embedding) == 1024
+
+    Implement in plan 54-05 once the bge-m3 microservice is confirmed running
+    and the OLLAMA_EMBED_MODEL setting has been updated.
+    """
+    pytest.skip("stub — implement in 54-05")
