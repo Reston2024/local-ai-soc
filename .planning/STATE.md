@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 54
-current_plan: 53-03 complete — privacy scanner + API endpoints (PRIV-05..10 GREEN)
+current_plan: 53-04 complete — privacy dashboard integration (PRIV-12 verified)
 status: executing
-last_updated: "2026-04-17T09:52:33.326Z"
+last_updated: "2026-04-17T09:58:00Z"
 progress:
   total_phases: 57
-  completed_phases: 49
+  completed_phases: 50
   total_plans: 249
-  completed_plans: 252
+  completed_plans: 253
 ---
 
 # Session State
@@ -29,6 +29,9 @@ See: .planning/PROJECT.md
 
 ## Key Decisions
 
+- **53-04:** privacyDetectionCount uses $state(0) + fire-and-forget api.privacy.hits().then() in load() — health component does not yet expose detection_count for privacy; hits endpoint is the direct source of truth
+- **53-04:** chip-privacy uses cyan #0891b2 border / #22d3ee text to differentiate from chainsaw teal #14b8a6 — same semantic tier (quiet signal) but visually distinct
+- **53-04:** SIGMA filter exclusion updated to also exclude chainsaw — pre-Phase-49 gap where chainsaw detections leaked into SIGMA filter; fixed alongside privacy exclusion
 - **53-03:** run_privacy_scan() is synchronous (not async) — Wave-0 stubs call without await; async _privacy_scan_loop wraps via asyncio.to_thread; same pattern as PrivacyWorker._sync()
 - **53-03:** _query_http_events() and _is_tracker() exposed as module-level functions — test stubs patch these directly (backend.api.privacy._query_http_events); pure async not patchable without asyncio overhead
 - **53-03:** router alias added as privacy_router — test stubs import 'router', plan wiring uses 'privacy_router'; both names exported from same APIRouter object
@@ -164,6 +167,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-17: Plan 53-04 complete — Privacy dashboard integration: PRIVACY chip filter (cyan #0891b2) + privacyCount $derived + badge-privacy on detection rows in DetectionsView; Privacy Detections scorecard tile (cyan #22d3ee) in OverviewView loaded via api.privacy.hits(); PrivacyHit + PrivacyFeedStatus TypeScript interfaces + api.privacy.hits()/feeds() in api.ts. Auto-fix: SIGMA filter updated to also exclude chainsaw detections (pre-existing gap). TypeScript 0 errors, build 3.07s. PRIV-12 verified. Phase 53 COMPLETE (all 4 plans done).
 - 2026-04-17: Plan 53-03 complete — Privacy scanner + API endpoints: run_privacy_scan() (synchronous, module-level patchable helpers _query_http_events/_is_tracker), cookie exfil + tracking pixel detection paths, SQLite insert_detection() calls, GET /api/privacy/hits + /api/privacy/feeds endpoints, _privacy_scan_loop() background worker (300s), main.py wiring (7k block + scan loop + router). PRIV-05..10 all GREEN (6/6). Full suite: 1271 passed, 6 skipped. Phase 53 COMPLETE.
 - 2026-04-17: Plan 53-02 complete — Privacy blocklist infrastructure + schema extension: PrivacyBlocklistStore (SQLite, upsert_domain/is_tracker/get_feed_status), PrivacyWorker (sync _sync() + async run()), _parse_easyprivacy/_parse_disconnect parsers, 4 new DuckDB columns (http_referrer/http_request_body_len/http_response_body_len/http_resp_mime_type), _normalize_http() extended with triple-fallback for all 4 fields. PRIV-01..04 + PRIV-11 stubs all GREEN (6/6). Full suite: 1265 passed, 8 skipped.
 - 2026-04-17: Plan 53-01 complete — Wave-0 TDD stubs for Phase 53 network privacy monitoring: test_privacy_blocklist.py (6 stubs: PRIV-01..04, PRIV-04b, PRIV-11), test_privacy_detection.py (4 stubs: PRIV-05..08), test_privacy_api.py (2 stubs: PRIV-09..10). All 11 stubs SKIP cleanly via module-level importorskip. Suite: 1259 passed, 9 skipped (3 new), 13 pre-existing failures unchanged.
