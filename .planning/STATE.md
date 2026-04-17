@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 current_phase: 53
-current_plan: 53-01 complete — Phase 53 Wave-0 privacy monitoring stubs (PRIV-01 through PRIV-11)
+current_plan: 53-02 complete — Phase 53 blocklist infrastructure + schema extension (PRIV-01..04, PRIV-11 GREEN)
 status: in-progress
-last_updated: "2026-04-17T09:40:00.000Z"
+last_updated: "2026-04-17T10:00:00.000Z"
 progress:
   total_phases: 57
   completed_phases: 49
   total_plans: 249
-  completed_plans: 250
+  completed_plans: 252
 ---
 
 # Session State
@@ -24,10 +24,15 @@ See: .planning/PROJECT.md
 **Milestone:** v1.0 milestone — In Progress
 **Current phase:** 54
 **Previous phase:** 52-thehive-case-management (Plans 52-01 through 52-04 — complete)
-**Current plan:** 54-10 complete — Phase 54 HF Model Integration complete (all 10 plans done)
-**Status:** Ready to plan
+**Current plan:** 53-02 complete — blocklist infrastructure + schema extension (PRIV-01..04, PRIV-11 GREEN)
+**Status:** In progress — Phase 53 Plan 03 next (scanner + API)
 
 ## Key Decisions
+
+- **53-02:** to_duckdb_row() is 80 elements (not 79 as plan stated) — [0]-[75] were already 76 elements (0-indexed), +4 Phase 53 fields = 80; plan had off-by-one in its own count
+- **53-02:** _parse_disconnect() returns 2-tuples (domain, category) not 3-tuples — Wave-0 test stubs use (d, _) / (_, c) unpacking; 3-tuples cause ValueError at unpack time
+- **53-02:** PrivacyWorker._sync() is synchronous (not async) — Wave-0 stubs call worker._sync() without await; async run() background loop wraps _sync via asyncio.to_thread()
+- **53-02:** Module-level _normalize_http() wrapper added to malcolm_collector.py — test imports the function by name; method doesn't use self so __new__ instantiation is safe
 
 - **53-01:** Module-level importorskip used for all 3 privacy test files — entire file skips atomically when implementation absent (consistent with Phases 48/49/51/52 pattern)
 - **53-01:** PRIV-11 normalizer stub placed in test_privacy_blocklist.py alongside PRIV-01..04 to minimize file count; uses @pytest.mark.skip alone (separate module concern)
@@ -155,6 +160,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-17: Plan 53-02 complete — Privacy blocklist infrastructure + schema extension: PrivacyBlocklistStore (SQLite, upsert_domain/is_tracker/get_feed_status), PrivacyWorker (sync _sync() + async run()), _parse_easyprivacy/_parse_disconnect parsers, 4 new DuckDB columns (http_referrer/http_request_body_len/http_response_body_len/http_resp_mime_type), _normalize_http() extended with triple-fallback for all 4 fields. PRIV-01..04 + PRIV-11 stubs all GREEN (6/6). Full suite: 1265 passed, 8 skipped.
 - 2026-04-17: Plan 53-01 complete — Wave-0 TDD stubs for Phase 53 network privacy monitoring: test_privacy_blocklist.py (6 stubs: PRIV-01..04, PRIV-04b, PRIV-11), test_privacy_detection.py (4 stubs: PRIV-05..08), test_privacy_api.py (2 stubs: PRIV-09..10). All 11 stubs SKIP cleanly via module-level importorskip. Suite: 1259 passed, 9 skipped (3 new), 13 pre-existing failures unchanged.
 - 2026-04-17: Plans 54-03 through 54-10 complete — Phase 54 HF Model Integration: bge-m3 embedding upgrade (OLLAMA_EMBED_MODEL=bge-m3), rebuild_chroma.py script, bge-reranker-v2-m3 FastAPI microservice (port 8100, disabled by default), reranker_client.py with graceful degradation, ChromaStore.query_with_rerank(), query.py RERANKER_ENABLED branch, reranker health check, 3 reranker unit tests GREEN, eval harness extended (embed_model/reranker_enabled/embed_latency_ms/rerank_latency_ms/recall_at_5), reranker health dot in OverviewView.svelte. Regression gate: 1201 passed, 4 skipped (2 pre-existing failures). Phase 54 COMPLETE.
 - 2026-04-16: Plan 54-02 complete — Ollama GPU migration: diagnosed CUDA_VISIBLE_DEVICES=0 (Machine scope) as Vulkan-blocking root cause; unset at all scopes; set OLLAMA_VULKAN=true (Machine scope); RTX 5080 confirmed via ollama ps 11%/89% CPU/GPU. CUDA path unavailable for Blackwell sm_120 — Vulkan path is the permanent solution. Pre-flight GPU warning added to _start-backend.ps1 (339c4c4).
