@@ -704,15 +704,25 @@ Plans:
 Plans:
 - [ ] TBD (run /gsd:plan-phase 53 to break down)
 
-### Phase 54: SecOps LLM Fine-Tuning
+### Phase 54: HF Model Integration — GPU + Embeddings + Reranker
 
-**Goal:** Fine-tune Foundation-Sec-8B on Phase 44 analyst verdict data (TP/FP labels, investigation notes, triage decisions) collected from real SOC Brain detections. Use HuggingFace PEFT/LoRA to produce a domain-adapted model that outperforms the base Foundation-Sec-8B on SOC-specific triage tasks — alert triage, severity classification, and investigation summarisation. Train on the RTX 5080 (16GB VRAM) locally, push adapter weights to HuggingFace Hub, and hot-swap into Ollama for A/B comparison against the baseline. Track improvement via the existing Phase 14 eval harness (data/eval_results.jsonl).
-**Requirements**: Phase 44 analyst feedback data (TP/FP verdicts + investigation notes in SQLite); RTX 5080 with CUDA; HuggingFace account + Hub access; Phase 14 eval harness; `transformers`, `peft`, `trl`, `bitsandbytes` dependencies.
-**Depends on:** Phase 44
+**Goal:** Three highest-ROI HuggingFace upgrades for the SOC stack, executed in dependency order. (1) Migrate Ollama from CPU to RTX 5080 GPU — prerequisite for everything else, 10-20x inference speedup. (2) Upgrade the embedding model from mxbai-embed-large to BAAI/bge-m3 — hybrid dense+sparse retrieval, 8192-token context, better chunk recall over runbooks, Sigma rules, and prior incidents. (3) Add a BAAI/bge-reranker-v2-m3 reranking micro-service between ChromaDB retrieval and LLM inference — the single biggest RAG quality improvement available, filters top-20 retrieved chunks down to top-5 before the expensive LLM call. All three changes are infrastructure (no new dependencies on analyst verdict data) and measurable against the Phase 14 eval harness.
+**Requirements**: RTX 5080 with CUDA 13.1 (present); Ollama 0.18.2+ (installed); ChromaDB on GMKtec (running at 192.168.1.22:8200); existing RAG pipeline in backend/stores/chroma_store.py + backend/services/; Phase 14 eval harness (data/eval_results.jsonl).
+**Depends on:** Phase 52
 **Plans:** 0 plans
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 54 to break down)
+
+### Phase 56: SecOps LLM Fine-Tuning (deferred — needs verdict data)
+
+**Goal:** Fine-tune Foundation-Sec-8B on Phase 44 analyst verdict data (TP/FP labels, investigation notes, triage decisions) collected from real SOC Brain detections. Use HuggingFace PEFT/LoRA to produce a domain-adapted model that outperforms the base Foundation-Sec-8B on SOC-specific triage tasks — alert triage, severity classification, and investigation summarisation. Train on the RTX 5080 (16GB VRAM) locally, push adapter weights to HuggingFace Hub, and hot-swap into Ollama for A/B comparison against the baseline. Track improvement via the existing Phase 14 eval harness (data/eval_results.jsonl). Deferred from Phase 54 — requires ≥500 analyst verdicts in SQLite feedback table before fine-tuning is meaningful.
+**Requirements**: Phase 44 analyst feedback data (≥500 TP/FP verdicts + investigation notes in SQLite); RTX 5080 with CUDA (Phase 54 GPU migration complete); HuggingFace account + Hub access; Phase 14 eval harness; `transformers`, `peft`, `trl`, `bitsandbytes` dependencies.
+**Depends on:** Phase 54
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 56 to break down)
 
 ### Phase 55: Outbound Alerting
 
