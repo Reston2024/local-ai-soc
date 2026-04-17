@@ -70,11 +70,16 @@ skipped: 1
 ## Gaps
 
 - truth: "Dashboard System Health panel shows a Reranker row (disabled/grey dot when RERANKER_ENABLED=False)"
-  status: failed
+  status: fixed
   reason: "User reported: Reranker row not visible in System Health panel. Svelte source has the row at OverviewView.svelte line 440 but dashboard/dist JS was never rebuilt after Plan 54-10 committed the change."
   severity: major
   test: 9
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "npm run build was not executed during Plan 54-10. dashboard/dist/ is gitignored and served from filesystem — the compiled bundle lacked the reranker conditional block."
+  artifacts:
+    - path: "dashboard/src/views/OverviewView.svelte"
+      issue: "Source correct (line 440), but dist not rebuilt"
+    - path: "dashboard/dist/assets/index-CxxMXi-u.js"
+      issue: "Rebuilt in 54-11 — now contains reranker"
+  missing:
+    - "npm run build step in Plan 54-10"
+  debug_session: "54-11-PLAN.md (gap closure)"
