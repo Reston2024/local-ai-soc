@@ -74,10 +74,20 @@ class _BaseWorker:
         self._consecutive_failures = 0
 
     async def run(self) -> None:
-        """Main loop with exponential backoff on failure."""
+        """Main loop with exponential backoff on failure.
+
+        Syncs immediately on startup, then waits for the configured interval.
+        This prevents staleness after a backend restart when the last sync was
+        close to (or past) the stale threshold.
+        """
         self._running = True
         backoff = self._interval
         try:
+            # Sync once immediately so a restart doesn't leave feeds stale
+            success = await self._sync()
+            if not success:
+                self._consecutive_failures += 1
+                backoff = min(self._interval * (2 ** self._consecutive_failures), 3600)
             while True:
                 await asyncio.sleep(backoff)
                 success = await self._sync()

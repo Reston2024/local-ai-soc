@@ -212,6 +212,7 @@ async def init_stores(app: "FastAPI", settings: Settings) -> Stores:
     asyncio.ensure_future(threatfox_worker.run())
     if settings.MISP_ENABLED:
         asyncio.create_task(misp_worker.run(), name="misp_worker")
+        app.state._misp_feed_worker = misp_worker  # exposed for manual sync trigger
 
     app.state.ioc_store = ioc_store
     log.info("Phase 33 feed workers registered (Feodo, CISA KEV, ThreatFox, MISP=%s)", settings.MISP_ENABLED)
