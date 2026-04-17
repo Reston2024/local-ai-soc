@@ -1,62 +1,78 @@
 # ARCHITECTURE.md
 # AI-SOC-Brain — Local AI Cybersecurity Investigation Platform
 
-**Version:** 1.31 | **Date:** 2026-04-09 | **Status:** v1.0 complete, v1.1 executing (Phases 31-36)
+> **This document covers v1.2 — Phases 1–54 complete (as of 2026-04-17).**
+> v1.0 (Phases 1–30), v1.1 (Phases 31–46), and v1.2 (Phases 47–54) are all complete.
+> See STATUS.md for the phase completion log and current metrics.
+
+**Version:** 1.54 | **Date:** 2026-04-17 | **Status:** v1.2 in progress — Phases 1–54 complete
 
 ---
 
 ## System Overview
 
-A single-analyst, local-first cybersecurity investigation platform. Two physical machines. The Ubuntu box is a dumb pipe — raw telemetry collection and indexing only. All AI inference, detection, correlation, and analysis runs on the Windows desktop.
+A single-analyst, local-first cybersecurity investigation platform. Four physical devices. The GMKtec box is a dumb pipe — raw telemetry collection and indexing only, plus threat intelligence and case management services. All AI inference, detection, correlation, and analysis runs on the Windows desktop.
 
 ```
-  supportTAK-server (Ubuntu, GMKtec N150, 192.168.1.22)
-  ┌──────────────────────────────────────────────────┐
-  │  Malcolm NSM (17 containers)                     │
-  │  ├─ OpenSearch  (7.4 GB RAM) — log indexing      │
-  │  ├─ Logstash   — log processing pipeline         │
-  │  ├─ Filebeat   — log shipping                    │
-  │  ├─ Arkime     — network session indexing        │
-  │  └─ 13 idle containers (pcap-capture, Zeek,      │
-  │       Strelka, NetBox, Keycloak, etc.)            │
-  │       ^ Idle because there is no SPAN port.       │
-  │         Zeek produces 0 logs.                     │
-  └─────────────────┬────────────────────────────────┘
-                    │ syslog + EVE JSON + beats
-                    │ (22M+ syslog, 71K alerts so far)
-                    ▼
-  Desktop (Windows 11, Intel Core Ultra 9 285K, RTX 5080 16 GB)
-  ┌──────────────────────────────────────────────────────────────┐
-  │  Browser (http://localhost:5173 dev | https://localhost prod) │
-  │                          │                                    │
-  │             ┌────────────▼────────────┐                      │
-  │             │   Caddy (Docker)         │  TLS termination     │
-  │             └────────────┬────────────┘                      │
-  │                          │ HTTP  localhost:8000               │
-  │             ┌────────────▼──────────────────────────┐        │
-  │             │         FastAPI Backend                 │        │
-  │             │                                        │        │
-  │             │  /health  /api/events  /api/ingest     │        │
-  │             │  /api/detect  /api/graph  /api/query   │        │
-  │             │  /api/investigate  /api/investigations │        │
-  │             │  /api/playbooks  /api/operators        │        │
-  │             │  /api/recommendations  /api/receipts   │        │
-  │             └──┬──────────┬──────────────┬──────────┘        │
-  │                │          │              │                    │
-  │        HTTP REST      embed/SQL         SQL                   │
-  │                │          │              │                    │
-  │       ┌────────▼┐   ┌────▼────┐   ┌────▼─────────┐          │
-  │       │ Ollama  │   │ Chroma  │   │  DuckDB │SQLite│         │
-  │       │ :11434  │   │ embed   │   │  events │graph │         │
-  │       │ native  │   │ persist │   │ columnar│edges │         │
-  │       └─────────┘   └─────────┘   └──────────────┘          │
-  │       qwen3:14b                                               │
-  │       mxbai-embed-large                                       │
-  │       50-80+ tok/s GPU (Blackwell sm_120)                     │
-  └──────────────────────────────────────────────────────────────┘
+  GMKtec N150 (Ubuntu, 192.168.1.22)                  Netgear GS308E
+  ┌──────────────────────────────────────────────┐    ┌──────────────┐
+  │  Malcolm NSM (17 containers)                  │    │  Port 1→5    │
+  │  ├─ OpenSearch  (7.4 GB RAM) — log indexing   │    │  SPAN tap    │
+  │  ├─ Logstash   — log processing pipeline      │◀───│  for Zeek    │
+  │  ├─ Filebeat   — log shipping                 │    └──────────────┘
+  │  ├─ Arkime     — network session indexing     │
+  │  ├─ Zeek       — network protocol logs (LIVE) │
+  │  ├─ MISP :8443 — 4,568 IOCs, 6h sync         │
+  │  ├─ TheHive :9000 — case management           │
+  │  ├─ Cortex :9001 — MISP connector             │
+  │  └─ SpiderFoot :9002 — OSINT investigation    │
+  └──────────────────────┬───────────────────────┘
+                         │ syslog + EVE JSON + Zeek +
+                         │ beats + IOC API + case API
+                         ▼
+  Desktop (Windows 11, Intel Core Ultra 9 285K, 96 GB, RTX 5080 16 GB)
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Browser (http://localhost:5173 dev | https://localhost prod)     │
+  │                          │                                        │
+  │             ┌────────────▼────────────┐                          │
+  │             │   Caddy (Docker)         │  TLS termination         │
+  │             └────────────┬────────────┘                          │
+  │                          │ HTTP  localhost:8001                   │
+  │             ┌────────────▼──────────────────────────────┐        │
+  │             │         FastAPI Backend                     │        │
+  │             │                                            │        │
+  │             │  /health  /api/events  /api/ingest         │        │
+  │             │  /api/detect  /api/graph  /api/query       │        │
+  │             │  /api/investigate /api/investigations      │        │
+  │             │  /api/playbooks  /api/operators            │        │
+  │             │  /api/recommendations  /api/receipts       │        │
+  │             │  /api/hunts  /api/intel  /api/feedback     │        │
+  │             │  /api/investigate/auto  /api/hayabusa      │        │
+  │             │  /api/chainsaw  /api/misp  /api/thehive    │        │
+  │             │  /api/spiderfoot  /api/rerank              │        │
+  │             └──┬──────────┬──────────────┬──────────────┘        │
+  │                │          │              │                        │
+  │        HTTP REST      embed/SQL         SQL                       │
+  │                │          │              │                        │
+  │       ┌────────▼┐   ┌────▼────┐   ┌────▼─────────┐              │
+  │       │ Ollama  │   │ Chroma  │   │  DuckDB │SQLite│             │
+  │       │ :11434  │   │ :8200   │   │  events │graph │             │
+  │       │ native  │   │ remote  │   │ columnar│edges │             │
+  │       └─────────┘   └─────────┘   └──────────────┘              │
+  │       qwen3:14b                                                   │
+  │       bge-m3 embed (Ollama/Vulkan)                                │
+  │       50-80+ tok/s GPU (Blackwell sm_120)                         │
+  │                                                                   │
+  │       ┌─────────────────────────────────────────┐                │
+  │       │  Reranker :8100                          │                │
+  │       │  BAAI/bge-reranker-v2-m3 (CUDA torch)   │                │
+  │       └─────────────────────────────────────────┘                │
+  └──────────────────────────────────────────────────────────────────┘
+
+  IPFire (192.168.1.1) — syslog + Suricata EVE → GMKtec/Malcolm
 ```
 
-**Key constraint:** The Ubuntu box does NOT do AI. The 20-30x GPU throughput advantage on the desktop makes inference there the only rational choice. See ADR-030.
+**Key constraint:** The GMKtec box does NOT do AI. The 20-30x GPU throughput advantage on the desktop makes inference there the only rational choice. See ADR-030.
 
 ---
 
@@ -64,16 +80,24 @@ A single-analyst, local-first cybersecurity investigation platform. Two physical
 
 | Layer | Technology | Runtime | Version | Justification |
 |-------|-----------|---------|---------|---------------|
-| **LLM Inference** | Ollama + qwen3:14b | Native Windows | 0.18.2 | Direct CUDA to RTX 5080. Docker GPU passthrough adds WSL2 complexity for negligible gain. |
-| **Embeddings** | mxbai-embed-large | Via Ollama | ID: 468836162de7 | MTEB retrieval 64.68. Loads/unloads automatically via Ollama API. |
+| **LLM Inference** | Ollama + qwen3:14b | Native Windows | 0.18.2+ | Direct CUDA/Vulkan to RTX 5080. Docker GPU passthrough adds WSL2 complexity for negligible gain. |
+| **Embeddings** | bge-m3 (via Ollama) | Native Windows | — | MTEB multilingual embedding. Replaces mxbai-embed-large from Phase 54. |
+| **Reranker** | BAAI/bge-reranker-v2-m3 | Native Python (CUDA) | torch 2.11+cu128 | Cross-encoder reranking of RAG results. Runs on port :8100. Requires manual start after reboot. |
 | **Backend API** | FastAPI + Uvicorn | Native Python 3.12 | 0.115.12 / 0.34.3 | In-process access to all embedded DBs. Async SSE/WebSocket for LLM streaming. |
 | **Structured Storage** | DuckDB | Embedded in-process | 1.3.0 | Columnar analytics, 24-core parallel, CSV/JSON/Parquet native reads. |
-| **Vector Storage** | Chroma PersistentClient | Embedded in-process | 1.5.5 | Hybrid BM25+semantic search. No HTTP mode. No LangChain wrapper. |
+| **Vector Storage** | Chroma HttpClient | Remote :8200 (GMKtec) | 1.5.5 | Hybrid BM25+semantic search. Remote mode as of Phase 54. No LangChain wrapper. |
 | **Graph/State Storage** | SQLite WAL | Embedded in-process | stdlib | Graph edges, detection state, case metadata, playbook runs. |
 | **HTTPS Proxy** | Caddy 2.9-alpine | Docker (~40MB) | sha256:b4e39523... | Auto-TLS for localhost. Only container on desktop. |
 | **Dashboard** | Svelte 5 SPA | Static files | ^5.28.0 | Runes-based reactivity. Cytoscape.js + fCoSE, D3.js. |
 | **Detection** | pySigma + custom DuckDB backend | Embedded in-process | 1.2.0 | Sigma YAML → DuckDB SQL. Custom field mapping pipeline. |
-| **NSM Collection** | Malcolm (Ubuntu box) | Docker (17 containers) | Latest | Dumb pipe only. Collects and indexes; does not analyze. |
+| **NSM Collection** | Malcolm (GMKtec box) | Docker (17 containers) | Latest | Dumb pipe only. Collects and indexes; does not analyze. |
+| **EVTX Threat Hunting** | Hayabusa binary | Subprocess | Latest | Fast Windows event log threat hunting. Phase 48. |
+| **EVTX Log Analysis** | Chainsaw binary | Subprocess | Latest | Rule-based Windows event log analysis. Phase 49. |
+| **Threat Intelligence** | MISP | Docker (GMKtec) | Latest | 4,568 IOCs synced via pymisp; 6h sync cycle. Phase 50. |
+| **Case Management** | TheHive + Cortex | Docker (GMKtec) | Latest | Auto-cases from detections; MISP connector. Phase 52. |
+| **OSINT** | SpiderFoot | Docker (GMKtec) | Latest | OSINT investigation scan API integrated in InvestigationView. Phase 51. |
+| **Agentic Investigation** | smolagents + Ollama | Embedded in-process | 1.24.0+ | 7-tool agentic pipeline for automated investigation. Phase 45. |
+| **Online ML** | River | Embedded in-process | 0.21.0+ | Analyst feedback → online TP/FP classifier; entity anomaly scoring. Phase 44. |
 
 ---
 
@@ -204,10 +228,11 @@ Desktop (every 30 seconds):
         → SQLite: INSERT entity edges
 ```
 
-**Honest status as of 2026-04-09:**
-- Collecting: syslog (22M+ docs), EVE alerts (71K docs)
-- NOT collecting: EVE TLS (156K docs), DNS (71K), fileinfo (6K), anomaly (1K) — Phase 31 fixes this
-- Zeek: 0 docs — no SPAN port. Requires managed switch hardware.
+**Status as of 2026-04-17:**
+- Collecting: syslog (22M+ docs), EVE alerts, EVE TLS, DNS, fileinfo, anomaly (Phase 31 complete)
+- Zeek: LIVE — Netgear GS308E SPAN port active. Full network protocol logs (Phase 36 complete)
+- MISP IOC sync: 4,568 IOCs on 6h cycle (Phase 50 complete)
+- TheHive: auto-cases from detections (Phase 52 complete)
 
 ### File Ingestion
 
@@ -273,7 +298,7 @@ Analyst types question →
 
 ---
 
-## AI Capabilities — Honest Assessment
+## AI Capabilities
 
 | Capability | Status | Notes |
 |-----------|--------|-------|
@@ -283,38 +308,50 @@ Analyst types question →
 | triage.py build_prompt() | Working | Structured triage prompt from detection list |
 | explain_engine.py | Working | Evidence context builder from detections |
 | OllamaClient | Production-grade | Streaming, SHA-256 provenance, model drift detection, citation verification |
-| **Auto-triage loop** | **NOT YET WIRED** | POST /api/detect/run fires Sigma, saves DetectionRecords — does NOT call AI. Phase 35 closes this gap. |
+| Auto-triage loop | Working | POST /api/triage/run — background worker fires AI on every new detection batch (Phase 35) |
+| Agentic investigation | Working | smolagents 7-tool pipeline, POST /api/investigate/auto (Phase 45) |
+| bge-m3 reranker | Working | Cross-encoder reranking of RAG results at :8100 (Phase 54) |
+| Analyst feedback classifier | Working | River online ML, TP/FP verdicts, k-NN similar cases (Phase 44) |
+| Streaming behavioral profiles | Working | River entity anomaly scoring, score trend sparklines (Phase 42) |
+| Privacy monitoring | Planned | Phase 53 — network privacy monitoring (not yet started) |
 
 ---
 
-## Malcolm Theater — Honest Container Accounting
+## Infrastructure — Four-Device Lab
 
-17 Malcolm containers run on the Ubuntu box. Most produce nothing useful without a PCAP source.
+| Node | Hardware | IP | Role |
+|------|----------|----|------|
+| Desktop | Core Ultra 9 285K · 96 GB DDR5 · RTX 5080 16 GB · 3.4 TB NVMe | 192.168.1.x | SOC Brain — all AI inference, detection, analysis |
+| GMKtec N150 | N150 · 16 GB DDR5 | 192.168.1.22 | Malcolm NSM · MISP · TheHive · Cortex · SpiderFoot |
+| IPFire | Embedded router | 192.168.1.1 | Firewall/router — syslog + Suricata EVE → Malcolm |
+| Netgear GS308E | Managed switch | — | Port 1→5 SPAN tap for Zeek (active since Phase 36) |
 
-| Container | Status | Reason |
-|-----------|--------|--------|
-| OpenSearch | Active | Indexing syslog + EVE alerts |
+## Malcolm NSM — Container Accounting
+
+17 Malcolm containers run on the GMKtec box.
+
+| Container | Status | Notes |
+|-----------|--------|-------|
+| OpenSearch | Active | Indexing syslog + EVE alerts + Zeek logs |
 | Logstash | Active | Processing log pipelines |
 | Filebeat | Active | Shipping logs |
 | Arkime viewer | Active | Web UI for sessions |
 | malcolm-api | Active | Malcolm API |
-| Arkime capture | Idle | No SPAN port → no packets |
-| pcap-capture | Idle | No SPAN port |
-| Zeek | Idle | 0 logs — no packet source |
-| Strelka (scanner, frontend, backend, redis, coordinator) | Idle | No files to scan without PCAP |
-| NetBox | Running | Network documentation, no active population |
+| Zeek | **Active** | Live Zeek flow logs via Netgear GS308E SPAN (Phase 36) |
+| Arkime capture | Active | Packet capture from SPAN port |
+| pcap-capture | Active | Packet capture (SPAN active) |
+| Strelka (scanner, frontend, backend, redis, coordinator) | Running | File analysis — no active feed |
+| NetBox | Running | Network documentation |
 | Keycloak | Running | Auth (unused in current config) |
-| freq-server | Running | Frequency analysis (unused without Zeek) |
+| freq-server | Running | Frequency analysis (feeds Zeek log enrichment) |
 
-**Root cause:** No managed switch with SPAN/mirror port. Hardware cost: ~$50-80. Phase 36 is blocked on this.
-
-**RAM cost of idle containers:** ~630 MB wasted. Accepted trade-off — Malcolm is the fastest path to Zeek telemetry once hardware arrives.
+**SPAN port:** Netgear GS308E arrived 2026-04-10. Port 1→5 mirror active. Zeek producing live network protocol logs as of Phase 36.
 
 ---
 
 ## API Surface
 
-### Implemented (v1.0)
+### Implemented (v1.0 — v1.2)
 
 ```
 GET  /health
@@ -349,6 +386,7 @@ GET/POST /api/investigations
 GET      /api/investigations/{id}/timeline
 POST     /api/investigations/{id}/chat     (SSE)
 POST     /api/investigate
+POST     /api/investigate/auto             (Phase 45 — agentic pipeline)
 
 # Analysis
 POST /api/score
@@ -357,6 +395,7 @@ POST /api/explain
 GET  /api/metrics
 GET  /api/correlate
 GET  /api/causality
+POST /api/triage/run                       (Phase 35 — auto-triage background worker)
 
 # Playbooks
 GET/POST /api/playbooks
@@ -380,37 +419,68 @@ GET      /api/telemetry
 
 # Malcolm / Firewall
 GET /api/firewall/status
+
+# Threat Hunting (Phase 32)
+POST /api/hunts
+GET  /api/hunts
+
+# Threat Intelligence (Phase 33)
+GET  /api/intel/iocs
+POST /api/intel/check
+
+# Asset Inventory (Phase 34)
+GET  /api/assets
+
+# Analyst Feedback Loop (Phase 44)
+POST /api/feedback
+GET  /api/feedback/similar
+GET  /api/anomaly/score
+GET  /api/anomaly/trend
+
+# EVTX Threat Hunting (Phases 48-49)
+POST /api/hayabusa/scan
+POST /api/chainsaw/scan
+
+# MISP Integration (Phase 50)
+GET  /api/misp/iocs
+POST /api/misp/sync
+
+# SpiderFoot OSINT (Phase 51)
+POST /api/spiderfoot/scan
+GET  /api/spiderfoot/scan/{scan_id}
+
+# TheHive Case Management (Phase 52)
+POST /api/thehive/cases
+GET  /api/thehive/cases
+
+# Reranker (Phase 54)
+POST /api/rerank
 ```
 
-### Planned (v1.1)
+### Planned (v1.2+)
 
 ```
-POST /api/hunts           (Phase 32 — HuntingView backend)
-GET  /api/hunts           (Phase 32)
-GET  /api/intel/iocs      (Phase 33 — IOC matching)
-POST /api/intel/check     (Phase 33)
-GET  /api/assets          (Phase 34 — auto-derived from telemetry)
-POST /api/triage/run      (Phase 35 — auto-triage background worker)
+# Phase 53 — Network privacy monitoring (not yet started)
 ```
 
 ---
 
-## Dashboard Views (v1.0)
+## Dashboard Views (v1.2)
 
 | View | File | Status |
 |------|------|--------|
-| Detections | `DetectionsView.svelte` | Ready — Sigma alert feed, ATT&CK tactic/technique |
-| Investigation | `InvestigationView.svelte` | Ready — timeline, attack chain, AI chat copilot, "Run Playbook" |
+| Detections | `DetectionsView.svelte` | Ready — Sigma alert feed, ATT&CK tactic/technique, Sigma v2 CORR chips |
+| Investigation | `InvestigationView.svelte` | Ready — timeline, attack chain, AI chat copilot, "Run Playbook", SpiderFoot OSINT, TheHive case push |
 | Attack Graph | `GraphView.svelte` | Ready — Cytoscape.js fCoSE, risk-scored nodes, Dijkstra paths |
-| Playbooks | `PlaybooksView.svelte` | Ready — library browser (MODE A) + step execution (MODE B) |
+| Playbooks | `PlaybooksView.svelte` | Ready — 30+ playbook library (CISA/NIST/DART/community); step execution SSE |
 | Events | `EventsView.svelte` | Ready — normalized event table, search |
-| Query | `QueryView.svelte` | Ready — SSE streaming RAG |
-| Ingest | `IngestView.svelte` | Ready — file upload, progress polling |
+| Query | `QueryView.svelte` | Ready — SSE streaming RAG with bge-m3 + reranker |
+| Ingest | `IngestView.svelte` | Ready — file upload, Hayabusa/Chainsaw scan triggers |
 | Reports | `ReportsView.svelte` | Ready — PDF, MITRE heatmap, TheHive export |
 | Settings / Operators | `SettingsView.svelte` | Ready — operator CRUD, RBAC |
-| Assets | `AssetsView.svelte` | Partial — "Discover Assets" permanently disabled (Phase 34) |
-| Threat Intel | `ThreatIntelView.svelte` | Stub — fake feed data, "BETA" badge (Phase 33) |
-| Hunting | `HuntingView.svelte` | Stub — all buttons disabled (Phase 32) |
+| Assets | `AssetsView.svelte` | Ready — auto-derived asset inventory from telemetry (Phase 34) |
+| Threat Intel | `ThreatIntelView.svelte` | Ready — MISP IOC feed, IOC matching, geolocated threat map (Phase 33/50) |
+| Hunting | `HuntingView.svelte` | Ready — HuntingView API, live hunt queries, Hayabusa/Chainsaw integration (Phase 32/48/49) |
 
 **State management:** Svelte 5 runes only — `$state()`, `$derived()`, `$effect()`. No writable stores.
 
@@ -428,12 +498,18 @@ POST /api/triage/run      (Phase 35 — auto-triage background worker)
 |----------|----------|-------|
 | Dashboard ↔ FastAPI | HTTP REST + SSE | JSON over HTTPS via Caddy |
 | FastAPI ↔ Ollama | HTTP REST to localhost:11434 | httpx async, chunked streaming |
+| FastAPI ↔ Reranker | HTTP REST to localhost:8100 | Cross-encoder reranking service (Phase 54) |
 | FastAPI ↔ DuckDB | In-process Python API | No network. Single writer queue + read-only pool. `WEB_CONCURRENCY=1` enforced. |
-| FastAPI ↔ Chroma | In-process Python API | PersistentClient, no HTTP mode, no LangChain wrapper |
+| FastAPI ↔ Chroma | HTTP to 192.168.1.22:8200 | Remote HttpClient mode (Phase 54). No LangChain wrapper. |
 | FastAPI ↔ SQLite | In-process Python API | WAL mode |
 | FastAPI ↔ Malcolm/OpenSearch | HTTPS REST to 192.168.1.22:9200 | MalcolmCollector polls every 30s; optional |
-| Caddy ↔ FastAPI | HTTP reverse proxy | Caddy terminates TLS, proxies to :8000 |
-| Desktop ↔ Ubuntu | LAN (192.168.1.0/24) | Malcolm telemetry only. Ubuntu never receives AI output. |
+| FastAPI ↔ MISP | HTTPS REST to 192.168.1.22:8443 | pymisp client; 6h IOC sync cycle (Phase 50) |
+| FastAPI ↔ TheHive | HTTP to 192.168.1.22:9000 | thehive4py; auto-case creation from detections (Phase 52) |
+| FastAPI ↔ Cortex | HTTP to 192.168.1.22:9001 | MISP connector; analyser triggers (Phase 52) |
+| FastAPI ↔ SpiderFoot | HTTP to 192.168.1.22:9002 | OSINT scan API (Phase 51) |
+| FastAPI ↔ Hayabusa/Chainsaw | Subprocess | Binary invoked on EVTX files (Phases 48–49) |
+| Caddy ↔ FastAPI | HTTP reverse proxy | Caddy terminates TLS, proxies to :8001 |
+| Desktop ↔ GMKtec | LAN (192.168.1.0/24) | Malcolm telemetry + MISP + TheHive + Chroma. GMKtec never receives AI output. |
 
 ---
 
@@ -465,13 +541,20 @@ Evidence in system turn, question in user turn. `_normalize_for_scrub()` applies
 
 | Component | Decision | Rationale |
 |-----------|----------|-----------|
-| ollama/ollama | Native Windows | Direct CUDA. No WSL2 complexity. |
-| chroma-core/chroma | Embedded PersistentClient | No server process. Version pinned. |
+| ollama/ollama | Native Windows | Direct CUDA/Vulkan. No WSL2 complexity. |
+| chroma-core/chroma | Remote HttpClient (:8200 on GMKtec) | Offloads vector storage to GMKtec. Phase 54. |
 | pySigma + custom DuckDB backend | Custom backend | No mature DuckDB backend exists upstream. |
 | cytoscape-fcose | Attack graph layout | Force-directed with compound graph support. |
-| Ubuntu Malcolm box | Dumb pipe only | 20-30x throughput disadvantage vs desktop GPU. See ADR-030. |
-| Zeek telemetry | Deferred | No SPAN port. Zeek containers produce 0 logs. See ADR-031. |
-| Auto-triage | Not yet wired | Phase 35. Documents the gap honestly. See ADR-033. |
+| GMKtec Malcolm box | Dumb pipe + services host | 20-30x throughput disadvantage vs desktop GPU. Hosts MISP/TheHive/Cortex/SpiderFoot. See ADR-030. |
+| Zeek telemetry | Live (Phase 36) | Netgear GS308E SPAN active. Zeek producing logs. |
+| Auto-triage | Working (Phase 35) | Background worker + POST /api/triage/run with full audit logging and analyst override. |
+| MISP | Docker on GMKtec | Threat intelligence platform. 4,568 IOCs via pymisp. Phase 50. |
+| TheHive + Cortex | Docker on GMKtec | Case management + analyser orchestration. Phase 52. |
+| SpiderFoot | Docker on GMKtec | OSINT investigation. Phase 51. |
+| Hayabusa + Chainsaw | Subprocess binaries | Fast EVTX threat hunting. No JVM or extra services. Phases 48-49. |
+| smolagents | Embedded in-process | Agentic investigation without LangChain overhead. Phase 45. |
+| River | Embedded in-process | Online ML for analyst feedback loop. Lightweight; no sklearn/tensorflow. Phase 44. |
+| BAAI/bge-reranker-v2-m3 | Separate CUDA service | Cross-encoder reranking improves RAG precision. Phase 54. |
 | Wazuh | Rejected | 8+ vCPU Java fleet SIEM; zero unique value for single desktop. |
 | Neo4j | Rejected | JVM server, 4+ GB RAM; SQLite edge tables sufficient at desktop scale. |
 | PostgreSQL/Kafka/Elastic | Rejected | None justified for single-user desktop analytics. |
@@ -484,9 +567,10 @@ Evidence in system turn, question in user turn. `_normalize_for_scrub()` applies
 |-------|------|------|
 | `qwen3:14b` (Q8) | ~14 GB | Primary: analyst Q&A, triage, correlation, investigation chat |
 | `deepseek-r1:14b` (Q4_K_M) | ~8 GB | Alternative: explicit chain-of-thought reasoning |
-| `mxbai-embed-large` | ~1.2 GB | Embeddings: MTEB retrieval 64.68 |
+| `bge-m3` (via Ollama) | ~1.5 GB | Embeddings: multilingual, replaces mxbai-embed-large (Phase 54) |
+| `BAAI/bge-reranker-v2-m3` | ~1 GB CUDA | Reranker: cross-encoder RAG re-ranking at :8100 (Phase 54) |
 
-**Rule:** Never load two reasoning models simultaneously. Embedding model loads/unloads automatically via Ollama API.
+**Rule:** Never load two reasoning models simultaneously. Embedding model loads/unloads automatically via Ollama API. Reranker runs as a separate persistent service on the desktop (requires manual start after reboot).
 
 ---
 
