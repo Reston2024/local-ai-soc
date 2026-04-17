@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 54
-current_plan: 54-10 complete — Phase 54 HF Model Integration complete (all 10 plans done)
-status: planning
-last_updated: "2026-04-17T08:21:31.484Z"
+current_phase: 53
+current_plan: 53-01 complete — Phase 53 Wave-0 privacy monitoring stubs (PRIV-01 through PRIV-11)
+status: in-progress
+last_updated: "2026-04-17T09:40:00.000Z"
 progress:
   total_phases: 57
   completed_phases: 49
-  total_plans: 245
-  completed_plans: 249
+  total_plans: 249
+  completed_plans: 250
 ---
 
 # Session State
@@ -28,6 +28,10 @@ See: .planning/PROJECT.md
 **Status:** Ready to plan
 
 ## Key Decisions
+
+- **53-01:** Module-level importorskip used for all 3 privacy test files — entire file skips atomically when implementation absent (consistent with Phases 48/49/51/52 pattern)
+- **53-01:** PRIV-11 normalizer stub placed in test_privacy_blocklist.py alongside PRIV-01..04 to minimize file count; uses @pytest.mark.skip alone (separate module concern)
+- **53-01:** test_privacy_detection.py and test_privacy_api.py both guard on backend.api.privacy — same source module, clean separation of scanner vs API concerns
 
 - **54-02:** CUDA_VISIBLE_DEVICES=0 at Machine scope was the root cause of GPU failure — it blocked Vulkan discovery; unsetting it was step one of the fix
 - **54-02:** RTX 5080 (Blackwell sm_120) not supported by Ollama's bundled CUDA runtime; Vulkan backend (vulkan/ggml-vulkan.dll) works and achieves GPU acceleration
@@ -151,6 +155,7 @@ See: .planning/PROJECT.md
 
 ## Session Log
 
+- 2026-04-17: Plan 53-01 complete — Wave-0 TDD stubs for Phase 53 network privacy monitoring: test_privacy_blocklist.py (6 stubs: PRIV-01..04, PRIV-04b, PRIV-11), test_privacy_detection.py (4 stubs: PRIV-05..08), test_privacy_api.py (2 stubs: PRIV-09..10). All 11 stubs SKIP cleanly via module-level importorskip. Suite: 1259 passed, 9 skipped (3 new), 13 pre-existing failures unchanged.
 - 2026-04-17: Plans 54-03 through 54-10 complete — Phase 54 HF Model Integration: bge-m3 embedding upgrade (OLLAMA_EMBED_MODEL=bge-m3), rebuild_chroma.py script, bge-reranker-v2-m3 FastAPI microservice (port 8100, disabled by default), reranker_client.py with graceful degradation, ChromaStore.query_with_rerank(), query.py RERANKER_ENABLED branch, reranker health check, 3 reranker unit tests GREEN, eval harness extended (embed_model/reranker_enabled/embed_latency_ms/rerank_latency_ms/recall_at_5), reranker health dot in OverviewView.svelte. Regression gate: 1201 passed, 4 skipped (2 pre-existing failures). Phase 54 COMPLETE.
 - 2026-04-16: Plan 54-02 complete — Ollama GPU migration: diagnosed CUDA_VISIBLE_DEVICES=0 (Machine scope) as Vulkan-blocking root cause; unset at all scopes; set OLLAMA_VULKAN=true (Machine scope); RTX 5080 confirmed via ollama ps 11%/89% CPU/GPU. CUDA path unavailable for Blackwell sm_120 — Vulkan path is the permanent solution. Pre-flight GPU warning added to _start-backend.ps1 (339c4c4).
 - 2026-04-16: Plan 54-01 complete — Test stubs + config additions: RERANKER_URL/TOP_K/ENABLED added to Settings (safe defaults, zero behavior change); test_reranker.py with 3 wave-0 stubs (sorted_scores, graceful_degradation, empty_passages); bge-m3 dimension stub appended to test_chroma_store.py. 20 chroma tests passing, 4 stubs SKIPPED. Phase 54 wave-0 scaffold complete.
