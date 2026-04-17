@@ -697,12 +697,15 @@ Plans:
 ### Phase 53: Network Privacy Monitoring
 
 **Goal:** Suricata cookie exfil detection and email tracking pixel correlation via Zeek HTTP logs, enriched against EasyPrivacy/Disconnect.me domain lists, surfaced in the AI-SOC triage pipeline.
-**Requirements**: TBD
+**Requirements**: PRIV-01, PRIV-02, PRIV-03, PRIV-04, PRIV-05, PRIV-06, PRIV-07, PRIV-08, PRIV-09, PRIV-10, PRIV-11, PRIV-12
 **Depends on:** Phase 49
-**Plans:** 0 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 53 to break down)
+- [ ] 53-01-PLAN.md -- Wave 0 TDD stubs (12 stubs covering PRIV-01 through PRIV-12)
+- [ ] 53-02-PLAN.md -- Schema extension + PrivacyBlocklistStore + PrivacyWorker
+- [ ] 53-03-PLAN.md -- Privacy scanner + detection insertion + API endpoints
+- [ ] 53-04-PLAN.md -- Dashboard PRIVACY chip, detection badge, and scorecard tile
 
 ### Phase 54: HF Model Integration — GPU + Embeddings + Reranker
 
@@ -712,7 +715,8 @@ Plans:
 **Plans:** 10/11 plans complete
 
 Plans:
-- [x] TBD (run /gsd:plan-phase 54 to break down) (completed 2026-04-17)
+- [x] TBD (run /gsd:plan-phase 54 to break down)
+ (completed 2026-04-17)
 
 ### Phase 56: SecOps LLM Fine-Tuning (deferred — needs verdict data)
 
