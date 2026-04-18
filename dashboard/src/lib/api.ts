@@ -1291,6 +1291,15 @@ export const api = {
     hits: () => request<{ hits: PrivacyHit[] }>('/api/privacy/hits'),
     feeds: () => request<{ feeds: PrivacyFeedStatus[] }>('/api/privacy/feeds'),
   },
+
+  // Service restart — used by System Health card click-to-restart
+  services: {
+    restart: (name: string) =>
+      request<{ ok: boolean; service: string; message: string; restarted_at: string }>(
+        `/api/services/${encodeURIComponent(name)}/restart`,
+        { method: 'POST' },
+      ),
+  },
 }
 
 // Phase 4: direct graph helpers (bypass /api prefix — backend graph routes at /graph)

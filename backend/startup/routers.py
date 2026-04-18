@@ -304,3 +304,10 @@ def mount_routers(app: "FastAPI") -> None:
         log.info("Detection quality router mounted at /api/detections/quality")
     except Exception as exc:
         log.warning("Detection quality router not available: %s", exc)
+
+    try:
+        from backend.api.services import router as services_router
+        app.include_router(services_router, prefix="/api", dependencies=[Depends(verify_token)])
+        log.info("Services restart router mounted at /api/services")
+    except Exception as exc:
+        log.warning("Services restart router not available: %s", exc)

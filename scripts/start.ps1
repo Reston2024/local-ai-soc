@@ -178,7 +178,7 @@ if ($DevMode) {
     # that would open a second DuckDB connection and deadlock.
     $proc = Start-Process -FilePath $VenvPython -ArgumentList @(
         '-m', 'uvicorn', 'backend.main:app',
-        '--host', '127.0.0.1', '--port', '8000',
+        '--host', '127.0.0.1', '--port', '8001',
         '--workers', '1', '--log-level', 'info'
     ) -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Normal -RedirectStandardOutput $backendLog
 } else {
@@ -187,7 +187,7 @@ if ($DevMode) {
     # that --factory would cause alongside the module-level app = create_app().
     $proc = Start-Process -FilePath $VenvPython -ArgumentList @(
         '-m', 'uvicorn', 'backend.main:app',
-        '--host', '127.0.0.1', '--port', '8000',
+        '--host', '127.0.0.1', '--port', '8001',
         '--workers', '1', '--log-level', 'info'
     ) -WorkingDirectory $ProjectRoot -PassThru -WindowStyle Hidden -RedirectStandardOutput $backendLog
 }
@@ -197,10 +197,36 @@ Start-Sleep -Seconds 2
 
 # Verify backend started
 try {
-    $health = Invoke-RestMethod -Uri 'http://localhost:8000/health' -TimeoutSec 5 -ErrorAction Stop
+    $health = Invoke-RestMethod -Uri 'http://localhost:8001/health' -TimeoutSec 5 -ErrorAction Stop
     Write-OK "Backend started (PID $($proc.Id)) — status: $($health.status)"
 } catch {
     Write-Warn "Backend started but /health not yet responding — check logs\backend-stdout.log"
+}
+
+# --- Start Reranker (BAAI/bge-reranker-v2-m3 on port 8100) ---
+Write-Step "Starting Reranker"
+$rerankerLog    = Join-Path $LogsDir 'reranker.log'
+$rerankerErrLog = Join-Path $LogsDir 'reranker-err.log'
+$rerankerAlreadyUp = $false
+try {
+    $null = (New-Object System.Net.Sockets.TcpClient).Connect('127.0.0.1', 8100)
+    $rerankerAlreadyUp = $true
+} catch { }
+
+if ($rerankerAlreadyUp) {
+    Write-OK "Reranker already running on port 8100"
+} else {
+    $rrProc = Start-Process -FilePath $VenvPython `
+        -ArgumentList @('scripts\start_reranker.py') `
+        -WorkingDirectory $ProjectRoot `
+        -PassThru -WindowStyle Hidden `
+        -RedirectStandardOutput $rerankerLog `
+        -RedirectStandardError  $rerankerErrLog
+    if ($rrProc) {
+        Write-OK "Reranker started (PID $($rrProc.Id)) — health at http://127.0.0.1:8100/health"
+    } else {
+        Write-Warn "Reranker failed to start — check logs\reranker.log"
+    }
 }
 
 # --- Start Caddy via Docker Compose ---
@@ -221,8 +247,9 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 Write-Host "  Services started" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Dashboard  → https://localhost" -ForegroundColor White
-Write-Host "  Backend    → http://localhost:8000" -ForegroundColor White
-Write-Host "  API docs   → http://localhost:8000/docs" -ForegroundColor White
+Write-Host "  Backend    → http://localhost:8001" -ForegroundColor White
+Write-Host "  API docs   → http://localhost:8001/docs" -ForegroundColor White
+Write-Host "  Reranker   → http://localhost:8100" -ForegroundColor White
 Write-Host ""
 Write-Host "  To stop:  .\scripts\stop.ps1" -ForegroundColor Gray
 Write-Host "  Status:   .\scripts\status.ps1" -ForegroundColor Gray

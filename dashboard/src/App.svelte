@@ -23,6 +23,8 @@
   import AtomicsView from './views/AtomicsView.svelte'
   import AnomalyView from './views/AnomalyView.svelte'
   import PerformanceView from './views/PerformanceView.svelte'
+  import CommandPalette from './components/CommandPalette.svelte'
+  import type { ViewId } from './lib/tokens.ts'
 
   type View =
     | 'overview' | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
@@ -39,6 +41,7 @@
   let networkDevices = $state<NetworkDevices>({})
   let graphFocusEntityId = $state<string>('')
   let postureScore = $state(100) // 0–100; updated once detections load
+  let paletteOpen  = $state(false)
 
   function handleInvestigate(detectionId: string) {
     investigatingId = detectionId
@@ -88,6 +91,22 @@
       document.querySelector('.nav-item.active')?.scrollIntoView({ block: 'nearest' })
     })
   })
+
+  // ⌘K / Ctrl+K → open command palette
+  $effect(() => {
+    function handleGlobalKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        paletteOpen = !paletteOpen
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKey)
+    return () => window.removeEventListener('keydown', handleGlobalKey)
+  })
+
+  function handlePaletteNavigate(view: ViewId) {
+    currentView = view as View
+  }
 
   function handlePostureUpdate(score: number) {
     postureScore = score
@@ -209,11 +228,24 @@
         </svg>
         <span class="logo-text">SOC Brain</span>
       </div>
-      <span
-        class="health-dot"
-        style="background: {statusColor[healthStatus]}"
-        title="Backend: {healthStatus}"
-      ></span>
+      <div class="header-right">
+        <button
+          class="palette-trigger"
+          onclick={() => { paletteOpen = true }}
+          title="Command palette (Ctrl+K)"
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.6"/>
+            <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <kbd>⌘K</kbd>
+        </button>
+        <span
+          class="health-dot"
+          style="background: {statusColor[healthStatus]}"
+          title="Backend: {healthStatus}"
+        ></span>
+      </div>
     </div>
 
     <!-- Network device status -->
@@ -315,6 +347,15 @@
       <span class="footer-health" style="color:{statusColor[healthStatus]}">{healthStatus}</span>
     </div>
   </nav>
+
+  <!-- ⌘K Command palette (portal-style, rendered at shell root) -->
+  <CommandPalette
+    open={paletteOpen}
+    onClose={() => { paletteOpen = false }}
+    onNavigate={handlePaletteNavigate}
+    onInvestigate={handleInvestigate}
+    onOpenInGraph={handleOpenInGraph}
+  />
 
   <!-- Main content -->
   <main class="main-content">
@@ -422,6 +463,39 @@
     font-weight: 600;
     color: rgba(255,255,255,0.88);
     letter-spacing: -0.2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .palette-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 5px;
+    padding: 3px 6px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.28);
+    font-size: 10px;
+    font-family: var(--font-sans);
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .palette-trigger:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.16);
+    color: rgba(255,255,255,0.55);
+  }
+
+  .palette-trigger kbd {
+    font-family: var(--font-sans);
+    font-size: 10px;
   }
 
   .health-dot {

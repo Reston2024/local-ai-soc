@@ -29,6 +29,28 @@
   // Phase 53: Privacy detection count — loaded from /api/privacy/hits
   let privacyDetectionCount = $state(0)
 
+  // ── Service restart (click-to-recover in System Health card) ──────────────
+  let restartingService = $state<string | null>(null)
+  let restartResult = $state<Record<string, 'ok' | 'fail'>>({})
+
+  async function restartService(name: string) {
+    if (restartingService) return        // one at a time
+    restartingService = name
+    try {
+      const res = await api.services.restart(name)
+      restartResult[name] = res.ok ? 'ok' : 'fail'
+    } catch {
+      restartResult[name] = 'fail'
+    } finally {
+      restartingService = null
+      // Refresh health after a short delay so the new status is visible
+      setTimeout(() => {
+        load()
+        restartResult = {}
+      }, 4000)
+    }
+  }
+
   /** Strip markdown bold/italic asterisks from LLM output */
   function stripMd(text: string): string {
     return text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '')
@@ -416,6 +438,7 @@
             <!-- MISP Threat Intelligence feed -->
             {#if componentHealth?.components?.misp}
               {@const misp = componentHealth.components.misp}
+              {@const mispNeedsRestart = misp.status !== 'ok' && misp.status !== 'disabled'}
               <div class="health-row">
                 <span class="health-dot {misp.status === 'ok' ? 'dot-healthy' : misp.status === 'disabled' || misp.status === 'never' ? '' : 'dot-degraded'}"></span>
                 <span class="health-label">MISP TI</span>
@@ -432,6 +455,16 @@
                     {misp.status}
                   {/if}
                 </span>
+                {#if mispNeedsRestart}
+                  <button
+                    class="restart-btn"
+                    class:restart-btn-ok={restartResult['misp'] === 'ok'}
+                    class:restart-btn-fail={restartResult['misp'] === 'fail'}
+                    disabled={restartingService === 'misp'}
+                    onclick={() => restartService('misp')}
+                    title="Trigger MISP sync now"
+                  >{restartingService === 'misp' ? '…' : restartResult['misp'] === 'ok' ? '✓' : restartResult['misp'] === 'fail' ? '✗' : '⟳'}</button>
+                {/if}
               </div>
             {/if}
 
@@ -442,6 +475,16 @@
                 <span class="health-dot {sf.status === 'ok' ? 'dot-healthy' : 'dot-degraded'}"></span>
                 <span class="health-label">SpiderFoot</span>
                 <span class="health-status">{sf.status === 'ok' ? 'ready' : 'offline'}</span>
+                {#if sf.status !== 'ok'}
+                  <button
+                    class="restart-btn"
+                    class:restart-btn-ok={restartResult['spiderfoot'] === 'ok'}
+                    class:restart-btn-fail={restartResult['spiderfoot'] === 'fail'}
+                    disabled={restartingService === 'spiderfoot'}
+                    onclick={() => restartService('spiderfoot')}
+                    title="Start SpiderFoot"
+                  >{restartingService === 'spiderfoot' ? '…' : restartResult['spiderfoot'] === 'ok' ? '✓' : restartResult['spiderfoot'] === 'fail' ? '✗' : '▶'}</button>
+                {/if}
               </div>
             {/if}
 
@@ -451,7 +494,17 @@
               <div class="health-row">
                 <span class="health-dot {rr.status === 'ok' ? 'dot-healthy' : rr.status === 'disabled' ? '' : 'dot-degraded'}"></span>
                 <span class="health-label">Reranker</span>
-                <span class="health-status">{rr.status === 'ok' ? 'ready' : rr.status === 'disabled' ? 'disabled' : 'offline'}</span>
+                <span class="health-status">{rr.status === 'ok' ? (rr.device ? `${rr.device}` : 'ready') : rr.status === 'disabled' ? 'disabled' : 'offline'}</span>
+                {#if rr.status !== 'ok' && rr.status !== 'disabled'}
+                  <button
+                    class="restart-btn"
+                    class:restart-btn-ok={restartResult['reranker'] === 'ok'}
+                    class:restart-btn-fail={restartResult['reranker'] === 'fail'}
+                    disabled={restartingService === 'reranker'}
+                    onclick={() => restartService('reranker')}
+                    title="Start reranker service"
+                  >{restartingService === 'reranker' ? '…' : restartResult['reranker'] === 'ok' ? '✓' : restartResult['reranker'] === 'fail' ? '✗' : '▶'}</button>
+                {/if}
               </div>
             {/if}
 
@@ -794,6 +847,39 @@
   .hayabusa-status { color: #fbbf24; }  /* amber accent for hayabusa findings count */
   .chainsaw-status { color: #14b8a6; }  /* teal accent for chainsaw findings count */
   .misp-status     { color: #a78bfa; }  /* purple accent for MISP IOC count */
+
+  /* ── Service restart button ── */
+  .restart-btn {
+    margin-left: auto;
+    padding: 2px 7px;
+    font-size: 12px;
+    line-height: 1.4;
+    background: rgba(99, 102, 241, 0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .restart-btn:hover:not(:disabled) {
+    background: rgba(99, 102, 241, 0.28);
+    color: #a5b4fc;
+  }
+  .restart-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .restart-btn.restart-btn-ok {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  .restart-btn.restart-btn-fail {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
 
   .version-badge {
     display: inline-block;
