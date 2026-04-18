@@ -24,6 +24,8 @@
   import AnomalyView from './views/AnomalyView.svelte'
   import PerformanceView from './views/PerformanceView.svelte'
   import CommandPalette from './components/CommandPalette.svelte'
+  import LiveHeader from './components/LiveHeader.svelte'
+  import CoPilot from './components/CoPilot.svelte'
   import type { ViewId } from './lib/tokens.ts'
 
   type View =
@@ -42,6 +44,7 @@
   let graphFocusEntityId = $state<string>('')
   let postureScore = $state(100) // 0–100; updated once detections load
   let paletteOpen  = $state(false)
+  let copilotOpen  = $state(false)
 
   function handleInvestigate(detectionId: string) {
     investigatingId = detectionId
@@ -215,36 +218,30 @@
 </script>
 
 <div class="app-shell">
-  <!-- Sidebar -->
+  <!-- ① Full-width top bar -->
+  <LiveHeader
+    healthStatus={healthStatus}
+    postureScore={postureScore}
+    networkDevices={networkDevices}
+    currentView={currentView}
+    onOpenPalette={() => { paletteOpen = true }}
+  />
+
+  <!-- ② Three-column workspace below the header -->
+  <div class="workspace">
+
+  <!-- Sidebar / LeftRail -->
   <nav class="sidebar">
     <!-- Header -->
     <div class="sidebar-header">
       <div class="logo-row">
-        <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
+        <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
           <path d="M11 2L3 5.5V11C3 15.4 6.6 19.4 11 20.5C15.4 19.4 19 15.4 19 11V5.5L11 2Z"
             fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.35)" stroke-width="1.3"/>
           <circle cx="11" cy="11" r="3" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.1"/>
           <circle cx="11" cy="11" r="1.1" fill="rgba(255,255,255,0.7)"/>
         </svg>
-        <span class="logo-text">SOC Brain</span>
-      </div>
-      <div class="header-right">
-        <button
-          class="palette-trigger"
-          onclick={() => { paletteOpen = true }}
-          title="Command palette (Ctrl+K)"
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.6"/>
-            <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          </svg>
-          <kbd>⌘K</kbd>
-        </button>
-        <span
-          class="health-dot"
-          style="background: {statusColor[healthStatus]}"
-          title="Backend: {healthStatus}"
-        ></span>
+        <span class="logo-text">Navigation</span>
       </div>
     </div>
 
@@ -344,18 +341,21 @@
 
     <div class="sidebar-footer">
       <span class="version">v0.1.0</span>
-      <span class="footer-health" style="color:{statusColor[healthStatus]}">{healthStatus}</span>
+      <button
+        class="copilot-toggle"
+        class:active={copilotOpen}
+        onclick={() => { copilotOpen = !copilotOpen }}
+        title="AI Co-Pilot"
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <path d="M8 2a4 4 0 0 1 4 4c0 2-1 3.5-2.5 4.5L8 14l-1.5-3.5C5 9.5 4 8 4 6a4 4 0 0 1 4-4z"
+            stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          <circle cx="8" cy="6" r="1.2" fill="currentColor"/>
+        </svg>
+        Co-Pilot
+      </button>
     </div>
   </nav>
-
-  <!-- ⌘K Command palette (portal-style, rendered at shell root) -->
-  <CommandPalette
-    open={paletteOpen}
-    onClose={() => { paletteOpen = false }}
-    onNavigate={handlePaletteNavigate}
-    onInvestigate={handleInvestigate}
-    onOpenInGraph={handleOpenInGraph}
-  />
 
   <!-- Main content -->
   <main class="main-content">
@@ -423,19 +423,47 @@
       <PerformanceView />
     {/if}
   </main>
+
+  <!-- ③ AI Co-Pilot right rail -->
+  <CoPilot
+    open={copilotOpen}
+    investigationId={investigatingId}
+    onClose={() => { copilotOpen = false }}
+    onNavigate={handlePaletteNavigate}
+  />
+
+  </div><!-- .workspace -->
+
+  <!-- ⌘K Command palette (portal-style overlay, outside workspace) -->
+  <CommandPalette
+    open={paletteOpen}
+    onClose={() => { paletteOpen = false }}
+    onNavigate={handlePaletteNavigate}
+    onInvestigate={handleInvestigate}
+    onOpenInGraph={handleOpenInGraph}
+  />
+
 </div>
 
 <style>
   .app-shell {
     display: flex;
+    flex-direction: column;
     height: 100vh;
     overflow: hidden;
     background: var(--bg-primary);
   }
 
-  /* ── Sidebar ── */
+  /* ── Three-column workspace (below LiveHeader) ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar / LeftRail ── */
   .sidebar {
-    width: 230px;
+    width: 208px;
     flex-shrink: 0;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border);
@@ -465,46 +493,31 @@
     letter-spacing: -0.2px;
   }
 
-  .header-right {
+  .copilot-toggle {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  .palette-trigger {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
+    gap: 5px;
+    background: none;
+    border: 1px solid transparent;
     border-radius: 5px;
-    padding: 3px 6px;
+    padding: 3px 7px;
     cursor: pointer;
     color: rgba(255,255,255,0.28);
-    font-size: 10px;
+    font-size: 11px;
     font-family: var(--font-sans);
     transition: background 0.12s, border-color 0.12s, color 0.12s;
   }
 
-  .palette-trigger:hover {
-    background: rgba(255,255,255,0.08);
-    border-color: rgba(255,255,255,0.16);
-    color: rgba(255,255,255,0.55);
+  .copilot-toggle:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
   }
 
-  .palette-trigger kbd {
-    font-family: var(--font-sans);
-    font-size: 10px;
-  }
-
-  .health-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    transition: background 0.4s;
-    opacity: 0.85;
+  .copilot-toggle.active {
+    background: rgba(0,212,255,0.08);
+    border-color: rgba(0,212,255,0.22);
+    color: #00d4ff;
   }
 
   /* ── Device status strip ── */
@@ -663,23 +676,20 @@
 
   /* ── Footer ── */
   .sidebar-footer {
-    padding: 10px 14px;
+    padding: 8px 10px;
     border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
+    gap: 6px;
   }
 
   .version {
     font-size: 10px;
-    color: rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.15);
     font-family: var(--font-mono);
-  }
-
-  .footer-health {
-    font-size: 10px;
-    text-transform: capitalize;
+    flex-shrink: 0;
   }
 
   /* ── Main ── */
