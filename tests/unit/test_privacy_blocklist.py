@@ -111,7 +111,8 @@ def test_worker_populates_store():
         mock_httpx.get.return_value = mock_resp
         worker = PrivacyWorker(store=mock_store)
         worker._sync()
-    mock_store.upsert_domain.assert_called()
+    # _sync now uses upsert_domains_batch (batch upsert) instead of upsert_domain
+    mock_store.upsert_domains_batch.assert_called()
 
 
 # ---------------------------------------------------------------------------

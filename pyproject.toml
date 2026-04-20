@@ -83,11 +83,20 @@ omit = [
     "scripts/*",
 ]
 
+[tool.coverage.report]
+# Fail if overall coverage drops below 70% (matches CI gate in .github/workflows/ci.yml)
+fail_under = 70
+# Show lines not covered so gaps are immediately visible
+show_missing = true
+# Skip files with no executable statements
+skip_empty = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "unit: unit tests (no external I/O)",
+    "scenarios: end-to-end attack scenario tests (real DuckDB, no network)",
     "hayabusa: integration tests requiring the hayabusa binary on PATH",
     "chainsaw: integration tests requiring the chainsaw binary on PATH",
 ]

@@ -64,7 +64,7 @@ export type ViewId =
   | 'overview' | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
   | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
   | 'recommendations' | 'settings' | 'map' | 'attack-coverage' | 'atomics' | 'anomaly'
-  | 'performance'
+  | 'performance' | 'privacy'
 
 export interface NavItem {
   id: ViewId
@@ -85,6 +85,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'detections',   label: 'Detections',       group: 'Monitor' },
       { id: 'events',       label: 'Events',            group: 'Monitor' },
       { id: 'assets',       label: 'Assets',            group: 'Monitor' },
+      { id: 'privacy',      label: 'Privacy',           group: 'Monitor' },
     ],
   },
   {

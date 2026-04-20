@@ -22,6 +22,22 @@ privacy_api = pytest.importorskip(
 # PRIV-09: Hits endpoint
 # ---------------------------------------------------------------------------
 
+def _make_privacy_client():
+    """Build a TestClient with the privacy router mounted and auth bypassed."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from backend.api.privacy import router as privacy_router
+    from backend.core.auth import verify_token
+    from backend.core.rbac import OperatorContext
+
+    app = FastAPI()
+    app.include_router(privacy_router)
+    # Bypass verify_token — these tests exercise route logic, not auth
+    ctx = OperatorContext(operator_id="test", username="test", role="analyst")
+    app.dependency_overrides[verify_token] = lambda: ctx
+    return TestClient(app, raise_server_exceptions=False)
+
+
 def test_hits_endpoint_returns_list():
     """GET /api/privacy/hits returns 200 with JSON body containing a 'hits' list.
 
@@ -29,13 +45,7 @@ def test_hits_endpoint_returns_list():
     router returns 200 and a response body with a top-level 'hits' key whose
     value is a list.
     """
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-    from backend.api.privacy import router as privacy_router
-
-    app = FastAPI()
-    app.include_router(privacy_router)
-    client = TestClient(app)
+    client = _make_privacy_client()
     response = client.get("/api/privacy/hits")
     assert response.status_code == 200
     data = response.json()
@@ -57,13 +67,7 @@ def test_feeds_endpoint_returns_status():
     Note: bare FastAPI app without privacy_store on app.state triggers the
     graceful-degradation path which returns {"feeds": []}.
     """
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-    from backend.api.privacy import router as privacy_router
-
-    app = FastAPI()
-    app.include_router(privacy_router)
-    client = TestClient(app)
+    client = _make_privacy_client()
     response = client.get("/api/privacy/feeds")
     assert response.status_code == 200
     data = response.json()

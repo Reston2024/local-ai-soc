@@ -4,7 +4,7 @@
 
 A single-analyst, local-first cybersecurity workstation. All inference, detection, graph correlation, and visualization runs locally — no cloud, no telemetry, no external services.
 
-**Status:** v1.0 complete (30 phases). v1.1 complete (Phases 31-44). Phase 45 (Agentic Investigation) complete. Phase 46 (Playbook Library Expansion) complete.
+**Status:** v1.0 complete (Phases 1–30). v1.1 complete (Phases 31–46). v1.2 active — Phase 53 (Privacy Monitoring) complete. See [`governance/release_state.yaml`](governance/release_state.yaml) for canonical state.
 
 ---
 

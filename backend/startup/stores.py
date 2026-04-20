@@ -359,7 +359,10 @@ async def init_stores(app: "FastAPI", settings: Settings) -> Stores:
             PrivacyWorker as _PrivacyWorker,
         )
         if settings.PRIVACY_ENABLED:
-            app.state.privacy_store = _PrivacyBlocklistStore(sqlite_store._conn)
+            # Pass the db_path string so PrivacyBlocklistStore opens its own
+            # dedicated connection — avoids WAL races on the shared sqlite_store
+            # connection that is used concurrently by many background tasks.
+            app.state.privacy_store = _PrivacyBlocklistStore(sqlite_store._db_path)
             _privacy_worker = _PrivacyWorker(
                 app.state.privacy_store,
                 interval_sec=settings.PRIVACY_BLOCKLIST_REFRESH_INTERVAL_SEC,

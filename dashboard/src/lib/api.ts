@@ -751,6 +751,53 @@ export interface PrivacyFeedStatus {
   domain_count: number
 }
 
+export interface PrivacyHttpEvent {
+  event_id: string
+  src_ip: string | null
+  domain: string | null
+  uri: string | null
+  method: string | null
+  status: number | null
+  user_agent: string | null
+  req_bytes: number | null
+  resp_bytes: number | null
+  mime: string | null
+  is_tracker: boolean
+  timestamp: string | null
+}
+
+export interface PrivacySslEvent {
+  event_id: string
+  src_ip: string | null
+  sni: string | null
+  dst_ip: string | null
+  dst_port: number | null
+  tls_version: string | null
+  ja3: string | null
+  is_tracker: boolean
+  timestamp: string | null
+}
+
+export interface PrivacyDnsEvent {
+  event_id: string
+  src_ip: string | null
+  query: string | null
+  qtype: string | null
+  answers: string | null
+  is_tracker: boolean
+  timestamp: string | null
+}
+
+export interface PrivacyTlsEvent {
+  event_id: string
+  src_ip: string | null
+  dst_ip: string | null
+  dst_port: number | null
+  tls_version: string | null
+  ja3: string | null
+  timestamp: string | null
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...options?.headers },
@@ -1289,7 +1336,23 @@ export const api = {
   // Phase 53: Privacy monitoring endpoints
   privacy: {
     hits: () => request<{ hits: PrivacyHit[] }>('/api/privacy/hits'),
-    feeds: () => request<{ feeds: PrivacyFeedStatus[] }>('/api/privacy/feeds'),
+    feeds: () => request<{ feeds: PrivacyFeedStatus[]; domain_count: number }>('/api/privacy/feeds'),
+    scan: () => request<{ triggered: boolean; detections_found: number }>(
+      '/api/privacy/scan', { method: 'POST' }
+    ),
+    httpEvents: () => request<{ events: PrivacyHttpEvent[]; total: number; tracker_count: number }>(
+      '/api/privacy/http-events'
+    ),
+    dnsEvents: () => request<{ events: PrivacyDnsEvent[]; total: number; tracker_count: number }>(
+      '/api/privacy/dns-events'
+    ),
+    tlsEvents: () => request<{ events: PrivacyTlsEvent[]; total: number }>(
+      '/api/privacy/tls-events'
+    ),
+    // Legacy alias
+    sslEvents: () => request<{ events: PrivacySslEvent[]; total: number; tracker_count: number }>(
+      '/api/privacy/ssl-events'
+    ),
   },
 
   // Service restart — used by System Health card click-to-restart

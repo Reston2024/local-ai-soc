@@ -84,7 +84,16 @@ class PrivacyBlocklistStore:
     """
 
     def __init__(self, conn: sqlite3.Connection) -> None:
-        self._conn = conn
+        # Accept a shared connection OR a db path string.
+        # Passing a path opens a dedicated thread-safe connection, which avoids
+        # WAL contention when the main sqlite_store connection is shared across
+        # many background tasks.
+        if isinstance(conn, str):
+            self._conn = sqlite3.connect(conn, check_same_thread=False)
+            # Enable WAL so writes don't block readers and vice-versa.
+            self._conn.execute("PRAGMA journal_mode=WAL")
+        else:
+            self._conn = conn
         self._conn.executescript(self._DDL)
         self._conn.commit()
 
@@ -168,49 +177,65 @@ class PrivacyWorker:
     def _sync(self) -> bool:
         """Synchronously fetch EasyPrivacy + Disconnect.me and upsert into store.
 
-        Returns True on success, False on error.
+        Each feed is handled independently — a failure in one does not prevent
+        the other from loading. Uses batch upserts for performance.
+
+        Returns True if at least one feed synced successfully, False otherwise.
         """
+        import traceback as _tb
+        any_success = False
+
+        # ── EasyPrivacy ──────────────────────────────────────────────────────
         try:
-            logger.info("privacy_worker: fetching EasyPrivacy + Disconnect.me")
-            ep_resp = httpx.get(_EASYPRIVACY_URL, timeout=30, follow_redirects=True)
+            logger.info("privacy_worker: fetching EasyPrivacy")
+            ep_resp = httpx.get(_EASYPRIVACY_URL, timeout=45, follow_redirects=True)
             ep_resp.raise_for_status()
             ep_domains = _parse_easyprivacy(ep_resp.text)
+            if ep_domains:
+                self._store.upsert_domains_batch(
+                    [(d, "easyprivacy", None) for d in ep_domains]
+                )
+                self._store.update_feed_meta("easyprivacy", len(ep_domains))
+                logger.info("privacy_worker: easyprivacy sync complete domains=%d", len(ep_domains))
+            any_success = True
+        except Exception as exc:
+            logger.warning(
+                "privacy_worker: easyprivacy sync failed: %s\n%s", exc, _tb.format_exc()
+            )
 
-            dc_resp = httpx.get(_DISCONNECT_URL, timeout=30, follow_redirects=True)
+        # ── Disconnect.me ────────────────────────────────────────────────────
+        try:
+            logger.info("privacy_worker: fetching Disconnect.me")
+            dc_resp = httpx.get(_DISCONNECT_URL, timeout=45, follow_redirects=True)
             dc_resp.raise_for_status()
             dc_rows = _parse_disconnect(dc_resp.text)
-
-            # Upsert EasyPrivacy domains
-            for domain in ep_domains:
-                self._store.upsert_domain(domain, "easyprivacy", None)
-
-            # Upsert Disconnect.me domains
-            for domain, category in dc_rows:
-                self._store.upsert_domain(domain, category, None)
-
-            self._store.update_feed_meta("easyprivacy", len(ep_domains))
-            self._store.update_feed_meta("disconnect", len(dc_rows))
-            logger.info(
-                "privacy_worker: sync complete easyprivacy=%d disconnect=%d",
-                len(ep_domains), len(dc_rows),
-            )
-            return True
+            if dc_rows:
+                self._store.upsert_domains_batch(
+                    [(d, cat, None) for d, cat in dc_rows]
+                )
+                self._store.update_feed_meta("disconnect", len(dc_rows))
+                logger.info("privacy_worker: disconnect sync complete domains=%d", len(dc_rows))
+            any_success = True
         except Exception as exc:
-            logger.warning("privacy_worker: sync failed: %s", exc)
-            return False
+            logger.warning(
+                "privacy_worker: disconnect sync failed: %s\n%s", exc, _tb.format_exc()
+            )
+
+        return any_success
 
     async def run(self) -> None:
-        """Async background loop — sleeps interval_sec then syncs."""
+        """Async background loop — syncs immediately then sleeps interval_sec."""
         self._running = True
         backoff = self._interval
         try:
             while True:
-                await asyncio.sleep(backoff)
+                # Sync first, then sleep — ensures blocklist is populated at startup.
                 success = await asyncio.to_thread(self._sync)
-                if success:
-                    backoff = self._interval
-                else:
+                if not success:
                     backoff = min(backoff * 2, 3600)
+                else:
+                    backoff = self._interval
+                await asyncio.sleep(backoff)
         except asyncio.CancelledError:
             self._running = False
             raise

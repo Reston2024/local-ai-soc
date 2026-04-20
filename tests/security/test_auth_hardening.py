@@ -53,7 +53,10 @@ async def test_legacy_path_requires_totp(monkeypatch):
     strong_token = "a" * 32
     mock_settings = MagicMock()
     mock_settings.AUTH_TOKEN = strong_token
-    mock_settings.LEGACY_TOTP_SECRET = ""  # empty = legacy path disabled → 401 always
+    # Non-empty secret activates TOTP enforcement on the legacy path.
+    # Empty string means "no TOTP configured → allow token-only access",
+    # so we must supply a real secret to test the 401-on-missing-code path.
+    mock_settings.LEGACY_TOTP_SECRET = "JBSWY3DPEHPK3PXP"
 
     monkeypatch.setattr("backend.core.auth.settings", mock_settings)
 

@@ -192,7 +192,16 @@ class TestGetKpisEndpoint:
             resp_wrong = client.get("/metrics/kpis")
 
         assert resp_correct.status_code == 200
-        assert resp_wrong.status_code == 404
+        # The SPA catch-all (StaticFiles html=True) serves index.html for any
+        # unrecognised path, so /metrics/kpis may return 200 HTML instead of 404.
+        # The important invariant is that the wrong path does NOT return KPI JSON.
+        if resp_wrong.status_code == 200:
+            ct = resp_wrong.headers.get("content-type", "")
+            assert not ct.startswith("application/json"), (
+                "Route /metrics/kpis must not exist as a JSON API endpoint"
+            )
+        else:
+            assert resp_wrong.status_code == 404
 
     def test_cached_value_returned_on_second_call(self):
         """

@@ -1,22 +1,22 @@
 # AI-SOC-Brain — Live Project State
 
-**Last updated:** 2026-04-16
-**Current milestone:** v1.0 COMPLETE — v1.1 COMPLETE (Phases 31-46) — Phase 50 COMPLETE
+**Last updated:** 2026-04-19
+**Current milestone:** v1.0 COMPLETE — v1.1 COMPLETE (Phases 31-46) — Phase 50 COMPLETE — Phase 53 COMPLETE
 **Overall status:** SOC BRAIN OPERATIONAL
 
 ---
 
 ## Active Work
 
-**v1.2 — Next phases queued**
+**v1.2 — Active / queued**
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 51 | Outbound Alerting — email/Slack/PagerDuty for critical detections | Planned |
-| 52 | Firewalla Gold Integration — bridge device REST API ingestion | Blocked — hardware in transit |
-| 53 | IPFire SSH Health Stats — live router/firewall stats in Overview | Planned |
-| 54 | LLM Fine-tuning — Foundation-Sec-8B on Phase 44 verdict data (HuggingFace) | Planned |
-| 55 | GMKtec MISP Backup — mysqldump + Valkey backup strategy over SSH | Planned |
+| 51 | OSINT Investigation Store | ✅ DONE |
+| 52 | TheHive Integration | ✅ DONE |
+| 53 | Privacy Monitoring | ✅ DONE — 2026-04-19 |
+| 54 | Outbound Alerting — email/Slack/PagerDuty | Planned |
+| 55 | LLM Fine-tuning — Foundation-Sec-8B | Planned |
 
 ---
 
@@ -76,6 +76,9 @@
 | Phase 48: Hayabusa EVTX Hunting | Hayabusa binary integration; MITRE tag extraction; amber chip in DetectionsView; Overview health signal | ✅ DONE | 2026-04-14 |
 | Phase 49: Chainsaw EVTX Analysis | Chainsaw Windows event analysis; SQLite dedup; teal chip; health row | ✅ DONE | 2026-04-15 |
 | Phase 50: MISP Threat Intel | MISP Docker on GMKtec; PyMISP sync; 4,568 IOCs; MISP panel in ThreatIntelView; purple health row in Overview | ✅ DONE | 2026-04-16 |
+| Phase 51: OSINT Investigation Store | OsintInvestigationStore; agentic OSINT pipeline | ✅ DONE | 2026-04-17 |
+| Phase 52: TheHive Integration | TheHiveClient; APScheduler sync + drain jobs; case creation | ✅ DONE | 2026-04-17 |
+| Phase 53: Privacy Monitoring | EasyPrivacy+Disconnect.me blocklist; HTTP/DNS tracker detection; PrivacyView dashboard (3 tabs) | ✅ DONE | 2026-04-19 |
 
 ---
 
@@ -243,3 +246,4 @@ uv run pytest tests/unit/ -q --tb=short
 - 2026-04-16: Phase 50 — MISP threat intelligence: Docker on GMKtec, 4 iptables/DNS fixes, 4,568 IOCs synced, ThreatIntelView panel, purple health row in Overview
 - 2026-04-16: Backup drive F: (1.82TB) arrived; incremental robocopy script with daily scheduled task
 - 2026-04-16: Network topology: hostname deduplication, Docker bridge IP filtering, DESKTOP-R5MSQJQ correctly shown at 192.168.1.102
+- 2026-04-19: Phase 53 — Privacy monitoring: EasyPrivacy (46,871 domains) + Disconnect.me (4,790 domains) blocklist; HTTP + DNS tracker detection; PrivacyView with Detections/DNS/HTTP tabs; TLS investigation: Malcolm Arkime sessions don't carry SNI, so DNS-based detection used for encrypted traffic

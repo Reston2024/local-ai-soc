@@ -23,6 +23,7 @@
   import AtomicsView from './views/AtomicsView.svelte'
   import AnomalyView from './views/AnomalyView.svelte'
   import PerformanceView from './views/PerformanceView.svelte'
+  import PrivacyView from './views/PrivacyView.svelte'
   import CommandPalette from './components/CommandPalette.svelte'
   import LiveHeader from './components/LiveHeader.svelte'
   import CoPilot from './components/CoPilot.svelte'
@@ -32,7 +33,7 @@
     | 'overview' | 'detections' | 'investigation' | 'events' | 'graph' | 'query' | 'ingest'
     | 'intel' | 'hunting' | 'playbooks' | 'reports' | 'assets' | 'provenance'
     | 'recommendations' | 'settings' | 'map' | 'attack-coverage' | 'atomics' | 'anomaly'
-    | 'performance'
+    | 'performance' | 'privacy'
 
   let currentView = $state<View>('overview')
   let healthStatus = $state<'healthy' | 'degraded' | 'unhealthy' | 'loading'>('loading')
@@ -176,6 +177,7 @@
         { id: 'detections',   label: 'Detections',   color: '' },
         { id: 'events',       label: 'Events',        color: '' },
         { id: 'assets',       label: 'Assets',        color: '' },
+        { id: 'privacy',      label: 'Privacy',       color: '' },
       ],
     },
     {
@@ -296,6 +298,8 @@
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" fill="currentColor"/><circle cx="2.5" cy="4" r="1.5" fill="currentColor"/><circle cx="13.5" cy="4" r="1.5" fill="currentColor"/><circle cx="8" cy="13.5" r="1.5" fill="currentColor"/><line x1="3.8" y1="5.2" x2="6.6" y2="7" stroke="currentColor" stroke-width="1.2"/><line x1="12.2" y1="5.2" x2="9.4" y2="7" stroke="currentColor" stroke-width="1.2"/><line x1="8" y1="10" x2="8" y2="12" stroke="currentColor" stroke-width="1.2"/></svg>
                 {:else if item.id === 'assets'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="2" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="5" height="5" rx="1.2" stroke="currentColor" stroke-width="1.4"/></svg>
+                {:else if item.id === 'privacy'}
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 1.5L2.5 4V8C2.5 11.4 4.9 14.5 8 15.5C11.1 14.5 13.5 11.4 13.5 8V4L8 1.5Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.5 8L7 9.5L10.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 {:else if item.id === 'provenance'}
                   <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 14V9M8 14V5M12 14V2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
                 {:else if item.id === 'intel'}
@@ -421,6 +425,8 @@
       <AnomalyView />
     {:else if currentView === 'performance'}
       <PerformanceView />
+    {:else if currentView === 'privacy'}
+      <PrivacyView />
     {/if}
   </main>
 

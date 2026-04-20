@@ -56,7 +56,7 @@
     'reports': 'Reports', 'assets': 'Assets', 'provenance': 'Provenance',
     'recommendations': 'Recommendations', 'settings': 'Settings', 'map': 'Threat Map',
     'attack-coverage': 'ATT&CK Coverage', 'atomics': 'Atomics', 'anomaly': 'Anomaly',
-    'performance': 'Performance',
+    'performance': 'Performance', 'privacy': 'Privacy',
   }
 
   const networkUp = $derived(
