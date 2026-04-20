@@ -1,0 +1,202 @@
+# AI-SOC-Brain — Machine-Readable Release State
+#
+# This file is the single source of truth for project status.
+# README.md and STATE.md must be kept consistent with the values here.
+# The CI drift gate (doc-drift-gate job in ci.yml) checks this automatically.
+#
+# Schema version: 1.0
+# Last updated: 2026-04-19
+
+schema_version: "1.0"
+project: "ai-soc-brain"
+last_updated: "2026-04-19"
+
+# ── Release status ──────────────────────────────────────────────────────────
+release:
+  current_version: "1.2.0-dev"
+  milestone: "v1.2"
+  overall_status: "OPERATIONAL"
+
+  completed_milestones:
+    - label: "v1.0"
+      phases: "1–30"
+      date: "2026-04-08"
+    - label: "v1.1"
+      phases: "31–46"
+      date: "2026-04-13"
+
+  latest_completed_phase: 53
+  latest_completed_phase_name: "Privacy Monitoring"
+  latest_completed_phase_date: "2026-04-19"
+
+# ── Phase completion table ───────────────────────────────────────────────────
+# Append new phases here; the drift gate reads latest_completed_phase above.
+phases:
+  - id: 53
+    name: "Privacy Monitoring"
+    status: done
+    date: "2026-04-19"
+    summary: "EasyPrivacy+Disconnect.me blocklist (49,931 domains); HTTP/DNS tracker detection; PrivacyView (3 tabs); auth hardening"
+  - id: 52
+    name: "TheHive Integration"
+    status: done
+    date: "2026-04-17"
+  - id: 51
+    name: "OSINT Investigation Store"
+    status: done
+    date: "2026-04-17"
+  - id: 50
+    name: "MISP Threat Intel"
+    status: done
+    date: "2026-04-16"
+  - id: 49
+    name: "Chainsaw EVTX Analysis"
+    status: done
+    date: "2026-04-15"
+  - id: 48
+    name: "Hayabusa EVTX Hunting"
+    status: done
+    date: "2026-04-14"
+  - id: 47
+    name: "SPA Routing Hardening"
+    status: done
+    date: "2026-04-14"
+  - id: 46
+    name: "Playbook Library Expansion"
+    status: done
+    date: "2026-04-13"
+  - id: 45
+    name: "Agentic Investigation"
+    status: done
+    date: "2026-04-13"
+
+# ── Improvement milestones (not phase-numbered — cross-cutting quality work) ─
+improvements:
+  - id: "B-3"
+    name: "End-to-end Attack Scenario Tests"
+    status: done
+    date: "2026-04-19"
+    summary: "7 E2E scenario tests covering C2, WMI lateral, PowerShell download cradle, credential brute-force, LSASS dump, full APT chain, DNS exfil"
+    tests_added: 7
+  - id: "B-1"
+    name: "Composition Root Boundary Enforcement"
+    status: done
+    date: "2026-04-19"
+    summary: "backend/startup/ decomposition verified in place; 6 boundary tests lock the stores→workers→collectors→routers dependency graph"
+    tests_added: 6
+  - id: "B-2"
+    name: "AI Assurance Profile"
+    status: done
+    date: "2026-04-19"
+    summary: "docs/AI_GOVERNANCE.md (4-model inventory, kill-switch procedure, HITL gates, prompt defense layers, data handling policy); 30 unit guardrail tests + 2 xfail gap markers; evals/prompt_eval_set.jsonl (20 analyst QA eval pairs)"
+    tests_added: 32   # 30 pass + 2 xfail (documented gaps AG-006)
+
+# ── Planned phases ───────────────────────────────────────────────────────────
+planned:
+  - id: 54
+    name: "Outbound Alerting (email/Slack/PagerDuty)"
+    status: planned
+  - id: 55
+    name: "LLM Fine-tuning (Foundation-Sec-8B)"
+    status: planned
+
+# ── Quality metrics ──────────────────────────────────────────────────────────
+# Update these after every test run that changes counts.
+# Command: uv run pytest tests/unit/ tests/security/ tests/scenarios/ tests/ai/ -q | tail -1
+quality:
+  test_count: 1302       # 2026-04-19 after B-3 + B-1 + B-2
+  tests_passing: 1302
+  xfail_documented_gaps: 11  # expected-failures that document real gaps
+  coverage_floor_pct: 70
+  security_module_coverage_floor_pct: 80
+  open_blockers: 0
+
+# ── Known tech debt (non-blocking) ───────────────────────────────────────────
+tech_debt:
+  - id: "TD-001"
+    description: "backend/main.py composition-root sprawl resolved; boundary tests lock the architecture"
+    severity: resolved
+    introduced: "2026-03-15"
+    tracking: "B-1 complete 2026-04-19"
+  - id: "TD-002"
+    description: "Legacy AUTH_TOKEN path in auth.py — scheduled removal 2026-07-01 (DEPRECATION.md)"
+    severity: low
+    introduced: "2026-04-01"
+    tracking: "ADR-025, S-02"
+  - id: "TD-003"
+    description: "Dead graph API code: getGraph()/getGraphCorrelate() in api.ts + ThreatGraph.svelte"
+    severity: low
+    introduced: "2026-03-29"
+    tracking: "v1.0 audit"
+
+# ── Security posture ─────────────────────────────────────────────────────────
+security:
+  auth_mechanism: "Bearer token (operator table bcrypt + legacy hmac fallback)"
+  totp_support: true
+  auth_coverage: "all /api/* routes — verify_token dependency enforced"
+  security_claims_doc: "docs/SECURITY_CLAIMS.md"   # every claim mapped to test
+  known_open_cves:
+    - id: "CVE-2026-4539"
+      package: "pygments"
+      description: "AdlLexer ReDoS — no fix released as of 2026-04-19"
+      mitigated: false
+      ignored_in_ci: true
+
+# ── AI governance ─────────────────────────────────────────────────────────────
+ai_governance:
+  doc: "docs/AI_GOVERNANCE.md"
+  models:
+    - name: "mxbai-embed-large"
+      role: "embedding"
+      risk_tier: "LOW"
+    - name: "qwen3:14b"
+      role: "general LLM (analyst QA, triage, threat hunt)"
+      risk_tier: "MEDIUM"
+    - name: "foundation-sec:8b"
+      role: "cybersecurity copilot chat"
+      risk_tier: "MEDIUM-HIGH"
+    - name: "BAAI/bge-reranker-v2-m3"
+      role: "passage reranker"
+      risk_tier: "LOW"
+  enforcement_mode: "learning"    # ENFORCEMENT_LEARNING_MODE=True; all actions advisory
+  human_approval_required: true   # ENFORCEMENT_REQUIRE_APPROVAL=True
+  eval_set: "evals/prompt_eval_set.jsonl"   # 20 analyst QA eval pairs
+  guardrail_tests: "tests/ai/test_llm_safety.py"  # 30 pass + 2 xfail
+
+# ── Assurance gaps (honest — not hidden) ─────────────────────────────────────
+assurance_gaps:
+  - id: "AG-001"
+    description: "No SBOM (SPDX/CycloneDX) generated for release artifacts"
+    severity: medium
+    roadmap_item: "A-2"
+    status: open
+  - id: "AG-002"
+    description: "No SLSA provenance attestation for build artifacts"
+    severity: low
+    roadmap_item: "A-2 (optional for homelab)"
+    status: open
+  - id: "AG-003"
+    description: "AI_GOVERNANCE.md not yet created — no formal model inventory or kill-switch doc"
+    severity: medium
+    roadmap_item: "B-2"
+    status: closed
+    closed_date: "2026-04-19"
+    closed_by: "docs/AI_GOVERNANCE.md"
+  - id: "AG-004"
+    description: "No end-to-end detection scenario tests (phishing→lateral, C2 beaconing, etc.)"
+    severity: medium
+    roadmap_item: "B-3"
+    status: closed
+    closed_date: "2026-04-19"
+    closed_by: "tests/scenarios/test_attack_scenarios.py (7 tests)"
+  - id: "AG-005"
+    description: "_COPILOT_SYSTEM prompt in backend/api/chat.py is not SHA-256 fingerprinted or tracked in llm_provenance table"
+    severity: low
+    roadmap_item: "C-1: extract to prompts/copilot.py"
+    status: open
+  - id: "AG-006"
+    description: "_scrub_injection does not cover 'system prompt' exfiltration phrase or 'you are now DAN' jailbreak pattern — false positive risk prevents naive regex addition"
+    severity: medium
+    roadmap_item: "C-2: adversarial pattern review with false-positive analysis"
+    status: open
+    test_markers: "tests/ai/test_llm_safety.py::test_strips_system_prompt_exfiltration (xfail), test_strips_role_override (xfail)"

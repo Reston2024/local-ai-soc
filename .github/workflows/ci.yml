@@ -112,3 +112,44 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  doc-drift-gate:
+    name: Documentation Drift Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yq (YAML parser)
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Extract canonical phase from governance/release_state.yaml
+        id: canonical
+        run: |
+          PHASE=$(yq '.release.latest_completed_phase' governance/release_state.yaml)
+          echo "phase=${PHASE}" >> "$GITHUB_OUTPUT"
+          echo "Canonical latest phase: ${PHASE}"
+
+      - name: Check README.md mentions canonical phase
+        run: |
+          PHASE="${{ steps.canonical.outputs.phase }}"
+          # README must mention "Phase ${PHASE}" somewhere in the status line
+          if ! grep -q "Phase ${PHASE}" README.md; then
+            echo "ERROR: README.md does not mention Phase ${PHASE}"
+            echo "Canonical phase in governance/release_state.yaml: ${PHASE}"
+            echo "Update the Status line in README.md to reference Phase ${PHASE}."
+            exit 1
+          fi
+          echo "OK: README.md references Phase ${PHASE}"
+
+      - name: Check STATE.md mentions canonical phase
+        run: |
+          PHASE="${{ steps.canonical.outputs.phase }}"
+          if ! grep -q "Phase ${PHASE}" STATE.md; then
+            echo "ERROR: STATE.md does not mention Phase ${PHASE}"
+            echo "Canonical phase in governance/release_state.yaml: ${PHASE}"
+            echo "Update STATE.md to reference Phase ${PHASE}."
+            exit 1
+          fi
+          echo "OK: STATE.md references Phase ${PHASE}"
