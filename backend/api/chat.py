@@ -12,9 +12,11 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
 from typing import Literal, Optional
+from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -23,6 +25,9 @@ from pydantic import BaseModel
 from backend.api.query import verify_citations
 from backend.core.logging import get_logger
 from ingestion.normalizer import _scrub_injection
+from prompts.copilot import SYSTEM as _COPILOT_SYSTEM
+from prompts.copilot import TEMPLATE_NAME as _COPILOT_TEMPLATE_NAME
+from prompts.copilot import TEMPLATE_SHA256 as _COPILOT_TEMPLATE_SHA256
 
 log = get_logger(__name__)
 router = APIRouter(prefix="/api/investigations", tags=["investigations"])
@@ -41,11 +46,6 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_chat_inv ON chat_messages (investigation_id);
 """
-
-_COPILOT_SYSTEM = """You are an expert cybersecurity analyst AI Copilot embedded in a SOC investigation platform.
-You are given context about an ongoing security investigation.
-Answer the analyst's question concisely. Identify relevant MITRE ATT&CK techniques when applicable.
-If you are uncertain, say so. Do not fabricate event IDs or hostnames."""
 
 # ---------------------------------------------------------------------------
 # Models
@@ -182,6 +182,19 @@ async def chat_stream(
         context_ids_found = _id_pattern.findall(context)
         full_response = "".join(full_tokens)
         citation_ok = verify_citations(full_response, context_ids_found)
+        # Record LLM provenance for copilot response (prompt template fingerprint)
+        asyncio.create_task(
+            asyncio.to_thread(
+                stores.sqlite.record_llm_provenance,
+                str(uuid4()),
+                ollama.cybersec_model,
+                _COPILOT_TEMPLATE_NAME,
+                _COPILOT_TEMPLATE_SHA256,
+                hashlib.sha256(full_response.encode()).hexdigest(),
+                context_ids_found,
+                "system",
+            )
+        )
         yield f"data: {json.dumps({'done': True, 'citation_verified': citation_ok})}\n\n"
 
     return StreamingResponse(
