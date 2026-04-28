@@ -312,6 +312,18 @@ async def network_health() -> JSONResponse:
     return JSONResponse(content={"devices": devices, "timestamp": datetime.now(tz=timezone.utc).isoformat()})
 
 
+@router.get("/health/ping")
+async def health_ping() -> JSONResponse:
+    """
+    Lightweight liveness probe for Caddy upstream health check.
+
+    Returns instantly with no component I/O.  Caddy uses this as
+    health_uri so a slow TheHive/Ollama response never trips the
+    upstream-down circuit-breaker and causes 503 for all requests.
+    """
+    return JSONResponse({"status": "ok", "ts": datetime.now(tz=timezone.utc).isoformat()})
+
+
 @router.get("/health")
 async def health(request: Request) -> JSONResponse:
     """

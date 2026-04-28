@@ -54,15 +54,26 @@ class TheHiveClient:
             )
         self._api = TheHiveApi(url=url, apikey=api_key)
 
-    def ping(self) -> bool:
+    def ping(self, timeout: float = 5.0) -> bool:
         """Return True if TheHive is reachable (synchronous).
 
         Uses self._api.case.find() with an empty filter as a liveness probe.
-        Returns False (never raises) when TheHive is unreachable.
+        Returns False (never raises) when TheHive is unreachable or slow.
+
+        ``timeout`` caps how long the blocking HTTP call may take.  The
+        default (5 s) keeps the /health endpoint fast enough that Caddy's
+        health check never times-out and flips the upstream to "down".
         """
+        import concurrent.futures
+
         try:
-            self._api.case.find(filters=None)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                future = ex.submit(self._api.case.find, filters=None)
+                future.result(timeout=timeout)
             return True
+        except concurrent.futures.TimeoutError:
+            log.warning("TheHive ping timed out after %.1fs", timeout)
+            return False
         except Exception:
             return False
 
