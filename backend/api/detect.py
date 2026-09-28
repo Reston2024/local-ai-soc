@@ -8,7 +8,6 @@ Endpoints:
   GET  /detect/case/{case_id}     — all detections for a case
 """
 
-from __future__ import annotations
 
 import asyncio
 from typing import Optional
@@ -185,8 +184,8 @@ async def list_detections(
 # ---------------------------------------------------------------------------
 
 
-@limiter.limit("10/minute")
 @router.post("/run")
+@limiter.limit("10/minute")
 async def run_detection(
     request: Request,
     case_id: Optional[str] = Query(default=None),

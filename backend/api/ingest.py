@@ -12,7 +12,6 @@ handles parsing, normalisation, deduplication, DuckDB inserts, Chroma
 embedding, and SQLite graph extraction in one pipeline call.
 """
 
-from __future__ import annotations
 
 import asyncio
 import time
@@ -254,8 +253,8 @@ async def _run_ingestion_job(
         _set_job(job_id, "error", error=str(exc))
 
 
-@limiter.limit("10/minute")
 @router.post("/file", status_code=202)
+@limiter.limit("10/minute")
 async def upload_file(
     request: Request,
     background_tasks: BackgroundTasks,

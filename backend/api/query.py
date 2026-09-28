@@ -7,7 +7,6 @@ Endpoints:
   POST /query/ask/stream  — analyst Q&A with SSE streaming response
 """
 
-from __future__ import annotations
 
 import json
 import re as _re
@@ -166,8 +165,8 @@ async def semantic_search(
 # ---------------------------------------------------------------------------
 
 
-@limiter.limit("30/minute")
 @router.post("/ask")
+@limiter.limit("30/minute")
 async def ask(body: AskRequest, request: Request) -> JSONResponse:
     """
     Answer an analyst question using RAG: embed question → retrieve context → generate answer.
