@@ -15,6 +15,7 @@ import sqlite3
 from pathlib import Path
 
 from backend.core.logging import get_logger
+from backend.stores.sqlite_store import conn_lock
 
 log = get_logger(__name__)
 
@@ -42,24 +43,26 @@ CREATE INDEX IF NOT EXISTS idx_car_analytic  ON car_analytics (analytic_id);
 class CARStore:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
-        self._conn.executescript(DDL)
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executescript(DDL)
+            self._conn.commit()
 
     def analytic_count(self) -> int:
         return self._conn.execute("SELECT COUNT(*) FROM car_analytics").fetchone()[0]
 
     def bulk_insert(self, analytics: list[dict]) -> None:
         """Insert analytics from bundled JSON list. Idempotent (INSERT OR IGNORE)."""
-        self._conn.executemany(
-            """INSERT OR IGNORE INTO car_analytics
-               (analytic_id, technique_id, title, description, log_sources,
-                analyst_notes, pseudocode, coverage_level, platforms)
-               VALUES (:analytic_id, :technique_id, :title, :description,
-                       :log_sources, :analyst_notes, :pseudocode,
-                       :coverage_level, :platforms)""",
-            analytics,
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO car_analytics
+                   (analytic_id, technique_id, title, description, log_sources,
+                    analyst_notes, pseudocode, coverage_level, platforms)
+                   VALUES (:analytic_id, :technique_id, :title, :description,
+                           :log_sources, :analyst_notes, :pseudocode,
+                           :coverage_level, :platforms)""",
+                analytics,
+            )
+            self._conn.commit()
 
     def get_analytics_for_technique(self, technique_id: str | None) -> list[dict]:
         """Return all CAR analytics covering the given ATT&CK technique ID.

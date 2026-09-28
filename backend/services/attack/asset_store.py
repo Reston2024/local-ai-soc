@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from backend.models.event import NormalizedEvent
+from backend.stores.sqlite_store import conn_lock
 
 # ---------------------------------------------------------------------------
 # DDL
@@ -77,8 +78,9 @@ class AssetStore:
 
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
-        self._conn.executescript(_DDL)
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executescript(_DDL)
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Upsert
@@ -97,18 +99,19 @@ class AssetStore:
         On conflict (same IP), updates hostname (if not None), tag, and last_seen.
         first_seen is preserved from the original INSERT — never overwritten.
         """
-        self._conn.execute(
-            """
-            INSERT INTO assets (ip, hostname, tag, last_seen, first_seen)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(ip) DO UPDATE SET
-                hostname  = COALESCE(excluded.hostname, assets.hostname),
-                tag       = excluded.tag,
-                last_seen = excluded.last_seen
-            """,
-            (ip, hostname, tag, last_seen, last_seen),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                """
+                INSERT INTO assets (ip, hostname, tag, last_seen, first_seen)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(ip) DO UPDATE SET
+                    hostname  = COALESCE(excluded.hostname, assets.hostname),
+                    tag       = excluded.tag,
+                    last_seen = excluded.last_seen
+                """,
+                (ip, hostname, tag, last_seen, last_seen),
+            )
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Read
@@ -177,11 +180,12 @@ class AssetStore:
 
     def set_tag(self, ip: str, tag: str) -> None:
         """Manually override the tag for an asset."""
-        self._conn.execute(
-            "UPDATE assets SET tag = ? WHERE ip = ?",
-            (tag, ip),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                "UPDATE assets SET tag = ? WHERE ip = ?",
+                (tag, ip),
+            )
+            self._conn.commit()
 
 
 # ---------------------------------------------------------------------------

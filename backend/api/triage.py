@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
+from backend.stores.sqlite_store import conn_lock
 from prompts.triage import build_prompt
 
 log = logging.getLogger(__name__)
@@ -130,11 +131,12 @@ async def _run_triage(app) -> dict:
 
     def _mark_triaged(conn, ids, ts):
         placeholders = ",".join("?" * len(ids))
-        conn.execute(
-            f"UPDATE detections SET triaged_at = ? WHERE id IN ({placeholders})",
-            [ts] + ids,
-        )
-        conn.commit()
+        with conn_lock(conn):
+            conn.execute(
+                f"UPDATE detections SET triaged_at = ? WHERE id IN ({placeholders})",
+                [ts] + ids,
+            )
+            conn.commit()
 
     await asyncio.to_thread(_mark_triaged, stores.sqlite._conn, det_ids, created_at)
 

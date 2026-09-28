@@ -17,6 +17,7 @@ from typing import Any
 
 from backend.core.config import settings
 from backend.core.logging import get_logger
+from backend.stores.sqlite_store import conn_lock
 
 log = get_logger(__name__)
 
@@ -227,17 +228,18 @@ def _save_thehive_case_id(
     status: str,
 ) -> None:
     """Write thehive_case_id, thehive_case_num, thehive_status back to detections row."""
-    conn.execute(
-        """
-        UPDATE detections
-           SET thehive_case_id  = ?,
-               thehive_case_num = ?,
-               thehive_status   = ?
-         WHERE id = ?
-        """,
-        (case_id, case_num, status, detection_id),
-    )
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute(
+            """
+            UPDATE detections
+               SET thehive_case_id  = ?,
+                   thehive_case_num = ?,
+                   thehive_status   = ?
+             WHERE id = ?
+            """,
+            (case_id, case_num, status, detection_id),
+        )
+        conn.commit()
 
 
 def _enqueue_pending_case(
@@ -254,11 +256,12 @@ def _enqueue_pending_case(
         "detection_id": detection_id,
         "payload": json.loads(payload_json) if isinstance(payload_json, str) else payload_json,
     })
-    conn.execute(
-        "INSERT INTO thehive_pending_cases (detection_json, created_at) VALUES (?, ?)",
-        (detection_json, _now_iso()),
-    )
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute(
+            "INSERT INTO thehive_pending_cases (detection_json, created_at) VALUES (?, ?)",
+            (detection_json, _now_iso()),
+        )
+        conn.commit()
 
 
 # ---------------------------------------------------------------------------

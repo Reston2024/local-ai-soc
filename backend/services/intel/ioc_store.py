@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from math import floor
 from typing import Optional
 
+from backend.stores.sqlite_store import conn_lock
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -60,39 +62,40 @@ class IocStore:
         now = _now_iso()
 
         # Check if the IOC already exists before upserting
-        cursor = self._conn.execute(
-            "SELECT 1 FROM ioc_store WHERE ioc_value=? AND ioc_type=?",
-            (value, ioc_type),
-        )
-        existing = cursor.fetchone()
+        with conn_lock(self._conn):
+            cursor = self._conn.execute(
+                "SELECT 1 FROM ioc_store WHERE ioc_value=? AND ioc_type=?",
+                (value, ioc_type),
+            )
+            existing = cursor.fetchone()
 
-        if existing:
-            self._conn.execute(
-                """
-                UPDATE ioc_store
-                SET confidence=?, last_seen=?, malware_family=?, actor_tag=?,
-                    extra_json=?, updated_at=?, ioc_status='active'
-                WHERE ioc_value=? AND ioc_type=?
-                """,
-                (confidence, last_seen, malware_family, actor_tag,
-                 extra_json, now, value, ioc_type),
-            )
-            self._conn.commit()
-            return False
-        else:
-            self._conn.execute(
-                """
-                INSERT INTO ioc_store
-                    (ioc_value, ioc_type, bare_ip, confidence, first_seen, last_seen,
-                     malware_family, actor_tag, feed_source, ioc_status,
-                     extra_json, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
-                """,
-                (value, ioc_type, bare_ip, confidence, first_seen, last_seen,
-                 malware_family, actor_tag, feed_source, extra_json, now, now),
-            )
-            self._conn.commit()
-            return True
+            if existing:
+                self._conn.execute(
+                    """
+                    UPDATE ioc_store
+                    SET confidence=?, last_seen=?, malware_family=?, actor_tag=?,
+                        extra_json=?, updated_at=?, ioc_status='active'
+                    WHERE ioc_value=? AND ioc_type=?
+                    """,
+                    (confidence, last_seen, malware_family, actor_tag,
+                     extra_json, now, value, ioc_type),
+                )
+                self._conn.commit()
+                return False
+            else:
+                self._conn.execute(
+                    """
+                    INSERT INTO ioc_store
+                        (ioc_value, ioc_type, bare_ip, confidence, first_seen, last_seen,
+                         malware_family, actor_tag, feed_source, ioc_status,
+                         extra_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)
+                    """,
+                    (value, ioc_type, bare_ip, confidence, first_seen, last_seen,
+                     malware_family, actor_tag, feed_source, extra_json, now, now),
+                )
+                self._conn.commit()
+                return True
 
     # ------------------------------------------------------------------
     # Match check
@@ -244,24 +247,25 @@ class IocStore:
         Called by the APScheduler daily cron job at 00:05.
         """
         # Decay all active IOCs: confidence = max(0, confidence - 1)
-        self._conn.execute(
-            """
-            UPDATE ioc_store
-            SET confidence = MAX(0, confidence - 1),
-                updated_at = ?
-            WHERE ioc_status = 'active'
-            """,
-            (_now_iso(),),
-        )
-        # Mark expired where confidence reached 0
-        self._conn.execute(
-            """
-            UPDATE ioc_store
-            SET ioc_status = 'expired'
-            WHERE confidence = 0 AND ioc_status = 'active'
-            """,
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                """
+                UPDATE ioc_store
+                SET confidence = MAX(0, confidence - 1),
+                    updated_at = ?
+                WHERE ioc_status = 'active'
+                """,
+                (_now_iso(),),
+            )
+            # Mark expired where confidence reached 0
+            self._conn.execute(
+                """
+                UPDATE ioc_store
+                SET ioc_status = 'expired'
+                WHERE confidence = 0 AND ioc_status = 'active'
+                """,
+            )
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Record hit
@@ -282,19 +286,20 @@ class IocStore:
     ) -> None:
         """INSERT a row into the ioc_hits table. Synchronous — call via asyncio.to_thread when needed."""
         now = _now_iso()
-        self._conn.execute(
-            """
-            INSERT INTO ioc_hits
+        with conn_lock(self._conn):
+            self._conn.execute(
+                """
+                INSERT INTO ioc_hits
+                    (event_timestamp, hostname, src_ip, dst_ip,
+                     ioc_value, ioc_type, ioc_source, risk_score,
+                     actor_tag, malware_family, matched_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 (event_timestamp, hostname, src_ip, dst_ip,
                  ioc_value, ioc_type, ioc_source, risk_score,
-                 actor_tag, malware_family, matched_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (event_timestamp, hostname, src_ip, dst_ip,
-             ioc_value, ioc_type, ioc_source, risk_score,
-             actor_tag, malware_family, now),
-        )
-        self._conn.commit()
+                 actor_tag, malware_family, now),
+            )
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # List hits

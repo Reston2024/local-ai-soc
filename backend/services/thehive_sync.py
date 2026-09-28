@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from backend.core.logging import get_logger
+from backend.stores.sqlite_store import conn_lock
 
 log = get_logger(__name__)
 
@@ -41,17 +42,18 @@ def _update_detection_thehive_status(
     analyst: str,
 ) -> None:
     """Write resolution fields to the matching detections row."""
-    conn.execute(
-        """
-        UPDATE detections
-           SET thehive_status    = ?,
-               thehive_closed_at = ?,
-               thehive_analyst   = ?
-         WHERE thehive_case_id = ?
-        """,
-        (status, closed_at, analyst, thehive_id),
-    )
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute(
+            """
+            UPDATE detections
+               SET thehive_status    = ?,
+                   thehive_closed_at = ?,
+                   thehive_analyst   = ?
+             WHERE thehive_case_id = ?
+            """,
+            (status, closed_at, analyst, thehive_id),
+        )
+        conn.commit()
 
 
 def _get_pending_cases(conn: sqlite3.Connection) -> list[dict]:
@@ -68,8 +70,9 @@ def _get_pending_cases(conn: sqlite3.Connection) -> list[dict]:
 
 def _delete_pending_case(conn: sqlite3.Connection, row_id: int) -> None:
     """Remove a successfully processed pending row."""
-    conn.execute("DELETE FROM thehive_pending_cases WHERE id = ?", (row_id,))
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute("DELETE FROM thehive_pending_cases WHERE id = ?", (row_id,))
+        conn.commit()
 
 
 def _increment_pending_attempts(
@@ -83,16 +86,17 @@ def _increment_pending_attempts(
     If not (Wave 0 test schema), just log and continue — silently tolerated.
     """
     try:
-        conn.execute(
-            """
-            UPDATE thehive_pending_cases
-               SET attempts   = COALESCE(attempts, 0) + 1,
-                   last_error = ?
-             WHERE id = ?
-            """,
-            (error[:500], row_id),
-        )
-        conn.commit()
+        with conn_lock(conn):
+            conn.execute(
+                """
+                UPDATE thehive_pending_cases
+                   SET attempts   = COALESCE(attempts, 0) + 1,
+                       last_error = ?
+                 WHERE id = ?
+                """,
+                (error[:500], row_id),
+            )
+            conn.commit()
     except Exception:
         # Columns may not exist in minimal test schema — non-fatal
         pass
@@ -216,23 +220,24 @@ def drain_pending_cases(thehive_client: Any, conn: sqlite3.Connection) -> None:
                     pass
 
             # Update detections row if detection_id is known
-            if detection_id:
-                try:
-                    conn.execute(
-                        """
-                        UPDATE detections
-                           SET thehive_case_id  = ?,
-                               thehive_case_num = ?,
-                               thehive_status   = ?
-                         WHERE id = ?
-                        """,
-                        (case_id, case_num, "New", detection_id),
-                    )
-                    conn.commit()
-                except Exception:
-                    pass  # detections table may not have these columns in test schema
+            with conn_lock(conn):
+                if detection_id:
+                    try:
+                        conn.execute(
+                            """
+                            UPDATE detections
+                               SET thehive_case_id  = ?,
+                                   thehive_case_num = ?,
+                                   thehive_status   = ?
+                             WHERE id = ?
+                            """,
+                            (case_id, case_num, "New", detection_id),
+                        )
+                        conn.commit()
+                    except Exception:
+                        pass  # detections table may not have these columns in test schema
 
-            _delete_pending_case(conn, row_id)
+                _delete_pending_case(conn, row_id)
 
         except Exception as exc:
             log.warning(

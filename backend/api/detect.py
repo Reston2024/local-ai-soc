@@ -47,18 +47,17 @@ def _get_spiderfoot_observables(osint_store, src_ip: str) -> list[dict]:
     """
     try:
         # Find completed investigations targeting this IP
-        osint_store._conn.row_factory = __import__("sqlite3").Row
-        cursor = osint_store._conn.execute(
+        # Index access works for both sqlite3.Row and plain tuples, so the
+        # shared connection's row_factory is never touched.
+        row = osint_store._conn.execute(
             """SELECT id FROM osint_investigations
                WHERE target = ? AND status = 'FINISHED'
                ORDER BY started_at DESC LIMIT 1""",
             (src_ip,),
-        )
-        row = cursor.fetchone()
-        osint_store._conn.row_factory = None
+        ).fetchone()
         if row is None:
             return []
-        job_id = row["id"]
+        job_id = row[0]
 
         # Retrieve findings — filter for high-risk event types
         findings = osint_store.get_findings(job_id)

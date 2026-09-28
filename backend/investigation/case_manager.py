@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import uuid4
 
+from backend.stores.sqlite_store import conn_lock
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -52,17 +54,18 @@ class CaseManager:
         cid = case_id or str(uuid4())
         now = _now_iso()
         empty = json.dumps([])
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO investigation_cases
-                (case_id, title, description, case_status,
-                 related_alerts, related_entities, timeline_events,
-                 analyst_notes, tags, artifacts, created_at, updated_at)
-            VALUES (?, ?, ?, 'open', ?, ?, ?, '', ?, ?, ?, ?)
-            """,
-            (cid, title, description, empty, empty, empty, empty, empty, now, now),
-        )
-        conn.commit()
+        with conn_lock(conn):
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO investigation_cases
+                    (case_id, title, description, case_status,
+                     related_alerts, related_entities, timeline_events,
+                     analyst_notes, tags, artifacts, created_at, updated_at)
+                VALUES (?, ?, ?, 'open', ?, ?, ?, '', ?, ?, ?, ?)
+                """,
+                (cid, title, description, empty, empty, empty, empty, empty, now, now),
+            )
+            conn.commit()
         return cid
 
     def get_investigation_case(
@@ -121,8 +124,9 @@ class CaseManager:
         values.append(_now_iso())   # updated_at
         values.append(case_id)
 
-        conn.execute(
-            f"UPDATE investigation_cases SET {set_clause}, updated_at = ? WHERE case_id = ?",
-            values,
-        )
-        conn.commit()
+        with conn_lock(conn):
+            conn.execute(
+                f"UPDATE investigation_cases SET {set_clause}, updated_at = ? WHERE case_id = ?",
+                values,
+            )
+            conn.commit()

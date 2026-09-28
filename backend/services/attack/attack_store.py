@@ -19,6 +19,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from backend.stores.sqlite_store import conn_lock
+
 # ---------------------------------------------------------------------------
 # DDL
 # ---------------------------------------------------------------------------
@@ -76,8 +78,9 @@ class AttackStore:
 
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
-        self._conn.executescript(DDL)
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executescript(DDL)
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Technique CRUD
@@ -85,11 +88,12 @@ class AttackStore:
 
     def upsert_technique(self, tech_id: str, name: str, tactic: str) -> None:
         """Insert a technique; ignore if already present (INSERT OR IGNORE)."""
-        self._conn.execute(
-            "INSERT OR IGNORE INTO attack_techniques (tech_id, name, tactic) VALUES (?, ?, ?)",
-            (tech_id, name, tactic),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                "INSERT OR IGNORE INTO attack_techniques (tech_id, name, tactic) VALUES (?, ?, ?)",
+                (tech_id, name, tactic),
+            )
+            self._conn.commit()
 
     def technique_count(self) -> int:
         """Return total number of technique rows."""
@@ -108,11 +112,12 @@ class AttackStore:
         aliases: str,
     ) -> None:
         """Insert a group; ignore if already present (INSERT OR IGNORE)."""
-        self._conn.execute(
-            "INSERT OR IGNORE INTO attack_groups (stix_id, group_id, name, aliases) VALUES (?, ?, ?, ?)",
-            (stix_id, group_id, name, aliases),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                "INSERT OR IGNORE INTO attack_groups (stix_id, group_id, name, aliases) VALUES (?, ?, ?, ?)",
+                (stix_id, group_id, name, aliases),
+            )
+            self._conn.commit()
 
     def group_count(self) -> int:
         """Return total number of group rows."""
@@ -121,11 +126,12 @@ class AttackStore:
 
     def upsert_group_technique(self, stix_group_id: str, tech_id: str) -> None:
         """Link a group to a technique; idempotent (INSERT OR IGNORE)."""
-        self._conn.execute(
-            "INSERT OR IGNORE INTO attack_group_techniques (stix_group_id, tech_id) VALUES (?, ?)",
-            (stix_group_id, tech_id),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                "INSERT OR IGNORE INTO attack_group_techniques (stix_group_id, tech_id) VALUES (?, ?)",
+                (stix_group_id, tech_id),
+            )
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # STIX bootstrap
@@ -322,12 +328,13 @@ class AttackStore:
         Called after a DetectionRecord is persisted to SQLite. Idempotent
         via INSERT OR IGNORE.
         """
-        for tid in tech_ids:
-            self._conn.execute(
-                "INSERT OR IGNORE INTO detection_techniques (detection_id, tech_id) VALUES (?, ?)",
-                (detection_id, tid),
-            )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            for tid in tech_ids:
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO detection_techniques (detection_id, tech_id) VALUES (?, ?)",
+                    (detection_id, tid),
+                )
+            self._conn.commit()
 
 
 # ---------------------------------------------------------------------------

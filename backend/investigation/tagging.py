@@ -11,6 +11,8 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timezone
 
+from backend.stores.sqlite_store import conn_lock
+
 
 def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
@@ -18,20 +20,22 @@ def _now_iso() -> str:
 
 def add_tag(conn: sqlite3.Connection, case_id: str, tag: str) -> None:
     """Add *tag* to *case_id*.  Idempotent — duplicate inserts are silently ignored."""
-    conn.execute(
-        "INSERT OR IGNORE INTO case_tags (case_id, tag, created_at) VALUES (?, ?, ?)",
-        (case_id, tag, _now_iso()),
-    )
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute(
+            "INSERT OR IGNORE INTO case_tags (case_id, tag, created_at) VALUES (?, ?, ?)",
+            (case_id, tag, _now_iso()),
+        )
+        conn.commit()
 
 
 def remove_tag(conn: sqlite3.Connection, case_id: str, tag: str) -> None:
     """Remove *tag* from *case_id*.  No-op if the tag does not exist."""
-    conn.execute(
-        "DELETE FROM case_tags WHERE case_id = ? AND tag = ?",
-        (case_id, tag),
-    )
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute(
+            "DELETE FROM case_tags WHERE case_id = ? AND tag = ?",
+            (case_id, tag),
+        )
+        conn.commit()
 
 
 def list_tags(conn: sqlite3.Connection, case_id: str) -> list[str]:

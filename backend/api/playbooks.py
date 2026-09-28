@@ -102,23 +102,24 @@ async def seed_builtin_playbooks(sqlite_store: SQLiteStore) -> None:
     }
 
     def _seed(store: SQLiteStore) -> int:
-        # Step 1: Tag legacy NIST builtins (source DEFAULT was 'custom' before Phase 38)
-        store._conn.execute(
-            "UPDATE playbooks SET source = 'nist' WHERE is_builtin = 1 AND source = 'custom'"
-        )
-        store._conn.commit()
-        # Step 2: Delete old NIST builtins
-        store._conn.execute(
-            "DELETE FROM playbooks WHERE is_builtin = 1 AND source = 'nist'"
-        )
-        store._conn.commit()
-        # Step 3: Collect ALL existing builtin names (any source) — idempotent per-name
-        existing_names: set[str] = {
-            row[0]
-            for row in store._conn.execute(
-                "SELECT name FROM playbooks WHERE is_builtin = 1"
-            ).fetchall()
-        }
+        with store.locked_conn() as conn:
+            # Step 1: Tag legacy NIST builtins (source DEFAULT was 'custom' before Phase 38)
+            conn.execute(
+                "UPDATE playbooks SET source = 'nist' WHERE is_builtin = 1 AND source = 'custom'"
+            )
+            conn.commit()
+            # Step 2: Delete old NIST builtins
+            conn.execute(
+                "DELETE FROM playbooks WHERE is_builtin = 1 AND source = 'nist'"
+            )
+            conn.commit()
+            # Step 3: Collect ALL existing builtin names (any source) — idempotent per-name
+            existing_names: set[str] = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM playbooks WHERE is_builtin = 1"
+                ).fetchall()
+            }
         # Step 4: Insert any playbook not already present
         added = 0
         for pb_data in BUILTIN_PLAYBOOKS:
@@ -127,14 +128,16 @@ async def seed_builtin_playbooks(sqlite_store: SQLiteStore) -> None:
                 added += 1
         # Step 5: Backfill category for existing rows that have category=''
         backfilled = 0
-        for name, cat in _CISA_CATEGORY_MAP.items():
-            result = store._conn.execute(
-                "UPDATE playbooks SET category = ? WHERE name = ? AND (category IS NULL OR category = '')",
-                (cat, name),
-            )
-            backfilled += result.rowcount
+        with store.locked_conn() as conn:
+            for name, cat in _CISA_CATEGORY_MAP.items():
+                result = conn.execute(
+                    "UPDATE playbooks SET category = ? WHERE name = ? AND (category IS NULL OR category = '')",
+                    (cat, name),
+                )
+                backfilled += result.rowcount
+            if backfilled:
+                conn.commit()
         if backfilled:
-            store._conn.commit()
             log.info("Backfilled playbook categories", count=backfilled)
 
         if added:
@@ -592,11 +595,12 @@ async def patch_playbook_run(
 
     if body.active_case_id is not None:
         def _set_case_id(store: SQLiteStore) -> None:
-            store._conn.execute(
-                "UPDATE playbook_runs SET active_case_id = ? WHERE run_id = ?",
-                (body.active_case_id, run_id),
-            )
-            store._conn.commit()
+            with store.locked_conn() as conn:
+                conn.execute(
+                    "UPDATE playbook_runs SET active_case_id = ? WHERE run_id = ?",
+                    (body.active_case_id, run_id),
+                )
+                conn.commit()
 
         await asyncio.to_thread(_set_case_id, stores.sqlite)
 

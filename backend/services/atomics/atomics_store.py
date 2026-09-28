@@ -15,6 +15,7 @@ import sqlite3
 from pathlib import Path
 
 from backend.core.logging import get_logger
+from backend.stores.sqlite_store import conn_lock
 
 log = get_logger(__name__)
 
@@ -51,10 +52,11 @@ CREATE INDEX IF NOT EXISTS idx_atomics_technique ON atomics (technique_id);
 class AtomicsStore:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
-        if self._conn.row_factory is None:
-            self._conn.row_factory = sqlite3.Row
-        self._conn.executescript(DDL)
-        self._conn.commit()
+        with conn_lock(self._conn):
+            if self._conn.row_factory is None:
+                self._conn.row_factory = sqlite3.Row
+            self._conn.executescript(DDL)
+            self._conn.commit()
 
     def atomic_count(self) -> int:
         """Return total number of atomic tests in the catalog."""
@@ -62,20 +64,21 @@ class AtomicsStore:
 
     def bulk_insert(self, tests: list[dict]) -> None:
         """Insert atomic tests from list. Idempotent (INSERT OR IGNORE)."""
-        self._conn.executemany(
-            """INSERT OR IGNORE INTO atomics
-               (technique_id, display_name, test_number, test_name,
-                auto_generated_guid, description, supported_platforms,
-                executor_name, elevation_required, command,
-                cleanup_command, prereq_command, input_arguments)
-               VALUES
-               (:technique_id, :display_name, :test_number, :test_name,
-                :auto_generated_guid, :description, :supported_platforms,
-                :executor_name, :elevation_required, :command,
-                :cleanup_command, :prereq_command, :input_arguments)""",
-            tests,
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executemany(
+                """INSERT OR IGNORE INTO atomics
+                   (technique_id, display_name, test_number, test_name,
+                    auto_generated_guid, description, supported_platforms,
+                    executor_name, elevation_required, command,
+                    cleanup_command, prereq_command, input_arguments)
+                   VALUES
+                   (:technique_id, :display_name, :test_number, :test_name,
+                    :auto_generated_guid, :description, :supported_platforms,
+                    :executor_name, :elevation_required, :command,
+                    :cleanup_command, :prereq_command, :input_arguments)""",
+                tests,
+            )
+            self._conn.commit()
 
     def list_techniques(self) -> list[dict]:
         """Return distinct technique_id + display_name pairs ordered by technique_id."""
@@ -100,13 +103,14 @@ class AtomicsStore:
         detection_id: str | None,
     ) -> None:
         """Persist a validation result (INSERT OR REPLACE — idempotent)."""
-        self._conn.execute(
-            """INSERT OR REPLACE INTO atomics_validation_results
-               (technique_id, test_number, verdict, validated_at, detection_id)
-               VALUES (?, ?, ?, datetime('now'), ?)""",
-            (technique_id, test_number, verdict, detection_id),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                """INSERT OR REPLACE INTO atomics_validation_results
+                   (technique_id, test_number, verdict, validated_at, detection_id)
+                   VALUES (?, ?, ?, datetime('now'), ?)""",
+                (technique_id, test_number, verdict, detection_id),
+            )
+            self._conn.commit()
 
     def get_validation_results(self) -> dict[tuple, dict]:
         """Return {(technique_id, test_number): {verdict, validated_at, detection_id}}."""

@@ -11,69 +11,79 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from typing import Optional
 
+from backend.stores.sqlite_store import conn_lock
+
 
 def _now() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
+
+
+def _dicts(cur) -> list[dict]:
+    """Rows as dicts via cursor.description — independent of the shared
+    connection's row_factory, which this store must never mutate.
+    """
+    cols = [d[0] for d in cur.description]
+    return [dict(zip(cols, r)) for r in cur.fetchall()]
 
 
 class OsintInvestigationStore:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._conn = conn
         # Ensure tables exist (idempotent — for unit tests using :memory: connections)
-        self._conn.executescript(_OSINT_DDL)
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executescript(_OSINT_DDL)
+            self._conn.commit()
 
     def create_investigation(self, target: str, usecase: str) -> str:
         """Insert new investigation row, return the job ID (SpiderFoot will assign its own,
         but we generate a placeholder until start_scan returns)."""
         job_id = str(uuid4())
-        self._conn.execute(
-            """INSERT INTO osint_investigations
-               (id, target, target_type, usecase, status, started_at)
-               VALUES (?, ?, ?, ?, 'RUNNING', ?)""",
-            (job_id, target, _detect_target_type(target), usecase, _now()),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                """INSERT INTO osint_investigations
+                   (id, target, target_type, usecase, status, started_at)
+                   VALUES (?, ?, ?, ?, 'RUNNING', ?)""",
+                (job_id, target, _detect_target_type(target), usecase, _now()),
+            )
+            self._conn.commit()
         return job_id
 
     def update_job_id(self, old_id: str, new_id: str) -> None:
         """Replace placeholder UUID with actual SpiderFoot scan ID."""
-        self._conn.execute(
-            "UPDATE osint_investigations SET id=? WHERE id=?", (new_id, old_id)
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                "UPDATE osint_investigations SET id=? WHERE id=?", (new_id, old_id)
+            )
+            self._conn.commit()
 
     def get_investigation(self, job_id: str) -> Optional[dict]:
-        self._conn.row_factory = sqlite3.Row
         cur = self._conn.execute(
             "SELECT * FROM osint_investigations WHERE id=?", (job_id,)
         )
-        row = cur.fetchone()
-        self._conn.row_factory = None
-        return dict(row) if row else None
+        rows = _dicts(cur)
+        return rows[0] if rows else None
 
     def update_investigation_status(
         self, job_id: str, status: str, completed_at: Optional[str] = None,
         error: Optional[str] = None, result_summary: Optional[dict] = None,
     ) -> None:
-        self._conn.execute(
-            """UPDATE osint_investigations
-               SET status=?, completed_at=?, error=?, result_summary=?
-               WHERE id=?""",
-            (status, completed_at, error,
-             json.dumps(result_summary) if result_summary else None,
-             job_id),
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.execute(
+                """UPDATE osint_investigations
+                   SET status=?, completed_at=?, error=?, result_summary=?
+                   WHERE id=?""",
+                (status, completed_at, error,
+                 json.dumps(result_summary) if result_summary else None,
+                 job_id),
+            )
+            self._conn.commit()
 
     def list_investigations(self, limit: int = 50) -> list[dict]:
-        self._conn.row_factory = sqlite3.Row
         cur = self._conn.execute(
             "SELECT * FROM osint_investigations ORDER BY started_at DESC LIMIT ?",
             (limit,),
         )
-        rows = [dict(r) for r in cur.fetchall()]
-        self._conn.row_factory = None
+        rows = _dicts(cur)
         return rows
 
     def bulk_insert_osint_findings(self, findings: list[dict]) -> None:
@@ -91,17 +101,17 @@ class OsintInvestigationStore:
             )
             for f in findings
         ]
-        self._conn.executemany(
-            """INSERT INTO osint_findings
-               (investigation_id, event_type, data, source_module, confidence,
-                created_at, misp_hit, misp_event_ids)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            rows,
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executemany(
+                """INSERT INTO osint_findings
+                   (investigation_id, event_type, data, source_module, confidence,
+                    created_at, misp_hit, misp_event_ids)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                rows,
+            )
+            self._conn.commit()
 
     def get_findings(self, job_id: str, event_type: Optional[str] = None) -> list[dict]:
-        self._conn.row_factory = sqlite3.Row
         if event_type:
             cur = self._conn.execute(
                 "SELECT * FROM osint_findings WHERE investigation_id=? AND event_type=? ORDER BY id",
@@ -112,8 +122,7 @@ class OsintInvestigationStore:
                 "SELECT * FROM osint_findings WHERE investigation_id=? ORDER BY event_type, id",
                 (job_id,),
             )
-        rows = [dict(r) for r in cur.fetchall()]
-        self._conn.row_factory = None
+        rows = _dicts(cur)
         return rows
 
     def bulk_query_ioc_cache(self, ioc_values: list[str]) -> list[dict]:
@@ -121,7 +130,6 @@ class OsintInvestigationStore:
         if not ioc_values:
             return []
         placeholders = ",".join("?" * len(ioc_values))
-        self._conn.row_factory = sqlite3.Row
         cur = self._conn.execute(
             f"""SELECT ioc_value AS value, ioc_type, confidence, feed_source,
                        actor_tag, malware_family
@@ -129,8 +137,7 @@ class OsintInvestigationStore:
                 WHERE ioc_value IN ({placeholders}) AND ioc_status='active'""",
             ioc_values,
         )
-        rows = [dict(r) for r in cur.fetchall()]
-        self._conn.row_factory = None
+        rows = _dicts(cur)
         return rows
 
     def bulk_insert_dnstwist_findings(self, lookalikes: list[dict]) -> None:
@@ -149,36 +156,33 @@ class OsintInvestigationStore:
             )
             for l in lookalikes
         ]
-        self._conn.executemany(
-            """INSERT INTO dnstwist_findings
-               (investigation_id, seed_domain, fuzzer, lookalike_domain,
-                dns_a, dns_mx, whois_registrar, whois_created, created_at)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            rows,
-        )
-        self._conn.commit()
+        with conn_lock(self._conn):
+            self._conn.executemany(
+                """INSERT INTO dnstwist_findings
+                   (investigation_id, seed_domain, fuzzer, lookalike_domain,
+                    dns_a, dns_mx, whois_registrar, whois_created, created_at)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                rows,
+            )
+            self._conn.commit()
 
     def get_dnstwist_findings(self, job_id: str, seed_domain: str) -> list[dict]:
-        self._conn.row_factory = sqlite3.Row
         cur = self._conn.execute(
             """SELECT * FROM dnstwist_findings
                WHERE investigation_id=? AND seed_domain=?
                ORDER BY lookalike_domain""",
             (job_id, seed_domain),
         )
-        rows = [dict(r) for r in cur.fetchall()]
-        self._conn.row_factory = None
+        rows = _dicts(cur)
         return rows
 
     def get_findings_since(self, job_id: str, last_seen_id: int) -> list[dict]:
         """Return findings with id > last_seen_id for SSE streaming cursor."""
-        self._conn.row_factory = sqlite3.Row
         cur = self._conn.execute(
             "SELECT * FROM osint_findings WHERE investigation_id=? AND id>? ORDER BY id",
             (job_id, last_seen_id),
         )
-        rows = [dict(r) for r in cur.fetchall()]
-        self._conn.row_factory = None
+        rows = _dicts(cur)
         return rows
 
 

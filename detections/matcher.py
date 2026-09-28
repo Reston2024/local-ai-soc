@@ -73,6 +73,7 @@ from backend.core.deps import Stores
 from backend.core.logging import get_logger
 from backend.models.event import DetectionRecord
 from backend.services.attack.attack_store import extract_attack_techniques_from_rule
+from backend.stores.sqlite_store import conn_lock
 from detections.field_map import FIELD_MAP_VERSION, INTEGER_COLUMNS, SIGMA_FIELD_MAP
 
 log = get_logger(__name__)
@@ -904,19 +905,20 @@ class SigmaMatcher:
                     tech_ids = self._detection_techniques.pop(det.id, [])
                     if tech_ids:
                         conn = self.stores.sqlite._conn
-                        for tid in tech_ids:
+                        with conn_lock(conn):
+                            for tid in tech_ids:
+                                try:
+                                    conn.execute(
+                                        "INSERT OR IGNORE INTO detection_techniques "
+                                        "(detection_id, tech_id) VALUES (?, ?)",
+                                        (det.id, tid),
+                                    )
+                                except Exception:
+                                    pass  # Table may not exist yet (bootstrapped by AttackStore)
                             try:
-                                conn.execute(
-                                    "INSERT OR IGNORE INTO detection_techniques "
-                                    "(detection_id, tech_id) VALUES (?, ?)",
-                                    (det.id, tid),
-                                )
+                                conn.commit()
                             except Exception:
-                                pass  # Table may not exist yet (bootstrapped by AttackStore)
-                        try:
-                            conn.commit()
-                        except Exception:
-                            pass
+                                pass
                     # Phase 39: CAR analytics enrichment
                     attack_tech = det.attack_technique
                     if attack_tech and hasattr(self, 'stores') and hasattr(self.stores, 'sqlite'):
@@ -924,22 +926,23 @@ class SigmaMatcher:
                             import json as _json
                             _conn = self.stores.sqlite._conn
                             _parent_id = attack_tech.split(".")[0].upper()
-                            _rows = _conn.execute(
-                                """SELECT analytic_id, technique_id, title, description,
-                                          log_sources, analyst_notes, pseudocode,
-                                          coverage_level, platforms
-                                   FROM car_analytics
-                                   WHERE technique_id = ?
-                                   ORDER BY analytic_id ASC""",
-                                (_parent_id,),
-                            ).fetchall()
-                            if _rows:
-                                _car_json = _json.dumps([dict(r) for r in _rows])
-                                _conn.execute(
-                                    "UPDATE detections SET car_analytics = ? WHERE id = ?",
-                                    (_car_json, det.id),
-                                )
-                                _conn.commit()
+                            with conn_lock(_conn):
+                                _rows = _conn.execute(
+                                    """SELECT analytic_id, technique_id, title, description,
+                                              log_sources, analyst_notes, pseudocode,
+                                              coverage_level, platforms
+                                       FROM car_analytics
+                                       WHERE technique_id = ?
+                                       ORDER BY analytic_id ASC""",
+                                    (_parent_id,),
+                                ).fetchall()
+                                if _rows:
+                                    _car_json = _json.dumps([dict(r) for r in _rows])
+                                    _conn.execute(
+                                        "UPDATE detections SET car_analytics = ? WHERE id = ?",
+                                        (_car_json, det.id),
+                                    )
+                                    _conn.commit()
                         except Exception as _exc:
                             log.debug("CAR lookup failed for %s: %s", attack_tech, _exc)
                 except Exception as exc:

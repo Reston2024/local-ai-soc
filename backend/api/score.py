@@ -72,15 +72,15 @@ async def _compute_scores(request: Request, body: ScoreRequest) -> ScoreResponse
                 scored_entities[body.detection_id] = det_score
 
                 # Persist risk_score back to SQLite so GET /api/top-threats returns real scores.
-                await asyncio.to_thread(
-                    lambda: (
-                        sqlite_store._conn.execute(
+                def _persist_risk_score() -> None:
+                    with sqlite_store.locked_conn() as conn:
+                        conn.execute(
                             "UPDATE detections SET risk_score = ? WHERE id = ?",
                             (det_score, body.detection_id),
-                        ),
-                        sqlite_store._conn.commit(),
-                    )
-                )
+                        )
+                        conn.commit()
+
+                await asyncio.to_thread(_persist_risk_score)
 
                 # Try to score matched events from DuckDB
                 if event_ids:

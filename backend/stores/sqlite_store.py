@@ -17,7 +17,7 @@ import inspect
 import json
 import sqlite3
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterator, Optional, TypeVar
@@ -471,6 +471,131 @@ def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
+class _LockedCursor:
+    """Cursor proxy that fetches while holding the owning store's lock."""
+
+    __slots__ = ("_cur", "_lock")
+
+    def __init__(self, cur: sqlite3.Cursor, lock: "threading.RLock") -> None:
+        self._cur = cur
+        self._lock = lock
+
+    def execute(self, *args: Any, **kwargs: Any) -> "_LockedCursor":
+        with self._lock:
+            self._cur.execute(*args, **kwargs)
+        return self
+
+    def executemany(self, *args: Any, **kwargs: Any) -> "_LockedCursor":
+        with self._lock:
+            self._cur.executemany(*args, **kwargs)
+        return self
+
+    def fetchone(self) -> Any:
+        with self._lock:
+            return self._cur.fetchone()
+
+    def fetchmany(self, *args: Any, **kwargs: Any) -> list:
+        with self._lock:
+            return self._cur.fetchmany(*args, **kwargs)
+
+    def fetchall(self) -> list:
+        with self._lock:
+            return self._cur.fetchall()
+
+    def __iter__(self) -> Iterator[Any]:
+        # Materialise under the lock rather than stepping lazily outside it.
+        return iter(self.fetchall())
+
+    def close(self) -> None:
+        with self._lock:
+            self._cur.close()
+
+    def __getattr__(self, name: str) -> Any:  # rowcount, lastrowid, description…
+        return getattr(self._cur, name)
+
+
+class _LockedConnection:
+    """Proxy around the shared sqlite3 connection that serialises every call
+    through the owning store's RLock.
+
+    The raw connection is handed out beyond SQLiteStore (API routes, IocStore,
+    AssetStore, feed workers, TheHive sync…).  Wrapping it means all of those
+    callers share the store's lock without changes.  ``with conn:`` holds the
+    lock for the whole transaction block.  A caller issuing several statements
+    and a commit as separate calls should hold the lock across them with
+    :func:`conn_lock`.
+    """
+
+    __slots__ = ("_conn", "_lock")
+
+    def __init__(self, conn: sqlite3.Connection, lock: "threading.RLock") -> None:
+        object.__setattr__(self, "_conn", conn)
+        object.__setattr__(self, "_lock", lock)
+
+    @property
+    def lock(self) -> "threading.RLock":
+        return self._lock
+
+    def execute(self, *args: Any, **kwargs: Any) -> _LockedCursor:
+        with self._lock:
+            return _LockedCursor(self._conn.execute(*args, **kwargs), self._lock)
+
+    def executemany(self, *args: Any, **kwargs: Any) -> _LockedCursor:
+        with self._lock:
+            return _LockedCursor(self._conn.executemany(*args, **kwargs), self._lock)
+
+    def executescript(self, *args: Any, **kwargs: Any) -> _LockedCursor:
+        with self._lock:
+            return _LockedCursor(self._conn.executescript(*args, **kwargs), self._lock)
+
+    def cursor(self, *args: Any, **kwargs: Any) -> _LockedCursor:
+        with self._lock:
+            return _LockedCursor(self._conn.cursor(*args, **kwargs), self._lock)
+
+    def commit(self) -> None:
+        with self._lock:
+            self._conn.commit()
+
+    def rollback(self) -> None:
+        with self._lock:
+            self._conn.rollback()
+
+    def close(self) -> None:
+        with self._lock:
+            self._conn.close()
+
+    def __enter__(self) -> "_LockedConnection":
+        self._lock.acquire()
+        try:
+            self._conn.__enter__()
+        except BaseException:
+            self._lock.release()
+            raise
+        return self
+
+    def __exit__(self, *exc: Any) -> Any:
+        try:
+            return self._conn.__exit__(*exc)
+        finally:
+            self._lock.release()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._conn, name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        setattr(self._conn, name, value)  # e.g. row_factory
+
+
+def conn_lock(conn: Any) -> Any:
+    """Context manager holding *conn*'s store lock, for multi-statement
+    sequences (execute … commit) on a shared connection.
+
+    No-op for a plain sqlite3.Connection (e.g. private connections in tests).
+    """
+    lock = getattr(conn, "lock", None)
+    return lock if lock is not None else nullcontext()
+
+
 _F = TypeVar("_F", bound=Callable[..., Any])
 _C = TypeVar("_C", bound=type)
 
@@ -543,11 +668,16 @@ class SQLiteStore:
         # other methods).  See ``_synchronize_methods``.
         self._lock = threading.RLock()
         self._lock_depth = 0
-        self._conn = sqlite3.connect(
-            self._db_path,
-            check_same_thread=False,
-            detect_types=sqlite3.PARSE_DECLTYPES,
-            timeout=5.0,
+        # Wrapped so callers holding the connection outside this class
+        # (routes, IocStore, feed workers, …) share the same lock.
+        self._conn = _LockedConnection(
+            sqlite3.connect(
+                self._db_path,
+                check_same_thread=False,
+                detect_types=sqlite3.PARSE_DECLTYPES,
+                timeout=5.0,
+            ),
+            self._lock,
         )
         self._conn.row_factory = sqlite3.Row
 

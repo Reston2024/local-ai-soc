@@ -574,12 +574,13 @@ async def delete_entity(entity_id: str, request: Request) -> JSONResponse:
         raise HTTPException(status_code=404, detail=f"Entity {entity_id!r} not found")
 
     def _delete(eid: str) -> int:
-        cur = stores.sqlite._conn.execute(
-            "DELETE FROM edges WHERE source_id = ? OR target_id = ?", (eid, eid)
-        )
-        edge_count = cur.rowcount
-        stores.sqlite._conn.execute("DELETE FROM entities WHERE id = ?", (eid,))
-        stores.sqlite._conn.commit()
+        with stores.sqlite.locked_conn() as conn:
+            cur = conn.execute(
+                "DELETE FROM edges WHERE source_id = ? OR target_id = ?", (eid, eid)
+            )
+            edge_count = cur.rowcount
+            conn.execute("DELETE FROM entities WHERE id = ?", (eid,))
+            conn.commit()
         return edge_count
 
     edges_deleted = await asyncio.to_thread(_delete, entity_id)
