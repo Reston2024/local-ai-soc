@@ -13,7 +13,19 @@ Architecture
    - |startswith: LIKE 'value%'
    - |endswith: LIKE '%value'
    - |contains|all: multiple LIKE clauses joined with AND
-   - |re: basic regex via SIMILAR TO (limited support, logged as warning)
+   - |re (optionally with |i, |m, |s flag modifiers): DuckDB
+     ``regexp_matches(column, ?)`` (RE2 syntax, unanchored search).  The
+     pattern is always a bound parameter; flags are applied as an inline
+     ``(?ims)`` prefix inside that parameter.  Patterns that RE2 rejects
+     (e.g. look-arounds, back-references) raise at execution time and are
+     logged by match_rule().
+   - |cased: accepted (equality and LIKE are already case-sensitive)
+
+   Any other modifier (base64, base64offset, wide, windash, cidr, lt/gt/…,
+   fieldref, exists, expand, timestamp parts, …) is NOT supported.  A rule
+   using one is skipped as a whole with a warning — it is never compiled to
+   an equality against the modifier's string form, which would silently
+   never match.
 
 3. match_rule() executes the compiled WHERE clause against normalized_events
    and creates DetectionRecord objects for each matching event.
@@ -21,7 +33,9 @@ Architecture
 4. run_all() runs every loaded rule and returns all detections.
 
 Field names are translated through detections.field_map.SIGMA_FIELD_MAP
-before being used in SQL.  Unknown fields are skipped with a warning.
+before being used in SQL.  Unknown fields are skipped (debug log): the
+condition on that field is dropped from the WHERE clause; if nothing mappable
+remains the rule is not convertible and run_all() skips it.
 
 SQL injection safety
 --------------------
@@ -43,11 +57,17 @@ from uuid import uuid4
 from sigma.conditions import ConditionAND
 from sigma.modifiers import (
     SigmaAllModifier,
+    SigmaCaseSensitiveModifier,
     SigmaContainsModifier,
     SigmaEndswithModifier,
+    SigmaRegularExpressionDotAllFlagModifier,
+    SigmaRegularExpressionIgnoreCaseFlagModifier,
+    SigmaRegularExpressionModifier,
+    SigmaRegularExpressionMultilineFlagModifier,
     SigmaStartswithModifier,
 )
 from sigma.rule import SigmaRule
+from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag
 
 from backend.core.deps import Stores
 from backend.core.logging import get_logger
@@ -67,6 +87,62 @@ PYSIGMA_VERSION: str = importlib.metadata.version("pySigma")
 def _rule_sha256(yaml_text: str) -> str:
     """Return the 64-char hex SHA-256 digest of the rule YAML text."""
     return hashlib.sha256(yaml_text.encode()).hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# Modifier support
+# ---------------------------------------------------------------------------
+
+# Modifiers this backend knows how to translate.  Anything else makes the
+# whole rule unconvertible (see UnsupportedSigmaFeature).
+SUPPORTED_MODIFIERS: frozenset[type] = frozenset({
+    SigmaContainsModifier,
+    SigmaStartswithModifier,
+    SigmaEndswithModifier,
+    SigmaAllModifier,
+    SigmaCaseSensitiveModifier,
+    SigmaRegularExpressionModifier,
+    SigmaRegularExpressionIgnoreCaseFlagModifier,
+    SigmaRegularExpressionMultilineFlagModifier,
+    SigmaRegularExpressionDotAllFlagModifier,
+})
+
+# pySigma regex flag → RE2 inline flag letter
+_RE_FLAG_LETTERS: dict[SigmaRegularExpressionFlag, str] = {
+    SigmaRegularExpressionFlag.IGNORECASE: "i",
+    SigmaRegularExpressionFlag.MULTILINE: "m",
+    SigmaRegularExpressionFlag.DOTALL: "s",
+}
+
+
+class UnsupportedSigmaFeature(ValueError):
+    """Raised during compilation when a rule uses a feature we cannot translate.
+
+    Caught in SigmaMatcher._rule_to_sql_impl(), which logs a warning and
+    returns None so the rule is skipped instead of compiling to a clause that
+    silently never matches.
+    """
+
+
+def _regex_to_sql_fragment(
+    column: str,
+    regex: SigmaRegularExpression,
+    params: list[Any],
+    negate: bool = False,
+) -> str:
+    """Build a ``regexp_matches(column, ?)`` fragment for a Sigma |re value.
+
+    The pattern (with any inline flag prefix) is appended to *params*; it is
+    never interpolated into the SQL text.
+    """
+    pattern = str(regex.regexp)
+    letters = "".join(sorted(_RE_FLAG_LETTERS[f] for f in regex.flags if f in _RE_FLAG_LETTERS))
+    if letters:
+        pattern = f"(?{letters}){pattern}"
+    col_expr = f"CAST({column} AS VARCHAR)" if column in INTEGER_COLUMNS else column
+    params.append(pattern)
+    frag = f"regexp_matches({col_expr}, ?)"
+    return f"NOT {frag}" if negate else frag
 
 
 # ---------------------------------------------------------------------------
@@ -172,6 +248,12 @@ def _detection_item_to_fragments(
     Multiple values for a single field are joined with OR by default (standard
     Sigma semantics), or AND when |all modifier is present.
     """
+    unsupported = [m.__name__ for m in modifier_classes if m not in SUPPORTED_MODIFIERS]
+    if unsupported:
+        raise UnsupportedSigmaFeature(
+            f"unsupported Sigma modifier(s) {unsupported} on field '{field}'"
+        )
+
     column = SIGMA_FIELD_MAP.get(field)
     if column is None:
         log.debug("Sigma field not in field map — skipping", field=field)
@@ -181,6 +263,15 @@ def _detection_item_to_fragments(
 
     fragments: list[str] = []
     for sigma_val in values:
+        if isinstance(sigma_val, SigmaRegularExpression):
+            fragments.append(_regex_to_sql_fragment(column, sigma_val, params, negate=negate))
+            continue
+        if SigmaRegularExpressionModifier in modifier_classes:
+            # Should be unreachable — pySigma converts |re values — but never
+            # fall through to literal equality against a regex source.
+            raise UnsupportedSigmaFeature(
+                f"|re value on field '{field}' is not a SigmaRegularExpression"
+            )
         raw = str(sigma_val)
         frag = _value_to_sql_fragment(column, raw, params, modifier_classes, negate=negate)
         if frag:
@@ -385,6 +476,13 @@ class SigmaMatcher:
             where = self._build_condition_sql(
                 condition_str, detection.detections, params
             )
+        except UnsupportedSigmaFeature as exc:
+            log.warning(
+                "Sigma rule uses unsupported feature — rule skipped",
+                rule=str(rule.title),
+                error=str(exc),
+            )
+            return None
         except Exception as exc:
             log.warning(
                 "Could not convert Sigma rule to SQL",

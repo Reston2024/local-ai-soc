@@ -538,3 +538,202 @@ class TestConditionSplitting:
         assert SigmaMatcher._balanced("((a) OR (b))")
         assert not SigmaMatcher._balanced("(a AND b")
         assert not SigmaMatcher._balanced("a AND b)")
+
+
+# ---------------------------------------------------------------------------
+# |re modifier, unsupported modifiers, and field-map regressions
+# ---------------------------------------------------------------------------
+
+_RE_RULE = r"""
+title: Test Regex
+name: test_regex
+status: test
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection:
+        CommandLine|re: 'powershell(\.exe)?\s+-e(nc)?\s'
+    condition: selection
+"""
+
+_RE_IGNORECASE_RULE = r"""
+title: Test Regex Ignorecase
+name: test_regex_i
+status: test
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection:
+        Image|re|i: '\\MIMIKATZ\.EXE$'
+    condition: selection
+"""
+
+# Pattern containing single quotes, double quotes, backslashes and SQL-ish text
+_RE_NASTY_RULE = r"""
+title: Test Regex Nasty
+name: test_regex_nasty
+status: test
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection:
+        CommandLine|re: 'it''s "x"\\y\d+''; DROP TABLE normalized_events; --'
+    condition: selection
+"""
+
+_BASE64_RULE = """
+title: Test Base64 Unsupported
+name: test_b64
+status: test
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection:
+        CommandLine|base64: 'IEX'
+    condition: selection
+"""
+
+_INITIATED_RULE = """
+title: Test Initiated
+name: test_initiated
+status: test
+logsource:
+    product: windows
+    category: network_connection
+detection:
+    selection:
+        Initiated: 'true'
+        DestinationPort: 4444
+    condition: selection
+"""
+
+_INITIATED_ONLY_RULE = """
+title: Test Initiated Only
+name: test_initiated_only
+status: test
+logsource:
+    product: windows
+    category: network_connection
+detection:
+    selection:
+        Initiated: 'true'
+    condition: selection
+"""
+
+
+def _parse(yaml_text: str):
+    from sigma.rule import SigmaRule
+    return SigmaRule.from_yaml(yaml_text)
+
+
+def _mem_db():
+    import duckdb
+    conn = duckdb.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE normalized_events (event_id TEXT, process_name TEXT, "
+        "command_line TEXT, src_ip TEXT, dst_port INTEGER)"
+    )
+    conn.executemany(
+        "INSERT INTO normalized_events VALUES (?, ?, ?, ?, ?)",
+        [
+            ("e1", r"C:\Tools\mimikatz.exe", "powershell.exe -enc AAAA", "10.0.0.1", 4444),
+            ("e2", r"C:\Windows\notepad.exe", "notepad.exe foo.txt", "10.0.0.2", 80),
+            ("e3", r"C:\x\cmd.exe", "it's \"x\"\\y42'; DROP TABLE normalized_events; --", None, 53),
+        ],
+    )
+    return conn
+
+
+def _run(conn, where: str, params: list) -> list[str]:
+    rows = conn.execute(
+        f"SELECT event_id FROM normalized_events WHERE ({where}) ORDER BY event_id", params
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+class TestRegexModifier:
+    def test_re_compiles_to_regexp_matches_with_param(self):
+        from detections.matcher import rule_to_sql
+        where, params = rule_to_sql(_parse(_RE_RULE))
+        assert where == "(regexp_matches(command_line, ?))"
+        assert params == [r"powershell(\.exe)?\s+-e(nc)?\s"]
+        # Pattern never appears in the SQL text
+        assert "powershell" not in where
+
+    def test_re_matches_row_in_duckdb(self):
+        from detections.matcher import rule_to_sql
+        where, params = rule_to_sql(_parse(_RE_RULE))
+        assert _run(_mem_db(), where, params) == ["e1"]
+
+    def test_re_ignorecase_flag_applied(self):
+        from detections.matcher import rule_to_sql
+        where, params = rule_to_sql(_parse(_RE_IGNORECASE_RULE))
+        assert where == "(regexp_matches(process_name, ?))"
+        assert params == [r"(?i)\\MIMIKATZ\.EXE$"]
+        assert _run(_mem_db(), where, params) == ["e1"]
+
+    def test_re_with_quotes_and_backslashes_is_bound_not_interpolated(self):
+        from detections.matcher import rule_to_sql
+        where, params = rule_to_sql(_parse(_RE_NASTY_RULE))
+        assert where == "(regexp_matches(command_line, ?))"
+        assert "DROP" not in where and "'" not in where and "\\" not in where
+        assert params == [r"""it's "x"\\y\d+'; DROP TABLE normalized_events; --"""]
+        conn = _mem_db()
+        assert _run(conn, where, params) == ["e3"]
+        # Table still intact
+        assert conn.execute("SELECT count(*) FROM normalized_events").fetchone()[0] == 3
+
+    def test_re_not_compiled_to_equality(self):
+        from detections.matcher import rule_to_sql
+        where, _ = rule_to_sql(_parse(_RE_RULE))
+        assert "=" not in where
+
+
+class TestUnsupportedModifiers:
+    def test_base64_rule_is_skipped(self):
+        from unittest.mock import MagicMock
+
+        from detections.matcher import SigmaMatcher
+        matcher = SigmaMatcher(MagicMock())
+        assert matcher.rule_to_sql_with_params(_parse(_BASE64_RULE)) is None
+
+    def test_base64_rule_to_sql_raises(self):
+        from detections.matcher import rule_to_sql
+        with pytest.raises(ValueError):
+            rule_to_sql(_parse(_BASE64_RULE))
+
+    async def test_run_all_skips_unsupported_rule(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        from detections.matcher import SigmaMatcher
+        stores = MagicMock()
+        stores.duckdb.fetch_all = AsyncMock(return_value=[])
+        matcher = SigmaMatcher(stores)
+        matcher.load_rule_yaml(_BASE64_RULE)
+        assert await matcher.run_all() == []
+        stores.duckdb.fetch_all.assert_not_called()
+
+
+class TestInitiatedMapping:
+    def test_initiated_not_mapped_to_src_ip(self):
+        from detections.field_map import SIGMA_FIELD_MAP
+        assert SIGMA_FIELD_MAP.get("Initiated") != "src_ip"
+        assert "Initiated" not in SIGMA_FIELD_MAP
+
+    def test_initiated_condition_dropped_not_src_ip(self):
+        from detections.matcher import rule_to_sql
+        where, params = rule_to_sql(_parse(_INITIATED_RULE))
+        assert "src_ip" not in where
+        assert "true" not in [str(p).lower() for p in params]
+        assert where == "(dst_port = ?)"
+        assert params == [4444]
+
+    def test_initiated_only_rule_is_not_convertible(self):
+        from unittest.mock import MagicMock
+
+        from detections.matcher import SigmaMatcher
+        assert SigmaMatcher(MagicMock()).rule_to_sql_with_params(_parse(_INITIATED_ONLY_RULE)) is None

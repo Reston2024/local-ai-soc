@@ -20,7 +20,7 @@ from __future__ import annotations
 # Version identifier for this field map — updated whenever the mapping changes.
 # Used by detection provenance records so analysts can reconstruct which
 # field translations were active when a Sigma rule fired.
-FIELD_MAP_VERSION: str = "22"
+FIELD_MAP_VERSION: str = "23"
 
 # Sigma field name → normalized_events DuckDB column
 SIGMA_FIELD_MAP: dict[str, str] = {
@@ -58,7 +58,11 @@ SIGMA_FIELD_MAP: dict[str, str] = {
     "SourcePort":           "src_port",
     "DestinationHostname":  "domain",
     "QueryName":            "domain",
-    "Initiated":            "src_ip",          # Sysmon net event direction flag
+    # NOTE: Sysmon "Initiated" ('true'/'false' outbound flag) is intentionally
+    # unmapped.  It previously mapped to src_ip, compiling to src_ip = 'true'.
+    # network_direction uses ECS vocabulary ('inbound'/'outbound'), not
+    # booleans, so it is not a safe target either; the matcher drops
+    # conditions on unmapped fields.
     # ------------------------------------------------------------------ #
     # File fields
     # ------------------------------------------------------------------ #
