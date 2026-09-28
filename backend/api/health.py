@@ -3,6 +3,14 @@ Health check endpoint.
 
 GET /health — returns component status for Ollama, DuckDB, Chroma, SQLite.
 
+Auth model:
+- GET /health/ping    — unauthenticated liveness probe (Caddy health_uri).
+- GET /health         — unauthenticated callers (docker healthchecks, infra/scripts
+                        status/start probes) get only {"status", "timestamp"} with the
+                        same HTTP status code; full component detail (versions, TheHive
+                        URL, binary paths, collections) requires a valid token.
+- GET /health/network — requires verify_token (exposes internal hosts/ports).
+
 Response schema:
 {
   "status": "healthy" | "degraded" | "unhealthy",
@@ -22,14 +30,36 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.responses import JSONResponse
 
+from backend.core.auth import verify_token
 from backend.core.config import settings
 from backend.core.logging import get_logger
 
 log = get_logger(__name__)
 router = APIRouter(tags=["health"])
+_optional_bearer = HTTPBearer(auto_error=False)
+
+
+async def _optional_operator(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Security(_optional_bearer),
+    token: str | None = Query(default=None),
+) -> bool:
+    """Return True when the request carries valid credentials; never raises 401."""
+    # Honour app.dependency_overrides[verify_token] (used by the test suite).
+    override = request.app.dependency_overrides.get(verify_token)
+    if override is not None:
+        return True
+    try:
+        await verify_token(request, credentials, token, None)
+        return True
+    except HTTPException:
+        return False
+    except Exception:
+        return False
 
 # ---------------------------------------------------------------------------
 # Ollama version cache — GitHub is checked at most once per hour
@@ -274,7 +304,7 @@ def _tcp_check(host: str, port: int, timeout: float = 2.0) -> bool:
         return False
 
 
-@router.get("/health/network")
+@router.get("/health/network", dependencies=[Depends(verify_token)])
 async def network_health() -> JSONResponse:
     """
     GET /health/network
@@ -283,7 +313,7 @@ async def network_health() -> JSONResponse:
     Returns status for router, firewall, and GMKtec (Malcolm box).
     Devices with empty host config are omitted from the response.
 
-    No auth required — used by the dashboard sidebar on page load.
+    Auth required — the response exposes internal hostnames and ports.
     """
     devices: dict[str, dict[str, Any]] = {}
 
@@ -325,7 +355,10 @@ async def health_ping() -> JSONResponse:
 
 
 @router.get("/health")
-async def health(request: Request) -> JSONResponse:
+async def health(
+    request: Request,
+    authenticated: bool = Depends(_optional_operator),
+) -> JSONResponse:
     """
     Check the health of all backend components.
 
@@ -398,6 +431,16 @@ async def health(request: Request) -> JSONResponse:
         chroma=chroma_result["status"],
         sqlite=sqlite_result["status"],
     )
+
+    if not authenticated:
+        # Minimal body for unauthenticated probes — no hosts, URLs, versions or paths.
+        return JSONResponse(
+            status_code=http_status,
+            content={
+                "status": overall,
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            },
+        )
 
     return JSONResponse(
         status_code=http_status,

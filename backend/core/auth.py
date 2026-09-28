@@ -22,7 +22,9 @@ To enable auth with a strong token:
 and set AUTH_TOKEN=<token> in .env.
 """
 import asyncio
+import hashlib
 import hmac
+import time
 
 from fastapi import HTTPException, Query, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -32,6 +34,43 @@ from backend.core.operator_utils import _dummy_hash, key_prefix, verify_api_key
 from backend.core.rbac import OperatorContext
 
 _bearer = HTTPBearer(auto_error=False)
+
+
+# ---------------------------------------------------------------------------
+# Short-lived, path-scoped download tokens (?dl=<exp>.<hexsig>)
+# ---------------------------------------------------------------------------
+DOWNLOAD_TOKEN_TTL = 120  # seconds
+
+
+def _now() -> int:
+    """Current unix time in whole seconds (indirected so tests can monkeypatch)."""
+    return int(time.time())
+
+
+def _download_sig(path: str, exp: int) -> str:
+    key = settings.AUTH_TOKEN.strip().encode("utf-8")
+    return hmac.new(key, f"{path}|{exp}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def issue_download_token(path: str) -> str:
+    """Return '<exp>.<hexsig>' binding *path* (no query string) for DOWNLOAD_TOKEN_TTL seconds."""
+    exp = _now() + DOWNLOAD_TOKEN_TTL
+    return f"{exp}.{_download_sig(path, exp)}"
+
+
+def verify_download_token(dl: str, path: str) -> bool:
+    """True when *dl* is unexpired and its HMAC matches *path*."""
+    exp_str, sep, sig = dl.partition(".")
+    if not sep or not exp_str.isdigit() or not sig:
+        return False
+    exp = int(exp_str)
+    now = _now()
+    if exp < now or exp > now + DOWNLOAD_TOKEN_TTL:
+        return False
+    # Compare as bytes — str compare_digest raises TypeError on non-ASCII input.
+    return hmac.compare_digest(
+        sig.encode("utf-8"), _download_sig(path, exp).encode("utf-8")
+    )
 
 
 def _lookup_operator_sync(sqlite_store, prefix: str):
@@ -48,6 +87,7 @@ async def verify_token(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Security(_bearer),
     token: str | None = Query(default=None),
+    dl: str | None = Query(default=None),
 ) -> OperatorContext:
     """FastAPI dependency: validate Authorization: Bearer <token> or ?token= query param.
 
@@ -73,6 +113,24 @@ async def verify_token(
         raw = token
 
     if raw is None:
+        # Short-lived download token (?dl=) — only when no Bearer/?token= supplied.
+        # Scoped to one path and to safe (read-only) methods; the principal is a
+        # least-privilege analyst context so a dl minted by an analyst can never
+        # reach admin-only routes.
+        if (
+            isinstance(dl, str)
+            and request.method in ("GET", "HEAD")
+            and verify_download_token(dl, request.url.path)
+        ):
+            ctx = OperatorContext(
+                operator_id="download-token",
+                username="download-token",
+                role="analyst",
+                totp_enabled=False,
+                totp_verified=True,
+            )
+            request.state.operator = ctx
+            return ctx
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     # --- Named operator lookup (prefix-based) ---

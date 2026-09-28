@@ -279,10 +279,20 @@ def mount_routers(app: "FastAPI") -> None:
 
     try:
         from backend.api.feedback import feedback_router
-        app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
+        app.include_router(
+            feedback_router, prefix="/api/feedback", tags=["feedback"],
+            dependencies=[Depends(verify_token)],
+        )
         log.info("Feedback router mounted at /api/feedback (Phase 44)")
     except Exception as exc:
         log.warning("Feedback router not available: %s", exc)
+
+    try:
+        from backend.api.download_token import router as download_token_router
+        app.include_router(download_token_router)  # verify_token applied on the route
+        log.info("Download-token router mounted at /api/auth/download-token")
+    except Exception as exc:
+        log.warning("Download-token router not available: %s", exc)
 
     try:
         from backend.api.coverage import router as coverage_router
