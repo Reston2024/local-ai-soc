@@ -12,11 +12,15 @@ Schema design:
 - cases:    investigation case containers grouping entities and detections
 """
 
+import functools
+import inspect
 import json
 import sqlite3
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Iterator, Optional, TypeVar
 from uuid import uuid4
 
 from backend.core.logging import get_logger
@@ -30,6 +34,7 @@ log = get_logger(__name__)
 _DDL = """
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
+PRAGMA busy_timeout=5000;
 
 CREATE TABLE IF NOT EXISTS cases (
     id          TEXT PRIMARY KEY,
@@ -466,6 +471,51 @@ def _now_iso() -> str:
     return datetime.now(tz=timezone.utc).isoformat()
 
 
+_F = TypeVar("_F", bound=Callable[..., Any])
+_C = TypeVar("_C", bound=type)
+
+
+def _synchronized(fn: _F) -> _F:
+    """Run *fn* while holding the store's connection lock.
+
+    If the outermost locked call raises while a transaction is open, the
+    transaction is rolled back so its partial writes can never be committed
+    by a later, unrelated call on the shared connection.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(self: "SQLiteStore", *args: Any, **kwargs: Any) -> Any:
+        with self._lock:
+            self._lock_depth += 1
+            try:
+                return fn(self, *args, **kwargs)
+            except BaseException:
+                if self._lock_depth == 1:
+                    try:
+                        if self._conn.in_transaction:
+                            self._conn.rollback()
+                    except Exception:  # pragma: no cover - best effort
+                        pass
+                raise
+            finally:
+                self._lock_depth -= 1
+
+    return wrapper  # type: ignore[return-value]
+
+
+def _synchronize_methods(cls: _C) -> _C:
+    """Class decorator: wrap every instance method (except ``__init__``) with
+    :func:`_synchronized`.  Static/class methods and properties are untouched.
+    Applied at class level so newly added methods are covered automatically.
+    """
+    for name, attr in list(vars(cls).items()):
+        if name == "__init__" or not inspect.isfunction(attr):
+            continue
+        setattr(cls, name, _synchronized(attr))
+    return cls
+
+
+@_synchronize_methods
 class SQLiteStore:
     """
     Manages an SQLite database for the investigation graph.
@@ -488,11 +538,16 @@ class SQLiteStore:
 
         # check_same_thread=False is required when sharing the connection
         # across threads (asyncio.to_thread creates a thread-pool thread).
-        # We serialize writes ourselves via asyncio.to_thread wrapping.
+        # A single sqlite3 connection is NOT safe for concurrent use, so every
+        # method is serialised through ``self._lock`` (RLock: methods may call
+        # other methods).  See ``_synchronize_methods``.
+        self._lock = threading.RLock()
+        self._lock_depth = 0
         self._conn = sqlite3.connect(
             self._db_path,
             check_same_thread=False,
             detect_types=sqlite3.PARSE_DECLTYPES,
+            timeout=5.0,
         )
         self._conn.row_factory = sqlite3.Row
 
@@ -666,6 +721,16 @@ class SQLiteStore:
             pass
 
         log.info("SQLite store initialised", db_path=self._db_path)
+
+    @contextmanager
+    def locked_conn(self) -> Iterator[sqlite3.Connection]:
+        """Yield the shared connection while holding the store lock.
+
+        For callers that must run raw SQL on this store's connection; results
+        must be fully materialised (fetchall/fetchone) before the block exits.
+        """
+        with self._lock:
+            yield self._conn
 
     # ------------------------------------------------------------------
     # Case management
