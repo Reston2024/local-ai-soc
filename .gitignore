@@ -105,3 +105,6 @@ infra/misp/.env.misp
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 .planning/*.bak*
+
+# Claude Code local settings (may contain tokens)
+.claude/settings.local.json
