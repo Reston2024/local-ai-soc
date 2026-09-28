@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING, Optional
 
 import httpx
 
+from backend.stores.sqlite_store import conn_lock
+
 if TYPE_CHECKING:
     from backend.services.intel.ioc_store import IocStore
     from backend.stores.duckdb_store import DuckDBStore
@@ -42,11 +44,12 @@ def _now_iso() -> str:
 
 def _kv_set(conn: sqlite3.Connection, key: str, value: str) -> None:
     """Update system_kv table with last_sync timestamp."""
-    conn.execute(
-        "INSERT OR REPLACE INTO system_kv (key, value, updated_at) VALUES (?, ?, ?)",
-        (key, value, _now_iso()),
-    )
-    conn.commit()
+    with conn_lock(conn):
+        conn.execute(
+            "INSERT OR REPLACE INTO system_kv (key, value, updated_at) VALUES (?, ?, ?)",
+            (key, value, _now_iso()),
+        )
+        conn.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +106,20 @@ class _BaseWorker:
 
     async def _sync(self) -> bool:
         raise NotImplementedError
+
+    def _upsert_batch(self, batch: list[dict]) -> list[dict]:
+        """Upsert each kwargs dict via ioc_store.upsert_ioc; return the new ones.
+
+        Blocking SQLite work (and the shared-connection lock) — run it with
+        asyncio.to_thread so feed syncs never stall the event loop.
+        """
+        return [kw for kw in batch if self._ioc_store.upsert_ioc(**kw)]
+
+    async def _save_batch(self, batch: list[dict]) -> list[dict]:
+        """Upsert *batch* off the event loop and stamp the feed's last-sync key."""
+        new = await asyncio.to_thread(self._upsert_batch, batch)
+        await asyncio.to_thread(_kv_set, self._conn, self._kv_key, _now_iso())
+        return new
 
     async def _trigger_retroactive_scan(
         self,
@@ -195,9 +212,8 @@ class FeodoWorker(_BaseWorker):
 
         try:
             rows = self._parse_feodo_csv(response.text)
-            now = _now_iso()
-            for row in rows:
-                is_new = self._ioc_store.upsert_ioc(
+            batch = [
+                dict(
                     value=row["ioc_value"],
                     ioc_type=row["ioc_type"],
                     confidence=50,
@@ -208,14 +224,15 @@ class FeodoWorker(_BaseWorker):
                     feed_source=self._feed_name,
                     extra_json=None,
                 )
-                if is_new:
-                    await self._trigger_retroactive_scan(
-                        ioc_value=row["ioc_value"],
-                        ioc_type=row["ioc_type"],
-                        bare_ip=None,
-                        confidence=50,
-                    )
-            _kv_set(self._conn, self._kv_key, now)
+                for row in rows
+            ]
+            for kw in await self._save_batch(batch):
+                await self._trigger_retroactive_scan(
+                    ioc_value=kw["value"],
+                    ioc_type=kw["ioc_type"],
+                    bare_ip=None,
+                    confidence=50,
+                )
             log.info("Feodo feed synced: %d IOCs", len(rows))
             return True
         except Exception as exc:
@@ -270,9 +287,8 @@ class CisaKevWorker(_BaseWorker):
 
         try:
             rows = self._parse_kev_json(response.text)
-            now = _now_iso()
-            for row in rows:
-                self._ioc_store.upsert_ioc(
+            await self._save_batch([
+                dict(
                     value=row["ioc_value"],
                     ioc_type=row["ioc_type"],
                     confidence=row["confidence"],
@@ -283,7 +299,8 @@ class CisaKevWorker(_BaseWorker):
                     feed_source=self._feed_name,
                     extra_json=None,
                 )
-            _kv_set(self._conn, self._kv_key, now)
+                for row in rows
+            ])
             log.info("CISA KEV feed synced: %d CVEs", len(rows))
             return True
         except Exception as exc:
@@ -358,9 +375,8 @@ class ThreatFoxWorker(_BaseWorker):
 
         try:
             rows = self._parse_threatfox_csv(response.text)
-            now = _now_iso()
-            for row in rows:
-                is_new = self._ioc_store.upsert_ioc(
+            batch = [
+                dict(
                     value=row["ioc_value"],
                     ioc_type=row["ioc_type"],
                     confidence=row["confidence"],
@@ -372,14 +388,15 @@ class ThreatFoxWorker(_BaseWorker):
                     extra_json=None,
                     bare_ip=row.get("bare_ip"),
                 )
-                if is_new:
-                    await self._trigger_retroactive_scan(
-                        ioc_value=row["ioc_value"],
-                        ioc_type=row["ioc_type"],
-                        bare_ip=row.get("bare_ip"),
-                        confidence=row["confidence"],
-                    )
-            _kv_set(self._conn, self._kv_key, now)
+                for row in rows
+            ]
+            for kw in await self._save_batch(batch):
+                await self._trigger_retroactive_scan(
+                    ioc_value=kw["value"],
+                    ioc_type=kw["ioc_type"],
+                    bare_ip=kw["bare_ip"],
+                    confidence=kw["confidence"],
+                )
             log.info("ThreatFox feed synced: %d IOCs", len(rows))
             return True
         except Exception as exc:
@@ -436,8 +453,8 @@ class MispWorker(_BaseWorker):
             log.warning("MISP sync failed: %s", exc)
             return False
 
-        for attr in attributes:
-            is_new = self._ioc_store.upsert_ioc(
+        batch = [
+            dict(
                 value=attr["value"],
                 ioc_type=attr["ioc_type"],
                 confidence=attr["confidence"],
@@ -448,14 +465,15 @@ class MispWorker(_BaseWorker):
                 feed_source="misp",
                 extra_json=attr["extra_json"],
             )
-            if is_new:
-                await self._trigger_retroactive_scan(
-                    ioc_value=attr["value"],
-                    ioc_type=attr["ioc_type"],
-                    bare_ip=None,
-                    confidence=attr["confidence"],
-                )
+            for attr in attributes
+        ]
+        for kw in await self._save_batch(batch):
+            await self._trigger_retroactive_scan(
+                ioc_value=kw["value"],
+                ioc_type=kw["ioc_type"],
+                bare_ip=None,
+                confidence=kw["confidence"],
+            )
 
-        _kv_set(self._conn, self._kv_key, _now_iso())
         log.info("MISP sync complete: %d attributes processed", len(attributes))
         return True

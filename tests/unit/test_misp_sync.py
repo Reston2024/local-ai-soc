@@ -74,7 +74,7 @@ def test_fetch_ioc_attributes_returns_list():
 @pytest.mark.skipif(not _WORKER_AVAILABLE, reason="Wave 0 stub — MispWorker not yet in feed_sync.py (Plan 50-02)")
 def test_misp_worker_sync():
     """MispWorker._sync() calls ioc_store.upsert_ioc for each returned attribute."""
-    conn = sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.execute(
         "CREATE TABLE system_kv (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)"
     )
@@ -106,7 +106,7 @@ def test_misp_worker_sync():
 @pytest.mark.skipif(not _WORKER_AVAILABLE, reason="Wave 0 stub — MispWorker not yet in feed_sync.py (Plan 50-02)")
 def test_retroactive_trigger():
     """MispWorker._sync() calls _trigger_retroactive_scan for newly inserted IOCs."""
-    conn = sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.execute(
         "CREATE TABLE system_kv (key TEXT PRIMARY KEY, value TEXT, updated_at TEXT)"
     )
