@@ -108,3 +108,7 @@ infra/misp/.env.misp
 
 # Claude Code local settings (may contain tokens)
 .claude/settings.local.json
+
+# Stray runtime logs and any nested node_modules
+*.log
+node_modules/
