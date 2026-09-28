@@ -13,6 +13,11 @@ export interface HealthResponse {
   version: string
 }
 
+export interface NetworkHealthResponse {
+  devices: Record<string, { status: string; [key: string]: unknown }>
+  [key: string]: unknown
+}
+
 export interface NormalizedEvent {
   event_id: string
   source_type: string
@@ -722,13 +727,81 @@ function authHeaders(): Record<string, string> {
   return { 'Authorization': `Bearer ${getApiToken()}` }
 }
 
-/** Build a download URL that includes the Bearer token as a query param.
- *  Used for binary endpoints (PDF, ZIP) that the browser opens directly
- *  rather than being fetched via the request() helper. */
-export function getDownloadUrl(path: string): string {
-  const token = getApiToken()
+/** Build a short-lived, path-scoped download URL for binary endpoints (PDF, ZIP)
+ *  that the browser opens directly rather than fetching via request().
+ *
+ *  The long-lived API token is NEVER placed in the URL. Instead we exchange it
+ *  (via Authorization header) for a signed token bound to `path` (without query
+ *  string) that expires in ~120s, and append it as `?dl=<token>`. */
+export async function getDownloadUrl(path: string): Promise<string> {
+  const signedPath = path.split('?')[0]
+  const res = await fetch(`${BASE}/api/auth/download-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ path: signedPath }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Download token request failed: ${res.status} ${text}`.trim())
+  }
+  const data = (await res.json()) as { token?: string; expires_in?: number }
+  if (!data.token) throw new Error('Download token response missing token')
   const sep = path.includes('?') ? '&' : '?'
-  return `${BASE}${path}${sep}token=${encodeURIComponent(token)}`
+  return `${BASE}${path}${sep}dl=${encodeURIComponent(data.token)}`
+}
+
+/** Fetch a short-lived download URL for `path` and trigger a browser download
+ *  / open it in a new tab. Throws if the token request fails. */
+export async function triggerDownload(path: string, opts?: { newTab?: boolean }): Promise<void> {
+  const url = await getDownloadUrl(path)
+  const a = document.createElement('a')
+  a.href = url
+  if (opts?.newTab) {
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+  }
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+/** Shared SSE line reader. Buffers partial lines across chunks so events split
+ *  across reader.read() boundaries are not lost, and flushes any trailing data
+ *  at stream end. Calls `onData` with the payload of every `data: ` line; if
+ *  `onData` returns true, reading stops early (stream is cancelled).
+ *  Returns true if stopped early, false if the stream ended naturally. */
+async function readSseData(
+  body: ReadableStream<Uint8Array>,
+  onData: (raw: string) => boolean | void,
+): Promise<boolean> {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  const handle = (rawLine: string): boolean => {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine
+    if (!line.startsWith('data: ')) return false
+    return onData(line.slice(6)) === true
+  }
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (handle(line)) {
+        reader.cancel().catch(() => { /* ignore */ })
+        return true
+      }
+    }
+  }
+  buffer += decoder.decode()
+  if (buffer) {
+    for (const line of buffer.split('\n')) {
+      if (handle(line)) return true
+    }
+  }
+  return false
 }
 
 // ---------------------------------------------------------------------------
@@ -811,7 +884,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => request<HealthResponse>('/health'),
+  health: Object.assign(() => request<HealthResponse>('/health'), {
+    /** Network device reachability (router/switch/etc.) — requires auth. */
+    network: () => request<NetworkHealthResponse>('/health/network'),
+  }),
 
   events: {
     list: (params?: { offset?: number; limit?: number; hostname?: string; severity?: string; event_type?: string }) => {
@@ -895,25 +971,15 @@ export const api = {
       })
       if (!res.ok) throw new Error(`Query failed: ${res.status}`)
       // SSE stream — collect full text
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No response body')
-      const decoder = new TextDecoder()
+      if (!res.body) throw new Error('No response body')
       let text = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        // SSE format: "data: {...}\n\n"
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            try {
-              const msg = JSON.parse(line.slice(6))
-              if (msg.token) text += msg.token
-              if (msg.done) break
-            } catch { /* skip non-JSON lines */ }
-          }
-        }
-      }
+      await readSseData(res.body, (raw) => {
+        try {
+          const msg = JSON.parse(raw)
+          if (msg.token) text += msg.token
+          if (msg.done) return true
+        } catch { /* skip non-JSON lines */ }
+      })
       return text
     },
   },
@@ -974,10 +1040,17 @@ export const api = {
         body: JSON.stringify({ period_start: opts.period_start, period_end: opts.period_end, title: opts.title ?? 'Executive Security Summary' }),
       }),
 
-    /** Returns a URL to open directly in a browser tab — uses getDownloadUrl for auth token injection. */
+    /** API path of a report PDF (no credentials) — pass to triggerDownload(). */
+    pdfPath: (reportId: string) => `/api/reports/${encodeURIComponent(reportId)}/pdf`,
+
+    /** Resolves a short-lived signed URL for a report PDF. */
     pdfUrl: (reportId: string) => getDownloadUrl(`/api/reports/${encodeURIComponent(reportId)}/pdf`),
 
-    /** Returns a URL for ZIP download — uses getDownloadUrl for auth token injection. */
+    /** API path of a compliance ZIP export (no credentials) — pass to triggerDownload(). */
+    compliancePath: (framework: 'nist-csf' | 'thehive') =>
+      `/api/reports/compliance?framework=${framework}`,
+
+    /** Resolves a short-lived signed URL for a compliance ZIP export. */
     complianceDownloadUrl: (framework: 'nist-csf' | 'thehive') =>
       getDownloadUrl(`/api/reports/compliance?framework=${framework}`),
 
@@ -1035,46 +1108,39 @@ export const api = {
         signal,
       })
       if (!res.ok) {
-        onError(`Agent request failed: ${res.status}`)
+        onError(
+          res.status === 429
+            ? 'An investigation is already running — try again when it finishes'
+            : `Agent request failed: ${res.status}`,
+        )
         return
       }
-      const reader = res.body?.getReader()
-      if (!reader) { onError('No response body'); return }
-      const decoder = new TextDecoder()
-      let buffer = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        for (const line of lines) {
-          if (line.startsWith('event: ')) continue
-          if (!line.startsWith('data: ')) continue
-          const raw = line.slice(6).trim()
-          if (!raw || raw === '{}') continue
-          try {
-            const parsed = JSON.parse(raw)
-            // Dispatch based on data shape — each event type has a unique key
-            if ('call_number' in parsed && 'tool_name' in parsed) {
-              onStep(parsed as AgentStep)
-            } else if ('text' in parsed) {
-              // Filter out reasoning chunks that are just the verdict JSON — the model
-              // often emits the verdict as plain text before calling final_answer.
-              // These will be captured via the proper 'verdict' event instead.
-              const txt: string = parsed.text || ''
-              const looksLikeVerdict = txt.includes('"verdict"') && (txt.includes('"TP"') || txt.includes('"FP"'))
-              if (!looksLikeVerdict) onReasoning(txt)
-            } else if ('verdict' in parsed) {
-              onVerdict(parsed as AgentVerdict)
-            } else if ('reason' in parsed) {
-              onLimit(parsed.reason)
-            } else if ('message' in parsed) {
-              onError(parsed.message)
-            }
-          } catch { /* skip malformed */ }
-        }
-      }
+      if (!res.body) { onError('No response body'); return }
+      await readSseData(res.body, (data) => {
+        const raw = data.trim()
+        if (!raw || raw === '{}') return
+        try {
+          const parsed = JSON.parse(raw)
+          // Dispatch based on data shape — each event type has a unique key
+          if ('call_number' in parsed && 'tool_name' in parsed) {
+            onStep(parsed as AgentStep)
+          } else if ('text' in parsed) {
+            // Filter out reasoning chunks that are just the verdict JSON — the model
+            // often emits the verdict as plain text before calling final_answer.
+            // These will be captured via the proper 'verdict' event instead.
+            const txt: string = parsed.text || ''
+            const looksLikeVerdict = txt.includes('"verdict"') &&
+              (txt.includes('"TP"') || txt.includes('"FP"') || txt.includes('"INCONCLUSIVE"'))
+            if (!looksLikeVerdict) onReasoning(txt)
+          } else if ('verdict' in parsed) {
+            onVerdict(parsed as AgentVerdict)
+          } else if ('reason' in parsed) {
+            onLimit(parsed.reason)
+          } else if ('message' in parsed) {
+            onError(parsed.message)
+          }
+        } catch { /* skip malformed */ }
+      })
       onDone()
     },
 
@@ -1092,23 +1158,14 @@ export const api = {
         signal,
       })
       if (!res.ok) throw new Error(`Chat failed: ${res.status}`)
-      const reader = res.body?.getReader()
-      if (!reader) throw new Error('No response body')
-      const decoder = new TextDecoder()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
-          if (line.startsWith('data: ')) {
-            try {
-              const msg = JSON.parse(line.slice(6))
-              if (msg.token) onToken(msg.token)
-              if (msg.done) { onDone(); return }
-            } catch { /* skip */ }
-          }
-        }
-      }
+      if (!res.body) throw new Error('No response body')
+      await readSseData(res.body, (raw) => {
+        try {
+          const msg = JSON.parse(raw)
+          if (msg.token) onToken(msg.token)
+          if (msg.done) return true
+        } catch { /* skip */ }
+      })
       onDone()
     },
   },
@@ -1521,7 +1578,8 @@ export interface AgentReasoning {
 }
 
 export interface AgentVerdict {
-  verdict: 'TP' | 'FP'
+  /** INCONCLUSIVE = agent could not decide; analyst must review manually. */
+  verdict: 'TP' | 'FP' | 'INCONCLUSIVE'
   confidence: number   // 0-100
   narrative: string
 }

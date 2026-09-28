@@ -35,6 +35,8 @@
 
   async function restartService(name: string) {
     if (restartingService) return        // one at a time
+    if (!window.confirm(`Restart the ${name} service? It will be briefly unavailable while it restarts.`))
+      return
     restartingService = name
     try {
       const res = await api.services.restart(name)

@@ -118,15 +118,12 @@
 
   async function refreshNetworkHealth() {
     try {
-      const res = await fetch('/health/network')
-      if (res.ok) {
-        const data = await res.json()
-        const devs: NetworkDevices = {}
-        for (const [k, v] of Object.entries(data.devices ?? {})) {
-          devs[k as keyof NetworkDevices] = (v as any).status === 'up' ? 'up' : 'down'
-        }
-        networkDevices = devs
+      const data = await api.health.network()
+      const devs: NetworkDevices = {}
+      for (const [k, v] of Object.entries(data.devices ?? {})) {
+        devs[k as keyof NetworkDevices] = v?.status === 'up' ? 'up' : 'down'
       }
+      networkDevices = devs
     } catch { /* ignore — dots stay unknown */ }
   }
 

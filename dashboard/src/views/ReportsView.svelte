@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { api, getDownloadUrl } from '../lib/api.ts'
+  import { api, triggerDownload } from '../lib/api.ts'
   import type { Report, MitreCoverageResponse, TrendsResponse, TemplateMeta } from '../lib/api.ts'
   import * as d3 from 'd3'
 
@@ -150,17 +150,40 @@
     })
   }
 
-  function downloadCompliance() {
+  // Visible error for failed download-token requests (shown on every tab)
+  let downloadError = $state('')
+
+  async function downloadCompliance() {
     complianceDownloading = true
-    const url = api.reports.complianceDownloadUrl(complianceFramework)
-    const a = document.createElement('a')
-    a.href = url; a.download = `${complianceFramework}-evidence.zip`
-    document.body.appendChild(a); a.click(); document.body.removeChild(a)
-    setTimeout(() => { complianceDownloading = false }, 1500)
+    downloadError = ''
+    try {
+      await triggerDownload(api.reports.compliancePath(complianceFramework))
+    } catch (e: any) {
+      downloadError = `Download failed: ${e?.message ?? e}`
+    } finally {
+      setTimeout(() => { complianceDownloading = false }, 1500)
+    }
   }
 
-  function openPdf(reportId: string) {
-    window.open(api.reports.pdfUrl(reportId), '_blank')
+  /** Open a report PDF in a new tab using a short-lived signed URL.
+   *  The tab is opened synchronously (inside the click gesture) so popup
+   *  blockers allow it, then navigated once the signed URL resolves. */
+  async function openPdf(reportId: string) {
+    downloadError = ''
+    const win = window.open('', '_blank')
+    try {
+      const url = await api.reports.pdfUrl(reportId)
+      if (win) {
+        win.opener = null
+        win.location.href = url
+      } else {
+        // Popup blocked — fall back to anchor navigation
+        await triggerDownload(api.reports.pdfPath(reportId), { newTab: true })
+      }
+    } catch (e: any) {
+      win?.close()
+      downloadError = `Download failed: ${e?.message ?? e}`
+    }
   }
 
   function humanizeType(type: string): string {
@@ -191,6 +214,9 @@
   </div>
 
   <div class="content">
+    {#if downloadError}
+      <p class="error" role="alert">{downloadError}</p>
+    {/if}
     {#if activeTab === 'reports'}
       <div class="card">
         <h2>Generate Executive Report</h2>
@@ -315,9 +341,8 @@
             <p class="card-desc">Daily operational record covering the last 24 hours of SOC activity.</p>
             <div class="card-actions">
               {#if cardLastReport['template_session_log']}
-                <a class="btn btn-primary"
-                  href={api.reports.pdfUrl(cardLastReport['template_session_log']!.id)}
-                  target="_blank">Download PDF</a>
+                <button class="btn btn-primary"
+                  onclick={() => openPdf(cardLastReport['template_session_log']!.id)}>Download PDF</button>
                 <button class="btn btn-secondary"
                   onclick={() => generateTemplate('template_session_log')}
                   disabled={cardGenerating['template_session_log']}>
@@ -350,9 +375,8 @@
             {/if}
             <div class="card-actions">
               {#if cardLastReport['template_incident']}
-                <a class="btn btn-primary"
-                  href={api.reports.pdfUrl(cardLastReport['template_incident']!.id)}
-                  target="_blank">Download PDF</a>
+                <button class="btn btn-primary"
+                  onclick={() => openPdf(cardLastReport['template_incident']!.id)}>Download PDF</button>
                 <button class="btn btn-secondary"
                   onclick={() => generateTemplate('template_incident', { case_id: selectedCaseId })}
                   disabled={cardGenerating['template_incident']}>
@@ -385,9 +409,8 @@
             {/if}
             <div class="card-actions">
               {#if cardLastReport['template_playbook_log']}
-                <a class="btn btn-primary"
-                  href={api.reports.pdfUrl(cardLastReport['template_playbook_log']!.id)}
-                  target="_blank">Download PDF</a>
+                <button class="btn btn-primary"
+                  onclick={() => openPdf(cardLastReport['template_playbook_log']!.id)}>Download PDF</button>
                 <button class="btn btn-secondary"
                   onclick={() => generateTemplate('template_playbook_log', { run_id: selectedRunId })}
                   disabled={cardGenerating['template_playbook_log']}>
@@ -423,9 +446,8 @@
             {/if}
             <div class="card-actions">
               {#if cardLastReport['template_pir']}
-                <a class="btn btn-primary"
-                  href={api.reports.pdfUrl(cardLastReport['template_pir']!.id)}
-                  target="_blank">Download PDF</a>
+                <button class="btn btn-primary"
+                  onclick={() => openPdf(cardLastReport['template_pir']!.id)}>Download PDF</button>
                 <button class="btn btn-secondary"
                   onclick={() => generateTemplate('template_pir', { case_id: selectedCaseId })}
                   disabled={cardGenerating['template_pir']}>
@@ -460,9 +482,8 @@
             {/if}
             <div class="card-actions">
               {#if cardLastReport['template_ti_bulletin']}
-                <a class="btn btn-primary"
-                  href={api.reports.pdfUrl(cardLastReport['template_ti_bulletin']!.id)}
-                  target="_blank">Download PDF</a>
+                <button class="btn btn-primary"
+                  onclick={() => openPdf(cardLastReport['template_ti_bulletin']!.id)}>Download PDF</button>
                 <button class="btn btn-secondary"
                   onclick={() => generateTemplate('template_ti_bulletin', { actor_name: selectedActorName })}
                   disabled={cardGenerating['template_ti_bulletin']}>
@@ -491,7 +512,7 @@
                   cardGenerating = { ...cardGenerating, template_severity_ref: true }
                   try {
                     const report = await api.reports.generateTemplate('template_severity_ref')
-                    window.open(api.reports.pdfUrl(report.id), '_blank')
+                    await openPdf(report.id)
                   } catch (e: any) { templateMetaError = e.message }
                   finally { cardGenerating = { ...cardGenerating, template_severity_ref: false } }
                 }}

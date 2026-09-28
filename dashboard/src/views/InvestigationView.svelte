@@ -44,11 +44,14 @@
   let agentCallCount = $state(0)
   let agentLimitReason = $state<string | null>(null)
   let agentError = $state<string | null>(null)
+  let verdictSubmitted = $state<'TP' | 'FP' | null>(null)
+  let verdictError = $state<string | null>(null)
   let agentExpandedSteps = $state<Set<number>>(new Set())
   let agentAbortController: AbortController | null = null
 
   // Phase 51: OSINT tab state
   let osintSeed = $state('')           // pre-populated from detection.src_ip
+  let osintSeedUserEdited = $state(false)  // true once the analyst types in the seed box
   let osintUsecase = $state<'passive' | 'all'>('passive')
   let osintJob = $state<OsintJob | null>(null)
   let osintDetail = $state<OsintInvestigationDetail | null>(null)
@@ -74,20 +77,45 @@
   let streamingContent = $state('')  // current assistant response being streamed
   let abortController = $state<AbortController | null>(null)
 
+  // Copilot model label — resolved from /api/settings/model-status (fallback: static default)
+  let modelLabel = $state('qwen3:14b')
+  api.settings.modelStatus()
+    .then((s) => { if (s.active_model) modelLabel = s.active_model })
+    .catch(() => { /* keep default label */ })
+
+  /** Clear all per-investigation agent + verdict state and abort any in-flight agent run. */
+  function resetAgentState() {
+    agentAbortController?.abort()
+    agentAbortController = null
+    agentRunning = false
+    agentSteps = []
+    agentReasoningChunks = []
+    agentVerdict = null
+    agentError = null
+    agentLimitReason = null
+    agentCallCount = 0
+    agentExpandedSteps = new Set()
+    verdictSubmitted = null
+    verdictError = null
+  }
+
   // Load timeline + chat history + investigation result when investigationId changes
   $effect(() => {
     if (!investigationId) return
+    // Drop state belonging to the previous investigation so it can't leak into this one
+    resetAgentState()
+    investigationResult = null
+    osintSeedUserEdited = false
     loadTimeline()
     loadChatHistory()
     loadInvestigation()
   })
 
-  // Phase 51: pre-populate OSINT seed from detection src_ip
+  // Phase 51: OSINT seed follows the current investigation's detection src_ip
+  // unless the analyst has manually edited it.
   $effect(() => {
-    if (investigationResult?.detection && !osintSeed) {
-      const det = investigationResult.detection as any
-      if (det.src_ip) osintSeed = det.src_ip
-    }
+    const srcIp = investigationResult?.detection?.src_ip ?? ''
+    if (!osintSeedUserEdited) osintSeed = srcIp
   })
 
   // Phase 44: load similar confirmed cases when investigationId changes
@@ -105,8 +133,9 @@
 
   async function loadInvestigation() {
     try {
-      const res = await api.investigate(investigationId)
-      investigationResult = res
+      const id = investigationId
+      const res = await api.investigate(id)
+      if (id === investigationId) investigationResult = res  // drop late responses for a previous investigation
     } catch { /* investigation fetch failure is non-critical — CAR section simply won't appear */ }
   }
 
@@ -198,9 +227,15 @@
 
   async function startAgent() {
     if (!investigationId) return
+    const runId = investigationId
+
+    // New run for this investigation — any previously recorded analyst verdict
+    // belongs to an earlier result.
+    verdictSubmitted = null
+    verdictError = null
 
     // Check cache
-    const cached = agentCache.get(investigationId)
+    const cached = agentCache.get(runId)
     if (cached) {
       agentSteps = cached.steps
       agentReasoningChunks = cached.reasoningChunks
@@ -220,27 +255,36 @@
     agentError = null
     agentCallCount = 0
 
-    agentAbortController = new AbortController()
+    agentAbortController?.abort()
+    const controller = new AbortController()
+    agentAbortController = controller
+    // Ignore callbacks from a run that was aborted or superseded (e.g. investigation switched)
+    const stale = () => controller.signal.aborted || runId !== investigationId
 
     try {
       await api.investigations.runAgentic(
-        investigationId,
+        runId,
         (step) => {
+          if (stale()) return
           agentSteps = [...agentSteps, step]
           agentCallCount = step.call_number
         },
         (text) => {
+          if (stale()) return
           agentReasoningChunks = [...agentReasoningChunks, text]
         },
         (verdict) => {
+          if (stale()) return
           agentVerdict = verdict
         },
         (reason) => {
+          if (stale()) return
           agentLimitReason = reason
         },
         () => {
+          if (stale()) return
           agentRunning = false
-          agentCache.set(investigationId, {
+          agentCache.set(runId, {
             steps: agentSteps,
             reasoningChunks: agentReasoningChunks,
             verdict: agentVerdict,
@@ -249,12 +293,14 @@
           })
         },
         (message) => {
+          if (stale()) return
           agentError = message
           agentRunning = false
         },
-        agentAbortController.signal,
+        controller.signal,
       )
     } catch (err) {
+      if (stale()) return
       agentError = err instanceof Error ? err.message : 'Unknown error'
       agentRunning = false
     }
@@ -265,14 +311,20 @@
     agentVerdict = null
     agentError = null
     agentLimitReason = null
+    verdictSubmitted = null
+    verdictError = null
     startAgent()
   }
 
   async function confirmVerdict(verdict: 'TP' | 'FP') {
     if (!investigationId) return
+    verdictError = null
     try {
       await api.feedback.submit({ detection_id: investigationId, verdict })
-    } catch { /* silent on error */ }
+      verdictSubmitted = verdict
+    } catch (e: any) {
+      verdictError = e?.message ?? 'Failed to record verdict — check connection'
+    }
   }
 
   // Phase 51: cleanup on unmount
@@ -524,7 +576,7 @@
   <div class="panel copilot-panel">
     <div class="panel-header">
       <h2>AI Copilot</h2>
-      <span class="model-label">foundation-sec:8b</span>
+      <span class="model-label">{modelLabel}</span>
     </div>
 
     <!-- Phase 45: Tab selector -->
@@ -711,16 +763,35 @@
         {#if agentVerdict && !agentRunning}
           <div class="verdict-section">
             <div class="verdict-header">
-              <span class="verdict-badge-agent" class:tp={agentVerdict.verdict === 'TP'} class:fp={agentVerdict.verdict === 'FP'}>
-                {agentVerdict.verdict}
+              <span
+                class="verdict-badge-agent"
+                class:tp={agentVerdict.verdict === 'TP'}
+                class:fp={agentVerdict.verdict === 'FP'}
+                class:inconclusive={agentVerdict.verdict === 'INCONCLUSIVE'}
+              >
+                {agentVerdict.verdict === 'INCONCLUSIVE' ? 'Inconclusive' : agentVerdict.verdict}
               </span>
-              <span class="verdict-confidence">{agentVerdict.confidence}% confident</span>
+              {#if agentVerdict.verdict !== 'INCONCLUSIVE'}
+                <span class="verdict-confidence">{agentVerdict.confidence}% confident</span>
+              {/if}
             </div>
+            {#if agentVerdict.verdict === 'INCONCLUSIVE'}
+              <p class="verdict-inconclusive-note">Inconclusive — manual review required. The agent could not reach a TP/FP decision; record your own verdict below.</p>
+            {/if}
             <p class="verdict-narrative">{agentVerdict.narrative}</p>
-            <div class="verdict-actions">
-              <button class="btn-confirm-tp" onclick={() => confirmVerdict('TP')}>✓ Confirm TP</button>
-              <button class="btn-mark-fp" onclick={() => confirmVerdict('FP')}>✗ Mark FP</button>
-            </div>
+            {#if verdictSubmitted}
+              <div class="verdict-confirmed">
+                {verdictSubmitted === 'TP' ? '✓ Recorded as True Positive' : '✓ Recorded as False Positive'}
+              </div>
+            {:else}
+              <div class="verdict-actions">
+                <button class="btn-confirm-tp" onclick={() => confirmVerdict('TP')}>✓ Confirm TP</button>
+                <button class="btn-mark-fp" onclick={() => confirmVerdict('FP')}>✗ Mark FP</button>
+              </div>
+              {#if verdictError}
+                <p class="verdict-error">{verdictError}</p>
+              {/if}
+            {/if}
           </div>
         {/if}
       {/if}
@@ -737,6 +808,7 @@
             class="osint-seed-input"
             type="text"
             bind:value={osintSeed}
+            oninput={() => { osintSeedUserEdited = true }}
             placeholder="IP address or domain"
             disabled={osintRunning}
           />
@@ -1091,9 +1163,13 @@ textarea { width: 100%; background: var(--surface2, #253048); border: 1px solid 
 .verdict-badge-agent { font-size: 1rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 4px; }
 .verdict-badge-agent.tp { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
 .verdict-badge-agent.fp { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.verdict-badge-agent.inconclusive { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+.verdict-inconclusive-note { color: #fbbf24; font-size: 0.8rem; margin: 0; line-height: 1.4; }
 .verdict-confidence { color: rgba(255,255,255,0.55); font-size: 0.8rem; }
 .verdict-narrative { color: rgba(255,255,255,0.8); font-size: 0.82rem; margin: 0; line-height: 1.5; }
 .verdict-actions { display: flex; gap: 0.5rem; }
+  .verdict-confirmed { color: #4ade80; font-size: 0.85rem; font-weight: 600; padding: 0.35rem 0; }
+  .verdict-error { color: #f87171; font-size: 0.78rem; margin: 0.25rem 0 0; }
 .btn-confirm-tp { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; padding: 0.35rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
 .btn-confirm-tp:hover { background: rgba(34,197,94,0.25); }
 .btn-mark-fp { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.25); color: #f87171; padding: 0.35rem 0.75rem; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
