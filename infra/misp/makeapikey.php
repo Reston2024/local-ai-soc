@@ -1,5 +1,31 @@
 <?php
-$pdo = new PDO('mysql:host=misp-db;dbname=misp', 'misp', '76fd7f85e8717b788ec1af56dc5dd0ec256349e56bbca8d0');
+// Generate a new MISP API auth key for user_id 1 (admin).
+//
+// The DB password is read from the environment only — never hardcode it here.
+// The misp-core container already receives MYSQL_PASSWORD from
+// docker-compose.misp.yml (sourced from .env.misp), so the usual invocation is:
+//
+//   docker cp makeapikey.php <misp-core>:/tmp/makeapikey.php
+//   docker exec <misp-core> php /tmp/makeapikey.php
+
+function require_env(array $names): string
+{
+    foreach ($names as $name) {
+        $value = getenv($name);
+        if ($value !== false && $value !== '') {
+            return $value;
+        }
+    }
+    fwrite(STDERR, "ERROR: required environment variable not set: " . implode(' or ', $names) . PHP_EOL);
+    exit(1);
+}
+
+$dbHost = getenv('MYSQL_HOST') ?: 'misp-db';
+$dbName = getenv('MYSQL_DATABASE') ?: 'misp';
+$dbUser = getenv('MYSQL_USER') ?: 'misp';
+$dbPass = require_env(['MISP_DB_PASSWORD', 'MYSQL_PASSWORD']);
+
+$pdo = new PDO("mysql:host={$dbHost};dbname={$dbName}", $dbUser, $dbPass);
 
 $authkey = bin2hex(random_bytes(20));
 $hashed  = password_hash($authkey, PASSWORD_BCRYPT);
