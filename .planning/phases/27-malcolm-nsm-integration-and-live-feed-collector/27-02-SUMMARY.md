@@ -38,7 +38,7 @@ key-files:
 
 key-decisions:
   - "MALCOLM_OPENSEARCH_USER defaults to 'malcolm_internal' (not 'admin') — actual discovered credential from /opt/malcolm/.opensearch.primary.curlrc"
-  - "MALCOLM_OPENSEARCH_PASS defaults to the discovered internal credential (AzZqIn8B6AS1RuX0K8NbbzJZuYaTDARks9Tu)"
+  - "MALCOLM_OPENSEARCH_PASS defaults to the discovered internal credential (<set-in-local-.env>)"
   - "MalcolmCollector.__init__ all params default to None/sensible values so zero-arg construction works for unit tests"
   - "_normalize_alert and _normalize_syslog remain stubs returning None — plan 27-03 implements them"
   - "test_malcolm_normalizer.py skip guard updated: added _NORMALIZER_IMPLEMENTED=False flag so normalizer stubs stay skipped despite MalcolmCollector now being importable"
