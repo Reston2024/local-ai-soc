@@ -171,9 +171,9 @@ if ($AlertFound) {
     Write-Host ""
     Write-Host "Troubleshooting checklist:"
     Write-Host "  1. Is MALCOLM_ENABLED=True in .env and local-ai-soc restarted?"
-    Write-Host "  2. Is port 9200 accessible: curl -sk -u admin:Adam1000! https://192.168.1.22:9200/_cluster/health"
+    Write-Host "  2. Is port 9200 accessible: curl -sk -u admin:`$OPENSEARCH_ADMIN_PASSWORD https://192.168.1.22:9200/_cluster/health"
     Write-Host "  3. Did Suricata actually fire? SSH to $MalcolmHost and check:"
-    Write-Host "     curl -sk -u admin:Adam1000! https://localhost:9200/arkime_sessions3-*/_count"
+    Write-Host "     curl -sk -u admin:`$OPENSEARCH_ADMIN_PASSWORD https://localhost:9200/arkime_sessions3-*/_count"
     Write-Host "  4. Check MalcolmCollector logs: search for 'MalcolmCollector' in application logs"
     exit 1
 }

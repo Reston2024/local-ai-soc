@@ -14,7 +14,7 @@
 **Infrastructure — Expose OpenSearch to LAN (P27-T01)**
 - SSH to opsadmin@192.168.1.22 and add `- "9200:9200"` port mapping to Malcolm's OpenSearch
   service in docker-compose.yml (Option A — no extra proxy)
-- Verification: `curl -sk -u "admin:Adam1000!" https://192.168.1.22:9200/_cat/indices` from Windows
+- Verification: `curl -sk -u "admin:$OPENSEARCH_ADMIN_PASSWORD" https://192.168.1.22:9200/_cat/indices` from Windows
 
 **MalcolmCollector (P27-T02)**
 - New file `ingestion/jobs/malcolm_collector.py` — do NOT modify FirewallCollector
@@ -395,7 +395,7 @@ MALCOLM_SYSLOG_FIELD_MAP = {
 }
 ```
 
-**NOTE — LOW confidence on exact Malcolm field paths:** Malcolm applies Logstash/Zeek enrichment that may rename fields. The planner should note that the first implementation pass may need field path corrections after observing real documents via `curl -sk -u "admin:Adam1000!" https://192.168.1.22:9200/arkime_sessions3-*/_search?size=1`. Always fall back to `_source.get("src_ip") or _source.get("source", {}).get("ip")` pattern with cascading lookups.
+**NOTE — LOW confidence on exact Malcolm field paths:** Malcolm applies Logstash/Zeek enrichment that may rename fields. The planner should note that the first implementation pass may need field path corrections after observing real documents via `curl -sk -u "admin:$OPENSEARCH_ADMIN_PASSWORD" https://192.168.1.22:9200/arkime_sessions3-*/_search?size=1`. Always fall back to `_source.get("src_ip") or _source.get("source", {}).get("ip")` pattern with cascading lookups.
 
 ### Anti-Patterns to Avoid
 
@@ -610,7 +610,7 @@ def _map_alert_doc(doc: dict) -> NormalizedEvent:
 1. **Exact Malcolm ECS field paths for alerts**
    - What we know: Malcolm enriches Suricata EVE with Zeek and Logstash, likely applying ECS field renaming (source.ip, destination.ip, rule.name)
    - What's unclear: Whether Malcolm 26.02.0 applies consistent ECS naming or has a mix
-   - Recommendation: The planner should include a "discover fields" subtask in Wave 0 — run `curl -sk -u "admin:Adam1000!" https://192.168.1.22:9200/arkime_sessions3-*/_search?size=1 | python -m json.tool` and capture one real document. Use cascading field lookups (`src.get("source", {}).get("ip") or src.get("src_ip")`) as defensive defaults.
+   - Recommendation: The planner should include a "discover fields" subtask in Wave 0 — run `curl -sk -u "admin:$OPENSEARCH_ADMIN_PASSWORD" https://192.168.1.22:9200/arkime_sessions3-*/_search?size=1 | python -m json.tool` and capture one real document. Use cascading field lookups (`src.get("source", {}).get("ip") or src.get("src_ip")`) as defensive defaults.
 
 2. **Chroma version on Malcolm supportTAK-server**
    - What we know: Remote corpus expected to have ~387 documents; target at data/chroma-remote-corpus/

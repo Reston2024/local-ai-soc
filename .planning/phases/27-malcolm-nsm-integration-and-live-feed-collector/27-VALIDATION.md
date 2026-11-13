@@ -41,7 +41,7 @@ created: 2026-04-07
 | 27-00-01 | 00 | 0 | P27-T02 | unit stub | `uv run pytest tests/unit/test_malcolm_collector.py -q` | ❌ W0 | ⬜ pending |
 | 27-00-02 | 00 | 0 | P27-T02 | unit stub | `uv run pytest tests/unit/test_malcolm_normalizer.py -q` | ❌ W0 | ⬜ pending |
 | 27-00-03 | 00 | 0 | P27-T04 | unit stub | `uv run pytest tests/unit/test_dispatch_endpoint.py -q` | ❌ W0 | ⬜ pending |
-| 27-01-01 | 01 | 1 | P27-T01 | manual | `curl -sk -u "admin:Adam1000!" https://192.168.1.22:9200/_cat/indices` | N/A | ⬜ pending |
+| 27-01-01 | 01 | 1 | P27-T01 | manual | `curl -sk -u "admin:$OPENSEARCH_ADMIN_PASSWORD" https://192.168.1.22:9200/_cat/indices` | N/A | ⬜ pending |
 | 27-02-01 | 02 | 2 | P27-T03 | unit | `uv run python -c "from backend.core.config import settings; print(settings.MALCOLM_ENABLED)"` | N/A | ⬜ pending |
 | 27-02-02 | 02 | 2 | P27-T02 | unit | `uv run pytest tests/unit/test_malcolm_collector.py -x -v` | ❌ W0 | ⬜ pending |
 | 27-03-01 | 03 | 2 | P27-T02 | unit | `uv run pytest tests/unit/test_malcolm_normalizer.py -x -v` | ❌ W0 | ⬜ pending |
@@ -67,7 +67,7 @@ created: 2026-04-07
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| OpenSearch LAN accessible at 192.168.1.22:9200 | P27-T01 | Requires SSH to remote server + live network | `curl -sk -u "admin:Adam1000!" https://192.168.1.22:9200/_cat/indices` |
+| OpenSearch LAN accessible at 192.168.1.22:9200 | P27-T01 | Requires SSH to remote server + live network | `curl -sk -u "admin:$OPENSEARCH_ADMIN_PASSWORD" https://192.168.1.22:9200/_cat/indices` |
 | MalcolmCollector ingests live alerts from Malcolm | P27-T02 | Requires live Malcolm instance on LAN | Check DuckDB event count before/after with Malcolm running |
 | ChromaDB corpus syncs from remote host | P27-T05 | Requires SSH + scp + remote file existence | Run `scripts/sync-chroma-corpus.ps1`, verify doc count |
 | Full alert pipeline E2E | P27-T06 | Requires live IPFire, Malcolm, and local-ai-soc | Run `scripts/e2e-malcolm-verify.ps1`, expect PASS within 2 poll cycles |
