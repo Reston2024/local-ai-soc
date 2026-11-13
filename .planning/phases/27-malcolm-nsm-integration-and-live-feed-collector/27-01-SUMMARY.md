@@ -15,14 +15,14 @@ autonomous: false
 3. Restarted the opensearch container: `docker compose up -d opensearch`
 4. Discovered actual OpenSearch credentials via `/opt/malcolm/.opensearch.primary.curlrc`
    - Credentials: `malcolm_internal:<set-in-local-.env>`
-   - Note: `admin:Adam1000!` in CONTEXT.md was incorrect; internal credentials differ from Malcolm UI credentials
+   - Note: `admin:<opensearch-admin-password>` in CONTEXT.md was incorrect; internal credentials differ from Malcolm UI credentials
 5. Verified LAN access from Malcolm server:
    - `curl -sk -u "malcolm_internal:..." https://192.168.1.22:9200/_cat/indices` → 40+ indices returned
 
 ## Key Decisions
 
 - **Credentials source:** `/opt/malcolm/.opensearch.primary.curlrc` (hidden dot-file) contains the actual curl config with `user:` and `insecure` directives
-- **Real credentials:** `malcolm_internal:<set-in-local-.env>` (NOT `admin:Adam1000!`)
+- **Real credentials:** `malcolm_internal:<set-in-local-.env>` (NOT `admin:<opensearch-admin-password>`)
 - **TLS:** Self-signed cert; `verify=False` required in MalcolmCollector (already planned)
 
 ## Verified Indices
