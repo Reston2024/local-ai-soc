@@ -25,7 +25,7 @@ logic — all new behaviour is additive (new collector, new settings, new script
 - Preferred option: Add `- "9200:9200"` port mapping to Malcolm's OpenSearch service in
   docker-compose.yml on the Malcolm server (Option A — simpler, no extra proxy needed)
 - OpenSearch already has TLS + internal auth — no extra security layer needed
-- Verification: `curl -sk -u "admin:<opensearch-admin-password>" https://192.168.1.22:9200/_cat/indices` from
+- Verification: `curl -sk -u "admin:$OPENSEARCH_ADMIN_PASSWORD" https://192.168.1.22:9200/_cat/indices` from
   Windows host must return index list
 - Internal OpenSearch credentials discoverable via:
   `docker exec malcolm-dashboards-helper-1 cat /var/local/curlrc/.opensearch.primary.curlrc`
@@ -116,7 +116,7 @@ logic — all new behaviour is additive (new collector, new settings, new script
 - ISM retention: 30-day hot-to-delete (malcolm-retention policy)
 
 ### Auth
-- nginx proxy basic auth: `admin:<opensearch-admin-password>` (used via Authorization header or -u flag)
+- nginx proxy basic auth: `admin:$OPENSEARCH_ADMIN_PASSWORD` (used via Authorization header or -u flag)
 - Internal OpenSearch credentials: from curlrc file at
   `/var/local/curlrc/.opensearch.primary.curlrc` on malcolm-dashboards-helper-1 container
 - TLS: self-signed — always `verify=False` in httpx calls

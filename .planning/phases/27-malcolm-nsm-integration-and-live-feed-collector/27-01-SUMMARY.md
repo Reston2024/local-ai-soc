@@ -14,15 +14,15 @@ autonomous: false
 2. Confirmed `9200:9200` port mapping was already present in the opensearch service
 3. Restarted the opensearch container: `docker compose up -d opensearch`
 4. Discovered actual OpenSearch credentials via `/opt/malcolm/.opensearch.primary.curlrc`
-   - Credentials: `malcolm_internal:<set-in-local-.env>`
-   - Note: `admin:<opensearch-admin-password>` in CONTEXT.md was incorrect; internal credentials differ from Malcolm UI credentials
+   - Credentials: `malcolm_internal:$MALCOLM_OPENSEARCH_PASS`
+   - Note: `admin:$OPENSEARCH_ADMIN_PASSWORD` in CONTEXT.md was incorrect; internal credentials differ from Malcolm UI credentials
 5. Verified LAN access from Malcolm server:
    - `curl -sk -u "malcolm_internal:..." https://192.168.1.22:9200/_cat/indices` → 40+ indices returned
 
 ## Key Decisions
 
 - **Credentials source:** `/opt/malcolm/.opensearch.primary.curlrc` (hidden dot-file) contains the actual curl config with `user:` and `insecure` directives
-- **Real credentials:** `malcolm_internal:<set-in-local-.env>` (NOT `admin:<opensearch-admin-password>`)
+- **Real credentials:** `malcolm_internal:$MALCOLM_OPENSEARCH_PASS` (NOT `admin:$OPENSEARCH_ADMIN_PASSWORD`)
 - **TLS:** Self-signed cert; `verify=False` required in MalcolmCollector (already planned)
 
 ## Verified Indices
